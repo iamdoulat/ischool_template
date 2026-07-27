@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Plus,
     Upload,
@@ -16,7 +19,12 @@ import {
     Loader2,
     Copy,
     Check,
-    DatabaseBackup
+    Database,
+    Archive,
+    Cloud,
+    Save,
+    Clock,
+    Server
 } from "lucide-react";
 import {
     Table,
@@ -40,18 +48,51 @@ interface BackupFile {
     created_at: string;
 }
 
+interface BackupSettings {
+    auto_backup_enabled: boolean;
+    backup_type: "db" | "full";
+    frequency: "daily" | "weekly" | "monthly";
+    schedule_time: string;
+    destination: "local" | "s3" | "gdrive";
+    aws_access_key_id: string;
+    aws_secret_access_key: string;
+    aws_default_region: string;
+    aws_bucket: string;
+    gdrive_client_id: string;
+    gdrive_client_secret: string;
+    gdrive_refresh_token: string;
+    gdrive_folder_id: string;
+}
+
 export default function BackupRestorePage() {
     const { t } = useTranslation();
     const baseApiUrl = useBaseUrl();
     const apiRoot = `${baseApiUrl}/api/v1`;
     const [backups, setBackups] = useState<BackupFile[]>([]);
     const [loading, setLoading] = useState(true);
-    const [creating, setCreating] = useState(false);
+    const [creatingType, setCreatingType] = useState<"db" | "full" | null>(null);
     const [showKey, setShowKey] = useState(false);
     const [cronKey, setCronKey] = useState("");
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [copied, setCopied] = useState(false);
+    const [savingSettings, setSavingSettings] = useState(false);
+
+    const [settings, setSettings] = useState<BackupSettings>({
+        auto_backup_enabled: false,
+        backup_type: "db",
+        frequency: "daily",
+        schedule_time: "02:00",
+        destination: "local",
+        aws_access_key_id: "",
+        aws_secret_access_key: "",
+        aws_default_region: "us-east-1",
+        aws_bucket: "",
+        gdrive_client_id: "",
+        gdrive_client_secret: "",
+        gdrive_refresh_token: "",
+        gdrive_folder_id: ""
+    });
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmLoading, setConfirmLoading] = useState(false);
@@ -88,17 +129,30 @@ export default function BackupRestorePage() {
         }
     }, []);
 
+    const fetchSettings = useCallback(async () => {
+        try {
+            const response = await api.get("/system-setting/backups/settings");
+            if (response.data.status === "Success" && response.data.data) {
+                setSettings(prev => ({ ...prev, ...response.data.data }));
+            }
+        } catch (error) {
+            console.error("Failed to fetch backup settings", error);
+        }
+    }, []);
+
     useEffect(() => {
         fetchBackups();
         fetchCronKey();
-    }, [fetchBackups, fetchCronKey]);
+        fetchSettings();
+    }, [fetchBackups, fetchCronKey, fetchSettings]);
 
-    const handleCreateBackup = async () => {
+    const handleCreateBackup = async (type: "db" | "full") => {
         try {
-            setCreating(true);
-            const response = await api.post("/system-setting/backups");
+            setCreatingType(type);
+            toast("info", type === "full" ? "Creating full system & uploads backup (.zip)..." : "Creating database backup (.sql)...");
+            const response = await api.post("/system-setting/backups", { type });
             if (response.data.status === "Success") {
-                toast("success", t("backup_created_successfully"));
+                toast("success", type === "full" ? "Full system backup (.zip) created successfully!" : t("backup_created_successfully"));
                 fetchBackups();
             } else {
                 toast("error", response.data.message || t("failed_to_create_backup"));
@@ -108,7 +162,22 @@ export default function BackupRestorePage() {
             const errorMsg = error.response?.data?.message || t("failed_to_create_backup");
             toast("error", errorMsg);
         } finally {
-            setCreating(false);
+            setCreatingType(null);
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        try {
+            setSavingSettings(true);
+            const response = await api.put("/system-setting/backups/settings", settings);
+            if (response.data.status === "Success") {
+                toast("success", "Automated backup & cloud destination settings saved!");
+            }
+        } catch (error) {
+            console.error("Failed to save backup settings", error);
+            toast("error", "Failed to save backup settings");
+        } finally {
+            setSavingSettings(false);
         }
     };
 
@@ -149,7 +218,7 @@ export default function BackupRestorePage() {
             toast("success", t("restoration_started"));
             const response = await api.post(`/system-setting/backups/${targetId}/restore`);
             if (response.data.status === "Success") {
-                toast("success", t("database_restored_successfully"));
+                toast("success", response.data.message || t("database_restored_successfully"));
             }
         } catch (error) {
             console.error("Failed to restore database", error);
@@ -223,7 +292,6 @@ export default function BackupRestorePage() {
                 setSelectedFile(null);
                 fetchBackups();
 
-                // Ask to restore immediately
                 setConfirmAction({ type: "upload-restore", id: response.data.data.id });
                 setConfirmOpen(true);
             }
@@ -240,7 +308,7 @@ export default function BackupRestorePage() {
             const response = await api.post("/system-setting/backups/cron-key/regenerate");
             if (response.data.status === "Success") {
                 setCronKey(response.data.cron_secret_key);
-                toast("success", t("cron_secret_key_regenerated"));
+                toast("success", t("cron_key_regenerated_successfully"));
             }
         } catch (error) {
             console.error("Failed to regenerate cron key", error);
@@ -248,256 +316,401 @@ export default function BackupRestorePage() {
         }
     };
 
-    const copyToClipboard = () => {
-        const cronCommand = `curl "${apiRoot}/cron/backup-db?secret_key=${cronKey}"`;
-        navigator.clipboard.writeText(cronCommand);
+    const copyCronUrl = () => {
+        const url = `${apiRoot}/cron?key=${cronKey}`;
+        navigator.clipboard.writeText(url);
         setCopied(true);
+        toast("success", t("cron_url_copied_to_clipboard"));
         setTimeout(() => setCopied(false), 2000);
-        toast("success", t("cron_command_copied_to_clipboard"));
     };
-
-    const getConfirmData = () => {
-        switch (confirmAction?.type) {
-            case "delete":
-                return {
-                    title: t("delete_backup"),
-                    description: t("delete_backup_description"),
-                    confirmText: t("yes_delete"),
-                    variant: "destructive" as const,
-                    onConfirm: confirmDelete
-                };
-            case "restore":
-                return {
-                    title: t("restore_database"),
-                    description: t("restore_database_description"),
-                    confirmText: t("yes_restore"),
-                    variant: "warning" as const,
-                    onConfirm: () => confirmRestore()
-                };
-            case "upload-restore":
-                return {
-                    title: t("restore_uploaded_backup"),
-                    description: t("restore_uploaded_backup_description"),
-                    confirmText: t("yes_restore_now"),
-                    variant: "warning" as const,
-                    onConfirm: () => confirmRestore(confirmAction.id)
-                };
-            default:
-                return {
-                    title: "",
-                    description: "",
-                    confirmText: "",
-                    variant: "default" as const,
-                    onConfirm: () => { }
-                };
-        }
-    };
-
-    const confirmData = getConfirmData();
 
     return (
-        <div className="p-4 bg-gray-50/10 min-h-screen font-sans grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-            {/* Left Column: Backup History */}
-            <div className="lg:col-span-2 space-y-4">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <DatabaseBackup className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <h2 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("backup_history")}</h2>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("backup_history_subtitle")}</p>
-                            </div>
-                        </div>
-                        <Button
-                            onClick={handleCreateBackup}
-                            disabled={creating}
-                            className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg gap-1.5 border-none"
-                        >
-                            {creating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                            {t("create_backup")}
-                        </Button>
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* Top Header Card */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Archive className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("backup_history")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">Manage database dumps, full file backups, and automated cloud sync</p>
                     </div>
+                </div>
 
-                    {/* Table */}
-                    <div className="p-4">
-                        <div className="border border-gray-100 rounded overflow-hidden">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="border-b border-gray-100 hover:bg-transparent">
-                                        <TableHead className="h-9 px-4 text-[11px] font-bold text-gray-600 uppercase">{t("backup_files")}</TableHead>
-                                        <TableHead className="h-9 px-4 text-[11px] font-bold text-gray-600 uppercase text-right w-[300px]">{t("action")}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableRow>
-                                            <TableCell colSpan={2} className="text-center py-8">
-                                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-indigo-500" />
-                                                <p className="text-[11px] text-gray-400 mt-2 uppercase font-bold tracking-widest">{t("loading")}</p>
-                                            </TableCell>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                        onClick={() => handleCreateBackup("db")}
+                        disabled={creatingType !== null}
+                        className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-4 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md gap-1.5 border-none"
+                    >
+                        {creatingType === "db" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5" />}
+                        Create DB Backup (.sql)
+                    </Button>
+                    <Button
+                        onClick={() => handleCreateBackup("full")}
+                        disabled={creatingType !== null}
+                        className="bg-gradient-to-r from-[#6366F1] to-[#a855f7] hover:from-[#4f46e5] hover:to-[#9333ea] text-white px-4 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-md gap-1.5 border-none"
+                    >
+                        {creatingType === "full" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                        Create Full Backup (.zip)
+                    </Button>
+                </div>
+            </div>
+
+            {/* Main Layout Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Left Column: Backup History Table */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+                            <h2 className="text-[13px] font-medium text-gray-700">{t("backup_history")}</h2>
+                            <span className="text-[11px] text-gray-400 font-medium">{backups.length} {t("files")}</span>
+                        </div>
+
+                        <div className="p-0">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b border-gray-100">
+                                            <TableHead className="h-9 text-[11px] font-semibold text-gray-600 px-4">{t("backup_file")}</TableHead>
+                                            <TableHead className="h-9 text-[11px] font-semibold text-gray-600 px-4 text-right">{t("action")}</TableHead>
                                         </TableRow>
-                                    ) : backups.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={2} className="text-center py-8 text-gray-400 text-[11px] uppercase font-bold">
-                                                {t("no_backups_found")}
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        backups.map((file) => (
-                                            <TableRow key={file.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
-                                                <TableCell className="py-2 px-4">
-                                                    <div className="flex flex-col">
-                                                         <span
-                                                             onClick={() => handleDownload(file.id, file.filename)}
-                                                             className="text-[11px] font-medium text-blue-500 hover:text-blue-600 hover:underline cursor-pointer transition-colors"
-                                                         >
-                                                             {file.filename}
-                                                         </span>
-                                                        <span className="text-[9px] text-gray-400 font-mono">{file.size} • {new Date(file.created_at).toLocaleString()}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-2 px-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1.5 opacity-90 hover:opacity-100">
-                                                        <Button
-                                                            onClick={() => handleDownload(file.id, file.filename)}
-                                                            disabled={downloadingId === file.id}
-                                                            className="h-6 px-2 rounded bg-gradient-to-r from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 text-white shadow-sm transition-all text-[9px] font-semibold uppercase gap-1 border-none"
-                                                        >
-                                                            {downloadingId === file.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Download className="h-2.5 w-2.5" />}
-                                                            {t("download")}
-                                                        </Button>
-                                                        <Button
-                                                            onClick={() => handleRestore(file.id)}
-                                                            className="h-6 px-2 rounded bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white shadow-sm transition-all text-[9px] font-semibold uppercase gap-1 border-none"
-                                                        >
-                                                            <RotateCcw className="h-2.5 w-2.5" />
-                                                            {t("restore")}
-                                                        </Button>
-                                                        <Button
-                                                            onClick={() => handleDelete(file.id)}
-                                                            className="h-6 px-2 rounded bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow-sm transition-all text-[9px] font-semibold uppercase gap-1 border-none"
-                                                        >
-                                                            <Trash2 className="h-2.5 w-2.5" />
-                                                            {t("delete")}
-                                                        </Button>
-                                                    </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loading ? (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="text-center py-8 text-gray-400">
+                                                    <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-indigo-500" />
+                                                    <span className="text-[11px]">{t("loading_backup_history")}...</span>
                                                 </TableCell>
                                             </TableRow>
-                                        )))}
-                                </TableBody>
-                            </Table>
+                                        ) : backups.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="text-center py-8 text-gray-400 text-[11px] uppercase font-bold">
+                                                    {t("no_backups_found")}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            backups.map((file) => {
+                                                const isZip = file.filename.endsWith(".zip");
+                                                return (
+                                                    <TableRow key={file.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm relative transition-all duration-300 cursor-pointer group">
+                                                        <TableCell className="py-2.5 px-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={cn(
+                                                                    "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs",
+                                                                    isZip ? "bg-purple-100 text-purple-600 border border-purple-200" : "bg-blue-100 text-blue-600 border border-blue-200"
+                                                                )}>
+                                                                    {isZip ? <Archive className="h-4 w-4" /> : <Database className="h-4 w-4" />}
+                                                                </div>
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <span
+                                                                        onClick={() => handleDownload(file.id, file.filename)}
+                                                                        className="text-[11px] font-bold text-gray-800 hover:text-indigo-600 hover:underline cursor-pointer transition-colors truncate"
+                                                                    >
+                                                                        {file.filename}
+                                                                    </span>
+                                                                    <div className="flex items-center gap-2 text-[9px] text-gray-400 font-mono mt-0.5">
+                                                                        <span className={cn("px-1.5 py-0.5 rounded text-[8px] font-bold uppercase", isZip ? "bg-purple-50 text-purple-600" : "bg-blue-50 text-blue-600")}>
+                                                                            {isZip ? "FULL (.ZIP)" : "DB (.SQL)"}
+                                                                        </span>
+                                                                        <span>{file.size}</span>
+                                                                        <span>•</span>
+                                                                        <span>{new Date(file.created_at).toLocaleString()}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="py-2.5 px-4 text-right">
+                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                <Button
+                                                                    onClick={() => handleDownload(file.id, file.filename)}
+                                                                    disabled={downloadingId === file.id}
+                                                                    className="h-7 px-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white shadow-xs transition-all text-[10px] font-bold uppercase gap-1 border-none"
+                                                                >
+                                                                    {downloadingId === file.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                                                                    {t("download")}
+                                                                </Button>
+                                                                <Button
+                                                                    onClick={() => handleRestore(file.id)}
+                                                                    className="h-7 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-all text-[10px] font-bold uppercase gap-1 border-none"
+                                                                >
+                                                                    <RotateCcw className="h-3 w-3" />
+                                                                    {t("restore")}
+                                                                </Button>
+                                                                <Button
+                                                                    onClick={() => handleDelete(file.id)}
+                                                                    className="h-7 px-2.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-white shadow-xs transition-all text-[10px] font-bold uppercase gap-1 border-none"
+                                                                >
+                                                                    <Trash2 className="h-3 w-3" />
+                                                                    {t("delete")}
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Right Column: Upload & Cron Key */}
-            <div className="lg:col-span-1 space-y-4">
+                {/* Right Column: Automated Schedule, Cloud Sync & Upload */}
+                <div className="lg:col-span-1 space-y-4">
+                    {/* Automated Backup & Cloud Settings */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="border-b border-gray-50 p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-indigo-600" />
+                                <h2 className="text-[13px] font-bold text-gray-800">Auto Backup & Cloud Destination</h2>
+                            </div>
+                            <Switch
+                                checked={settings.auto_backup_enabled}
+                                onCheckedChange={(val) => setSettings(prev => ({ ...prev, auto_backup_enabled: val }))}
+                            />
+                        </div>
 
-                {/* Upload Box */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="border-b border-gray-50 p-4">
-                        <h2 className="text-[13px] font-medium text-gray-700">{t("upload_from_local_directory")}</h2>
+                        <div className="p-4 space-y-3 text-left">
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-bold text-gray-700">Backup Scope</Label>
+                                <Select
+                                    value={settings.backup_type}
+                                    onValueChange={(val: "db" | "full") => setSettings(prev => ({ ...prev, backup_type: val }))}
+                                >
+                                    <SelectTrigger className="h-8 text-[11px]">
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="db">Database Only (.sql)</SelectItem>
+                                        <SelectItem value="full">Full System (Database + Uploads .zip)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] font-bold text-gray-700">Frequency</Label>
+                                    <Select
+                                        value={settings.frequency}
+                                        onValueChange={(val: "daily" | "weekly" | "monthly") => setSettings(prev => ({ ...prev, frequency: val }))}
+                                    >
+                                        <SelectTrigger className="h-8 text-[11px]">
+                                            <SelectValue placeholder="Frequency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="daily">Daily</SelectItem>
+                                            <SelectItem value="weekly">Weekly</SelectItem>
+                                            <SelectItem value="monthly">Monthly</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[11px] font-bold text-gray-700">Scheduled Time</Label>
+                                    <Input
+                                        type="time"
+                                        value={settings.schedule_time}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, schedule_time: e.target.value }))}
+                                        className="h-8 text-[11px]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-bold text-gray-700">Destination</Label>
+                                <Select
+                                    value={settings.destination}
+                                    onValueChange={(val: "local" | "s3" | "gdrive") => setSettings(prev => ({ ...prev, destination: val }))}
+                                >
+                                    <SelectTrigger className="h-8 text-[11px]">
+                                        <SelectValue placeholder="Select Destination" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="local">Local Storage</SelectItem>
+                                        <SelectItem value="s3">AWS S3 Cloud Storage</SelectItem>
+                                        <SelectItem value="gdrive">Google Drive</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* AWS S3 Settings */}
+                            {settings.destination === "s3" && (
+                                <div className="p-3 bg-indigo-50/50 rounded-lg border border-indigo-100 space-y-2 mt-2">
+                                    <p className="text-[10px] font-bold uppercase text-indigo-700">AWS S3 Credentials</p>
+                                    <Input
+                                        placeholder="AWS Access Key ID"
+                                        value={settings.aws_access_key_id}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, aws_access_key_id: e.target.value }))}
+                                        className="h-7 text-[10px] bg-white"
+                                    />
+                                    <Input
+                                        type="password"
+                                        placeholder="AWS Secret Access Key"
+                                        value={settings.aws_secret_access_key}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, aws_secret_access_key: e.target.value }))}
+                                        className="h-7 text-[10px] bg-white"
+                                    />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Input
+                                            placeholder="Region (e.g. us-east-1)"
+                                            value={settings.aws_default_region}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, aws_default_region: e.target.value }))}
+                                            className="h-7 text-[10px] bg-white"
+                                        />
+                                        <Input
+                                            placeholder="S3 Bucket Name"
+                                            value={settings.aws_bucket}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, aws_bucket: e.target.value }))}
+                                            className="h-7 text-[10px] bg-white"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Google Drive Settings */}
+                            {settings.destination === "gdrive" && (
+                                <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-100 space-y-2 mt-2">
+                                    <p className="text-[10px] font-bold uppercase text-emerald-700">Google Drive API Credentials</p>
+                                    <Input
+                                        placeholder="Client ID"
+                                        value={settings.gdrive_client_id}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, gdrive_client_id: e.target.value }))}
+                                        className="h-7 text-[10px] bg-white"
+                                    />
+                                    <Input
+                                        type="password"
+                                        placeholder="Client Secret"
+                                        value={settings.gdrive_client_secret}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, gdrive_client_secret: e.target.value }))}
+                                        className="h-7 text-[10px] bg-white"
+                                    />
+                                    <Input
+                                        placeholder="Refresh Token"
+                                        value={settings.gdrive_refresh_token}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, gdrive_refresh_token: e.target.value }))}
+                                        className="h-7 text-[10px] bg-white"
+                                    />
+                                    <Input
+                                        placeholder="Drive Folder ID (Optional)"
+                                        value={settings.gdrive_folder_id}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, gdrive_folder_id: e.target.value }))}
+                                        className="h-7 text-[10px] bg-white"
+                                    />
+                                </div>
+                            )}
+
+                            <div className="pt-2 border-t border-gray-100 flex justify-end">
+                                <Button
+                                    onClick={handleSaveSettings}
+                                    disabled={savingSettings}
+                                    className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 h-8 text-[11px] font-bold uppercase rounded-full shadow-sm gap-1.5 border-none"
+                                >
+                                    {savingSettings ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                    Save Auto Backup Settings
+                                </Button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="p-4 space-y-4">
-                        <label className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
-                            <Input
-                                type="file"
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                onChange={handleFileChange}
-                                accept=".sql"
-                            />
-                            <CloudUpload className="h-8 w-8 text-gray-300 group-hover:text-indigo-400 transition-colors mb-2" />
-                            <p className="text-[11px] text-gray-500 font-medium">
-                                {selectedFile ? selectedFile.name : t("drag_and_drop_a_file_here_or_click")}
-                            </p>
-                        </label>
+                    {/* Upload Box */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="border-b border-gray-50 p-4">
+                            <h2 className="text-[13px] font-medium text-gray-700">{t("upload_from_local_directory")}</h2>
+                        </div>
 
-                        <div className="flex justify-end pt-2 border-t border-gray-50">
+                        <div className="p-4 space-y-4">
+                            <label className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors group relative">
+                                <Input
+                                    type="file"
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                    onChange={handleFileChange}
+                                    accept=".sql,.zip"
+                                />
+                                <CloudUpload className="h-8 w-8 text-gray-300 group-hover:text-indigo-400 transition-colors mb-2" />
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                    {selectedFile ? selectedFile.name : t("drag_and_drop_a_file_here_or_click")}
+                                </p>
+                                <span className="text-[9px] text-gray-400 mt-1 uppercase">Supports .SQL & .ZIP Backups</span>
+                            </label>
+
+                            <div className="flex justify-end pt-2 border-t border-gray-50">
+                                <Button
+                                    onClick={handleUpload}
+                                    disabled={uploading || !selectedFile}
+                                    className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg gap-1.5 border-none"
+                                >
+                                    {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                                    {t("upload")}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cron Key Box */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="flex justify-between items-center p-4 border-b border-gray-50">
+                            <h2 className="text-[13px] font-medium text-gray-700">{t("cron_secret_key")}</h2>
                             <Button
-                                onClick={handleUpload}
-                                disabled={uploading || !selectedFile}
-                                className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg gap-1.5 border-none"
+                                onClick={handleRegenerateKey}
+                                className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg border-none"
                             >
-                                {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                                {t("upload")}
+                                {t("regenerate")}
                             </Button>
                         </div>
-                    </div>
-                </div>
 
-                {/* Cron Key Box */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="flex justify-between items-center p-4 border-b border-gray-50">
-                        <h2 className="text-[13px] font-medium text-gray-700">{t("cron_secret_key")}</h2>
-                        <Button
-                            onClick={handleRegenerateKey}
-                            className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:from-[#f97316] hover:to-[#5c4ae4] text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg border-none"
-                        >
-                            {t("regenerate")}
-                        </Button>
-                    </div>
+                        <div className="p-4 relative min-h-[60px]">
+                            <div className="flex flex-col gap-2">
+                                <div className="relative">
+                                    <Input
+                                        readOnly
+                                        value={showKey ? cronKey : "********************************"}
+                                        className="h-8 text-[11px] font-mono border-transparent bg-transparent shadow-none px-0 "
+                                    />
+                                </div>
 
-                    <div className="p-4 relative min-h-[60px]">
-                        <div className="flex flex-col gap-2">
-                            <div className="relative">
-                                <Input
-                                    readOnly
-                                    value={showKey ? cronKey : "********************************"}
-                                    className="h-8 text-[11px] font-mono border-transparent bg-transparent shadow-none px-0 "
-                                />
+                                <div className="flex items-center justify-between pt-2 border-t border-gray-50">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowKey(!showKey)}
+                                        className="h-6 text-[10px] text-gray-500 hover:text-gray-700 px-2"
+                                    >
+                                        {showKey ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                                        {showKey ? t("hide_key") : t("show_key")}
+                                    </Button>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={copyCronUrl}
+                                        className="h-6 text-[10px] text-indigo-600 border-indigo-200 hover:bg-indigo-50 px-2"
+                                    >
+                                        {copied ? <Check className="h-3 w-3 mr-1 text-green-600" /> : <Copy className="h-3 w-3 mr-1" />}
+                                        {copied ? t("copied") : t("copy_cron_url")}
+                                    </Button>
+                                </div>
                             </div>
-
-                            <div className="absolute bottom-2 right-4">
-                                <button
-                                    onClick={() => setShowKey(!showKey)}
-                                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                                >
-                                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Backup Schedule Box */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-4 border-b border-gray-50">
-                        <h2 className="text-[13px] font-medium text-gray-700">{t("backup_schedule_cron")}</h2>
-                    </div>
-                    <div className="p-4 space-y-3">
-                        <p className="text-[10px] text-gray-500 leading-relaxed uppercase font-bold tracking-tight">
-                            {t("backup_cron_instructions")}
-                        </p>
-                        <div className="bg-gray-900 rounded p-3 relative group">
-                            <code className="text-gray-300 text-[10px] break-all block pr-8">
-                                0 0 * * * curl "${apiRoot}/cron/backup-db?secret_key={cronKey}"
-                            </code>
-                            <button
-                                onClick={copyToClipboard}
-                                className="absolute top-3 right-3 text-gray-500 hover:text-white transition-colors"
-                            >
-                                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Confirmation Dialog for Delete / Restore */}
             <ConfirmDialog
                 open={confirmOpen}
-                onOpenChange={setConfirmOpen}
                 loading={confirmLoading}
-                title={confirmData.title}
-                description={confirmData.description}
-                confirmText={confirmData.confirmText}
-                variant={confirmData.variant}
-                onConfirm={confirmData.onConfirm}
+                type={confirmAction?.type || "delete"}
+                onClose={() => {
+                    setConfirmOpen(false);
+                    setConfirmAction(null);
+                }}
+                onConfirm={() => {
+                    if (confirmAction?.type === "delete") confirmDelete();
+                    else if (confirmAction?.type === "restore" || confirmAction?.type === "upload-restore") confirmRestore();
+                }}
             />
         </div>
     );
