@@ -169,9 +169,23 @@ class StudentController extends BaseController
                     Storage::disk('public')->delete($student->$field);
                 }
                 $file = $request->file($field);
-                $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
+                $ext = $file->getClientOriginalExtension() ?: 'jpg';
+                $filename = Str::random(40) . '.' . $ext;
                 $path = $file->storeAs($folder, $filename, 'public');
                 $validated[$field] = $path;
+
+                // Sync directly to public_path directories for live servers without symlinks
+                try {
+                    $pubStorageDir = public_path('storage/' . $folder);
+                    if (!file_exists($pubStorageDir)) @mkdir($pubStorageDir, 0777, true);
+                    @copy($file->getRealPath(), $pubStorageDir . '/' . $filename);
+
+                    $pubUploadsDir = public_path('uploads/' . $folder);
+                    if (!file_exists($pubUploadsDir)) @mkdir($pubUploadsDir, 0777, true);
+                    @copy($file->getRealPath(), $pubUploadsDir . '/' . $filename);
+                } catch (\Throwable $e) {
+                    // Ignore error
+                }
             } elseif ($request->filled($field) && is_string($request->input($field)) && (Str::startsWith($request->input($field), 'data:image/') || strlen($request->input($field)) > 200)) {
                 $dataUrl = $request->input($field);
                 if (Str::startsWith($dataUrl, 'data:image/')) {
@@ -189,6 +203,19 @@ class StudentController extends BaseController
                         $path = $folder . '/' . $filename;
                         Storage::disk('public')->put($path, $decodedData);
                         $validated[$field] = $path;
+
+                        // Sync directly to public_path directories
+                        try {
+                            $pubStorageDir = public_path('storage/' . $folder);
+                            if (!file_exists($pubStorageDir)) @mkdir($pubStorageDir, 0777, true);
+                            @file_put_contents($pubStorageDir . '/' . $filename, $decodedData);
+
+                            $pubUploadsDir = public_path('uploads/' . $folder);
+                            if (!file_exists($pubUploadsDir)) @mkdir($pubUploadsDir, 0777, true);
+                            @file_put_contents($pubUploadsDir . '/' . $filename, $decodedData);
+                        } catch (\Throwable $e) {
+                            // Ignore error
+                        }
                     }
                 }
             }
@@ -567,9 +594,23 @@ class StudentController extends BaseController
 
             if ($request->hasFile($field)) {
                 $file = $request->file($field);
-                $filename = Str::random(40) . '.' . $file->getClientOriginalExtension();
+                $ext = $file->getClientOriginalExtension() ?: 'jpg';
+                $filename = Str::random(40) . '.' . $ext;
                 $path = $file->storeAs($folder, $filename, 'public');
                 $validated[$field] = $path;
+
+                // Sync directly to public_path directories for live servers without symlinks
+                try {
+                    $pubStorageDir = public_path('storage/' . $folder);
+                    if (!file_exists($pubStorageDir)) @mkdir($pubStorageDir, 0777, true);
+                    @copy($file->getRealPath(), $pubStorageDir . '/' . $filename);
+
+                    $pubUploadsDir = public_path('uploads/' . $folder);
+                    if (!file_exists($pubUploadsDir)) @mkdir($pubUploadsDir, 0777, true);
+                    @copy($file->getRealPath(), $pubUploadsDir . '/' . $filename);
+                } catch (\Throwable $e) {
+                    // Ignore error
+                }
             } elseif ($request->filled($field) && is_string($request->input($field)) && Str::startsWith($request->input($field), 'data:image/')) {
                 $dataUrl = $request->input($field);
                 @list($type, $data) = explode(';', $dataUrl);
@@ -583,6 +624,19 @@ class StudentController extends BaseController
                     $path = $folder . '/' . $filename;
                     Storage::disk('public')->put($path, $decodedData);
                     $validated[$field] = $path;
+
+                    // Sync directly to public_path directories
+                    try {
+                        $pubStorageDir = public_path('storage/' . $folder);
+                        if (!file_exists($pubStorageDir)) @mkdir($pubStorageDir, 0777, true);
+                        @file_put_contents($pubStorageDir . '/' . $filename, $decodedData);
+
+                        $pubUploadsDir = public_path('uploads/' . $folder);
+                        if (!file_exists($pubUploadsDir)) @mkdir($pubUploadsDir, 0777, true);
+                        @file_put_contents($pubUploadsDir . '/' . $filename, $decodedData);
+                    } catch (\Throwable $e) {
+                        // Ignore error
+                    }
                 }
             }
         }

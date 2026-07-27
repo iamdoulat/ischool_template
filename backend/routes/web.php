@@ -21,21 +21,51 @@ Route::get('/storage-link', function () {
 });
 
 Route::get('/storage/{path}', function ($path) {
-    $fullPath = storage_path('app/public/' . $path);
-    if (!file_exists($fullPath)) {
-        $altPath = public_path('uploads/' . basename($path));
-        if (file_exists($altPath)) {
-            $fullPath = $altPath;
-        } else {
-            abort(404);
+    $candidates = [
+        public_path('storage/' . $path),
+        public_path('uploads/' . $path),
+        public_path($path),
+        storage_path('app/public/' . $path),
+        storage_path('app/' . $path),
+    ];
+
+    foreach ($candidates as $fullPath) {
+        if (file_exists($fullPath) && !is_dir($fullPath)) {
+            $file = file_get_contents($fullPath);
+            $type = @mime_content_type($fullPath) ?: 'image/png';
+            return response($file, 200)
+                ->header("Content-Type", $type)
+                ->header("Access-Control-Allow-Origin", "*")
+                ->header("Access-Control-Allow-Methods", "GET, OPTIONS")
+                ->header("Cache-Control", "public, max-age=31536000, immutable");
         }
     }
-    $file = file_get_contents($fullPath);
-    $type = mime_content_type($fullPath) ?: 'image/png';
-    return response($file, 200)
-        ->header("Content-Type", $type)
-        ->header("Access-Control-Allow-Origin", "*")
-        ->header("Cache-Control", "public, max-age=31536000, immutable");
+
+    abort(404);
+})->where('path', '.*');
+
+Route::get('/uploads/{path}', function ($path) {
+    $candidates = [
+        public_path('uploads/' . $path),
+        public_path('storage/' . $path),
+        public_path($path),
+        storage_path('app/public/' . $path),
+        storage_path('app/' . $path),
+    ];
+
+    foreach ($candidates as $fullPath) {
+        if (file_exists($fullPath) && !is_dir($fullPath)) {
+            $file = file_get_contents($fullPath);
+            $type = @mime_content_type($fullPath) ?: 'image/png';
+            return response($file, 200)
+                ->header("Content-Type", $type)
+                ->header("Access-Control-Allow-Origin", "*")
+                ->header("Access-Control-Allow-Methods", "GET, OPTIONS")
+                ->header("Cache-Control", "public, max-age=31536000, immutable");
+        }
+    }
+
+    abort(404);
 })->where('path', '.*');
 
 Route::get('/test-search-students', function (\Illuminate\Http\Request $request) {
