@@ -37,7 +37,7 @@ import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { downloadAdmissionFormPdf, type AdmissionFormConfig } from "@/lib/pdf-utils";
 import { useSettings } from "@/components/providers/settings-provider";
-import { formatAutoIdentifier } from "@/lib/id-generator";
+import { formatAutoIdentifier, replacePlaceholders } from "@/lib/id-generator";
 
 export default function StudentAdmissionPage() {
     const getImageUrl = useImageUrl();
@@ -164,7 +164,7 @@ export default function StudentAdmissionPage() {
             const [admRes, rollRes, userRes] = await Promise.all([
                 api.get(`/students/generate-admission-no?school_class_id=${classId}&section_id=${sectionId}`),
                 api.get(`/students/generate-roll-no?school_class_id=${classId}&section_id=${sectionId}`),
-                api.get("/students/generate-username")
+                api.get(`/students/generate-username?school_class_id=${classId}&section_id=${sectionId}`)
             ]);
 
             const admData = admRes.data?.data || {};
@@ -194,10 +194,10 @@ export default function StudentAdmissionPage() {
             const parentDigit = userData.parent_digit || userData.parent_username_digit || 4;
             const parentStart = (parseInt(String(userData.parent_start_from || userData.parent_username_start_from || 1)) || 1) + classSectionCount;
 
-            const formattedAdm = formatAutoIdentifier(admPrefix, admDigit, admStart, cls?.name, sec?.name);
-            const formattedRoll = formatAutoIdentifier(rollPrefix, rollDigit, rollStart, cls?.name, sec?.name);
-            const formattedUser = formatAutoIdentifier(userPrefix, userDigit, userStart, cls?.name, sec?.name);
-            const formattedParent = formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name);
+            const formattedAdm = replacePlaceholders(formatAutoIdentifier(admPrefix, admDigit, admStart, cls?.name, sec?.name), cls?.name, sec?.name);
+            const formattedRoll = replacePlaceholders(formatAutoIdentifier(rollPrefix, rollDigit, rollStart, cls?.name, sec?.name), cls?.name, sec?.name);
+            const formattedUser = replacePlaceholders(userData.username || formatAutoIdentifier(userPrefix, userDigit, userStart, cls?.name, sec?.name), cls?.name, sec?.name);
+            const formattedParent = replacePlaceholders(userData.parent_username || formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name), cls?.name, sec?.name);
 
             setFormData(prev => ({
                 ...prev,

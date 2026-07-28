@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
-import { formatAutoIdentifier } from "@/lib/id-generator";
+import { formatAutoIdentifier, replacePlaceholders } from "@/lib/id-generator";
 
 export default function StudentEditPage() {
     const { id } = useParams();
@@ -159,11 +159,18 @@ export default function StudentEditPage() {
 
     const handleGenerateUsername = async () => {
         try {
-            const response = await api.get("/students/generate-username");
+            const cId = formData.school_class_id;
+            const sId = formData.section_id;
+            const cls = classes.find(c => c.id.toString() === cId?.toString());
+            const sec = sections.find(s => s.id.toString() === sId?.toString());
+
+            const response = await api.get(`/students/generate-username${cId && sId ? `?school_class_id=${cId}&section_id=${sId}` : ''}`);
             if (response.data.data?.auto_enabled) {
                 setAutoUsernameEnabled(true);
                 setParentAutoUsernameEnabled(true);
-                setFormData(prev => ({ ...prev, username: response.data.data.username, parent_username: response.data.data.parent_username }));
+                const genUser = replacePlaceholders(response.data.data.username || "", cls?.name, sec?.name);
+                const genParent = replacePlaceholders(response.data.data.parent_username || "", cls?.name, sec?.name);
+                setFormData(prev => ({ ...prev, username: genUser, parent_username: genParent }));
             } else {
                 setAutoUsernameEnabled(false);
             }
@@ -175,10 +182,16 @@ export default function StudentEditPage() {
     const fetchParentUsername = async () => {
         setGeneratingParentUsername(true);
         try {
+            const cId = formData.school_class_id;
+            const sId = formData.section_id;
+            const cls = classes.find(c => c.id.toString() === cId?.toString());
+            const sec = sections.find(s => s.id.toString() === sId?.toString());
+
             const response = await api.get("/system-setting/users/generate-parent-username");
             if (response.data.data?.auto_enabled) {
                 setParentAutoUsernameEnabled(true);
-                setFormData(prev => ({ ...prev, parent_username: response.data.data.username }));
+                const genParent = replacePlaceholders(response.data.data.username || "", cls?.name, sec?.name);
+                setFormData(prev => ({ ...prev, parent_username: genParent }));
             } else {
                 setParentAutoUsernameEnabled(false);
             }
@@ -283,7 +296,7 @@ export default function StudentEditPage() {
             const [admRes, rollRes, userRes] = await Promise.all([
                 api.get(`/students/generate-admission-no?school_class_id=${classId}&section_id=${sectionId}`),
                 api.get(`/students/generate-roll-no?school_class_id=${classId}&section_id=${sectionId}`),
-                api.get("/students/generate-username")
+                api.get(`/students/generate-username?school_class_id=${classId}&section_id=${sectionId}`)
             ]);
 
             const admData = admRes.data?.data || {};
@@ -306,10 +319,10 @@ export default function StudentEditPage() {
             const parentDigit = userData.parent_digit || userData.parent_username_digit || 4;
             const parentStart = (parseInt(String(userData.parent_start_from || userData.parent_username_start_from || 1)) || 1) + classSectionCount;
 
-            const formattedAdm = formatAutoIdentifier(admPrefix, admDigit, admStart, cls?.name, sec?.name);
-            const formattedRoll = formatAutoIdentifier(rollPrefix, rollDigit, rollStart, cls?.name, sec?.name);
-            const formattedUser = formatAutoIdentifier(userPrefix, userDigit, userStart, cls?.name, sec?.name);
-            const formattedParent = formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name);
+            const formattedAdm = replacePlaceholders(formatAutoIdentifier(admPrefix, admDigit, admStart, cls?.name, sec?.name), cls?.name, sec?.name);
+            const formattedRoll = replacePlaceholders(formatAutoIdentifier(rollPrefix, rollDigit, rollStart, cls?.name, sec?.name), cls?.name, sec?.name);
+            const formattedUser = replacePlaceholders(userData.username || formatAutoIdentifier(userPrefix, userDigit, userStart, cls?.name, sec?.name), cls?.name, sec?.name);
+            const formattedParent = replacePlaceholders(userData.parent_username || formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name), cls?.name, sec?.name);
 
             setFormData(prev => ({
                 ...prev,
@@ -352,10 +365,10 @@ export default function StudentEditPage() {
                 fetchSectionsForClass(classId, sectionId, sectionName);
             }
             
-            let rawAdm = student.admission_no || "";
-            let rawRoll = student.roll_no || "";
-            let rawUser = student.username || "";
-            let rawParent = student.parent_username || "";
+            let rawAdm = replacePlaceholders(student.admission_no || "", className, sectionName);
+            let rawRoll = replacePlaceholders(student.roll_no || "", className, sectionName);
+            let rawUser = replacePlaceholders(student.username || "", className, sectionName);
+            let rawParent = replacePlaceholders(student.parent_username || "", className, sectionName);
 
             if (rawAdm.includes("{class}") || rawAdm.includes("{section}")) {
                 rawAdm = formatAutoIdentifier("ADM-{class}{section}", 4, 1, className, sectionName);
@@ -452,10 +465,12 @@ export default function StudentEditPage() {
             // Auto-generate username if student has none and auto mode is enabled
             if (!student.username) {
                 try {
-                    const usernameRes = await api.get("/students/generate-username");
+                    const usernameRes = await api.get(`/students/generate-username${classId && sectionId ? `?school_class_id=${classId}&section_id=${sectionId}` : ''}`);
                     if (usernameRes.data.data?.auto_enabled) {
                         setAutoUsernameEnabled(true);
-                        setFormData(prev => ({ ...prev, username: usernameRes.data.data.username, parent_username: usernameRes.data.data.parent_username }));
+                        const autoU = replacePlaceholders(usernameRes.data.data.username || "", className, sectionName);
+                        const autoP = replacePlaceholders(usernameRes.data.data.parent_username || "", className, sectionName);
+                        setFormData(prev => ({ ...prev, username: autoU, parent_username: autoP }));
                     }
                 } catch (err) {
                     console.error("Error fetching auto username:", err);

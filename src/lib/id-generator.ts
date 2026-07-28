@@ -45,6 +45,20 @@ export function formatSectionCode(sectionName?: string): string {
     return match || clean;
 }
 
+// Helper to replace {class} and {section} placeholders in any string
+export function replacePlaceholders(
+    str: string = "",
+    className?: string,
+    sectionName?: string
+): string {
+    if (!str) return "";
+    const classCode = formatClassCode(className);
+    const sectionCode = formatSectionCode(sectionName);
+    return str
+        .replace(/\{class\}/gi, classCode)
+        .replace(/\{section\}/gi, sectionCode);
+}
+
 // Main Identifier Generator function
 export function formatAutoIdentifier(
     prefix: string = "",
@@ -55,13 +69,12 @@ export function formatAutoIdentifier(
 ): string {
     if (!prefix) return "";
 
-    const classCode = formatClassCode(className);
-    const sectionCode = formatSectionCode(sectionName);
+    const formattedPrefix = replacePlaceholders(prefix, className, sectionName);
 
-    // Replace {class} and {section} (case insensitive)
-    let formattedPrefix = prefix
-        .replace(/\{class\}/gi, classCode)
-        .replace(/\{section\}/gi, sectionCode);
+    // If prefix already ends with digits or has a number, don't double-append digits
+    if (/^\S+\d+$/i.test(formattedPrefix)) {
+        return formattedPrefix;
+    }
 
     const startNum = typeof startFrom === "number" ? startFrom : (parseInt(String(startFrom)) || 1);
     const numStr = String(startNum).padStart(digits || 4, "0");
