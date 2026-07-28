@@ -288,9 +288,7 @@ export default function BackupRestorePage() {
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const response = await api.post("/system-setting/backups/upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" }
-            });
+            const response = await api.post("/system-setting/backups/upload", formData);
 
             if (response.data.status === "Success") {
                 toast("success", t("backup_uploaded_successfully"));
@@ -299,10 +297,13 @@ export default function BackupRestorePage() {
 
                 setConfirmAction({ type: "upload-restore", id: response.data.data.id });
                 setConfirmOpen(true);
+            } else {
+                toast("error", response.data.message || t("failed_to_upload_backup"));
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to upload backup", error);
-            toast("error", t("failed_to_upload_backup"));
+            const errorMsg = error.response?.data?.message || t("failed_to_upload_backup");
+            toast("error", errorMsg);
         } finally {
             setUploading(false);
         }
