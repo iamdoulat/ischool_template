@@ -205,12 +205,17 @@ function HeaderStudentSearch({ user }: { user?: any }) {
     const router = useRouter();
     const { t } = useLanguage();
     const getImageUrl = useImageUrl();
+    const [mounted, setMounted] = useState(false);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
 
-    const isStudentUser = Boolean(
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const isStudentUser = mounted && Boolean(
         user?.role === "Student" || 
         user?.role === "Parent" || 
         (typeof window !== "undefined" && window.location.pathname.startsWith("/user"))
@@ -761,7 +766,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
             <div className="flex items-center justify-end gap-3 md:gap-6 flex-1 min-w-0">
                 <HeaderStudentSearch user={user} />
 
-                {typeof window !== "undefined" && localStorage.getItem("admin_auth_token") && (
+                {mounted && typeof window !== "undefined" && localStorage.getItem("admin_auth_token") && (
                     <Button
                         variant="destructive"
                         size="sm"

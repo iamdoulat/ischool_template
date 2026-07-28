@@ -120,7 +120,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             const res = await api.get("/system-setting/languages/public").catch(() => null);
             if (res?.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
                 const enabled: Language[] = res.data.data;
-                const active = enabled.find((l: Language) => l.is_active === true || (l.is_active as unknown) === 1 || String(l.is_active) === '1' || String(l.is_active) === 'true') || enabled[0];
+                const active = enabled.find((l: Language) => l.is_active === true || (l.is_active as unknown) === 1 || String(l.is_active) === '1' || String(l.is_active) === 'true') || enabled.find((l: Language) => l.short_code === 'en') || enabled[0];
                 if (active) {
                     applyLanguage(active);
                 }
