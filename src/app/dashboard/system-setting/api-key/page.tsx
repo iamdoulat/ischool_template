@@ -293,8 +293,8 @@ export default function ApiKeyPage() {
         <div className="p-3 sm:p-4 md:p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             
             {/* Header Banner */}
-            <Card className="pt-0 overflow-hidden border border-gray-100/80 shadow-md hover:shadow-lg transition-all rounded-xl">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#EFF0FD] to-[#F3E8FF] border-b border-gray-100">
+            <Card className="p-0 overflow-hidden border border-gray-100/80 shadow-md hover:shadow-lg transition-all rounded-xl bg-gradient-to-r from-[#FFF5E7] via-[#EFF0FD] to-[#F3E8FF]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4">
                     <div className="flex items-center gap-3">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
                             <KeyRound className="h-5 w-5" />
