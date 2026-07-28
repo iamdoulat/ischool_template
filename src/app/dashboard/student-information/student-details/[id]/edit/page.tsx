@@ -411,7 +411,6 @@ export default function StudentEditPage() {
                 guardian_relation: student.guardian_relation || "",
                 guardian_phone: student.guardian_phone || "",
                 guardian_email: student.guardian_email || "",
-                parent_username: student.parent_username || "",
                 guardian_occupation: student.guardian_occupation || "",
                 guardian_address: student.guardian_address || "",
                 active: student.active ?? true,
