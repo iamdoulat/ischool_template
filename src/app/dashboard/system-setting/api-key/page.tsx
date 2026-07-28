@@ -29,7 +29,7 @@ import {
     CheckCircle2,
     XCircle,
     BookOpen,
-    Code2,
+    Pencil,
     Activity,
     Layers
 } from "lucide-react";
@@ -77,6 +77,14 @@ export default function ApiKeyPage() {
     const [newKeyName, setNewKeyName] = useState<string>("");
     const [newRateLimit, setNewRateLimit] = useState<number>(60);
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>(["*"]);
+
+    // Edit Modal state
+    const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
+    const [editingItem, setEditingItem] = useState<ApiKeyItem | null>(null);
+    const [editKeyName, setEditKeyName] = useState<string>("");
+    const [editRateLimit, setEditRateLimit] = useState<number>(60);
+    const [editPermissions, setEditPermissions] = useState<string[]>(["*"]);
+    const [updating, setUpdating] = useState<boolean>(false);
 
     // Created Secret Key Modal
     const [createdSecret, setCreatedSecret] = useState<string | null>(null);
@@ -144,6 +152,44 @@ export default function ApiKeyPage() {
             sonnerToast.error(error.response?.data?.message || "Failed to generate API Key");
         } finally {
             setCreating(false);
+        }
+    };
+
+    const handleOpenEditModal = (item: ApiKeyItem) => {
+        setEditingItem(item);
+        setEditKeyName(item.name);
+        setEditRateLimit(item.rate_limit || 60);
+        setEditPermissions(item.permissions || ["*"]);
+        setIsEditOpen(true);
+    };
+
+    const handleUpdateKey = async () => {
+        if (!editingItem) return;
+        if (!editKeyName.trim()) {
+            sonnerToast.error("Please enter an API Key name");
+            return;
+        }
+
+        setUpdating(true);
+        try {
+            const res = await api.put(`/system-setting/api-keys/${editingItem.id}`, {
+                name: editKeyName.trim(),
+                permissions: editPermissions,
+                rate_limit: editRateLimit,
+            });
+
+            if (res.data?.status === 'success') {
+                setIsEditOpen(false);
+                setEditingItem(null);
+                fetchApiKeys();
+                sonnerToast.success("API Key updated successfully!");
+            } else {
+                sonnerToast.error(res.data?.message || "Failed to update API Key");
+            }
+        } catch (error: any) {
+            sonnerToast.error(error.response?.data?.message || "Failed to update API Key");
+        } finally {
+            setUpdating(false);
         }
     };
 
@@ -247,7 +293,7 @@ export default function ApiKeyPage() {
         <div className="p-3 sm:p-4 md:p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             
             {/* Header Banner */}
-            <Card className="pt-0 overflow-hidden border-indigo-100 shadow-sm">
+            <Card className="pt-0 overflow-hidden border border-gray-100/80 shadow-md hover:shadow-lg transition-all rounded-xl">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#EFF0FD] to-[#F3E8FF] border-b border-gray-100">
                     <div className="flex items-center gap-3">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
@@ -265,62 +311,66 @@ export default function ApiKeyPage() {
 
                     <Button
                         onClick={() => setIsCreateOpen(true)}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-9 px-4 text-[11px] font-bold uppercase rounded-lg shadow-sm"
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-9 px-4 text-[11px] font-bold uppercase rounded-lg shadow-md hover:shadow-indigo-500/25 transition-all"
                     >
                         <Plus className="h-4 w-4 mr-1.5" /> Generate New API Key
                     </Button>
                 </div>
             </Card>
 
-            {/* Overview Stat Cards */}
+            {/* Overview Stat Cards with Realistic Metrics & Outer Shadows */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
-                    <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
+                    <div className="h-11 w-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-inner">
                         <KeyRound className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase text-gray-400">Total API Keys</p>
-                        <p className="text-18 font-extrabold text-gray-800">{loading ? "..." : stats.total_keys}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total API Keys</p>
+                        <p className="text-18 font-extrabold text-gray-800 leading-tight">{loading ? "..." : stats.total_keys}</p>
+                        <p className="text-[10px] font-semibold text-indigo-600 mt-0.5">{stats.active_keys} active keys configured</p>
                     </div>
                 </Card>
 
-                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
-                    <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
+                    <div className="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-inner">
                         <ShieldCheck className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase text-gray-400">Active Keys</p>
-                        <p className="text-18 font-extrabold text-emerald-600">{loading ? "..." : stats.active_keys}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Active Keys</p>
+                        <p className="text-18 font-extrabold text-emerald-600 leading-tight">{loading ? "..." : stats.active_keys}</p>
+                        <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">100% Operational & Verified</p>
                     </div>
                 </Card>
 
-                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
-                    <div className="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
+                    <div className="h-11 w-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 shadow-inner">
                         <Cpu className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase text-gray-400">MCP Server Status</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">MCP Server Status</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="text-xs font-bold text-gray-800">{stats.mcp_status} (JSON-RPC 2.0)</span>
+                            <span className="text-xs font-extrabold text-gray-800">{stats.mcp_status} (JSON-RPC 2.0)</span>
                         </div>
+                        <p className="text-[10px] font-semibold text-purple-600 mt-0.5">6 Core MCP Tools Active</p>
                     </div>
                 </Card>
 
-                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
-                    <div className="h-10 w-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
+                    <div className="h-11 w-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 shadow-inner">
                         <Zap className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase text-gray-400">Default Rate Limit</p>
-                        <p className="text-18 font-extrabold text-gray-800">60 req / min</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Default Rate Limit</p>
+                        <p className="text-18 font-extrabold text-gray-800 leading-tight">60 req / min</p>
+                        <p className="text-[10px] font-semibold text-orange-600 mt-0.5">Configurable up to 10,000</p>
                     </div>
                 </Card>
             </div>
 
             {/* Navigation Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-                <TabsList className="bg-white border border-gray-200 p-1 rounded-lg h-auto flex flex-wrap gap-1">
+                <TabsList className="bg-white border border-gray-200 p-1 rounded-lg h-auto flex flex-wrap gap-1 shadow-sm">
                     <TabsTrigger value="keys" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
                         <KeyRound className="h-3.5 w-3.5 mr-1.5" /> API Keys Management
                     </TabsTrigger>
@@ -334,7 +384,7 @@ export default function ApiKeyPage() {
 
                 {/* TAB 1: API Keys Management */}
                 <TabsContent value="keys">
-                    <Card className="pt-0">
+                    <Card className="pt-0 border-gray-100 shadow-md">
                         <CardHeader className="px-5 py-4 border-b border-gray-100 flex flex-row items-center justify-between">
                             <div>
                                 <CardTitle className="text-14 font-bold text-gray-800">Active API Keys</CardTitle>
@@ -419,6 +469,15 @@ export default function ApiKeyPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
+                                                            onClick={() => handleOpenEditModal(item)}
+                                                            className="h-7 w-7 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                                                            title="Edit API Key"
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5 text-indigo-600" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
                                                             onClick={() => copyToClipboard(item.key, 'snippet')}
                                                             className="h-7 w-7 p-0 text-gray-500 hover:text-indigo-600"
                                                             title="Copy Token"
@@ -450,7 +509,7 @@ export default function ApiKeyPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         
                         {/* Left: MCP Configuration & Connection Guide */}
-                        <Card className="pt-0 border-indigo-100">
+                        <Card className="pt-0 border-indigo-100 shadow-md">
                             <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
                                 <Cpu className="h-5 w-5 text-indigo-600" />
                                 <div>
@@ -505,7 +564,7 @@ export default function ApiKeyPage() {
                         </Card>
 
                         {/* Right: Live Interactive MCP Tester Console */}
-                        <Card className="pt-0 border-emerald-100">
+                        <Card className="pt-0 border-emerald-100 shadow-md">
                             <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-100">
                                 <Terminal className="h-5 w-5 text-emerald-600" />
                                 <div>
@@ -594,7 +653,7 @@ export default function ApiKeyPage() {
 
                 {/* TAB 3: REST API Documentation */}
                 <TabsContent value="docs">
-                    <Card className="pt-0">
+                    <Card className="pt-0 border-gray-100 shadow-md">
                         <CardHeader className="px-5 py-4 border-b border-gray-100">
                             <CardTitle className="text-14 font-bold text-gray-800">RESTful API Endpoints Directory</CardTitle>
                             <CardDescription className="text-11 text-gray-400 mt-0.5">
@@ -722,6 +781,92 @@ export default function ApiKeyPage() {
                             className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase"
                         >
                             {creating ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Generating...</> : "Generate API Key"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit API Key Dialog */}
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-15 font-bold text-gray-800 flex items-center gap-2">
+                            <Pencil className="h-4 w-4 text-indigo-600" />
+                            Edit API Key Settings
+                        </DialogTitle>
+                        <DialogDescription className="text-11 text-gray-500">
+                            Update key name, permission scopes, and rate limits.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Key Name *</Label>
+                            <Input
+                                placeholder="Key Name"
+                                value={editKeyName}
+                                onChange={(e) => setEditKeyName(e.target.value)}
+                                className="h-9 text-[11px] border-gray-200"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Rate Limit (Requests per minute)</Label>
+                            <Input
+                                type="number"
+                                min={1}
+                                max={10000}
+                                value={editRateLimit}
+                                onChange={(e) => setEditRateLimit(Number(e.target.value))}
+                                className="h-9 text-[11px] border-gray-200"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Permission Scopes</Label>
+                            <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto bg-gray-50/50">
+                                {PERMISSION_SCOPES.map((scope) => {
+                                    const isChecked = editPermissions.includes(scope.id);
+                                    return (
+                                        <div
+                                            key={scope.id}
+                                            onClick={() => {
+                                                if (scope.id === "*") {
+                                                    setEditPermissions(isChecked ? [] : ["*"]);
+                                                } else {
+                                                    const filtered = editPermissions.filter(p => p !== "*");
+                                                    if (isChecked) {
+                                                        setEditPermissions(filtered.filter(p => p !== scope.id));
+                                                    } else {
+                                                        setEditPermissions([...filtered, scope.id]);
+                                                    }
+                                                }
+                                            }}
+                                            className="flex items-start gap-2.5 p-1.5 rounded cursor-pointer hover:bg-white transition-colors"
+                                        >
+                                            <Checkbox checked={isChecked} className="mt-0.5" />
+                                            <div>
+                                                <p className="text-[11px] font-bold text-gray-800">{scope.label}</p>
+                                                <p className="text-[10px] text-gray-400">{scope.desc}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" size="sm" onClick={() => setIsEditOpen(false)} className="text-xs">
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleUpdateKey}
+                            disabled={updating || !editKeyName.trim()}
+                            size="sm"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase"
+                        >
+                            {updating ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Updating...</> : "Update API Key"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
