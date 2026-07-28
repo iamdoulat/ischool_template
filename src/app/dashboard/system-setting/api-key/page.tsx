@@ -75,59 +75,199 @@ const PERMISSION_SCOPES = [
 ];
 
 const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
-    // 1. Student Information Module
-    { id: "1", method: "GET", path: "/api/v1/student-information/students", module: "Student Information", category: "student_info", scope: "students.read", desc: "Retrieve enrolled student directory with class, section, roll number, and search filters." },
-    { id: "2", method: "POST", path: "/api/v1/student-information/students", module: "Student Information", category: "student_info", scope: "students.write", desc: "Create a new student record with profile, parent details, and class assignment." },
-    { id: "3", method: "PUT", path: "/api/v1/student-information/students/{id}", module: "Student Information", category: "student_info", scope: "students.write", desc: "Update existing student profile details, guardian info, and enrollment status." },
-    { id: "4", method: "DELETE", path: "/api/v1/student-information/students/{id}", module: "Student Information", category: "student_info", scope: "students.write", desc: "Delete or disable a student record from the active directory." },
-    { id: "5", method: "GET", path: "/api/v1/student-information/online-admissions", module: "Student Information", category: "student_info", scope: "students.read", desc: "Fetch online admission applicant submissions and approval queue." },
-    { id: "6", method: "GET", path: "/api/v1/student-information/student-categories", module: "Student Information", category: "student_info", scope: "students.read", desc: "List student quota & category definitions (General, OBC, SC, ST, Merit)." },
+    // ── Authentication ──────────────────────────────────────────────────────────
+    { id: "a1",  method: "POST",   path: "/api/v1/login",                                              module: "Authentication",        category: "auth",              scope: "*",              desc: "Authenticate user and obtain Sanctum access token." },
+    { id: "a2",  method: "POST",   path: "/api/v1/logout",                                             module: "Authentication",        category: "auth",              scope: "*",              desc: "Revoke the currently authenticated user's access token." },
+    { id: "a3",  method: "GET",    path: "/api/v1/profile",                                            module: "Authentication",        category: "auth",              scope: "*",              desc: "Get the authenticated user's profile and role information." },
 
-    // 2. Fees & Finance Module
-    { id: "7", method: "GET", path: "/api/v1/fee-collection/fee-collection", module: "Fees Collection", category: "fees_finance", scope: "fees.read", desc: "Fetch student fee collection ledgers, payment transactions, and balance dues." },
-    { id: "8", method: "POST", path: "/api/v1/fee-collection/collect-fees", module: "Fees Collection", category: "fees_finance", scope: "fees.write", desc: "Record fee payment transaction against student invoice." },
-    { id: "9", method: "GET", path: "/api/v1/fee-collection/fees-groups", module: "Fees Collection", category: "fees_finance", scope: "fees.read", desc: "List fee structure groups (Tuition Fee, Bus Fee, Library Fee)." },
-    { id: "10", method: "GET", path: "/api/v1/fee-collection/fees-types", module: "Fees Collection", category: "fees_finance", scope: "fees.read", desc: "List fee type master records and code definitions." },
-    { id: "11", method: "GET", path: "/api/v1/income/incomes", module: "Income", category: "fees_finance", scope: "finance.read", desc: "Retrieve school general income transaction entries and receipt logs." },
-    { id: "12", method: "GET", path: "/api/v1/expense/expenses", module: "Expenses", category: "fees_finance", scope: "finance.read", desc: "Retrieve operational expense vouchers and expense head breakdowns." },
+    // ── Student Information ─────────────────────────────────────────────────────
+    { id: "s1",  method: "GET",    path: "/api/v1/students",                                           module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "List all enrolled students with class, section, roll number, and search filters." },
+    { id: "s2",  method: "GET",    path: "/api/v1/students/{id}",                                      module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "Fetch a specific student's complete profile details." },
+    { id: "s3",  method: "POST",   path: "/api/v1/students",                                           module: "Student Information",   category: "student_info",      scope: "students.write", desc: "Create a new student record with profile, parent details, and class assignment." },
+    { id: "s4",  method: "PUT",    path: "/api/v1/students/{id}",                                      module: "Student Information",   category: "student_info",      scope: "students.write", desc: "Update existing student profile, guardian info, and enrollment status." },
+    { id: "s5",  method: "DELETE", path: "/api/v1/students/{id}",                                      module: "Student Information",   category: "student_info",      scope: "students.write", desc: "Delete or disable a student record from the active directory." },
+    { id: "s6",  method: "GET",    path: "/api/v1/students/disabled",                                  module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "List all disabled / inactive student records." },
+    { id: "s7",  method: "GET",    path: "/api/v1/students/generate-admission-no",                     module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "Auto-generate the next available student admission number." },
+    { id: "s8",  method: "GET",    path: "/api/v1/online-admissions",                                  module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "Fetch online admission submissions and pending approval queue." },
+    { id: "s9",  method: "DELETE", path: "/api/v1/online-admissions/{id}",                             module: "Student Information",   category: "student_info",      scope: "students.write", desc: "Delete an online admission application record." },
+    { id: "s10", method: "GET",    path: "/api/v1/multi-class-students",                               module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "List students enrolled in multiple classes simultaneously." },
+    { id: "s11", method: "DELETE", path: "/api/v1/multi-class-students/{id}",                          module: "Student Information",   category: "student_info",      scope: "students.write", desc: "Remove a student's multi-class enrollment entry." },
 
-    // 3. Academics & Human Resource Module
-    { id: "13", method: "GET", path: "/api/v1/academics/classes", module: "Academics", category: "academics_hr", scope: "academics.read", desc: "Fetch list of school academic classes." },
-    { id: "14", method: "GET", path: "/api/v1/academics/sections", module: "Academics", category: "academics_hr", scope: "academics.read", desc: "Fetch class section allotments and capacity info." },
-    { id: "15", method: "GET", path: "/api/v1/academics/subjects", module: "Academics", category: "academics_hr", scope: "academics.read", desc: "List curriculum subjects with theory/practical code definitions." },
-    { id: "16", method: "GET", path: "/api/v1/human-resource/staff-directory", module: "Human Resource", category: "academics_hr", scope: "staff.read", desc: "Retrieve staff directory, teachers, departments, and designations." },
-    { id: "17", method: "POST", path: "/api/v1/human-resource/staff-directory", module: "Human Resource", category: "academics_hr", scope: "staff.write", desc: "Add new teacher or staff employee record." },
-    { id: "18", method: "GET", path: "/api/v1/hr/payroll", module: "Human Resource", category: "academics_hr", scope: "staff.read", desc: "Fetch staff payroll salary slips and payment receipts." },
+    // ── Front Office ────────────────────────────────────────────────────────────
+    { id: "fo1", method: "GET",    path: "/api/v1/front-office/admission-enquiries",                   module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "Fetch admission enquiry logs with follow-up status and source." },
+    { id: "fo2", method: "POST",   path: "/api/v1/front-office/admission-enquiries",                   module: "Front Office",          category: "front_office",      scope: "front_office.write", desc: "Create a new admission enquiry record." },
+    { id: "fo3", method: "GET",    path: "/api/v1/front-office/visitors",                              module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "Retrieve visitor logbook entries with timestamps and purpose." },
+    { id: "fo4", method: "POST",   path: "/api/v1/front-office/visitors",                              module: "Front Office",          category: "front_office",      scope: "front_office.write", desc: "Log a new visitor check-in entry." },
+    { id: "fo5", method: "GET",    path: "/api/v1/front-office/phone-call-logs",                       module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "List outgoing and incoming phone call log records." },
+    { id: "fo6", method: "GET",    path: "/api/v1/front-office/postal-dispatches",                     module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "Retrieve outgoing postal dispatch records." },
+    { id: "fo7", method: "GET",    path: "/api/v1/front-office/postal-receives",                       module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "Retrieve incoming postal receive records." },
+    { id: "fo8", method: "GET",    path: "/api/v1/front-office/complaints",                            module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "List registered school complaints and their resolution status." },
 
-    // 4. Attendance & Examinations Module
-    { id: "19", method: "GET", path: "/api/v1/attendance/student-attendance", module: "Attendance", category: "attendance_exams", scope: "attendance.read", desc: "Fetch daily class student attendance records by date." },
-    { id: "20", method: "POST", path: "/api/v1/attendance/student-attendance", module: "Attendance", category: "attendance_exams", scope: "attendance.write", desc: "Submit or update student daily attendance entries." },
-    { id: "21", method: "GET", path: "/api/v1/examination/exam-group", module: "Examinations", category: "attendance_exams", scope: "exams.read", desc: "Fetch examination groups, schedules, and grading standards." },
-    { id: "22", method: "GET", path: "/api/v1/examination/exam-result", module: "Examinations", category: "attendance_exams", scope: "exams.read", desc: "Retrieve student exam marksheets and rank reports." },
-    { id: "23", method: "GET", path: "/api/v1/online-examination/online-exam", module: "Online Examinations", category: "attendance_exams", scope: "exams.read", desc: "Fetch online test papers and question bank banks." },
+    // ── Academics ───────────────────────────────────────────────────────────────
+    { id: "ac1", method: "GET",    path: "/api/v1/academics/classes",                                  module: "Academics",             category: "academics",         scope: "academics.read",  desc: "List all academic school classes with section counts." },
+    { id: "ac2", method: "POST",   path: "/api/v1/academics/classes",                                  module: "Academics",             category: "academics",         scope: "academics.write", desc: "Create a new school class record." },
+    { id: "ac3", method: "PUT",    path: "/api/v1/academics/classes/{id}",                             module: "Academics",             category: "academics",         scope: "academics.write", desc: "Update an existing class name or attributes." },
+    { id: "ac4", method: "DELETE", path: "/api/v1/academics/classes/{id}",                             module: "Academics",             category: "academics",         scope: "academics.write", desc: "Delete a class record from the system." },
+    { id: "ac5", method: "GET",    path: "/api/v1/academics/sections",                                 module: "Academics",             category: "academics",         scope: "academics.read",  desc: "Fetch class section allotments and room capacity info." },
+    { id: "ac6", method: "GET",    path: "/api/v1/academics/subjects",                                 module: "Academics",             category: "academics",         scope: "academics.read",  desc: "List all curriculum subjects with theory/practical code definitions." },
+    { id: "ac7", method: "GET",    path: "/api/v1/academics/subject-groups",                           module: "Academics",             category: "academics",         scope: "academics.read",  desc: "Retrieve subject groups and their assigned subject mappings." },
+    { id: "ac8", method: "GET",    path: "/api/v1/academics/class-timetables",                         module: "Academics",             category: "academics",         scope: "academics.read",  desc: "Fetch class-wise weekly timetable schedules." },
+    { id: "ac9", method: "GET",    path: "/api/v1/academics/class-teachers",                           module: "Academics",             category: "academics",         scope: "academics.read",  desc: "List class-teacher assignments per class and section." },
+    { id: "ac10",method: "POST",   path: "/api/v1/academics/promote-students",                         module: "Academics",             category: "academics",         scope: "academics.write", desc: "Promote students from one class/session to the next year." },
 
-    // 5. Communicate & Messaging Module
-    { id: "24", method: "GET", path: "/api/v1/communicate/notices", module: "Communicate", category: "communicate_sms", scope: "communicate.read", desc: "Fetch notice board announcements and circulars." },
-    { id: "25", method: "POST", path: "/api/v1/communicate/send-sms", module: "Communicate", category: "communicate_sms", scope: "sms.send", desc: "Dispatch broadcast SMS to selected classes or custom numbers." },
-    { id: "26", method: "POST", path: "/api/v1/system-setting/sms-settings/test", module: "System Setting", category: "communicate_sms", scope: "sms.send", desc: "Test dispatch SMS via active gateway or Round Robin balancer." },
+    // ── Human Resource ─────────────────────────────────────────────────────────
+    { id: "hr1", method: "GET",    path: "/api/v1/staff-directory",                                    module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "Retrieve school staff directory, teachers, and designations." },
+    { id: "hr2", method: "GET",    path: "/api/v1/staff-directory/{id}",                               module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "Fetch a specific staff member's full profile." },
+    { id: "hr3", method: "POST",   path: "/api/v1/staff-directory",                                    module: "Human Resource",        category: "academics_hr",      scope: "staff.write",     desc: "Add new teacher or staff employee record to the directory." },
+    { id: "hr4", method: "PUT",    path: "/api/v1/staff-directory/{id}",                               module: "Human Resource",        category: "academics_hr",      scope: "staff.write",     desc: "Update staff details, department, or designation." },
+    { id: "hr5", method: "DELETE", path: "/api/v1/staff-directory/{id}",                               module: "Human Resource",        category: "academics_hr",      scope: "staff.write",     desc: "Delete a staff member from the active directory." },
+    { id: "hr6", method: "GET",    path: "/api/v1/hr/payroll",                                         module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "Fetch staff payroll records, salary slips, and payment history." },
+    { id: "hr7", method: "GET",    path: "/api/v1/hr/staff-attendance",                                module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "Retrieve daily staff attendance records and leave counts." },
+    { id: "hr8", method: "GET",    path: "/api/v1/teacher-ratings",                                    module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "Fetch teacher performance rating submissions from students." },
+    { id: "hr9", method: "GET",    path: "/api/v1/hr/leave-requests",                                  module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "List staff leave requests and their approval status." },
+    { id: "hr10",method: "PUT",    path: "/api/v1/hr/leave-requests/{id}/status",                      module: "Human Resource",        category: "academics_hr",      scope: "staff.write",     desc: "Approve or reject a staff leave request." },
 
-    // 6. System Settings Module
-    { id: "27", method: "GET", path: "/api/v1/system-setting/general-setting", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Retrieve school profile, logo, session year, and general settings." },
-    { id: "28", method: "GET", path: "/api/v1/system-setting/sms-gateways", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Fetch multi-gateway SMS settings and Round Robin state." },
-    { id: "29", method: "GET", path: "/api/v1/system-setting/email-gateways", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Fetch SMTP email gateways and Round Robin state." },
-    { id: "30", method: "GET", path: "/api/v1/system-setting/payment-gateway-settings", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Fetch active payment method configurations." },
-    { id: "31", method: "GET", path: "/api/v1/system-setting/api-keys", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Manage RESTful API keys, secret tokens, and permission scopes." },
+    // ── Fee Collection & Finance ────────────────────────────────────────────────
+    { id: "f1",  method: "GET",    path: "/api/v1/fee-collection/fee-collection",                      module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "Fetch student fee collection ledgers, transactions, and balance dues." },
+    { id: "f2",  method: "POST",   path: "/api/v1/fee-collection/fee-collection",                      module: "Fees Collection",       category: "fees_finance",      scope: "fees.write",      desc: "Record a fee payment transaction against a student invoice." },
+    { id: "f3",  method: "GET",    path: "/api/v1/fee-collection/fees-groups",                         module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "List fee structure groups (Tuition, Bus, Library, Hostel fees)." },
+    { id: "f4",  method: "POST",   path: "/api/v1/fee-collection/fees-groups",                         module: "Fees Collection",       category: "fees_finance",      scope: "fees.write",      desc: "Create a new fee group for a class-session combination." },
+    { id: "f5",  method: "GET",    path: "/api/v1/fee-collection/fees-types",                          module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "List all fee type master records and code definitions." },
+    { id: "f6",  method: "GET",    path: "/api/v1/fee-collection/fees-masters",                        module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "Fetch fee master schedules for each class and session." },
+    { id: "f7",  method: "GET",    path: "/api/v1/fee-collection/offline-payments",                    module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "List offline bank payment submissions awaiting verification." },
+    { id: "f8",  method: "DELETE", path: "/api/v1/fee-collection/student-fees/{id}",                   module: "Fees Collection",       category: "fees_finance",      scope: "fees.write",      desc: "Delete a specific student fee invoice record." },
+    { id: "f9",  method: "GET",    path: "/api/v1/balance-fees-report",                                module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "Generate the balance fees outstanding report across all classes." },
+    { id: "f10", method: "GET",    path: "/api/v1/income/incomes",                                     module: "Income",                category: "fees_finance",      scope: "finance.read",    desc: "Retrieve school general income transaction entries and receipt logs." },
+    { id: "f11", method: "POST",   path: "/api/v1/income/incomes",                                     module: "Income",                category: "fees_finance",      scope: "finance.write",   desc: "Record a new school income transaction entry." },
+    { id: "f12", method: "GET",    path: "/api/v1/expense/expenses",                                   module: "Expenses",              category: "fees_finance",      scope: "finance.read",    desc: "Retrieve operational expense vouchers and expense head breakdowns." },
+    { id: "f13", method: "POST",   path: "/api/v1/expense/expenses",                                   module: "Expenses",              category: "fees_finance",      scope: "finance.write",   desc: "Create a new expense voucher entry." },
 
-    // 7. MCP AI Protocol Module
-    { id: "32", method: "GET", path: "/api/v1/mcp/manifest", module: "MCP AI Protocol", category: "mcp_ai", scope: "mcp.all", desc: "Fetch Model Context Protocol server manifest & capabilities." },
-    { id: "33", method: "POST", path: "/api/v1/mcp", module: "MCP AI Protocol", category: "mcp_ai", scope: "mcp.all", desc: "Execute MCP JSON-RPC 2.0 requests (initialize, tools/list, tools/call)." },
+    // ── Attendance ──────────────────────────────────────────────────────────────
+    { id: "at1", method: "GET",    path: "/api/v1/attendance/student",                                 module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "Fetch daily class student attendance records by date and class." },
+    { id: "at2", method: "POST",   path: "/api/v1/attendance/student-attendance",                      module: "Attendance",            category: "attendance_exams",  scope: "attendance.write", desc: "Submit or bulk update student daily attendance entries." },
+    { id: "at3", method: "GET",    path: "/api/v1/attendance/approve-leave",                           module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "List pending student leave requests awaiting approval." },
+    { id: "at4", method: "DELETE", path: "/api/v1/attendance/approve-leave/{id}",                      module: "Attendance",            category: "attendance_exams",  scope: "attendance.write", desc: "Reject and delete a student leave request." },
+    { id: "at5", method: "GET",    path: "/api/v1/attendance/period",                                  module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "Fetch period/subject-wise attendance records." },
+    { id: "at6", method: "GET",    path: "/api/v1/attendance/qr-settings",                             module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "Fetch QR code attendance terminal settings and configurations." },
 
-    // 8. Operations & Logistics
-    { id: "34", method: "GET", path: "/api/v1/front-office/admission-enquiries", module: "Front Office", category: "operations", scope: "front_office.read", desc: "Fetch admission enquiry logs and follow-up status." },
-    { id: "35", method: "GET", path: "/api/v1/front-office/visitors", module: "Front Office", category: "operations", scope: "front_office.read", desc: "Retrieve visitor logbook entries." },
-    { id: "36", method: "GET", path: "/api/v1/inventory/items", module: "Inventory", category: "operations", scope: "inventory.read", desc: "List inventory items, categories, and stock balances." },
-    { id: "37", method: "GET", path: "/api/v1/transport/transport", module: "Transport", category: "operations", scope: "transport.read", desc: "Fetch transport routes, pickup points, and assigned vehicles." },
-    { id: "38", method: "GET", path: "/api/v1/hostel/hostels", module: "Hostel", category: "operations", scope: "hostel.read", desc: "Fetch hostel room allocations and hostel master records." },
+    // ── Examinations ────────────────────────────────────────────────────────────
+    { id: "ex1", method: "GET",    path: "/api/v1/examination/exam-group",                             module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Fetch examination groups, schedule periods, and grading standards." },
+    { id: "ex2", method: "POST",   path: "/api/v1/examination/exam-group",                             module: "Examinations",          category: "attendance_exams",  scope: "exams.write",     desc: "Create a new examination group with grading configuration." },
+    { id: "ex3", method: "GET",    path: "/api/v1/examination/exam-schedule",                          module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve exam schedule timetable for selected exam group." },
+    { id: "ex4", method: "GET",    path: "/api/v1/examination/exam-result",                            module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve student exam marksheets, grades, and rank reports." },
+    { id: "ex5", method: "GET",    path: "/api/v1/examination/marks-grade",                            module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "List grade scale definitions (A+, A, B, C, D, F ranges)." },
+    { id: "ex6", method: "GET",    path: "/api/v1/examination/marks-division",                         module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Fetch marks division categories (Distinction, First, Second, Pass)." },
+    { id: "ex7", method: "GET",    path: "/api/v1/online-examination/online-exam",                     module: "Online Examinations",   category: "attendance_exams",  scope: "exams.read",      desc: "Fetch online test papers with questions and attempt configuration." },
+    { id: "ex8", method: "GET",    path: "/api/v1/online-examination/question-bank",                   module: "Online Examinations",   category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve the question bank with category and difficulty filters." },
+
+    // ── Communicate & Messaging ─────────────────────────────────────────────────
+    { id: "cm1", method: "GET",    path: "/api/v1/communicate/notices",                                module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Fetch notice board announcements with publish date and target role." },
+    { id: "cm2", method: "POST",   path: "/api/v1/communicate/notices",                                module: "Communicate",           category: "communicate_sms",   scope: "communicate.write",desc: "Post a new notice board announcement to selected roles." },
+    { id: "cm3", method: "GET",    path: "/api/v1/communicate/logs",                                   module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Retrieve sent email/SMS communication log history." },
+    { id: "cm4", method: "GET",    path: "/api/v1/communicate/scheduled-logs",                         module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Fetch scheduled email/SMS queued delivery log records." },
+    { id: "cm5", method: "POST",   path: "/api/v1/communicate/send-sms",                               module: "Communicate",           category: "communicate_sms",   scope: "sms.send",         desc: "Dispatch broadcast SMS to selected classes, roles, or custom numbers." },
+    { id: "cm6", method: "POST",   path: "/api/v1/communicate/send-email",                             module: "Communicate",           category: "communicate_sms",   scope: "communicate.write",desc: "Send bulk email notifications to selected recipients." },
+    { id: "cm7", method: "POST",   path: "/api/v1/system-setting/sms-settings/test",                   module: "System Setting",        category: "communicate_sms",   scope: "sms.send",         desc: "Test-send SMS via active gateway or Round Robin balancer." },
+    { id: "cm8", method: "POST",   path: "/api/v1/system-setting/email-gateways/test",                 module: "System Setting",        category: "communicate_sms",   scope: "communicate.write",desc: "Test-send email via an active SMTP gateway configuration." },
+    { id: "cm9", method: "GET",    path: "/api/v1/communicate/users-by-role/{role}",                   module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Fetch users filtered by role for targeted messaging." },
+
+    // ── Library ─────────────────────────────────────────────────────────────────
+    { id: "li1", method: "GET",    path: "/api/v1/library/book-list",                                  module: "Library",               category: "operations",        scope: "library.read",    desc: "List all books in the school library with availability status." },
+    { id: "li2", method: "GET",    path: "/api/v1/library/issue",                                      module: "Library",               category: "operations",        scope: "library.read",    desc: "Fetch currently issued books and expected return dates." },
+    { id: "li3", method: "GET",    path: "/api/v1/library/return",                                     module: "Library",               category: "operations",        scope: "library.read",    desc: "Retrieve book return history and overdue penalty records." },
+
+    // ── Inventory ───────────────────────────────────────────────────────────────
+    { id: "in1", method: "GET",    path: "/api/v1/inventory/items",                                    module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "List inventory items with current stock levels and store location." },
+    { id: "in2", method: "POST",   path: "/api/v1/inventory/items",                                    module: "Inventory",             category: "operations",        scope: "inventory.write", desc: "Add a new inventory item to the catalog." },
+    { id: "in3", method: "GET",    path: "/api/v1/inventory/item-categories",                          module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "List inventory item category definitions." },
+    { id: "in4", method: "GET",    path: "/api/v1/inventory/item-stores",                              module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "Fetch storage location/store records for inventory items." },
+    { id: "in5", method: "GET",    path: "/api/v1/inventory/item-stocks",                              module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "View current stock levels and incoming stock additions." },
+    { id: "in6", method: "GET",    path: "/api/v1/inventory/issue-items",                              module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "List issued inventory items with recipient and return status." },
+
+    // ── Transport ───────────────────────────────────────────────────────────────
+    { id: "tr1", method: "GET",    path: "/api/v1/transport/transport",                                module: "Transport",             category: "operations",        scope: "transport.read",  desc: "Fetch transport routes, pickup points, and assigned vehicle details." },
+    { id: "tr2", method: "POST",   path: "/api/v1/transport/transport",                                module: "Transport",             category: "operations",        scope: "transport.write", desc: "Create a new transport route entry." },
+    { id: "tr3", method: "GET",    path: "/api/v1/route-pickup-points",                                module: "Transport",             category: "operations",        scope: "transport.read",  desc: "Fetch route-wise student pickup point assignments." },
+
+    // ── Hostel ──────────────────────────────────────────────────────────────────
+    { id: "ho1", method: "GET",    path: "/api/v1/hostel/hostels",                                     module: "Hostel",                category: "operations",        scope: "hostel.read",     desc: "List hostel buildings with room capacities and occupancy stats." },
+    { id: "ho2", method: "GET",    path: "/api/v1/hostel/rooms",                                       module: "Hostel",                category: "operations",        scope: "hostel.read",     desc: "Fetch hostel room allocations and resident student assignments." },
+
+    // ── Annual Calendar & Lesson Plan ───────────────────────────────────────────
+    { id: "lp1", method: "GET",    path: "/api/v1/annual-calendar/annual-calendar",                    module: "Annual Calendar",       category: "academics",         scope: "academics.read",  desc: "Retrieve annual academic calendar events and school holidays." },
+    { id: "lp2", method: "GET",    path: "/api/v1/annual-calendar/holiday-type",                       module: "Annual Calendar",       category: "academics",         scope: "academics.read",  desc: "List holiday type categories (National, Regional, School-specific)." },
+    { id: "lp3", method: "GET",    path: "/api/v1/lesson-plan/manage-lesson-plan",                     module: "Lesson Plan",           category: "academics",         scope: "academics.read",  desc: "Fetch teacher lesson plans for assigned subjects and classes." },
+    { id: "lp4", method: "POST",   path: "/api/v1/lesson-plan/manage-lesson-plan",                     module: "Lesson Plan",           category: "academics",         scope: "academics.write", desc: "Submit or update a subject lesson plan entry." },
+    { id: "lp5", method: "DELETE", path: "/api/v1/lesson-plan/manage-lesson-plan/{id}",                module: "Lesson Plan",           category: "academics",         scope: "academics.write", desc: "Delete a lesson plan record." },
+
+    // ── Download Center & Homework ──────────────────────────────────────────────
+    { id: "hw1", method: "GET",    path: "/api/v1/homework/daily-assignments",                         module: "Homework",              category: "academics",         scope: "academics.read",  desc: "Fetch daily homework assignments with due dates and class filters." },
+    { id: "hw2", method: "POST",   path: "/api/v1/homework/daily-assignments",                         module: "Homework",              category: "academics",         scope: "academics.write", desc: "Create a new daily homework assignment entry." },
+    { id: "hw3", method: "GET",    path: "/api/v1/download-center/download-center",                    module: "Download Center",       category: "academics",         scope: "academics.read",  desc: "List shared content files, study materials, and video tutorials." },
+
+    // ── Behaviour Records ───────────────────────────────────────────────────────
+    { id: "bh1", method: "GET",    path: "/api/v1/behaviour/assigned-incidents",                       module: "Behaviour Records",     category: "academics",         scope: "academics.read",  desc: "Fetch assigned student behaviour incident records." },
+    { id: "bh2", method: "GET",    path: "/api/v1/behaviour/reports",                                  module: "Behaviour Records",     category: "academics",         scope: "academics.read",  desc: "Generate behaviour summary reports by student or incident type." },
+    { id: "bh3", method: "DELETE", path: "/api/v1/behaviour/assigned-incidents/{id}",                  module: "Behaviour Records",     category: "academics",         scope: "academics.write", desc: "Remove an assigned behaviour incident record." },
+
+    // ── Online Course & Alumni ─────────────────────────────────────────────────
+    { id: "oc1", method: "GET",    path: "/api/v1/online-course/course",                               module: "Online Course",         category: "academics",         scope: "academics.read",  desc: "List available online courses with enrollment and content info." },
+    { id: "oc2", method: "GET",    path: "/api/v1/alumni/manage",                                      module: "Alumni",                category: "academics",         scope: "academics.read",  desc: "Fetch alumni directory with graduation year and contact info." },
+    { id: "oc3", method: "GET",    path: "/api/v1/alumni/events",                                      module: "Alumni",                category: "academics",         scope: "academics.read",  desc: "List alumni community events and reunion schedules." },
+
+    // ── Certificate & ID Cards ─────────────────────────────────────────────────
+    { id: "ce1", method: "GET",    path: "/api/v1/certificate/certificate",                            module: "Certificate",           category: "academics",         scope: "academics.read",  desc: "List issued student and staff certificates with verification codes." },
+    { id: "ce2", method: "GET",    path: "/api/v1/certificate/transfer-certificates/verify",           module: "Certificate",           category: "academics",         scope: "academics.read",  desc: "Verify a student transfer certificate by serial number." },
+
+    // ── Reports ─────────────────────────────────────────────────────────────────
+    { id: "rp1", method: "GET",    path: "/api/v1/reports/attendance-report",                          module: "Reports",               category: "reports",           scope: "attendance.read", desc: "Generate comprehensive student attendance reports with filters." },
+    { id: "rp2", method: "GET",    path: "/api/v1/reports/examination-report",                         module: "Reports",               category: "reports",           scope: "exams.read",      desc: "Generate examination results and performance analysis reports." },
+    { id: "rp3", method: "GET",    path: "/api/v1/reports/human-resource-report",                      module: "Reports",               category: "reports",           scope: "staff.read",      desc: "Generate staff activity, leave, and attendance reports." },
+    { id: "rp4", method: "GET",    path: "/api/v1/reports/homework-report",                            module: "Reports",               category: "reports",           scope: "academics.read",  desc: "Report on homework assignment completion rates by class." },
+    { id: "rp5", method: "GET",    path: "/api/v1/reports/library-report",                             module: "Reports",               category: "reports",           scope: "library.read",    desc: "Generate library book issuance and overdue penalty reports." },
+    { id: "rp6", method: "GET",    path: "/api/v1/reports/inventory-report",                           module: "Reports",               category: "reports",           scope: "inventory.read",  desc: "Generate inventory stock movement and issuance reports." },
+    { id: "rp7", method: "GET",    path: "/api/v1/reports/transport-report",                           module: "Reports",               category: "reports",           scope: "transport.read",  desc: "Generate student transport route allocation and fee reports." },
+    { id: "rp8", method: "GET",    path: "/api/v1/reports/hostel-report",                              module: "Reports",               category: "reports",           scope: "hostel.read",     desc: "Generate hostel occupancy and room allocation reports." },
+    { id: "rp9", method: "GET",    path: "/api/v1/reports/audit-trail-report",                         module: "Reports",               category: "reports",           scope: "system.read",     desc: "Audit trail log of all admin user actions in the system." },
+    { id: "rp10",method: "GET",    path: "/api/v1/reports/user-log-report",                            module: "Reports",               category: "reports",           scope: "system.read",     desc: "User login/logout activity log report." },
+    { id: "rp11",method: "GET",    path: "/api/v1/balance-fees-report",                                module: "Reports",               category: "reports",           scope: "fees.read",       desc: "Balance fees outstanding report aggregated across all classes." },
+    { id: "rp12",method: "GET",    path: "/api/v1/balance-fees-statement",                             module: "Reports",               category: "reports",           scope: "fees.read",       desc: "Detailed student-wise balance fees statement printable report." },
+
+    // ── Front CMS ───────────────────────────────────────────────────────────────
+    { id: "cs1", method: "GET",    path: "/api/v1/menus",                                              module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Fetch public-facing website navigation menu structure." },
+    { id: "cs2", method: "GET",    path: "/api/v1/pages",                                              module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "List CMS website pages with slug, title, and publish status." },
+    { id: "cs3", method: "GET",    path: "/api/v1/events",                                             module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Fetch school website event listings with dates and descriptions." },
+    { id: "cs4", method: "GET",    path: "/api/v1/news",                                               module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "List published school news articles and announcements." },
+    { id: "cs5", method: "GET",    path: "/api/v1/gallery",                                            module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Retrieve school photo gallery albums and image collections." },
+    { id: "cs6", method: "GET",    path: "/api/v1/banners",                                            module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Fetch homepage banner/slider image configurations." },
+    { id: "cs7", method: "DELETE", path: "/api/v1/banners/{id}",                                       module: "Front CMS",             category: "front_cms",         scope: "cms.write",       desc: "Delete a banner image from the website homepage slider." },
+
+    // ── System Settings ─────────────────────────────────────────────────────────
+    { id: "ss1", method: "GET",    path: "/api/v1/system-setting/general-setting",                     module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Retrieve school profile, logo, session year, and general settings." },
+    { id: "ss2", method: "PUT",    path: "/api/v1/system-setting/general-setting",                     module: "System Setting",        category: "system_setting",    scope: "system.write",    desc: "Update school general settings (name, logo, address, currency)." },
+    { id: "ss3", method: "GET",    path: "/api/v1/system-setting/sms-gateways",                        module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch multi-gateway SMS configurations and Round Robin state." },
+    { id: "ss4", method: "GET",    path: "/api/v1/email-gateways",                                     module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch SMTP multi-gateway email configurations and Round Robin state." },
+    { id: "ss5", method: "GET",    path: "/api/v1/payment-settings",                                   module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch active online payment gateway configurations." },
+    { id: "ss6", method: "GET",    path: "/api/v1/system-setting/languages",                           module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "List all installed language packs and active language settings." },
+    { id: "ss7", method: "GET",    path: "/api/v1/system-setting/sessions",                            module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch all academic session year records." },
+    { id: "ss8", method: "GET",    path: "/api/v1/system-setting/sidebar-menu",                        module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Retrieve current sidebar navigation menu configuration." },
+
+    // ── API Keys & MCP ──────────────────────────────────────────────────────────
+    { id: "ak1", method: "GET",    path: "/api/v1/system-setting/api-keys",                            module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.read",     desc: "List all RESTful API keys with scopes, rate limits, and status." },
+    { id: "ak2", method: "POST",   path: "/api/v1/system-setting/api-keys",                            module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Generate a new API key with permission scopes and rate limits." },
+    { id: "ak3", method: "PUT",    path: "/api/v1/system-setting/api-keys/{id}",                       module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Update API key name, scopes, and rate limit settings." },
+    { id: "ak4", method: "DELETE", path: "/api/v1/system-setting/api-keys/{id}",                       module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Permanently revoke and delete an API key." },
+    { id: "ak5", method: "POST",   path: "/api/v1/system-setting/api-keys/{id}/toggle",                module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Toggle API key active/revoked status." },
+    { id: "ak6", method: "GET",    path: "/api/v1/mcp/manifest",                                       module: "API Keys & MCP",        category: "mcp_ai",            scope: "mcp.all",         desc: "Fetch MCP server manifest with capabilities and tool listings." },
+    { id: "ak7", method: "POST",   path: "/api/v1/mcp",                                                module: "API Keys & MCP",        category: "mcp_ai",            scope: "mcp.all",         desc: "Execute MCP JSON-RPC 2.0 requests (initialize, tools/list, tools/call)." },
+
+    // ── Dashboard ───────────────────────────────────────────────────────────────
+    { id: "db1", method: "GET",    path: "/api/v1/dashboard",                                          module: "Dashboard",             category: "dashboard",         scope: "*",               desc: "Fetch main dashboard metrics: students, staff, fees, and attendance stats." },
+    { id: "db2", method: "GET",    path: "/api/v1/user/dashboard",                                     module: "Dashboard",             category: "dashboard",         scope: "*",               desc: "Student/parent user portal dashboard with personal stats and schedule." },
+
+    // ── Notifications ────────────────────────────────────────────────────────────
+    { id: "nt1", method: "GET",    path: "/api/v1/notifications",                                      module: "Notifications",         category: "communicate_sms",   scope: "communicate.read", desc: "Fetch in-app notification list for the authenticated user." },
+    { id: "nt2", method: "DELETE", path: "/api/v1/notifications/{id}",                                 module: "Notifications",         category: "communicate_sms",   scope: "communicate.read", desc: "Mark and delete a specific notification from the inbox." },
 ];
 
 export default function ApiKeyPage() {
