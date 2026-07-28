@@ -69,6 +69,123 @@ const tabs = [
     "Miscellaneous",
 ];
 
+function LogoCard({
+    title,
+    field,
+    dimensions,
+    value,
+    onUpload,
+    onSaveSuccess,
+    t,
+}: {
+    title: string;
+    field: string;
+    dimensions: string;
+    value: string;
+    onUpload: (field: string, file: File) => Promise<string | null>;
+    onSaveSuccess: (field: string, newUrl: string) => void;
+    t: (key: string) => string;
+}) {
+    const [uploading, setUploading] = useState(false);
+    const [imgErrorState, setImgErrorState] = useState<'initial' | 'proxy' | 'failed'>('initial');
+    const getImageUrl = useImageUrl();
+
+    const defaultLogos: Record<string, string> = {
+        print_logo: "/logo-print.png",
+        admin_logo: "/logo-admin.png",
+        admin_small_logo: "/logo-admin-small.png",
+        app_logo: "/logo-app.png",
+        login_page_background_admin: "/bg-admin.jpg",
+        login_page_background_user: "/bg-user.jpg",
+    };
+
+    const effectiveValue = value || defaultLogos[field] || "";
+    const primaryUrl = effectiveValue ? getImageUrl(effectiveValue) : "";
+    const displaySrc = imgErrorState === 'proxy' && primaryUrl
+        ? `/api/proxy-image?url=${encodeURIComponent(primaryUrl)}`
+        : primaryUrl;
+
+    const handleImageError = () => {
+        if (imgErrorState === 'initial' && primaryUrl) {
+            setImgErrorState('proxy');
+        } else {
+            setImgErrorState('failed');
+        }
+    };
+
+    const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setUploading(true);
+            const newUrl = await onUpload(field, file);
+            setUploading(false);
+            e.target.value = "";
+            if (newUrl) {
+                setImgErrorState('initial');
+                onSaveSuccess(field, newUrl);
+            }
+        }
+    };
+
+    return (
+        <div className="bg-white border border-gray-100 rounded-lg p-4 space-y-4 flex flex-col items-center justify-between shadow-sm hover:shadow-md transition-shadow duration-300 min-h-[220px]">
+            <div className="w-full text-left">
+                <h3 className="text-xs font-bold text-gray-700">{title}</h3>
+            </div>
+
+            <div className="flex-1 flex flex-col items-center justify-center space-y-3 w-full py-2">
+                <div className="relative group overflow-hidden rounded-md border border-gray-50 bg-gray-50/50 flex items-center justify-center p-2 min-h-[100px] w-full">
+                    {effectiveValue && imgErrorState !== 'failed' ? (
+                        <img
+                            key={`${field}-${effectiveValue}-${imgErrorState}`}
+                            src={displaySrc}
+                            alt={title}
+                            onError={handleImageError}
+                            className="max-h-20 object-contain transition-transform group-hover:scale-105"
+                        />
+                    ) : (
+                        <ImageIcon className="h-10 w-10 text-gray-300" />
+                    )}
+                    {uploading && (
+                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10 font-bold text-xs uppercase tracking-tight text-indigo-100">
+                            <Loader2 className="h-5 w-5 text-indigo-500 animate-spin" />
+                        </div>
+                    )}
+                </div>
+                <div className="px-2 py-0.5 rounded border border-indigo-100 bg-indigo-50/30">
+                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-tight">({dimensions})</span>
+                </div>
+            </div>
+
+            <div className="w-full">
+                <input
+                    type="file"
+                    id={`upload-${field}`}
+                    className="hidden"
+                    accept="image/*"
+                    onChange={onFileChange}
+                    disabled={uploading}
+                />
+                <Button
+                    variant="ghost"
+                    asChild
+                    disabled={uploading}
+                    className="w-full h-8 text-xs font-bold text-[#FF9800] hover:text-[#6366F1] bg-gray-50 hover:bg-indigo-50 transition-all rounded-full shadow-sm"
+                >
+                    <label htmlFor={`upload-${field}`} className="cursor-pointer flex items-center justify-center gap-2">
+                        {uploading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                            <Upload className="h-3 w-3" />
+                        )}
+                        {t("update")}
+                    </label>
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 export default function GeneralSettingPage() {
     const { t } = useTranslation();
     const { refreshSettings, updateSettingsLocal } = useSettings();
@@ -412,119 +529,12 @@ export default function GeneralSettingPage() {
         return null;
     };
 
-    const LogoCard = ({
-        title,
-        field,
-        dimensions,
-        value,
-    }: {
-        title: string;
-        field: string;
-        dimensions: string;
-        value: string;
-    }) => {
-        const [uploading, setUploading] = useState(false);
-        const [imgErrorState, setImgErrorState] = useState<'initial' | 'proxy' | 'failed'>('initial');
-        const getImageUrl = useImageUrl();
-
-        const defaultLogos: Record<string, string> = {
-            print_logo: "/logo-print.png",
-            admin_logo: "/logo-admin.png",
-            admin_small_logo: "/logo-admin-small.png",
-            app_logo: "/logo-app.png",
-            login_page_background_admin: "/bg-admin.jpg",
-            login_page_background_user: "/bg-user.jpg",
-        };
-
-        const effectiveValue = value || defaultLogos[field] || "";
-        const primaryUrl = effectiveValue ? getImageUrl(effectiveValue) : "";
-        const displaySrc = imgErrorState === 'proxy' && primaryUrl
-            ? `/api/proxy-image?url=${encodeURIComponent(primaryUrl)}`
-            : primaryUrl;
-
-        const handleImageError = () => {
-            if (imgErrorState === 'initial' && primaryUrl) {
-                setImgErrorState('proxy');
-            } else {
-                setImgErrorState('failed');
-            }
-        };
-
-        const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0];
-            if (file) {
-                setUploading(true);
-                const newUrl = await handleLogoUpload(field, file);
-                setUploading(false);
-                e.target.value = "";
-                if (newUrl) {
-                    setImgErrorState('initial');
-                    setFormData(prev => {
-                        const updated = { ...prev, [field]: newUrl };
-                        handleSave(updated);
-                        return updated;
-                    });
-                }
-            }
-        };
-
-        return (
-            <div className="bg-white border border-gray-100 rounded-lg p-4 space-y-4 flex flex-col items-center justify-between shadow-sm hover:shadow-md transition-shadow duration-300 min-h-[220px]">
-                <div className="w-full text-left">
-                    <h3 className="text-xs font-bold text-gray-700">{title}</h3>
-                </div>
-
-                <div className="flex-1 flex flex-col items-center justify-center space-y-3 w-full py-2">
-                    <div className="relative group overflow-hidden rounded-md border border-gray-50 bg-gray-50/50 flex items-center justify-center p-2 min-h-[100px] w-full">
-                        {value && imgErrorState !== 'failed' ? (
-                            <img
-                                key={`${field}-${value}-${imgErrorState}`}
-                                src={displaySrc}
-                                alt={title}
-                                onError={handleImageError}
-                                className="max-h-20 object-contain transition-transform group-hover:scale-105"
-                            />
-                        ) : (
-                            <ImageIcon className="h-10 w-10 text-gray-300" />
-                        )}
-                        {uploading && (
-                            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10 font-bold text-xs uppercase tracking-tight text-indigo-100">
-                                <Loader2 className="h-5 w-5 text-indigo-500 animate-spin" />
-                            </div>
-                        )}
-                    </div>
-                    <div className="px-2 py-0.5 rounded border border-indigo-100 bg-indigo-50/30">
-                        <span className="text-xs font-bold text-indigo-600 uppercase tracking-tight">({dimensions})</span>
-                    </div>
-                </div>
-
-                <div className="w-full">
-                    <input
-                        type="file"
-                        id={`upload-${field}`}
-                        className="hidden"
-                        accept="image/*"
-                        onChange={onFileChange}
-                        disabled={uploading}
-                    />
-                    <Button
-                        variant="ghost"
-                        asChild
-                        disabled={uploading}
-                        className="w-full h-8 text-xs font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-all rounded-full shadow-sm"
-                    >
-                        <label htmlFor={`upload-${field}`} className="cursor-pointer flex items-center justify-center gap-2">
-                            {uploading ? (
-                                <Loader2 className="h-3 w-3 animate-spin text-white" />
-                            ) : (
-                                <Upload className="h-3 w-3 text-white" />
-                            )}
-                            {t("update")}
-                        </label>
-                    </Button>
-                </div>
-            </div>
-        );
+    const handleLogoSuccess = (field: string, newUrl: string) => {
+        setFormData(prev => {
+            const updated = { ...prev, [field]: newUrl };
+            handleSave(updated);
+            return updated;
+        });
     };
 
     const renderContent = () => {
@@ -894,6 +904,84 @@ export default function GeneralSettingPage() {
                             </div>
 
 
+                        </div>
+                    </div>
+                );
+
+            case "Logo":
+                return (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="pb-2 border-b border-gray-100">
+                            <h2 className="text-sm font-bold text-gray-700">{t("logo_settings")}</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <LogoCard
+                                title={t("print_logo") || "Print Logo"}
+                                field="print_logo"
+                                dimensions="200px x 50px"
+                                value={formData.print_logo}
+                                onUpload={handleLogoUpload}
+                                onSaveSuccess={handleLogoSuccess}
+                                t={t}
+                            />
+                            <LogoCard
+                                title={t("admin_logo") || "Admin Logo"}
+                                field="admin_logo"
+                                dimensions="200px x 50px"
+                                value={formData.admin_logo}
+                                onUpload={handleLogoUpload}
+                                onSaveSuccess={handleLogoSuccess}
+                                t={t}
+                            />
+                            <LogoCard
+                                title={t("admin_small_logo") || "Admin Small Logo"}
+                                field="admin_small_logo"
+                                dimensions="50px x 50px"
+                                value={formData.admin_small_logo}
+                                onUpload={handleLogoUpload}
+                                onSaveSuccess={handleLogoSuccess}
+                                t={t}
+                            />
+                            <LogoCard
+                                title={t("app_logo") || "App Logo"}
+                                field="app_logo"
+                                dimensions="200px x 50px"
+                                value={formData.app_logo}
+                                onUpload={handleLogoUpload}
+                                onSaveSuccess={handleLogoSuccess}
+                                t={t}
+                            />
+                        </div>
+                    </div>
+                );
+
+            case "Login Page Background":
+                return (
+                    <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="pb-2 border-b border-gray-100">
+                            <h2 className="text-sm font-bold text-gray-700">{t("login_page_background")}</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <LogoCard
+                                title={t("login_page_background_admin") || "Admin Login Background"}
+                                field="login_page_background_admin"
+                                dimensions="1920px x 1080px"
+                                value={formData.login_page_background_admin}
+                                onUpload={handleLogoUpload}
+                                onSaveSuccess={handleLogoSuccess}
+                                t={t}
+                            />
+                            <LogoCard
+                                title={t("login_page_background_user") || "User Login Background"}
+                                field="login_page_background_user"
+                                dimensions="1920px x 1080px"
+                                value={formData.login_page_background_user}
+                                onUpload={handleLogoUpload}
+                                onSaveSuccess={handleLogoSuccess}
+                                t={t}
+                            />
                         </div>
                     </div>
                 );
