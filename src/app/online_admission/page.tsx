@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     GraduationCap, User, Users, Home, Phone, Calendar, Info,
     CheckCircle2, ChevronRight, ChevronLeft, Camera, Upload,
-    CreditCard, ShieldCheck, Sparkles, Loader2, Search, Download
+    CreditCard, ShieldCheck, Sparkles, Loader2, Search, Download, MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { downloadAdmissionFormPdf } from "@/lib/pdf-utils";
@@ -342,11 +342,16 @@ export default function OnlineAdmissionPage() {
         }
     };
 
+    const supportPhone = globalSettings?.phone || "+1 234 567 890";
+    const supportEmail = globalSettings?.email || "admin@ischool.com";
+    const formFeeNum = settings?.online_admission_form_fees ? Number(settings.online_admission_form_fees) : 100;
+    const formattedFormFee = `$${formFeeNum.toFixed(2)}`;
+
     const handlePayment = async () => {
         setPaymentProcessing(true);
         try {
             await api.post(`/online-admissions/${successData.id}/process-payment`, {
-                amount: 500, // Mock amount
+                amount: formFeeNum,
                 transaction_id: "TXN-" + Math.random().toString(36).substr(2, 9).toUpperCase()
             });
             
@@ -379,7 +384,6 @@ export default function OnlineAdmissionPage() {
 
         setTracking(true);
         try {
-            // Mock tracking - in real app, this would call an API
             const response = await api.get(`/online-admissions/track/${trackIdInput}`);
 
             if (response.data.success) {
@@ -1051,44 +1055,58 @@ export default function OnlineAdmissionPage() {
         }
     };
 
+
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans selection:bg-indigo-100 selection:text-indigo-900">
-            {/* Nav Header */}
-            <header className="sticky top-0 z-50 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl border-b border-slate-100 dark:border-slate-900 px-6 h-20 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 overflow-hidden">
-                        {globalSettings?.app_logo || globalSettings?.print_logo ? (
-                            <img src={globalSettings.app_logo || globalSettings.print_logo} alt="Logo" className="w-full h-full object-contain p-1" />
-                        ) : (
-                            <GraduationCap className="w-7 h-7 text-white" />
-                        )}
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-black tracking-tight leading-none">{schoolName}</h1>
-                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">
-                            Admission Portal [{sessions.find((s: any) => s.is_active || s.active || s.status === 1 || s.status === "active")?.session || sessions.find((s: any) => s.is_active || s.active || s.status === 1 || s.status === "active")?.name || globalSettings?.session || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`}] Session
-                        </p>
+            {/* Responsive Nav Header */}
+            <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-2xl border-b border-slate-100 dark:border-slate-900 px-4 sm:px-8 py-3 sm:py-0 sm:h-20 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 dark:shadow-none overflow-hidden shrink-0">
+                            {globalSettings?.app_logo || globalSettings?.print_logo ? (
+                                <img src={globalSettings.app_logo || globalSettings.print_logo} alt="Logo" className="w-full h-full object-contain p-1" />
+                            ) : (
+                                <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+                            )}
+                        </div>
+                        <div>
+                            <h1 className="text-lg sm:text-xl font-black tracking-tight leading-none text-slate-900 dark:text-white">{schoolName}</h1>
+                            <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">
+                                Admission Portal [{sessions.find((s: any) => s.is_active || s.active || s.status === 1 || s.status === "active")?.session || sessions.find((s: any) => s.is_active || s.active || s.status === 1 || s.status === "active")?.name || globalSettings?.session || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`}] Session
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-400">
-                    <span className="hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => setShowHelpCenter(true)}>Help Center</span>
-                    <span className="hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => setShowFeeStructure(true)}>Fee Structure</span>
-                    <Button variant="outline" className="rounded-full h-10 px-6 font-bold border-2 border-slate-200 text-slate-600 hover:bg-slate-50" onClick={() => setShowTrackId(true)}>Track ID</Button>
+
+                <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto justify-end text-xs sm:text-sm font-bold text-slate-500 flex-wrap">
+                    <button type="button" className="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setShowHelpCenter(true)}>
+                        Help Center
+                    </button>
+                    <button type="button" className="px-3 py-1.5 rounded-lg hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" onClick={() => setShowFeeStructure(true)}>
+                        Fee Structure
+                    </button>
+                    <Button variant="outline" size="sm" className="rounded-full h-9 px-4 font-bold border-2 border-slate-200 text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={() => setShowTrackId(true)}>
+                        Track ID
+                    </Button>
                 </div>
             </header>
 
-            <main className="max-w-6xl mx-auto px-6 py-12 md:py-20">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-16 md:py-20">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
                     {/* Sidebar Navigation */}
-                    <aside className="lg:col-span-3 space-y-12">
+                    <aside className="lg:col-span-3 space-y-6 lg:space-y-12">
                         <div className="space-y-4">
-                            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-6">Application Progress</h2>
-                            <nav className="space-y-2">
+                            <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-4 lg:mb-6">Application Progress</h2>
+                            <nav className="flex lg:flex-col overflow-x-auto lg:overflow-visible pb-3 lg:pb-0 gap-2 scrollbar-none">
                                 {STEPS.map((step, idx) => (
                                     <div 
                                         key={step.id} 
+                                        onClick={() => {
+                                            if (idx <= currentStep) setCurrentStep(idx);
+                                        }}
                                         className={cn(
-                                            "group flex items-center gap-4 p-4 rounded-2xl transition-all duration-300",
+                                            "group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer",
                                             currentStep === idx 
                                                 ? "bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none text-indigo-600 scale-105" 
                                                 : idx < currentStep 
@@ -1097,16 +1115,16 @@ export default function OnlineAdmissionPage() {
                                         )}
                                     >
                                         <div className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
+                                            "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0",
                                             currentStep === idx 
                                                 ? "bg-indigo-600 text-white rotate-6" 
                                                 : idx < currentStep 
                                                     ? "bg-emerald-100 text-emerald-600" 
                                                     : "bg-slate-100 dark:bg-slate-800 group-hover:scale-110"
                                         )}>
-                                            {idx < currentStep ? <CheckCircle2 className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
+                                            {idx < currentStep ? <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" /> : <step.icon className="w-4 h-4 sm:w-5 sm:h-5" />}
                                         </div>
-                                        <span className="font-bold tracking-tight">{step.title}</span>
+                                        <span className="font-bold tracking-tight text-xs sm:text-sm whitespace-nowrap">{step.title}</span>
                                     </div>
                                 ))}
                             </nav>
@@ -1116,7 +1134,7 @@ export default function OnlineAdmissionPage() {
                             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-indigo-500/40 transition-all duration-700" />
                             <h3 className="font-bold mb-2 relative z-10">Need Assistance?</h3>
                             <p className="text-xs text-slate-400 mb-4 leading-relaxed relative z-10">Our admission team is here to help you with any queries regarding the process.</p>
-                            <Button size="sm" variant="secondary" className="w-full rounded-xl bg-white/10 hover:bg-white/20 border-white/10 text-white relative z-10">Chat with us</Button>
+                            <Button size="sm" variant="secondary" className="w-full rounded-xl bg-white/10 hover:bg-white/20 border-white/10 text-white relative z-10" onClick={() => setShowHelpCenter(true)}>Contact Support</Button>
                         </div>
                     </aside>
 
@@ -1128,7 +1146,7 @@ export default function OnlineAdmissionPage() {
                                 initial={{ opacity: 0, x: 10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 exit={{ opacity: 0, x: -10 }}
-                                className="space-y-10"
+                                className="space-y-8 sm:space-y-10"
                             >
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-3 text-indigo-600 font-bold uppercase tracking-widest text-xs">
@@ -1136,46 +1154,46 @@ export default function OnlineAdmissionPage() {
                                         <span className="w-1 h-1 bg-slate-300 rounded-full" />
                                         <span>{STEPS[currentStep].title}</span>
                                     </div>
-                                    <h1 className="text-5xl font-black tracking-tight text-slate-900 dark:text-white uppercase">
+                                    <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white uppercase">
                                         {STEPS[currentStep].title === "Instructions" ? "Getting Started" : 
                                          STEPS[currentStep].title === "Payment" ? "Secure Checkout" : 
                                          STEPS[currentStep].title + " Details"}
                                     </h1>
                                 </div>
 
-                                <div className="min-h-[400px]">
+                                <div className="min-h-[350px] sm:min-h-[400px]">
                                     {renderStep()}
                                 </div>
 
                                 {/* Navigation Buttons */}
                                 {!successData && (
-                                    <div className="pt-12 border-t border-slate-100 dark:border-slate-900 flex justify-between items-center">
+                                    <div className="pt-8 sm:pt-12 border-t border-slate-100 dark:border-slate-900 flex justify-between items-center gap-4">
                                         <Button 
                                             variant="ghost" 
                                             size="lg" 
-                                            className="h-14 px-8 rounded-2xl font-bold text-slate-400 hover:text-slate-900 transition-colors"
+                                            className="h-12 sm:h-14 px-4 sm:px-8 rounded-2xl font-bold text-slate-400 hover:text-slate-900 transition-colors text-sm sm:text-base"
                                             onClick={prevStep}
                                             disabled={currentStep === 0 || submitting}
                                         >
-                                            <ChevronLeft className="mr-2 w-5 h-5" /> Back
+                                            <ChevronLeft className="mr-1 sm:mr-2 w-4 h-4 sm:w-5 sm:h-5" /> Back
                                         </Button>
                                         
                                         {currentStep < STEPS.length - 2 ? (
                                             <Button 
                                                 size="lg" 
-                                                className="h-14 px-10 rounded-2xl bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs"
+                                                className="h-12 sm:h-14 px-6 sm:px-10 rounded-2xl bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs sm:text-xs"
                                                 onClick={nextStep}
                                             >
-                                                Next Step <ChevronRight className="ml-2 w-5 h-5" />
+                                                Next Step <ChevronRight className="ml-1 sm:ml-2 w-4 h-4 sm:w-5 sm:h-5" />
                                             </Button>
                                         ) : currentStep === STEPS.length - 2 ? (
                                             <Button 
                                                 size="lg" 
-                                                className="h-14 px-10 rounded-2xl bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs"
+                                                className="h-12 sm:h-14 px-6 sm:px-10 rounded-2xl bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 font-black uppercase tracking-widest text-xs sm:text-xs"
                                                 onClick={handleSubmit}
                                                 disabled={submitting}
                                             >
-                                                {submitting ? "Processing..." : "Complete Application"} <CheckCircle2 className="ml-2 w-5 h-5" />
+                                                {submitting ? "Processing..." : "Complete Application"} <CheckCircle2 className="ml-1 sm:ml-2 w-4 h-4 sm:w-5 sm:h-5" />
                                             </Button>
                                         ) : null}
                                     </div>
@@ -1188,35 +1206,35 @@ export default function OnlineAdmissionPage() {
 
             {/* Payment Confirmation Dialog */}
             <Dialog open={showPaymentConfirm} onOpenChange={setShowPaymentConfirm}>
-                <DialogContent className="max-w-md rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
+                <DialogContent className="max-w-md w-[95vw] sm:w-full rounded-3xl p-0 overflow-hidden border-none shadow-2xl max-h-[90vh] overflow-y-auto">
                     <div className="h-2 bg-indigo-600" />
-                    <div className="p-10 space-y-6">
+                    <div className="p-6 sm:p-10 space-y-6">
                         <DialogHeader>
-                            <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
-                                <CreditCard className="w-8 h-8" />
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-3">
+                                <CreditCard className="w-7 h-7 sm:w-8 sm:h-8" />
                             </div>
-                            <DialogTitle className="text-2xl font-black tracking-tight">Confirm Payment</DialogTitle>
-                            <DialogDescription className="text-base font-medium">
-                                You are about to pay <span className="text-indigo-600 font-black">$500.00</span> for the admission processing fee.
+                            <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight">Confirm Payment</DialogTitle>
+                            <DialogDescription className="text-sm sm:text-base font-medium">
+                                You are about to pay <span className="text-indigo-600 font-black">{formattedFormFee}</span> for the admission processing fee.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 pt-2">
-                            <div className="flex justify-between text-sm py-3 border-b border-slate-100">
+                        <div className="space-y-3 pt-2">
+                            <div className="flex justify-between text-sm py-2.5 border-b border-slate-100">
                                 <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Reference</span>
                                 <span className="font-bold text-slate-900">{successData?.reference_no}</span>
                             </div>
-                            <div className="flex justify-between text-sm py-3 border-b border-slate-100">
+                            <div className="flex justify-between text-sm py-2.5 border-b border-slate-100">
                                 <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Fee Type</span>
                                 <span className="font-bold text-slate-900">Application Fee</span>
                             </div>
-                            <div className="flex justify-between text-lg py-4">
+                            <div className="flex justify-between text-base sm:text-lg py-3">
                                 <span className="font-black text-slate-900">Total Payable</span>
-                                <span className="font-black text-indigo-600">$500.00</span>
+                                <span className="font-black text-indigo-600">{formattedFormFee}</span>
                             </div>
                         </div>
-                        <DialogFooter className="gap-3 sm:flex-col pt-4">
+                        <DialogFooter className="gap-3 sm:flex-col pt-2">
                             <Button 
-                                className="h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-bold text-lg shadow-xl shadow-indigo-100 w-full"
+                                className="h-12 sm:h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 font-bold text-base sm:text-lg shadow-xl shadow-indigo-100 w-full"
                                 onClick={handlePayment}
                                 disabled={paymentProcessing}
                             >
@@ -1224,7 +1242,7 @@ export default function OnlineAdmissionPage() {
                             </Button>
                             <Button 
                                 variant="ghost" 
-                                className="h-12 rounded-2xl font-bold text-slate-400 w-full"
+                                className="h-10 sm:h-12 rounded-2xl font-bold text-slate-400 w-full"
                                 onClick={() => setShowPaymentConfirm(false)}
                                 disabled={paymentProcessing}
                             >
@@ -1237,170 +1255,271 @@ export default function OnlineAdmissionPage() {
 
             {/* Help Center Modal */}
             <Dialog open={showHelpCenter} onOpenChange={setShowHelpCenter}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="sm:max-w-[90vw] md:max-w-[85vw] lg:max-w-[1200px] w-[95vw] max-h-[85vh] overflow-y-auto p-6 sm:p-8 rounded-2xl sm:rounded-3xl">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-3 text-2xl font-black">
-                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-black">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
                                 <Info className="w-5 h-5 text-indigo-600" />
                             </div>
                             Help Center
                         </DialogTitle>
-                        <DialogDescription className="text-base">
-                            Find answers to frequently asked questions and get help with your admission process.
+                        <DialogDescription className="text-sm sm:text-base">
+                            {(() => {
+                                if (settings?.help_center_content) {
+                                    try {
+                                        const cfg = JSON.parse(settings.help_center_content);
+                                        if (cfg?.subtitle) return cfg.subtitle.replace('{school_name}', schoolName);
+                                    } catch (e) {}
+                                }
+                                return `Find answers to frequently asked questions and get help with your admission process at ${schoolName}.`;
+                            })()}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Admission Process</h3>
-                                <div className="space-y-3">
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">How to apply?</h4>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Fill out all required fields in the application form and upload your photo. Pay the application fee to complete submission.</p>
+                    <div className="space-y-6 pt-2">
+                        {(() => {
+                            let cfg: any = null;
+                            if (settings?.help_center_content) {
+                                try {
+                                    cfg = JSON.parse(settings.help_center_content);
+                                } catch (e) {
+                                    // HTML raw fallback
+                                    return (
+                                        <div 
+                                            className="prose prose-indigo max-w-none dark:prose-invert prose-p:text-slate-600 dark:prose-p:text-slate-400 text-sm leading-relaxed" 
+                                            dangerouslySetInnerHTML={{ __html: settings.help_center_content }} 
+                                        />
+                                    );
+                                }
+                            }
+
+                            const sec1Title = cfg?.section1_title || "Admission Process";
+                            const sec1Items = cfg?.section1_items || [
+                                { question: "How to apply?", answer: "Fill out all required fields in the application form and upload your student photo. Pay the application fee to complete submission." },
+                                { question: "What documents do I need?", answer: "Recent passport-size photo and basic student information. Additional documents may be requested by the school during enrollment." },
+                                { question: "How long does processing take?", answer: "Applications are typically processed within 3-5 business days. You can track your application status anytime using your reference ID." }
+                            ];
+
+                            const sec2Title = cfg?.section2_title || "Technical Support";
+                            const sec2Items = cfg?.section2_items || [
+                                { question: "Having trouble uploading photo?", answer: "Ensure your photo is under 2MB and in JPG/PNG format. Clear your browser cache if issues persist." },
+                                { question: "Form not submitting?", answer: "Check that all required fields are filled. Ensure you have a stable internet connection." },
+                                { question: "Payment or general issues?", answer: `Contact our support team at ${cfg?.footer_phone || supportPhone} or email ${cfg?.footer_email || supportEmail} for assistance.` }
+                            ];
+
+                            const footerTitle = cfg?.footer_title || "Still need help?";
+                            const footerPhone = cfg?.footer_phone || supportPhone;
+                            const footerWhatsApp = cfg?.footer_whatsapp || "";
+                            const footerEmail = cfg?.footer_email || supportEmail;
+                            const footerHours = cfg?.footer_hours || "Mon-Fri 9AM-6PM";
+
+                            return (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                            <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">{sec1Title}</h3>
+                                            <div className="space-y-3">
+                                                {sec1Items.map((item: any, idx: number) => (
+                                                    <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-1.5 text-sm sm:text-base">{item.question}</h4>
+                                                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.answer}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">{sec2Title}</h3>
+                                            <div className="space-y-3">
+                                                {sec2Items.map((item: any, idx: number) => (
+                                                    <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-1.5 text-sm sm:text-base">{item.question}</h4>
+                                                        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item.answer}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">What documents do I need?</h4>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Recent passport-size photo and basic student information. Additional documents may be required during enrollment.</p>
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-4 sm:p-6">
+                                        <h3 className="font-bold text-base sm:text-lg text-indigo-900 dark:text-indigo-400 mb-4">{footerTitle}</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs sm:text-sm">
+                                            {/* Phone */}
+                                            <div className="space-y-1">
+                                                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Phone</span>
+                                                <div className="flex items-center gap-2">
+                                                    <Phone className="w-4 h-4 text-indigo-600 shrink-0" />
+                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{footerPhone}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* WhatsApp */}
+                                            {footerWhatsApp ? (
+                                                <div className="space-y-1">
+                                                    <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">WhatsApp</span>
+                                                    <a 
+                                                        href={`https://wa.me/${footerWhatsApp.replace(/[^0-9]/g, '')}`} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer" 
+                                                        className="flex items-center gap-2 text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 font-medium transition-colors"
+                                                    >
+                                                        <svg className="w-4 h-4 fill-emerald-600 shrink-0" viewBox="0 0 24 24">
+                                                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.705 1.754zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                                                        </svg>
+                                                        <span className="truncate">{footerWhatsApp}</span>
+                                                    </a>
+                                                </div>
+                                            ) : null}
+
+                                            {/* Email */}
+                                            <div className="space-y-1">
+                                                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Email</span>
+                                                <div className="flex items-center gap-2">
+                                                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                                                    <span className="text-slate-700 dark:text-slate-300 font-medium truncate">{footerEmail}</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Working Hours */}
+                                            <div className="space-y-1">
+                                                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">Working Hours</span>
+                                                <div className="flex items-center gap-2">
+                                                    <Info className="w-4 h-4 text-indigo-600 shrink-0" />
+                                                    <span className="text-slate-700 dark:text-slate-300 font-medium">{footerHours}</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">How long does processing take?</h4>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Applications are typically processed within 3-5 business days. You&apos;ll receive email updates on your application status.</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Technical Support</h3>
-                                <div className="space-y-3">
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Having trouble uploading photo?</h4>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Ensure your photo is under 2MB and in JPG/PNG format. Clear your browser cache if issues persist.</p>
-                                    </div>
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Form not submitting?</h4>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Check all required fields are filled. Ensure you have a stable internet connection.</p>
-                                    </div>
-                                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                                        <h4 className="font-semibold text-slate-900 dark:text-white mb-2">Payment issues?</h4>
-                                        <p className="text-sm text-slate-600 dark:text-slate-400">Contact our support team at +1 234 567 890 or email admissions@ischool.com for payment assistance.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-6">
-                            <h3 className="font-bold text-lg text-indigo-900 dark:text-indigo-400 mb-3">Still need help?</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <Phone className="w-4 h-4 text-indigo-600" />
-                                    <span className="text-slate-700 dark:text-slate-300">+1 234 567 890</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                                    <span className="text-slate-700 dark:text-slate-300">admissions@ischool.com</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Info className="w-4 h-4 text-indigo-600" />
-                                    <span className="text-slate-700 dark:text-slate-300">Mon-Fri 9AM-6PM</span>
-                                </div>
-                            </div>
-                        </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </DialogContent>
             </Dialog>
 
             {/* Fee Structure Modal */}
             <Dialog open={showFeeStructure} onOpenChange={setShowFeeStructure}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="sm:max-w-[800px] w-[95vw] max-h-[85vh] overflow-y-auto p-6 sm:p-8 rounded-2xl sm:rounded-3xl">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-3 text-2xl font-black">
-                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                        <DialogTitle className="flex items-center gap-3 text-xl sm:text-2xl font-black">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-green-100 rounded-xl flex items-center justify-center shrink-0">
                                 <CreditCard className="w-5 h-5 text-green-600" />
                             </div>
                             Fee Structure
                         </DialogTitle>
-                        <DialogDescription className="text-base">
-                            Complete breakdown of admission and tuition fees for the 2026 academic year.
+                        <DialogDescription className="text-sm sm:text-base">
+                            {(() => {
+                                if (settings?.fee_structure_content) {
+                                    try {
+                                        const cfg = JSON.parse(settings.fee_structure_content);
+                                        if (cfg?.subtitle) return cfg.subtitle.replace('{school_name}', schoolName);
+                                    } catch (e) {}
+                                }
+                                return `Complete breakdown of online admission fees for ${schoolName}.`;
+                            })()}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 gap-4">
-                            <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">Application Fee</h3>
-                                    <span className="text-2xl font-black text-green-600">$500.00</span>
-                                </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">One-time non-refundable fee for processing your admission application.</p>
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                    <span>Secure online payment</span>
-                                </div>
-                            </div>
+                    <div className="space-y-6 pt-2">
+                        {(() => {
+                            let cfg: any = null;
+                            if (settings?.fee_structure_content) {
+                                try {
+                                    cfg = JSON.parse(settings.fee_structure_content);
+                                } catch (e) {
+                                    // HTML raw fallback
+                                    return (
+                                        <div 
+                                            className="prose prose-indigo max-w-none dark:prose-invert prose-p:text-slate-600 dark:prose-p:text-slate-400 text-sm leading-relaxed" 
+                                            dangerouslySetInnerHTML={{ __html: settings.fee_structure_content }} 
+                                        />
+                                    );
+                                }
+                            }
 
-                            <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">Annual Tuition Fee</h3>
-                                    <span className="text-2xl font-black text-indigo-600">$2,500.00</span>
-                                </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Yearly tuition fee payable at the beginning of each academic year.</p>
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                    <span>Due on enrollment</span>
-                                </div>
-                            </div>
+                            const card1Title = cfg?.card1_title || "Online Application Fee";
+                            const card1Amount = cfg?.card1_amount_override || formattedFormFee;
+                            const card1Desc = cfg?.card1_description || "One-time processing fee for submitting your online admission application.";
+                            const card1Badge = cfg?.card1_badge || "Secure online payment option";
 
-                            <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="font-bold text-lg text-slate-900 dark:text-white">Development Fee</h3>
-                                    <span className="text-2xl font-black text-blue-600">$300.00</span>
-                                </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">Annual fee for school development and maintenance activities.</p>
-                                <div className="flex items-center gap-2 text-xs text-slate-500">
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                    <span>Included in tuition</span>
-                                </div>
-                            </div>
-                        </div>
+                            const card2Title = cfg?.card2_title || "Tuition & Additional Fees";
+                            const card2Tag = cfg?.card2_tag || "Per Class Schedule";
+                            const card2Desc = cfg?.card2_description || "Tuition and academic session fees are determined based on assigned class and section upon admission approval.";
+                            const card2Badge = cfg?.card2_badge || "Payable after enrollment approval";
 
-                        <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-6">
-                            <h3 className="font-bold text-lg text-indigo-900 dark:text-indigo-400 mb-3">Payment Information</h3>
-                            <div className="space-y-2 text-sm">
-                                <p className="text-slate-700 dark:text-slate-300"><strong>Payment Methods:</strong> Credit Card, Debit Card, Net Banking, UPI</p>
-                                <p className="text-slate-700 dark:text-slate-300"><strong>Refund Policy:</strong> Application fee is non-refundable. Tuition fees are refundable per school policy.</p>
-                                <p className="text-slate-700 dark:text-slate-300"><strong>Due Dates:</strong> Application fee due immediately. Tuition fee due within 30 days of enrollment.</p>
-                            </div>
-                        </div>
+                            const footerTitle = cfg?.footer_title || "Payment & Support Information";
+                            const footerPayment = cfg?.footer_payment_methods || "Credit/Debit Card, Net Banking, Online Gateway";
+                            const footerSupport = cfg?.footer_support || `${supportEmail} | ${supportPhone}`;
+                            const footerDueDates = cfg?.footer_due_dates || "Application fee due upon form submission. Enrollment fees payable after admission confirmation.";
+
+                            return (
+                                <>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                                            <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+                                                <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">{card1Title}</h3>
+                                                <span className="text-xl sm:text-2xl font-black text-green-600">{card1Amount}</span>
+                                            </div>
+                                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">{card1Desc}</p>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                                                <span>{card1Badge}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                                            <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
+                                                <h3 className="font-bold text-base sm:text-lg text-slate-900 dark:text-white">{card2Title}</h3>
+                                                <span className="text-sm font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full">{card2Tag}</span>
+                                            </div>
+                                            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mb-3 leading-relaxed">{card2Desc}</p>
+                                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                                                <span>{card2Badge}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-4 sm:p-6">
+                                        <h3 className="font-bold text-base sm:text-lg text-indigo-900 dark:text-indigo-400 mb-3">{footerTitle}</h3>
+                                        <div className="space-y-2 text-xs sm:text-sm">
+                                            <p className="text-slate-700 dark:text-slate-300"><strong>Payment Methods:</strong> {footerPayment}</p>
+                                            <p className="text-slate-700 dark:text-slate-300"><strong>Contact Support:</strong> {footerSupport}</p>
+                                            <p className="text-slate-700 dark:text-slate-300"><strong>Due Dates:</strong> {footerDueDates}</p>
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </DialogContent>
             </Dialog>
 
             {/* Track ID Modal */}
             <Dialog open={showTrackId} onOpenChange={setShowTrackId}>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto w-[95vw] sm:w-full p-4 sm:p-6 rounded-2xl sm:rounded-3xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-3 text-xl font-black">
-                            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
                                 <Search className="w-5 h-5 text-amber-600" />
                             </div>
                             Track Application
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-xs sm:text-sm">
                             Enter your application reference ID to check the status of your admission application.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6">
+                    <div className="space-y-5 pt-2">
                         <div className="space-y-2">
-                            <Label className="text-sm font-bold text-slate-700 dark:text-slate-300">Reference ID</Label>
+                            <Label className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300">Reference ID</Label>
                             <Input
-                                placeholder="Enter your reference ID (e.g., ADM2026001)"
+                                placeholder="Enter reference ID (e.g. ADM-20260728-0001)"
                                 value={trackIdInput}
                                 onChange={(e) => setTrackIdInput(e.target.value)}
-                                className="h-12 rounded-xl"
+                                className="h-12 rounded-xl text-sm"
                             />
                         </div>
 
                         <Button
                             onClick={handleTrackId}
                             disabled={tracking || !trackIdInput.trim()}
-                            className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700"
+                            className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold"
                         >
                             {tracking ? (
                                 <>
@@ -1418,16 +1537,16 @@ export default function OnlineAdmissionPage() {
                         {trackResult && (
                             <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
                                 <div className="flex items-center gap-2 mb-3">
-                                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                                    <h3 className="font-bold text-green-900 dark:text-green-400">Application Found</h3>
+                                    <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                                    <h3 className="font-bold text-green-900 dark:text-green-400 text-sm">Application Found</h3>
                                 </div>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
+                                <div className="space-y-2 text-xs sm:text-sm">
+                                    <div className="flex justify-between items-center">
                                         <span className="text-slate-600 dark:text-slate-400">Reference ID:</span>
                                         <span className="font-semibold text-slate-900 dark:text-white">{trackResult.reference_no}</span>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-slate-600 dark:text-slate-400">Status:</span>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 dark:text-slate-400">Form Status:</span>
                                         <span className={cn(
                                             "font-semibold px-2 py-0.5 rounded-full text-xs",
                                             trackResult.form_status === "Submitted" ? "bg-blue-100 text-blue-700" :
@@ -1470,17 +1589,17 @@ export default function OnlineAdmissionPage() {
                 </DialogContent>
             </Dialog>
 
-            <footer className="bg-white dark:bg-slate-950 py-16 border-t border-slate-100 dark:border-slate-900 text-center">
-                <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-6">
-                    <div className="font-black text-indigo-600/30 uppercase tracking-[0.5em] text-xs">{schoolName} {new Date().getFullYear()}</div>
-                    <p className="text-slate-400 text-[12px] max-w-lg leading-relaxed">
+            <footer className="bg-white dark:bg-slate-950 py-12 sm:py-16 border-t border-slate-100 dark:border-slate-900 text-center">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col items-center gap-4 sm:gap-6">
+                    <div className="font-black text-indigo-600/40 uppercase tracking-[0.4em] text-xs">{schoolName} {new Date().getFullYear()}</div>
+                    <p className="text-slate-400 text-[11px] sm:text-[12px] max-w-lg leading-relaxed">
                         &copy; {new Date().getFullYear()} {schoolName}. All rights reserved. 
-                        Admission processes are subject to school policies and local regulations.
+                        Admission processes are subject to school policies and regulations.
                     </p>
-                    <div className="flex gap-8 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                        <span className="hover:text-indigo-600 cursor-pointer transition-colors">Privacy Policy</span>
-                        <span className="hover:text-indigo-600 cursor-pointer transition-colors">Terms of Service</span>
-                        <span className="hover:text-indigo-600 cursor-pointer transition-colors">Contact Support</span>
+                    <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                        <span className="hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => setShowHelpCenter(true)}>Help Center</span>
+                        <span className="hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => setShowFeeStructure(true)}>Fee Structure</span>
+                        <span className="hover:text-indigo-600 cursor-pointer transition-colors" onClick={() => setShowTrackId(true)}>Track ID</span>
                     </div>
                 </div>
             </footer>

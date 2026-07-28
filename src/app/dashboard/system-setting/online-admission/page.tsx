@@ -27,6 +27,12 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger
+} from "@/components/ui/accordion";
+import {
     Copy,
     FileSpreadsheet,
     FileText,
@@ -45,13 +51,57 @@ import {
     AlignCenter,
     AlignRight,
     Loader2,
-    UserPlus
+    UserPlus,
+    Plus,
+    Trash2,
+    HelpCircle,
+    Phone,
+    Mail,
+    Clock,
+    CreditCard
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrency } from "@/components/providers/currency-provider";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
+
+const defaultHelpCenterConfig = {
+    subtitle: "Find answers to frequently asked questions and get help with your admission process at {school_name}.",
+    section1_title: "Admission Process",
+    section1_items: [
+        { question: "How to apply?", answer: "Fill out all required fields in the application form and upload your student photo. Pay the application fee to complete submission." },
+        { question: "What documents do I need?", answer: "Recent passport-size photo and basic student information. Additional documents may be requested by the school during enrollment." },
+        { question: "How long does processing take?", answer: "Applications are typically processed within 3-5 business days. You can track your application status anytime using your reference ID." }
+    ],
+    section2_title: "Technical Support",
+    section2_items: [
+        { question: "Having trouble uploading photo?", answer: "Ensure your photo is under 2MB and in JPG/PNG format. Clear your browser cache if issues persist." },
+        { question: "Form not submitting?", answer: "Check that all required fields are filled. Ensure you have a stable internet connection." },
+        { question: "Payment or general issues?", answer: "Contact our support team for payment assistance." }
+    ],
+    footer_title: "Still need help?",
+    footer_phone: "",
+    footer_whatsapp: "",
+    footer_email: "",
+    footer_hours: "Mon-Fri 9AM-6PM"
+};
+
+const defaultFeeStructureConfig = {
+    subtitle: "Complete breakdown of online admission fees for {school_name}.",
+    card1_title: "Online Application Fee",
+    card1_amount_override: "",
+    card1_description: "One-time processing fee for submitting your online admission application.",
+    card1_badge: "Secure online payment option",
+    card2_title: "Tuition & Additional Fees",
+    card2_tag: "Per Class Schedule",
+    card2_description: "Tuition and academic session fees are determined based on assigned class and section upon admission approval.",
+    card2_badge: "Payable after enrollment approval",
+    footer_title: "Payment & Support Information",
+    footer_payment_methods: "Credit/Debit Card, Net Banking, Online Gateway",
+    footer_support: "",
+    footer_due_dates: "Application fee due upon form submission. Enrollment fees payable after admission confirmation."
+};
 
 const initialFields = [
     // Student Info
@@ -158,12 +208,17 @@ export default function OnlineAdmissionPage() {
     const instructionsTextareaRef = useRef<HTMLTextAreaElement>(null);
     const termsTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+    const [helpCenterConfig, setHelpCenterConfig] = useState(defaultHelpCenterConfig);
+    const [feeStructureConfig, setFeeStructureConfig] = useState(defaultFeeStructureConfig);
+
     const [settings, setSettings] = useState({
         online_admission: true,
         online_admission_payment_option: true,
         online_admission_form_fees: "100.00",
         instructions: "General Instruction:- These instructions pertain to online application for admission to iSchool...",
         terms_conditions: "General Terms & Conditions for Students:- 1. The User declares that the content of the Portal shall be accessed...",
+        help_center_content: "",
+        fee_structure_content: "",
         admission_form_file: null as File | null,
         admission_form_file_name: "",
     });
@@ -181,9 +236,33 @@ export default function OnlineAdmissionPage() {
                         online_admission_form_fees: fetchedSettings.online_admission_form_fees,
                         instructions: fetchedSettings.instructions || "",
                         terms_conditions: fetchedSettings.terms_conditions || "",
+                        help_center_content: fetchedSettings.help_center_content || "",
+                        fee_structure_content: fetchedSettings.fee_structure_content || "",
                         admission_form_file: null,
                         admission_form_file_name: fetchedSettings.admission_form_file_name || "",
                     });
+
+                    if (fetchedSettings.help_center_content) {
+                        try {
+                            const parsed = JSON.parse(fetchedSettings.help_center_content);
+                            if (parsed && typeof parsed === "object") {
+                                setHelpCenterConfig({ ...defaultHelpCenterConfig, ...parsed });
+                            }
+                        } catch (e) {
+                            console.log("help_center_content is not JSON");
+                        }
+                    }
+
+                    if (fetchedSettings.fee_structure_content) {
+                        try {
+                            const parsed = JSON.parse(fetchedSettings.fee_structure_content);
+                            if (parsed && typeof parsed === "object") {
+                                setFeeStructureConfig({ ...defaultFeeStructureConfig, ...parsed });
+                            }
+                        } catch (e) {
+                            console.log("fee_structure_content is not JSON");
+                        }
+                    }
                 }
                 if (fetchedFields && fetchedFields.length > 0) {
                     setFields(fetchedFields.map((f: { id: number; name: string; field_name: string; is_active: boolean }) => ({
@@ -236,6 +315,8 @@ export default function OnlineAdmissionPage() {
             formData.append('online_admission_form_fees', settings.online_admission_form_fees);
             formData.append('instructions', settings.instructions);
             formData.append('terms_conditions', settings.terms_conditions);
+            formData.append('help_center_content', JSON.stringify(helpCenterConfig));
+            formData.append('fee_structure_content', JSON.stringify(feeStructureConfig));
             if (settings.admission_form_file) {
                 formData.append('admission_form_file', settings.admission_form_file);
             }
@@ -335,6 +416,10 @@ export default function OnlineAdmissionPage() {
             setSettings(prev => ({ ...prev, instructions: newValue }));
         } else if (textareaRef === termsTextareaRef) {
             setSettings(prev => ({ ...prev, terms_conditions: newValue }));
+        } else if (textareaRef === helpCenterTextareaRef) {
+            setSettings(prev => ({ ...prev, help_center_content: newValue }));
+        } else if (textareaRef === feeStructureTextareaRef) {
+            setSettings(prev => ({ ...prev, fee_structure_content: newValue }));
         }
     };
 
@@ -512,6 +597,399 @@ export default function OnlineAdmissionPage() {
                                                     onChange={(e) => setSettings({ ...settings, terms_conditions: e.target.value })}
                                                 />
                                             </div>
+                                        </div>
+
+                                        {/* Help Center Modal Accordion Settings */}
+                                        <div className="space-y-3 pt-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[13px] font-bold text-gray-800 flex items-center gap-2">
+                                                    <HelpCircle className="h-4 w-4 text-indigo-600" />
+                                                    Help Center Modal Fields Settings
+                                                </label>
+                                                <span className="text-[11px] text-gray-400">Configure questions, answers & support info (accordions)</span>
+                                            </div>
+                                            
+                                            <Accordion type="single" collapsible defaultValue="item-1" className="w-full space-y-2.5">
+                                                {/* Accordion 1: Modal Header Subtitle */}
+                                                <AccordionItem value="item-1" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">1. Header Description / Subtitle</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-2">
+                                                        <label className="text-[11px] font-semibold text-gray-600">Modal Header Subtitle</label>
+                                                        <Input 
+                                                            value={helpCenterConfig.subtitle}
+                                                            onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, subtitle: e.target.value }))}
+                                                            className="h-9 text-[12px]"
+                                                            placeholder="Enter modal description..."
+                                                        />
+                                                        <p className="text-[10px] text-gray-400">Note: You can use {"{school_name}"} as a placeholder.</p>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+
+                                                {/* Accordion 2: Section 1 (Admission Process) */}
+                                                <AccordionItem value="item-2" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">2. Column 1: Admission Process FAQs ({helpCenterConfig.section1_items?.length || 0} Items)</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Section Title</label>
+                                                            <Input 
+                                                                value={helpCenterConfig.section1_title}
+                                                                onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, section1_title: e.target.value }))}
+                                                                className="h-9 text-[12px]"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-3">
+                                                            {helpCenterConfig.section1_items?.map((item, idx) => (
+                                                                <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2 relative">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="text-[11px] font-bold text-gray-600">Question #{idx + 1}</span>
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                            onClick={() => {
+                                                                                const newItems = helpCenterConfig.section1_items.filter((_, i) => i !== idx);
+                                                                                setHelpCenterConfig(prev => ({ ...prev, section1_items: newItems }));
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    </div>
+                                                                    <Input 
+                                                                        value={item.question}
+                                                                        onChange={(e) => {
+                                                                            const newItems = [...helpCenterConfig.section1_items];
+                                                                            newItems[idx].question = e.target.value;
+                                                                            setHelpCenterConfig(prev => ({ ...prev, section1_items: newItems }));
+                                                                        }}
+                                                                        className="h-8 text-[11px] bg-white font-medium"
+                                                                        placeholder="Enter Question Title..."
+                                                                    />
+                                                                    <Textarea 
+                                                                        value={item.answer}
+                                                                        onChange={(e) => {
+                                                                            const newItems = [...helpCenterConfig.section1_items];
+                                                                            newItems[idx].answer = e.target.value;
+                                                                            setHelpCenterConfig(prev => ({ ...prev, section1_items: newItems }));
+                                                                        }}
+                                                                        className="min-h-[60px] text-[11px] bg-white p-2 resize-y"
+                                                                        placeholder="Enter Answer Description..."
+                                                                    />
+                                                                </div>
+                                                            ))}
+
+                                                            <Button 
+                                                                type="button" 
+                                                                variant="outline" 
+                                                                size="sm" 
+                                                                className="h-8 text-[11px] font-medium border-dashed border-gray-300 w-full"
+                                                                onClick={() => {
+                                                                    setHelpCenterConfig(prev => ({
+                                                                        ...prev,
+                                                                        section1_items: [...(prev.section1_items || []), { question: "New Question?", answer: "Enter answer details here." }]
+                                                                    }));
+                                                                }}
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Question to Column 1
+                                                            </Button>
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+
+                                                {/* Accordion 3: Section 2 (Technical Support) */}
+                                                <AccordionItem value="item-3" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">3. Column 2: Technical Support FAQs ({helpCenterConfig.section2_items?.length || 0} Items)</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-4">
+                                                        <div className="space-y-1.5">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Section Title</label>
+                                                            <Input 
+                                                                value={helpCenterConfig.section2_title}
+                                                                onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, section2_title: e.target.value }))}
+                                                                className="h-9 text-[12px]"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-3">
+                                                            {helpCenterConfig.section2_items?.map((item, idx) => (
+                                                                <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2 relative">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="text-[11px] font-bold text-gray-600">Question #{idx + 1}</span>
+                                                                        <Button 
+                                                                            type="button" 
+                                                                            variant="ghost" 
+                                                                            size="sm" 
+                                                                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                                                            onClick={() => {
+                                                                                const newItems = helpCenterConfig.section2_items.filter((_, i) => i !== idx);
+                                                                                setHelpCenterConfig(prev => ({ ...prev, section2_items: newItems }));
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                                        </Button>
+                                                                    </div>
+                                                                    <Input 
+                                                                        value={item.question}
+                                                                        onChange={(e) => {
+                                                                            const newItems = [...helpCenterConfig.section2_items];
+                                                                            newItems[idx].question = e.target.value;
+                                                                            setHelpCenterConfig(prev => ({ ...prev, section2_items: newItems }));
+                                                                        }}
+                                                                        className="h-8 text-[11px] bg-white font-medium"
+                                                                        placeholder="Enter Question Title..."
+                                                                    />
+                                                                    <Textarea 
+                                                                        value={item.answer}
+                                                                        onChange={(e) => {
+                                                                            const newItems = [...helpCenterConfig.section2_items];
+                                                                            newItems[idx].answer = e.target.value;
+                                                                            setHelpCenterConfig(prev => ({ ...prev, section2_items: newItems }));
+                                                                        }}
+                                                                        className="min-h-[60px] text-[11px] bg-white p-2 resize-y"
+                                                                        placeholder="Enter Answer Description..."
+                                                                    />
+                                                                </div>
+                                                            ))}
+
+                                                            <Button 
+                                                                type="button" 
+                                                                variant="outline" 
+                                                                size="sm" 
+                                                                className="h-8 text-[11px] font-medium border-dashed border-gray-300 w-full"
+                                                                onClick={() => {
+                                                                    setHelpCenterConfig(prev => ({
+                                                                        ...prev,
+                                                                        section2_items: [...(prev.section2_items || []), { question: "New Question?", answer: "Enter answer details here." }]
+                                                                    }));
+                                                                }}
+                                                            >
+                                                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Question to Column 2
+                                                            </Button>
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+
+                                                {/* Accordion 4: Bottom Banner & Contact Details */}
+                                                <AccordionItem value="item-4" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">4. Bottom Banner & Support Details</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-3">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Banner Section Title</label>
+                                                            <Input 
+                                                                value={helpCenterConfig.footer_title}
+                                                                onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_title: e.target.value }))}
+                                                                className="h-8 text-[12px]"
+                                                                placeholder="Still need help?"
+                                                            />
+                                                        </div>                                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-gray-600">Support Phone</label>
+                                                                <Input 
+                                                                    value={helpCenterConfig.footer_phone}
+                                                                    onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_phone: e.target.value }))}
+                                                                    className="h-8 text-[11px]"
+                                                                    placeholder="Leave blank for system phone"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-green-700">Support WhatsApp</label>
+                                                                <Input 
+                                                                    value={helpCenterConfig.footer_whatsapp || ""}
+                                                                    onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_whatsapp: e.target.value }))}
+                                                                    className="h-8 text-[11px] border-green-200 focus:ring-green-500"
+                                                                    placeholder="e.g. +8801851046320"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-gray-600">Support Email</label>
+                                                                <Input 
+                                                                    value={helpCenterConfig.footer_email}
+                                                                    onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_email: e.target.value }))}
+                                                                    className="h-8 text-[11px]"
+                                                                    placeholder="Leave blank for system email"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-gray-600">Support Hours</label>
+                                                                <Input 
+                                                                    value={helpCenterConfig.footer_hours}
+                                                                    onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_hours: e.target.value }))}
+                                                                    className="h-8 text-[11px]"
+                                                                    placeholder="e.g. Mon-Fri 9AM-6PM"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
+                                        </div>
+
+                                        {/* Fee Structure Modal Accordion Settings */}
+                                        <div className="space-y-3 pt-2">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[13px] font-bold text-gray-800 flex items-center gap-2">
+                                                    <CreditCard className="h-4 w-4 text-green-600" />
+                                                    Fee Structure Modal Fields Settings
+                                                </label>
+                                                <span className="text-[11px] text-gray-400">Configure fee cards, badges & payment details (accordions)</span>
+                                            </div>
+                                            
+                                            <Accordion type="single" collapsible defaultValue="fee-item-1" className="w-full space-y-2.5">
+                                                {/* Accordion 1: Modal Header Subtitle */}
+                                                <AccordionItem value="fee-item-1" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">1. Header Description / Subtitle</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-2">
+                                                        <label className="text-[11px] font-semibold text-gray-600">Modal Header Subtitle</label>
+                                                        <Input 
+                                                            value={feeStructureConfig.subtitle}
+                                                            onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, subtitle: e.target.value }))}
+                                                            className="h-9 text-[12px]"
+                                                            placeholder="Enter modal description..."
+                                                        />
+                                                        <p className="text-[10px] text-gray-400">Note: You can use {"{school_name}"} as a placeholder.</p>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+
+                                                {/* Accordion 2: Card 1 - Application Fee */}
+                                                <AccordionItem value="fee-item-2" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">2. Card 1: Online Application Fee Card</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-3">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-gray-600">Card Title</label>
+                                                                <Input 
+                                                                    value={feeStructureConfig.card1_title}
+                                                                    onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_title: e.target.value }))}
+                                                                    className="h-8 text-[12px]"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-gray-600">Amount Display Override</label>
+                                                                <Input 
+                                                                    value={feeStructureConfig.card1_amount_override}
+                                                                    onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_amount_override: e.target.value }))}
+                                                                    className="h-8 text-[11px]"
+                                                                    placeholder="Leave blank for auto form fee (e.g. $100.00)"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Card Description</label>
+                                                            <Textarea 
+                                                                value={feeStructureConfig.card1_description}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_description: e.target.value }))}
+                                                                className="min-h-[50px] text-[11px] bg-white p-2 resize-y"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Feature Badge / Text</label>
+                                                            <Input 
+                                                                value={feeStructureConfig.card1_badge}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_badge: e.target.value }))}
+                                                                className="h-8 text-[11px]"
+                                                            />
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+
+                                                {/* Accordion 3: Card 2 - Tuition & Additional Fees */}
+                                                <AccordionItem value="fee-item-3" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">3. Card 2: Tuition & Additional Fees Card</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-3">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-gray-600">Card Title</label>
+                                                                <Input 
+                                                                    value={feeStructureConfig.card2_title}
+                                                                    onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_title: e.target.value }))}
+                                                                    className="h-8 text-[12px]"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[11px] font-semibold text-gray-600">Tag / Badge Label</label>
+                                                                <Input 
+                                                                    value={feeStructureConfig.card2_tag}
+                                                                    onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_tag: e.target.value }))}
+                                                                    className="h-8 text-[11px]"
+                                                                    placeholder="e.g. Per Class Schedule"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Card Description</label>
+                                                            <Textarea 
+                                                                value={feeStructureConfig.card2_description}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_description: e.target.value }))}
+                                                                className="min-h-[50px] text-[11px] bg-white p-2 resize-y"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Feature Badge / Text</label>
+                                                            <Input 
+                                                                value={feeStructureConfig.card2_badge}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_badge: e.target.value }))}
+                                                                className="h-8 text-[11px]"
+                                                            />
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+
+                                                {/* Accordion 4: Payment & Support Banner */}
+                                                <AccordionItem value="fee-item-4" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
+                                                    <AccordionTrigger className="hover:no-underline py-3">
+                                                        <span className="font-bold text-[12px] text-gray-700">4. Bottom Banner: Payment & Support Info</span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-1 pb-4 space-y-3">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Banner Title</label>
+                                                            <Input 
+                                                                value={feeStructureConfig.footer_title}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_title: e.target.value }))}
+                                                                className="h-8 text-[12px]"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Payment Methods Text</label>
+                                                            <Input 
+                                                                value={feeStructureConfig.footer_payment_methods}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_payment_methods: e.target.value }))}
+                                                                className="h-8 text-[11px]"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Contact Support Text</label>
+                                                            <Input 
+                                                                value={feeStructureConfig.footer_support}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_support: e.target.value }))}
+                                                                className="h-8 text-[11px]"
+                                                                placeholder="Leave blank for system email & phone"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[11px] font-semibold text-gray-600">Due Dates Info Text</label>
+                                                            <Input 
+                                                                value={feeStructureConfig.footer_due_dates}
+                                                                onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_due_dates: e.target.value }))}
+                                                                className="h-8 text-[11px]"
+                                                            />
+                                                        </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
                                         </div>
 
                                         <div className="flex justify-end pt-4 border-t border-gray-50">
