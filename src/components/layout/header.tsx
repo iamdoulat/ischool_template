@@ -761,6 +761,27 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
             <div className="flex items-center justify-end gap-3 md:gap-6 flex-1 min-w-0">
                 <HeaderStudentSearch user={user} />
 
+                {typeof window !== "undefined" && localStorage.getItem("admin_auth_token") && (
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                            const adminToken = localStorage.getItem("admin_auth_token");
+                            if (adminToken) {
+                                localStorage.setItem("auth_token", adminToken);
+                                localStorage.removeItem("admin_auth_token");
+                                localStorage.removeItem("is_impersonating");
+                                window.location.href = "/dashboard/student-information/student-details";
+                            }
+                        }}
+                        className="h-8 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white gap-1.5 rounded-xl shadow-md shrink-0 animate-pulse"
+                        title="Exit impersonation and return to Admin portal"
+                    >
+                        <LogOut className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Exit Impersonation</span>
+                    </Button>
+                )}
+
                 <div className="hidden md:flex items-center gap-1 md:gap-2">
                     <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
                         <LayoutGrid className="h-5 w-5" />

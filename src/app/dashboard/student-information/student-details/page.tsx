@@ -22,7 +22,8 @@ import {
     Calendar,
     BadgeCheck,
     X,
-    GraduationCap
+    GraduationCap,
+    LogIn
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -144,6 +145,34 @@ export default function StudentDetailsPage() {
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
+
+    const handleImpersonate = async (student: Student) => {
+        setImpersonatingId(student.id);
+        try {
+            const res = await api.post(`/impersonate/student/${student.id}`);
+            const data = res.data?.data;
+            if (data?.access_token) {
+                const currentAdminToken = localStorage.getItem("auth_token");
+                if (currentAdminToken) {
+                    localStorage.setItem("admin_auth_token", currentAdminToken);
+                }
+                localStorage.setItem("auth_token", data.access_token);
+                localStorage.setItem("is_impersonating", "true");
+                tt.success("impersonating_student_login_successful");
+                setTimeout(() => {
+                    window.location.href = "/user/dashboard";
+                }, 400);
+            } else {
+                tt.error("failed_to_impersonate_student");
+            }
+        } catch (err: any) {
+            console.error("Impersonation error:", err);
+            tt.error(err?.response?.data?.message || "failed_to_impersonate_student");
+        } finally {
+            setImpersonatingId(null);
+        }
+    };
 
     useEffect(() => {
         fetchPrerequisites();
@@ -668,6 +697,20 @@ export default function StudentDetailsPage() {
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
+                                                            className="h-8 w-8 rounded-lg bg-purple-600 border-purple-600 text-white hover:bg-purple-700 transition-all shadow-sm shrink-0"
+                                                            onClick={() => handleImpersonate(student)}
+                                                            disabled={impersonatingId === student.id}
+                                                            title="Login immediately as Student (Impersonate)"
+                                                        >
+                                                            {impersonatingId === student.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <LogIn className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
                                                             className="h-8 w-8 rounded-lg bg-indigo-500 border-indigo-500 text-white hover:bg-indigo-600 transition-all shadow-sm"
                                                             onClick={() => {
                                                                 setSelectedStudent(student);
@@ -716,6 +759,20 @@ export default function StudentDetailsPage() {
                                 {students.map((student) => (
                                     <div key={student.id} className="group relative bg-card rounded-lg border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
                                         <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2 z-10">
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-8 w-8 rounded-full bg-purple-600 border-purple-600 text-white hover:bg-purple-700 transition-all shadow-lg"
+                                                onClick={() => handleImpersonate(student)}
+                                                disabled={impersonatingId === student.id}
+                                                title="Login immediately as Student (Impersonate)"
+                                            >
+                                                {impersonatingId === student.id ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <LogIn className="h-4 w-4" />
+                                                )}
+                                            </Button>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
