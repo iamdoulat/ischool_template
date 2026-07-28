@@ -37,6 +37,7 @@ import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { downloadAdmissionFormPdf, type AdmissionFormConfig } from "@/lib/pdf-utils";
 import { useSettings } from "@/components/providers/settings-provider";
+import { formatAutoIdentifier } from "@/lib/id-generator";
 
 export default function StudentAdmissionPage() {
     const getImageUrl = useImageUrl();
@@ -156,10 +157,23 @@ export default function StudentAdmissionPage() {
     const fetchRollNo = async (classId: string, sectionId: string) => {
         if (!classId || !sectionId) return;
         try {
+            const cls = classes.find(c => c.id.toString() === classId.toString());
+            const sec = sections.find(s => s.id.toString() === sectionId.toString());
             const response = await api.get(`/students/generate-roll-no?school_class_id=${classId}&section_id=${sectionId}`);
             if (response.data.data?.auto_enabled) {
                 setAutoRollEnabled(true);
-                setFormData(prev => ({ ...prev, roll_no: response.data.data.roll_no }));
+                const rawRoll = response.data.data.roll_no || "";
+                const prefix = response.data.data.prefix || response.data.data.roll_no_prefix || "RL-{class}{section}";
+                const digit = response.data.data.digit || response.data.data.roll_no_digit || 4;
+                const startFrom = response.data.data.start_from || response.data.data.start_no || 100;
+
+                let formattedRoll = rawRoll;
+                if (rawRoll.includes("{class}") || rawRoll.includes("{section}") || prefix.includes("{class}") || prefix.includes("{section}")) {
+                    formattedRoll = formatAutoIdentifier(prefix, digit, startFrom, cls?.name, sec?.name);
+                } else if (!rawRoll && prefix) {
+                    formattedRoll = formatAutoIdentifier(prefix, digit, startFrom, cls?.name, sec?.name);
+                }
+                setFormData(prev => ({ ...prev, roll_no: formattedRoll || rawRoll }));
             } else {
                 setAutoRollEnabled(false);
             }
@@ -168,13 +182,47 @@ export default function StudentAdmissionPage() {
         }
     };
 
-    const fetchUsername = async () => {
+    const fetchUsername = async (cId?: string, sId?: string) => {
         try {
+            const classId = cId || formData.school_class_id;
+            const sectionId = sId || formData.section_id;
+            const cls = classes.find(c => c.id.toString() === classId?.toString());
+            const sec = sections.find(s => s.id.toString() === sectionId?.toString());
+
             const response = await api.get("/students/generate-username");
             if (response.data.data?.auto_enabled) {
                 setAutoUsernameEnabled(true);
                 setParentAutoUsernameEnabled(true);
-                setFormData(prev => ({ ...prev, username: response.data.data.username, parent_username: response.data.data.parent_username }));
+                const rawUser = response.data.data.username || "";
+                const rawParent = response.data.data.parent_username || "";
+
+                const userPrefix = response.data.data.prefix || response.data.data.username_prefix || "STD-{class}{section}";
+                const userDigit = response.data.data.digit || response.data.data.username_digit || 4;
+                const userStart = response.data.data.start_from || response.data.data.username_start_from || 100;
+
+                const parentPrefix = response.data.data.parent_prefix || response.data.data.parent_username_prefix || "PAR-{class}{section}";
+                const parentDigit = response.data.data.parent_digit || response.data.data.parent_username_digit || 4;
+                const parentStart = response.data.data.parent_start_from || response.data.data.parent_username_start_from || 1;
+
+                let formattedUser = rawUser;
+                if (rawUser.includes("{class}") || rawUser.includes("{section}") || userPrefix.includes("{class}") || userPrefix.includes("{section}")) {
+                    formattedUser = formatAutoIdentifier(userPrefix, userDigit, userStart, cls?.name, sec?.name);
+                } else if (!rawUser && userPrefix) {
+                    formattedUser = formatAutoIdentifier(userPrefix, userDigit, userStart, cls?.name, sec?.name);
+                }
+
+                let formattedParent = rawParent;
+                if (rawParent.includes("{class}") || rawParent.includes("{section}") || parentPrefix.includes("{class}") || parentPrefix.includes("{section}")) {
+                    formattedParent = formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name);
+                } else if (!rawParent && parentPrefix) {
+                    formattedParent = formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name);
+                }
+
+                setFormData(prev => ({
+                    ...prev,
+                    username: formattedUser || rawUser || prev.username,
+                    parent_username: formattedParent || rawParent || prev.parent_username
+                }));
             } else {
                 setAutoUsernameEnabled(false);
             }
@@ -183,13 +231,30 @@ export default function StudentAdmissionPage() {
         }
     };
 
-    const fetchParentUsername = async () => {
+    const fetchParentUsername = async (cId?: string, sId?: string) => {
         setGeneratingParentUsername(true);
         try {
+            const classId = cId || formData.school_class_id;
+            const sectionId = sId || formData.section_id;
+            const cls = classes.find(c => c.id.toString() === classId?.toString());
+            const sec = sections.find(s => s.id.toString() === sectionId?.toString());
+
             const response = await api.get("/system-setting/users/generate-parent-username");
             if (response.data.data?.auto_enabled) {
                 setParentAutoUsernameEnabled(true);
-                setFormData(prev => ({ ...prev, parent_username: response.data.data.username }));
+                const rawParent = response.data.data.username || response.data.data.parent_username || "";
+                const parentPrefix = response.data.data.prefix || response.data.data.parent_username_prefix || "PAR-{class}{section}";
+                const parentDigit = response.data.data.digit || response.data.data.parent_username_digit || 4;
+                const parentStart = response.data.data.start_from || response.data.data.parent_username_start_from || 1;
+
+                let formattedParent = rawParent;
+                if (rawParent.includes("{class}") || rawParent.includes("{section}") || parentPrefix.includes("{class}") || parentPrefix.includes("{section}")) {
+                    formattedParent = formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name);
+                } else if (!rawParent && parentPrefix) {
+                    formattedParent = formatAutoIdentifier(parentPrefix, parentDigit, parentStart, cls?.name, sec?.name);
+                }
+
+                setFormData(prev => ({ ...prev, parent_username: formattedParent || rawParent }));
             } else {
                 setParentAutoUsernameEnabled(false);
             }
@@ -382,6 +447,7 @@ export default function StudentAdmissionPage() {
                 const sId = field === "section_id" ? value : newData.section_id;
                 if (cId && sId) {
                     fetchRollNo(cId, sId);
+                    fetchUsername(cId, sId);
                 }
             }
 
