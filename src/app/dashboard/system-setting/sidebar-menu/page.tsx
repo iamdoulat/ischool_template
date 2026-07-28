@@ -294,7 +294,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "file_types", label: "File Types" },
         { name: "sidebar_menu", label: "Sidebar Menu" },
         { name: "system_update", label: "System Update" },
-
+        { name: "api_key", label: "API Keys & MCP" },
     ],
 };
 
