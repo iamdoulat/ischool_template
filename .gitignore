@@ -13,6 +13,7 @@
 # documentation & feature specs
 /docs/features/
 design_output.md
+design-system/
 
 # setup & scratch scripts
 setup-*.bat
