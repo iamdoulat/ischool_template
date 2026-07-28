@@ -54,7 +54,154 @@ interface Language {
     is_enabled: boolean;
 }
 
-function HeaderStudentSearch() {
+const STUDENT_PORTAL_SEARCH_ITEMS = [
+    {
+        id: "profile",
+        title: "My Student Profile",
+        subtitle: "View personal details, class, section, & guardian info",
+        keywords: ["profile", "my profile", "personal", "info", "admission", "guardian", "class", "section", "father", "mother", "address", "details", "me", "student"],
+        path: "/user/profile",
+        category: "My Account"
+    },
+    {
+        id: "fees",
+        title: "My Fees & Outstanding Dues",
+        subtitle: "View fee structure, paid invoices & submit offline payments",
+        keywords: ["fee", "fees", "due", "dues", "payment", "bank", "receipt", "paid", "bill", "invoice", "balance", "offline payment"],
+        path: "/user/fees",
+        category: "Finance"
+    },
+    {
+        id: "attendance",
+        title: "My Attendance Records",
+        subtitle: "Daily attendance status & monthly percentage summary",
+        keywords: ["attendance", "absent", "present", "leave", "summary", "monthly", "register", "percentage", "present count"],
+        path: "/user/attendance",
+        category: "Academics"
+    },
+    {
+        id: "exam_results",
+        title: "My Exam Results & Marksheet",
+        subtitle: "Term exam marks, grades, report card, & rank",
+        keywords: ["exam", "exams", "result", "results", "marks", "grade", "marksheet", "rank", "cbse", "report card", "gpa"],
+        path: "/user/exam-results",
+        category: "Examinations"
+    },
+    {
+        id: "exam_schedule",
+        title: "My Exam Schedule & Timetable",
+        subtitle: "Upcoming exam dates, times, & hall ticket details",
+        keywords: ["schedule", "exam schedule", "date sheet", "routine", "hall ticket", "admit card", "exam dates"],
+        path: "/user/exam-schedule",
+        category: "Examinations"
+    },
+    {
+        id: "class_timetable",
+        title: "My Class Routine & Timetable",
+        subtitle: "Weekly subject period timetable & daily schedule",
+        keywords: ["timetable", "class timetable", "routine", "period", "subjects", "timing", "daily schedule", "teachers"],
+        path: "/user/class-timetable",
+        category: "Academics"
+    },
+    {
+        id: "homework",
+        title: "My Homework & Daily Assignments",
+        subtitle: "Pending homework tasks & submission status",
+        keywords: ["homework", "assignment", "assignments", "task", "project", "work", "submission", "pending homework"],
+        path: "/user/homework",
+        category: "Academics"
+    },
+    {
+        id: "lesson_plan",
+        title: "My Syllabus & Lesson Plan",
+        subtitle: "Subject syllabus coverage & lesson topics",
+        keywords: ["lesson", "lesson plan", "syllabus", "topic", "chapter", "subject progress", "curriculum"],
+        path: "/user/lesson-plan",
+        category: "Academics"
+    },
+    {
+        id: "online_exams",
+        title: "My Online Exams & MCQ Tests",
+        subtitle: "Available online tests & instant test scores",
+        keywords: ["online exam", "mcq", "test", "quiz", "online test", "score"],
+        path: "/user/online-exams",
+        category: "Examinations"
+    },
+    {
+        id: "library",
+        title: "My Issued Library Books",
+        subtitle: "Currently borrowed library books & due dates",
+        keywords: ["library", "book", "books", "issued", "borrow", "return", "overdue"],
+        path: "/user/library/books-issued",
+        category: "Resources"
+    },
+    {
+        id: "certificates",
+        title: "My Certificates",
+        subtitle: "Download official student & transfer certificates",
+        keywords: ["certificate", "certificates", "transfer certificate", "tc", "document"],
+        path: "/user/certificates",
+        category: "Documents"
+    },
+    {
+        id: "id_card",
+        title: "My Digital ID Card",
+        subtitle: "Student identity card view & digital badge",
+        keywords: ["id", "id card", "identity", "card", "badge"],
+        path: "/user/id-card",
+        category: "My Account"
+    },
+    {
+        id: "qr_code",
+        title: "My Attendance QR Code",
+        subtitle: "Personal QR code for attendance scanner check-in",
+        keywords: ["qr", "qr code", "scan", "barcode", "checkin"],
+        path: "/user/my-qr-code",
+        category: "My Account"
+    },
+    {
+        id: "apply_leave",
+        title: "Apply Student Leave",
+        subtitle: "Submit leave application to class teacher",
+        keywords: ["leave", "apply leave", "sick leave", "absence request"],
+        path: "/user/apply-leave",
+        category: "Attendance"
+    },
+    {
+        id: "transport",
+        title: "My Transport Route & Bus Info",
+        subtitle: "Assigned bus route & pickup point details",
+        keywords: ["transport", "bus", "route", "vehicle", "driver", "pickup"],
+        path: "/user/transport-routes",
+        category: "Logistics"
+    },
+    {
+        id: "hostel",
+        title: "My Hostel & Room Details",
+        subtitle: "Hostel building & room assignment info",
+        keywords: ["hostel", "room", "bed", "dorm", "roommate"],
+        path: "/user/hostel-rooms",
+        category: "Logistics"
+    },
+    {
+        id: "live_classes",
+        title: "Live Online Classes (GMeet & Zoom)",
+        subtitle: "Join scheduled online video classes",
+        keywords: ["live", "zoom", "gmeet", "class link", "online class", "video"],
+        path: "/user/gmeet-live-classes",
+        category: "Academics"
+    },
+    {
+        id: "notifications",
+        title: "Notices & Announcements",
+        subtitle: "School notice board circulars & announcements",
+        keywords: ["notice", "announcement", "circular", "news", "message", "notification"],
+        path: "/user/notifications",
+        category: "Notice Board"
+    }
+];
+
+function HeaderStudentSearch({ user }: { user?: any }) {
     const router = useRouter();
     const { t } = useLanguage();
     const getImageUrl = useImageUrl();
@@ -63,6 +210,12 @@ function HeaderStudentSearch() {
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
 
+    const isStudentUser = Boolean(
+        user?.role === "Student" || 
+        user?.role === "Parent" || 
+        (typeof window !== "undefined" && window.location.pathname.startsWith("/user"))
+    );
+
     useEffect(() => {
         if (!query.trim()) {
             setResults([]);
@@ -70,36 +223,105 @@ function HeaderStudentSearch() {
             return;
         }
 
-        const timer = setTimeout(async () => {
-            setLoading(true);
-            try {
-                const res = await api.get("/students", {
-                    params: { search: query.trim(), limit: 5 }
-                });
-                const data = res.data?.data?.data || res.data?.data || [];
-                setResults(data);
-                setIsOpen(true);
-            } catch (err) {
-                console.error("Header search error:", err);
-                setResults([]);
-            } finally {
-                setLoading(false);
-            }
-        }, 250);
+        const q = query.trim().toLowerCase();
 
-        return () => clearTimeout(timer);
-    }, [query]);
+        if (isStudentUser) {
+            setLoading(true);
+            const matchedPortalItems = STUDENT_PORTAL_SEARCH_ITEMS.filter(item => 
+                item.title.toLowerCase().includes(q) ||
+                item.subtitle.toLowerCase().includes(q) ||
+                item.keywords.some(k => k.toLowerCase().includes(q))
+            );
+
+            const ownName = `${user?.name || ""} ${user?.last_name || ""}`.trim().toLowerCase();
+            const ownAdm = (user?.admission_no || "").toLowerCase();
+            const ownRoll = (user?.roll_no || "").toLowerCase();
+            const ownPhone = (user?.phone || "").toLowerCase();
+            const ownFather = (user?.father_name || "").toLowerCase();
+
+            const isOwnProfileMatch = Boolean(
+                (ownName && ownName.includes(q)) ||
+                (ownAdm && ownAdm.includes(q)) ||
+                (ownRoll && ownRoll.includes(q)) ||
+                (ownPhone && ownPhone.includes(q)) ||
+                (ownFather && ownFather.includes(q))
+            );
+
+            let finalResults: any[] = matchedPortalItems.map(item => ({
+                id: item.id,
+                title: item.title,
+                subtitle: item.subtitle,
+                path: item.path,
+                category: item.category,
+                isPortalFeature: true
+            }));
+
+            if (isOwnProfileMatch && user) {
+                const fullName = `${user.name} ${user.last_name || ""}`.trim();
+                const className = user.school_class?.name || user.schoolClass?.name || "";
+                const secName = user.section?.name || "";
+                const classSec = className ? `${className}${secName ? ` (${secName})` : ''}` : "Student Profile";
+
+                finalResults.unshift({
+                    id: "own_student_profile",
+                    title: `My Profile (${fullName})`,
+                    subtitle: `Adm: ${user.admission_no || "-"} | Roll: ${user.roll_no || "-"} | ${classSec}`,
+                    path: "/user/profile",
+                    avatar: user.avatar,
+                    category: "My Account",
+                    isOwnProfileCard: true
+                });
+            }
+
+            setResults(finalResults);
+            setLoading(false);
+            setIsOpen(true);
+        } else {
+            const timer = setTimeout(async () => {
+                setLoading(true);
+                try {
+                    const res = await api.get("/students", {
+                        params: { search: query.trim(), limit: 5 }
+                    });
+                    const data = res.data?.data?.data || res.data?.data || [];
+                    setResults(data);
+                    setIsOpen(true);
+                } catch (err) {
+                    console.error("Header search error:", err);
+                    setResults([]);
+                } finally {
+                    setLoading(false);
+                }
+            }, 250);
+
+            return () => clearTimeout(timer);
+        }
+    }, [query, isStudentUser, user]);
 
     const handleExecuteSearch = (searchKeyword = query) => {
         if (!searchKeyword.trim()) return;
         setIsOpen(false);
-        router.push(`/dashboard/student-information/student-details?search=${encodeURIComponent(searchKeyword.trim())}`);
+
+        if (isStudentUser) {
+            const topMatch = results[0];
+            if (topMatch?.path) {
+                router.push(topMatch.path);
+            } else {
+                router.push("/user/profile");
+            }
+        } else {
+            router.push(`/dashboard/student-information/student-details?search=${encodeURIComponent(searchKeyword.trim())}`);
+        }
     };
 
-    const handleSelectStudent = (student: any) => {
+    const handleSelectResult = (item: any) => {
         setIsOpen(false);
-        const searchVal = student.admission_no || `${student.name} ${student.last_name || ""}`.trim();
-        router.push(`/dashboard/student-information/student-details?search=${encodeURIComponent(searchVal)}`);
+        if (isStudentUser) {
+            router.push(item.path);
+        } else {
+            const searchVal = item.admission_no || `${item.name} ${item.last_name || ""}`.trim();
+            router.push(`/dashboard/student-information/student-details?search=${encodeURIComponent(searchVal)}`);
+        }
     };
 
     return (
@@ -124,7 +346,7 @@ function HeaderStudentSearch() {
                             handleExecuteSearch();
                         }
                     }}
-                    placeholder={t("search_student")}
+                    placeholder={isStudentUser ? "Search my portal (fees, exams, attendance...)" : t("search_student")}
                     className="pl-10 pr-9 h-10 w-full bg-muted/30 border-muted/50 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all rounded-2xl shadow-sm group-hover:bg-muted/50 text-xs"
                 />
                 {loading ? (
@@ -148,7 +370,8 @@ function HeaderStudentSearch() {
                     <div className="absolute top-full left-0 right-0 mt-2 bg-card/95 backdrop-blur-md border border-muted/50 rounded-2xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                         <div className="p-2.5 border-b border-muted/40 bg-muted/20 flex items-center justify-between">
                             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                                <GraduationCap className="h-3.5 w-3.5 text-primary" /> Student Database
+                                <GraduationCap className="h-3.5 w-3.5 text-primary" />
+                                {isStudentUser ? "My Student Portal" : "Student Database"}
                             </span>
                             <span className="text-[10px] text-muted-foreground">
                                 {loading ? "Searching..." : `${results.length} results`}
@@ -157,22 +380,61 @@ function HeaderStudentSearch() {
 
                         <div className="max-h-[320px] overflow-y-auto custom-scrollbar p-1">
                             {results.length > 0 ? (
-                                results.map((student) => {
-                                    const fullName = `${student.name} ${student.last_name || ""}`.trim();
-                                    const className = student.schoolClass?.name || student.school_class?.name || "";
-                                    const sectionName = student.section?.name || "";
+                                results.map((item) => {
+                                    if (isStudentUser) {
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                onClick={() => handleSelectResult(item)}
+                                                className="flex items-center gap-3 p-2.5 hover:bg-primary/10 rounded-xl cursor-pointer transition-colors group/item"
+                                            >
+                                                {item.isOwnProfileCard ? (
+                                                    <Avatar className="h-9 w-9 rounded-lg border border-primary/20 shrink-0">
+                                                        <AvatarImage src={getImageUrl(item.avatar)} />
+                                                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold rounded-lg">
+                                                            {user?.name?.[0]?.toUpperCase() || "S"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                ) : (
+                                                    <div className="h-9 w-9 rounded-lg border border-primary/20 bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
+                                                        <GraduationCap className="h-4 w-4" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-xs font-bold text-foreground group-hover/item:text-primary truncate">
+                                                            {item.title}
+                                                        </p>
+                                                        {item.category && (
+                                                            <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full shrink-0">
+                                                                {item.category}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                                        {item.subtitle}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+
+                                    // Admin/Staff Result
+                                    const fullName = `${item.name} ${item.last_name || ""}`.trim();
+                                    const className = item.schoolClass?.name || item.school_class?.name || "";
+                                    const sectionName = item.section?.name || "";
                                     const classSec = className ? `${className}${sectionName ? ` (${sectionName})` : ''}` : "";
 
                                     return (
                                         <div
-                                            key={student.id}
-                                            onClick={() => handleSelectStudent(student)}
+                                            key={item.id}
+                                            onClick={() => handleSelectResult(item)}
                                             className="flex items-center gap-3 p-2.5 hover:bg-primary/10 rounded-xl cursor-pointer transition-colors group/item"
                                         >
                                             <Avatar className="h-9 w-9 rounded-lg border border-primary/20 shrink-0">
-                                                <AvatarImage src={getImageUrl(student.avatar)} />
+                                                <AvatarImage src={getImageUrl(item.avatar)} />
                                                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold rounded-lg">
-                                                    {student.name?.[0]?.toUpperCase() || "S"}
+                                                    {item.name?.[0]?.toUpperCase() || "S"}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
@@ -187,9 +449,9 @@ function HeaderStudentSearch() {
                                                     )}
                                                 </div>
                                                 <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                                                    Adm: <span className="font-semibold text-foreground">{student.admission_no || "-"}</span>
-                                                    {student.roll_no ? ` | Roll: ${student.roll_no}` : ''}
-                                                    {student.father_name ? ` | Guardian: ${student.father_name}` : ''}
+                                                    Adm: <span className="font-semibold text-foreground">{item.admission_no || "-"}</span>
+                                                    {item.roll_no ? ` | Roll: ${item.roll_no}` : ''}
+                                                    {item.father_name ? ` | Guardian: ${item.father_name}` : ''}
                                                 </p>
                                             </div>
                                         </div>
@@ -197,7 +459,9 @@ function HeaderStudentSearch() {
                                 })
                             ) : !loading ? (
                                 <div className="p-4 text-center text-xs text-muted-foreground">
-                                    No students found matching &quot;{query}&quot;
+                                    {isStudentUser 
+                                        ? `No personal portal items match "${query}"`
+                                        : `No students found matching "${query}"`}
                                 </div>
                             ) : null}
                         </div>
@@ -206,7 +470,7 @@ function HeaderStudentSearch() {
                             onClick={() => handleExecuteSearch()}
                             className="p-2.5 bg-primary/5 hover:bg-primary/15 text-primary text-center text-xs font-bold cursor-pointer transition-colors border-t border-muted/40"
                         >
-                            View all results for &quot;{query}&quot; &rarr;
+                            View details for &quot;{query}&quot; &rarr;
                         </div>
                     </div>
                 )}
@@ -495,7 +759,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
             </div>
 
             <div className="flex items-center justify-end gap-3 md:gap-6 flex-1 min-w-0">
-                <HeaderStudentSearch />
+                <HeaderStudentSearch user={user} />
 
                 <div className="hidden md:flex items-center gap-1 md:gap-2">
                     <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
