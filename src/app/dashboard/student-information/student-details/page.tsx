@@ -955,50 +955,66 @@ export default function StudentDetailsPage() {
 
             {/* View Student Dialog */}
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent className="max-w-[1350px] p-0 overflow-hidden border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md">
-                    <DialogHeader className="p-8 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative">
+                <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl p-0 overflow-hidden border-none shadow-2xl rounded-2xl bg-background/95 backdrop-blur-md">
+                    <DialogHeader className="p-6 md:p-8 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative">
                         <div className="absolute top-4 right-4">
                             <Button variant="ghost" size="icon" onClick={() => setViewDialogOpen(false)} className="rounded-full hover:bg-white/20 transition-all">
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
-                        <div className="flex flex-col md:flex-row items-center gap-8">
-                            <div className="relative group">
-                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-lg blur opacity-30 group-hover:opacity-50 transition duration-500" />
-                                <Avatar className="h-32 w-32 md:h-40 md:w-40 rounded-lg border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
+                        <div className="flex flex-col sm:flex-row items-center gap-6 md:gap-8">
+                            <div className="relative group shrink-0">
+                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500" />
+                                <Avatar className="h-28 w-28 md:h-36 md:w-36 rounded-2xl border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
                                     <AvatarImage src={getImageUrl(selectedStudent?.avatar)} />
-                                    <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
+                                    <AvatarFallback className="bg-primary/5 text-primary text-3xl font-black">
                                         {selectedStudent?.name?.substring(0, 2).toUpperCase()}
                                     </AvatarFallback>
                                 </Avatar>
                             </div>
-                            <div className="text-center md:text-left space-y-3">
-                                <Badge variant="secondary" className="px-4 py-1.5 rounded-full bg-primary/10 text-primary border-primary/20 text-xs font-bold uppercase tracking-widest shadow-sm">
-                                    {t("student_profile")}
-                                </Badge>
-                                <DialogTitle className="text-4xl font-black tracking-tight text-foreground">
+                            <div className="text-center sm:text-left space-y-2.5 flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                                    <Badge variant="secondary" className="px-3 py-1 rounded-full bg-primary/10 text-primary border-primary/20 text-[11px] font-bold uppercase tracking-widest shadow-sm">
+                                        {t("student_profile")}
+                                    </Badge>
+                                    <Badge variant="outline" className={cn(
+                                        "px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest",
+                                        selectedStudent?.active ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"
+                                    )}>
+                                        {selectedStudent?.active ? t("active") : t("disabled")}
+                                    </Badge>
+                                </div>
+                                <DialogTitle className="text-2xl md:text-4xl font-black tracking-tight text-foreground truncate">
                                     {selectedStudent?.name} {selectedStudent?.last_name}
                                 </DialogTitle>
-                                <div className="flex flex-wrap justify-center md:justify-start gap-4">
-                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
-                                        <BadgeCheck className="h-4 w-4 text-primary" />
-                                        {t("adm_label")}: {selectedStudent?.admission_no}
+                                <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs md:text-sm bg-white/60 dark:bg-zinc-800/60 px-3.5 py-1.5 rounded-xl border border-muted/50 shadow-sm">
+                                        <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
+                                        <span>{t("adm_label")}: <strong className="text-foreground">{selectedStudent?.admission_no}</strong></span>
                                     </div>
-                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
-                                        <GraduationCap className="h-4 w-4 text-indigo-500" />
-                                        {selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})
+                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs md:text-sm bg-white/60 dark:bg-zinc-800/60 px-3.5 py-1.5 rounded-xl border border-muted/50 shadow-sm">
+                                        <GraduationCap className="h-4 w-4 text-indigo-500 shrink-0" />
+                                        <span>{selectedStudent?.school_class?.name || "Class"} ({selectedStudent?.section?.name || "A"})</span>
                                     </div>
+                                    {selectedStudent?.roll_no && (
+                                        <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs md:text-sm bg-white/60 dark:bg-zinc-800/60 px-3.5 py-1.5 rounded-xl border border-muted/50 shadow-sm">
+                                            <User className="h-4 w-4 text-amber-500 shrink-0" />
+                                            <span>Roll: <strong className="text-foreground">{selectedStudent.roll_no}</strong></span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <div className="p-8 space-y-8 max-h-[60vh] overflow-y-auto">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="p-6 md:p-8 space-y-6 max-h-[65vh] overflow-y-auto custom-scrollbar">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 md:gap-8">
                             {/* Personal Info */}
-                            <div className="space-y-6">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">{t("personal_details")}</h4>
-                                <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-4 bg-muted/20 p-5 rounded-2xl border border-muted/40">
+                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                    <User className="h-4 w-4" /> {t("personal_details")}
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                     <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob)} icon={Calendar} />
                                     <InfoField label={t("gender")} value={selectedStudent?.gender} icon={User} />
                                     <InfoField label={t("blood_group")} value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
@@ -1007,49 +1023,50 @@ export default function StudentDetailsPage() {
                             </div>
 
                             {/* Contact & Parent Info */}
-                            <div className="space-y-6">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">{t("contact_and_guardian")}</h4>
-                                <div className="grid grid-cols-1 gap-4">
+                            <div className="space-y-4 bg-muted/20 p-5 rounded-2xl border border-muted/40">
+                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500 flex items-center gap-2">
+                                    <Phone className="h-4 w-4" /> {t("contact_and_guardian")}
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                     <InfoField label={t("mobile_number")} value={selectedStudent?.phone} icon={Phone} />
                                     <InfoField label={t("email_address")} value={selectedStudent?.email || "-"} icon={Mail} />
                                     <InfoField label={t("father_name")} value={selectedStudent?.father_name} icon={User} />
                                     <InfoField label={t("category")} value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
-                                    <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
-                                        <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
-                                            <BadgeCheck className="h-4 w-4 text-primary" />
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("status")}</p>
-                                            <Badge className={cn(
-                                                "mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border-none",
-                                                selectedStudent?.active
-                                                    ? "bg-green-500/10 text-green-600"
-                                                    : "bg-red-500/10 text-red-600"
-                                            )}>
-                                                {selectedStudent?.active ? t("active") : t("disabled")}
-                                            </Badge>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="p-6 bg-muted/20 border-t border-muted/50 flex flex-row gap-3">
-                        <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setViewDialogOpen(false)}>
+                    <DialogFooter className="p-4 md:p-6 bg-muted/20 border-t border-muted/50 flex flex-col sm:flex-row items-center gap-3">
+                        <Button variant="outline" className="w-full sm:w-auto rounded-xl h-11 px-6 font-bold" onClick={() => setViewDialogOpen(false)}>
                             {t("close")}
                         </Button>
-                        <Button
-                            variant="gradient"
-                            className="flex-1 rounded-lg h-12 font-bold"
-                            onClick={() => {
-                                setViewDialogOpen(false);
-                                router.push(`/dashboard/student-information/student-details/${selectedStudent?.id}/edit`);
-                            }}
-                        >
-                            <Pencil className="h-4 w-4 mr-2" />
-                            {t("edit_profile")}
-                        </Button>
+                        <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-auto">
+                            {selectedStudent && (
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 sm:flex-initial rounded-xl h-11 px-5 font-bold bg-purple-600 text-white hover:bg-purple-700 border-purple-600 shadow-sm"
+                                    onClick={() => {
+                                        setViewDialogOpen(false);
+                                        handleImpersonate(selectedStudent);
+                                    }}
+                                >
+                                    <LogIn className="h-4 w-4 mr-2" />
+                                    Impersonate Student
+                                </Button>
+                            )}
+                            <Button
+                                variant="gradient"
+                                className="flex-1 sm:flex-initial rounded-xl h-11 px-6 font-bold"
+                                onClick={() => {
+                                    setViewDialogOpen(false);
+                                    router.push(`/dashboard/student-information/student-details/${selectedStudent?.id}/edit`);
+                                }}
+                            >
+                                <Pencil className="h-4 w-4 mr-2" />
+                                {t("edit_profile")}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
