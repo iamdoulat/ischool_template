@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   serverExternalPackages: ["face-api.js"],
   allowedDevOrigins: ["100.121.103.60"],
   webpack: (config) => {
