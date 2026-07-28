@@ -387,7 +387,7 @@ export default function QrCodeSettingPage() {
     return (
         <div className="space-y-6">
             {/* Page header */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 max-w-5xl">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 w-full">
                 <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
@@ -409,12 +409,12 @@ export default function QrCodeSettingPage() {
             </Card>
 
             {loading ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                     <SectionSkeleton />
                     <SectionSkeleton />
                 </div>
             ) : (
-                <div className="space-y-6 max-w-5xl">
+                <div className="space-y-6 w-full">
                     {/* Smart Attendance Verification Methods (Merged Section) */}
                     <Card className="border-[0.5px] border-indigo-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
                         <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-purple-50/80 via-indigo-50/60 to-blue-50/50 border-b border-indigo-100">
