@@ -33,6 +33,10 @@ interface OnlineAdmissionSetting {
     online_admission: boolean;
     instructions: string;
     terms_conditions: string;
+    online_admission_form_fees?: number | string;
+    help_center_content?: string;
+    fee_structure_content?: string;
+    [key: string]: any;
 }
 
 interface AcademicClass {
