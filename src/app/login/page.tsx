@@ -19,7 +19,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("admin");
-    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; base_url?: string; [key: string]: unknown } | null>(null);
+    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; app_name?: string; base_url?: string; [key: string]: unknown } | null>(null);
     const getImageUrl = useImageUrl();
 
     // Captcha (driven by system-setting → captcha-setting, "User login" / "Login" aliases)

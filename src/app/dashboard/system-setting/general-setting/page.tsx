@@ -179,7 +179,7 @@ function LogoCard({
                         ) : (
                             <Upload className="h-3 w-3" />
                         )}
-                        {t("update")}
+                        {tr("update")}
                     </label>
                 </Button>
             </div>
