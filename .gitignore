@@ -66,5 +66,6 @@ CLAUDE.md
 # Build Executables & Temp
 composer.phar
 .kilo/
+backend/
 backend/*.zip
 backend/update*.zip
