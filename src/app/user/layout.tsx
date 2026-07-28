@@ -11,6 +11,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { PageGuard } from "@/components/auth/page-guard";
+import { getPageTitleFromPathname } from "@/lib/page-title";
 
 function UserLayoutContent({
     children,
@@ -27,8 +28,9 @@ function UserLayoutContent({
     useEffect(() => {
         if (!loading && settings) {
             // Set Page Title
-            const schoolName = settings.school_name || "Smart School";
-            document.title = `${schoolName} - Student Portal`;
+            const schoolName = settings.school_name || "iSchool";
+            const pageName = getPageTitleFromPathname(window.location.pathname, t);
+            document.title = `${pageName} || ${schoolName}`;
 
             // Sync Theme Mode only if no user local preference exists
             const savedTheme = typeof window !== 'undefined' ? localStorage.getItem("theme") : null;
@@ -94,7 +96,7 @@ function UserLayoutContent({
                         </p>
                     </div>
                     <p className="text-[12px] text-muted-foreground font-medium">
-                        © 2026 {loading ? "" : (settings?.school_name || "Smart School")}. {t("all_rights_reserved")}
+                        © 2026 {loading ? "" : (settings?.school_name || "iSchool")}. {t("all_rights_reserved")}
                     </p>
                 </footer>
             </div>

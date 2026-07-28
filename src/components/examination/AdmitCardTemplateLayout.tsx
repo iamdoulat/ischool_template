@@ -328,7 +328,7 @@ export const AdmitCardTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
                                      {settings?.print_logo ? (
                                          <img src={resolveImageUrl(settings.print_logo)} alt="Logo" style={{ maxHeight: '48px', objectFit: 'contain' }} />
                                      ) : (
-                                         <div className="text-lg font-bold px-3 py-1 rounded" style={{ backgroundColor: '#22c55e', color: '#ffffff' }}>SMART SCHOOL</div>
+                                         <div className="text-lg font-bold px-3 py-1 rounded" style={{ backgroundColor: '#22c55e', color: '#ffffff' }}>iSCHOOL</div>
                                      )}
                                 </div>
                                 <div className="text-3xl font-bold tracking-tight" style={{ color: '#000000' }}>

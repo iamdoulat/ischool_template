@@ -549,7 +549,7 @@ function GenerateInvoiceContent() {
                                                 style={{ backgroundColor: '#4CAF50', color: '#ffffff', padding: '4px 12px', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}
                                                 className={`px-3 py-1 bg-[#4CAF50] text-white font-bold text-xs rounded tracking-wider uppercase ${logoUrl ? 'hidden' : 'inline-flex'}`}
                                             >
-                                                {settings.school_code || "SMART SCHOOL"}
+                                                {settings.school_code || "ISCHOOL"}
                                             </div>
                                         </div>
                                         <div>

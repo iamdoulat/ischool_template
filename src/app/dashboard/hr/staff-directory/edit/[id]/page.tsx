@@ -710,12 +710,12 @@ export default function EditStaffPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-gray-500 uppercase">
-                                    {t("pan_nid_number")}
+                                    {t("nid_number") || "NID Number"}
                                 </Label>
                                 <Input
                                     value={formData.pan_number}
                                     onChange={(e) => handleInputChange("pan_number", e.target.value)}
-                                    placeholder={t("enter_pan_nid_number")}
+                                    placeholder={t("enter_nid_number") || "Enter NID Number"}
                                     className="h-11 border-gray-200"
                                 />
                             </div>

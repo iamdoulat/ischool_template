@@ -194,7 +194,7 @@ export function PublicFooter() {
             {/* Copyright Bar */}
             <div className="border-t border-slate-800 bg-slate-950/50">
                 <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] text-slate-500">
-                    <p>© {new Date().getFullYear()} {settings?.school_name || "Smart School"}. {t("all_rights_reserved")}.</p>
+                    <p>© {new Date().getFullYear()} {settings?.school_name || "iSchool"}. {t("all_rights_reserved")}.</p>
                     <div className="flex gap-6">
                         <Link href="/privacy-policy" className="hover:text-white transition-colors">{t("privacy_policy")}</Link>
                         <Link href="/terms-and-conditions" className="hover:text-white transition-colors">{t("terms_and_conditions")}</Link>

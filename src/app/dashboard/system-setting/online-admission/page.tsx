@@ -162,7 +162,7 @@ export default function OnlineAdmissionPage() {
         online_admission: true,
         online_admission_payment_option: true,
         online_admission_form_fees: "100.00",
-        instructions: "General Instruction:- These instructions pertain to online application for admission to Smart School...",
+        instructions: "General Instruction:- These instructions pertain to online application for admission to iSchool...",
         terms_conditions: "General Terms & Conditions for Students:- 1. The User declares that the content of the Portal shall be accessed...",
         admission_form_file: null as File | null,
         admission_form_file_name: "",

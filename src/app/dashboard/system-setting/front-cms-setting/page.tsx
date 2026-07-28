@@ -76,7 +76,7 @@ export default function FrontCmsSettingPage() {
         language: "english",
         logo: null,
         favicon: null,
-        footer_text: "© Smart School 2026. All rights reserved",
+        footer_text: "© iSchool 2026. All rights reserved",
         cookie_consent: "",
         google_analytics: "",
         social_media: {
@@ -93,7 +93,7 @@ export default function FrontCmsSettingPage() {
         about_us: {
             section_title: "About Us",
             section_subtitle: "Fusce sem dolor, interdum in fficitur at, faucibus nec lorem. Sed nec molestie justo.",
-            title: "Welcome to Smart School",
+            title: "Welcome to iSchool",
             description: "Providing quality education for over two decades...",
             image_url: "",
             accordions: [

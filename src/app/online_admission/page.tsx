@@ -58,7 +58,7 @@ const STEPS = [
 
 export default function OnlineAdmissionPage() {
     const { settings: globalSettings } = useSettings();
-    const schoolName = globalSettings?.school_name || globalSettings?.app_name || "SMART SCHOOL";
+    const schoolName = globalSettings?.school_name || globalSettings?.app_name || "iSchool";
 
     // State
     const [currentStep, setCurrentStep] = useState(0);

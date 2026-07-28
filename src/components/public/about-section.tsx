@@ -64,7 +64,7 @@ export function AboutSection({ about }: { about?: { section_title?: string; sect
                     <div className="space-y-8">
                         <div className="space-y-4">
                             <h3 className="text-2xl md:text-3xl font-bold text-slate-800 uppercase tracking-tight">
-                                {about?.title || "Welcome to Smart School"}
+                                {about?.title || "Welcome to iSchool"}
                             </h3>
                             <p className="text-slate-600 leading-relaxed">
                                 {about?.description || "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}

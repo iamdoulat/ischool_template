@@ -69,13 +69,13 @@ export const renderPdfHeader = async (
                 console.error("Failed to add print_logo to PDF:", error);
                 doc.setFontSize(14);
                 doc.setFont("helvetica", "bold");
-                doc.text("SMART SCHOOL", 14, startY + 5);
+                doc.text("iSCHOOL", 14, startY + 5);
                 logoY += 10;
             }
         } else {
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text("SMART SCHOOL", 14, startY + 5);
+            doc.text("iSCHOOL", 14, startY + 5);
             logoY += 10;
         }
 
@@ -391,7 +391,7 @@ export const downloadAdmissionFormPdf = async (
     doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 41, 59);
-    doc.text(safeText(schoolInfo?.name || "SMART SCHOOL"), marginX, leftY + 3.5);
+    doc.text(safeText(schoolInfo?.name || "iSCHOOL"), marginX, leftY + 3.5);
     leftY += 7.5;
 
     if (schoolInfo?.slogan) {

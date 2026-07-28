@@ -329,7 +329,7 @@ export function UserSidebar({
                                         <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} onError={() => setLogoError(true)} className="h-6 object-contain" />
                                     ) : (
                                         <span className="font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300">
-                                            {settings?.school_name || "Smart School"}
+                                            {settings?.school_name || "iSchool"}
                                         </span>
                                     )}
                                 </div>

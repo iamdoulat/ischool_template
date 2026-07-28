@@ -50,7 +50,7 @@ export function PrintHeader({ title, headerImageUrl: externalHeaderImageUrl, tab
                         {settings.print_logo ? (
                             <img src={settings.print_logo} alt="Logo" className="max-h-full object-contain" />
                         ) : (
-                            <div className="text-sm font-bold bg-green-500 text-white px-2 py-0.5 rounded">SMART SCHOOL</div>
+                            <div className="text-sm font-bold bg-green-500 text-white px-2 py-0.5 rounded">iSCHOOL</div>
                         )}
                     </div>
                     <div>
@@ -66,7 +66,7 @@ export function PrintHeader({ title, headerImageUrl: externalHeaderImageUrl, tab
                     <p>Address: {settings.address || "25 Kings Street, CA"}</p>
                     <p>Phone No.: {settings.phone || "89562423934"}</p>
                     <p>Email: {settings.email || "yourschool@gmail.com"}</p>
-                    <p>Website: {settings.base_url?.replace(/^https?:\/\//, '') || "www.yoursite.in"}</p>
+                    <p>Website: {settings.base_url?.replace(/^https?:\/\//, '') || "www.yoursite.com"}</p>
                 </div>
 
             </div>

@@ -319,7 +319,7 @@ function TemplateEditorModal({
                                             <div className="bg-[#ff9800] p-1 rounded-sm">
                                                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 11.55C9.64 9.35 6.48 8 3 8v11c3.48 0 6.64 1.35 9 3.55 2.36-2.19 5.52-3.54 9-3.54V8c-3.48 0-6.64 1.35-9 3.55zM12 8c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"/></svg>
                                             </div>
-                                            <span className="font-black text-white text-sm tracking-wide drop-shadow-md">{settings?.school_name || "SMART SCHOOL"}</span>
+                                            <span className="font-black text-white text-sm tracking-wide drop-shadow-md">{settings?.school_name || "iSCHOOL"}</span>
                                         </div>
                                     )}
                                     <h3 className="text-xl font-bold border-b border-gray-400 pb-1">{settings?.school_name || "Your School Name Here"}</h3>

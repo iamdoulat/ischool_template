@@ -148,6 +148,8 @@ const SettingsContext = createContext<SettingsContextType>({
 
 export const useSettings = () => useContext(SettingsContext);
 
+import { DocumentTitleSync } from "@/components/providers/document-title-sync";
+
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
     const [settings, setSettings] = useState<GeneralSettings>(createDefaultSettings());
     const [loading, setLoading] = useState(true);
@@ -233,6 +235,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             refreshSettings: fetchSettings,
             updateSettingsLocal
         }}>
+            <DocumentTitleSync />
             {children}
         </SettingsContext.Provider>
     );

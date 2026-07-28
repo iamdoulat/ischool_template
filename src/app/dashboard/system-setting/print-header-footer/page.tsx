@@ -189,7 +189,7 @@ export default function PrintHeaderFooterPage() {
                                 <div className="flex justify-between p-4 md:p-6 bg-white min-h-[120px]">
                                     <div className="flex flex-col justify-between items-start">
                                         <div className="h-10 md:h-12 relative flex items-center">
-                                             {settings.print_logo ? <img src={settings.print_logo} alt="Logo" className="max-h-full object-contain" /> : <div className="text-lg font-bold bg-green-500 text-white px-3 py-1 rounded">SMART SCHOOL</div>}
+                                             {settings.print_logo ? <img src={settings.print_logo} alt="Logo" className="max-h-full object-contain" /> : <div className="text-lg font-bold bg-green-500 text-white px-3 py-1 rounded">iSCHOOL</div>}
                                         </div>
                                         <div className="text-2xl md:text-3xl font-bold mt-3 tracking-tight p-1">
                                             {settings.school_name || "Your School Name Here"}
@@ -220,7 +220,7 @@ export default function PrintHeaderFooterPage() {
                                 <div className="flex justify-between p-4 md:p-6 bg-white min-h-[120px]">
                                     <div className="flex flex-col justify-between items-start">
                                         <div className="h-10 md:h-12 relative flex items-center">
-                                             {settings.print_logo ? <img src={settings.print_logo} alt="Logo" className="max-h-full object-contain" /> : <div className="text-lg font-bold bg-green-500 text-white px-3 py-1 rounded">SMART SCHOOL</div>}
+                                             {settings.print_logo ? <img src={settings.print_logo} alt="Logo" className="max-h-full object-contain" /> : <div className="text-lg font-bold bg-green-500 text-white px-3 py-1 rounded">iSCHOOL</div>}
                                         </div>
                                         <div className="text-2xl md:text-3xl font-bold mt-3 tracking-tight p-1">
                                             {settings.school_name || "Your School Name Here"}
