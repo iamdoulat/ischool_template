@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,12 @@ import {
     BookOpen,
     Pencil,
     Activity,
-    Layers
+    Layers,
+    Search,
+    Filter,
+    Globe,
+    Code,
+    Sparkles
 } from "lucide-react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
@@ -49,6 +54,16 @@ interface ApiKeyItem {
     created_at: string;
 }
 
+interface ApiEndpointItem {
+    id: string;
+    method: "GET" | "POST" | "PUT" | "DELETE";
+    path: string;
+    module: string;
+    category: string;
+    scope: string;
+    desc: string;
+}
+
 const PERMISSION_SCOPES = [
     { id: "*", label: "Full Access (*)", desc: "All module endpoints & MCP tools" },
     { id: "students.read", label: "Students (Read)", desc: "View student directory & profiles" },
@@ -57,6 +72,62 @@ const PERMISSION_SCOPES = [
     { id: "fees.read", label: "Fee Collection (Read)", desc: "View fee structures & due reports" },
     { id: "attendance.read", label: "Attendance (Read)", desc: "View student & staff attendance" },
     { id: "mcp.all", label: "MCP Protocol (All)", desc: "Execute Model Context Protocol tools" },
+];
+
+const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
+    // 1. Student Information Module
+    { id: "1", method: "GET", path: "/api/v1/student-information/students", module: "Student Information", category: "student_info", scope: "students.read", desc: "Retrieve enrolled student directory with class, section, roll number, and search filters." },
+    { id: "2", method: "POST", path: "/api/v1/student-information/students", module: "Student Information", category: "student_info", scope: "students.write", desc: "Create a new student record with profile, parent details, and class assignment." },
+    { id: "3", method: "PUT", path: "/api/v1/student-information/students/{id}", module: "Student Information", category: "student_info", scope: "students.write", desc: "Update existing student profile details, guardian info, and enrollment status." },
+    { id: "4", method: "DELETE", path: "/api/v1/student-information/students/{id}", module: "Student Information", category: "student_info", scope: "students.write", desc: "Delete or disable a student record from the active directory." },
+    { id: "5", method: "GET", path: "/api/v1/student-information/online-admissions", module: "Student Information", category: "student_info", scope: "students.read", desc: "Fetch online admission applicant submissions and approval queue." },
+    { id: "6", method: "GET", path: "/api/v1/student-information/student-categories", module: "Student Information", category: "student_info", scope: "students.read", desc: "List student quota & category definitions (General, OBC, SC, ST, Merit)." },
+
+    // 2. Fees & Finance Module
+    { id: "7", method: "GET", path: "/api/v1/fee-collection/fee-collection", module: "Fees Collection", category: "fees_finance", scope: "fees.read", desc: "Fetch student fee collection ledgers, payment transactions, and balance dues." },
+    { id: "8", method: "POST", path: "/api/v1/fee-collection/collect-fees", module: "Fees Collection", category: "fees_finance", scope: "fees.write", desc: "Record fee payment transaction against student invoice." },
+    { id: "9", method: "GET", path: "/api/v1/fee-collection/fees-groups", module: "Fees Collection", category: "fees_finance", scope: "fees.read", desc: "List fee structure groups (Tuition Fee, Bus Fee, Library Fee)." },
+    { id: "10", method: "GET", path: "/api/v1/fee-collection/fees-types", module: "Fees Collection", category: "fees_finance", scope: "fees.read", desc: "List fee type master records and code definitions." },
+    { id: "11", method: "GET", path: "/api/v1/income/incomes", module: "Income", category: "fees_finance", scope: "finance.read", desc: "Retrieve school general income transaction entries and receipt logs." },
+    { id: "12", method: "GET", path: "/api/v1/expense/expenses", module: "Expenses", category: "fees_finance", scope: "finance.read", desc: "Retrieve operational expense vouchers and expense head breakdowns." },
+
+    // 3. Academics & Human Resource Module
+    { id: "13", method: "GET", path: "/api/v1/academics/classes", module: "Academics", category: "academics_hr", scope: "academics.read", desc: "Fetch list of school academic classes." },
+    { id: "14", method: "GET", path: "/api/v1/academics/sections", module: "Academics", category: "academics_hr", scope: "academics.read", desc: "Fetch class section allotments and capacity info." },
+    { id: "15", method: "GET", path: "/api/v1/academics/subjects", module: "Academics", category: "academics_hr", scope: "academics.read", desc: "List curriculum subjects with theory/practical code definitions." },
+    { id: "16", method: "GET", path: "/api/v1/human-resource/staff-directory", module: "Human Resource", category: "academics_hr", scope: "staff.read", desc: "Retrieve staff directory, teachers, departments, and designations." },
+    { id: "17", method: "POST", path: "/api/v1/human-resource/staff-directory", module: "Human Resource", category: "academics_hr", scope: "staff.write", desc: "Add new teacher or staff employee record." },
+    { id: "18", method: "GET", path: "/api/v1/hr/payroll", module: "Human Resource", category: "academics_hr", scope: "staff.read", desc: "Fetch staff payroll salary slips and payment receipts." },
+
+    // 4. Attendance & Examinations Module
+    { id: "19", method: "GET", path: "/api/v1/attendance/student-attendance", module: "Attendance", category: "attendance_exams", scope: "attendance.read", desc: "Fetch daily class student attendance records by date." },
+    { id: "20", method: "POST", path: "/api/v1/attendance/student-attendance", module: "Attendance", category: "attendance_exams", scope: "attendance.write", desc: "Submit or update student daily attendance entries." },
+    { id: "21", method: "GET", path: "/api/v1/examination/exam-group", module: "Examinations", category: "attendance_exams", scope: "exams.read", desc: "Fetch examination groups, schedules, and grading standards." },
+    { id: "22", method: "GET", path: "/api/v1/examination/exam-result", module: "Examinations", category: "attendance_exams", scope: "exams.read", desc: "Retrieve student exam marksheets and rank reports." },
+    { id: "23", method: "GET", path: "/api/v1/online-examination/online-exam", module: "Online Examinations", category: "attendance_exams", scope: "exams.read", desc: "Fetch online test papers and question bank banks." },
+
+    // 5. Communicate & Messaging Module
+    { id: "24", method: "GET", path: "/api/v1/communicate/notices", module: "Communicate", category: "communicate_sms", scope: "communicate.read", desc: "Fetch notice board announcements and circulars." },
+    { id: "25", method: "POST", path: "/api/v1/communicate/send-sms", module: "Communicate", category: "communicate_sms", scope: "sms.send", desc: "Dispatch broadcast SMS to selected classes or custom numbers." },
+    { id: "26", method: "POST", path: "/api/v1/system-setting/sms-settings/test", module: "System Setting", category: "communicate_sms", scope: "sms.send", desc: "Test dispatch SMS via active gateway or Round Robin balancer." },
+
+    // 6. System Settings Module
+    { id: "27", method: "GET", path: "/api/v1/system-setting/general-setting", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Retrieve school profile, logo, session year, and general settings." },
+    { id: "28", method: "GET", path: "/api/v1/system-setting/sms-gateways", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Fetch multi-gateway SMS settings and Round Robin state." },
+    { id: "29", method: "GET", path: "/api/v1/system-setting/email-gateways", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Fetch SMTP email gateways and Round Robin state." },
+    { id: "30", method: "GET", path: "/api/v1/system-setting/payment-gateway-settings", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Fetch active payment method configurations." },
+    { id: "31", method: "GET", path: "/api/v1/system-setting/api-keys", module: "System Setting", category: "system_setting", scope: "system.read", desc: "Manage RESTful API keys, secret tokens, and permission scopes." },
+
+    // 7. MCP AI Protocol Module
+    { id: "32", method: "GET", path: "/api/v1/mcp/manifest", module: "MCP AI Protocol", category: "mcp_ai", scope: "mcp.all", desc: "Fetch Model Context Protocol server manifest & capabilities." },
+    { id: "33", method: "POST", path: "/api/v1/mcp", module: "MCP AI Protocol", category: "mcp_ai", scope: "mcp.all", desc: "Execute MCP JSON-RPC 2.0 requests (initialize, tools/list, tools/call)." },
+
+    // 8. Operations & Logistics
+    { id: "34", method: "GET", path: "/api/v1/front-office/admission-enquiries", module: "Front Office", category: "operations", scope: "front_office.read", desc: "Fetch admission enquiry logs and follow-up status." },
+    { id: "35", method: "GET", path: "/api/v1/front-office/visitors", module: "Front Office", category: "operations", scope: "front_office.read", desc: "Retrieve visitor logbook entries." },
+    { id: "36", method: "GET", path: "/api/v1/inventory/items", module: "Inventory", category: "operations", scope: "inventory.read", desc: "List inventory items, categories, and stock balances." },
+    { id: "37", method: "GET", path: "/api/v1/transport/transport", module: "Transport", category: "operations", scope: "transport.read", desc: "Fetch transport routes, pickup points, and assigned vehicles." },
+    { id: "38", method: "GET", path: "/api/v1/hostel/hostels", module: "Hostel", category: "operations", scope: "hostel.read", desc: "Fetch hostel room allocations and hostel master records." },
 ];
 
 export default function ApiKeyPage() {
@@ -97,6 +168,12 @@ export default function ApiKeyPage() {
     const [mcpMessage, setMcpMessage] = useState<string>("Hello from iSchool MCP!");
     const [mcpTesting, setMcpTesting] = useState<boolean>(false);
     const [mcpResult, setMcpResult] = useState<any>(null);
+
+    // API Endpoints Directory filters
+    const [docCategory, setDocCategory] = useState<string>("all");
+    const [docSearch, setDocSearch] = useState<string>("");
+    const [docMethod, setDocMethod] = useState<string>("all");
+    const [selectedEndpoint, setSelectedEndpoint] = useState<ApiEndpointItem>(API_ENDPOINTS_DIRECTORY[0]);
 
     // Copy snippet helper
     const [copiedSnippet, setCopiedSnippet] = useState<boolean>(false);
@@ -252,7 +329,7 @@ export default function ApiKeyPage() {
                 sonnerToast.error("MCP tool returned an error");
             }
         } catch (error: any) {
-            setMcpResult({ error: error.message || "MCP execution failed" });
+            setMcpResult({ error: error.message || "MCP Execution Failed" });
             sonnerToast.error("MCP Execution Failed");
         } finally {
             setMcpTesting(false);
@@ -271,7 +348,24 @@ export default function ApiKeyPage() {
         sonnerToast.success("Copied to clipboard!");
     };
 
+    // Filtered endpoints directory
+    const filteredEndpoints = useMemo(() => {
+        return API_ENDPOINTS_DIRECTORY.filter((item) => {
+            const matchesCategory = docCategory === "all" || item.category === docCategory;
+            const matchesMethod = docMethod === "all" || item.method === docMethod;
+            const query = docSearch.toLowerCase().trim();
+            const matchesSearch =
+                !query ||
+                item.path.toLowerCase().includes(query) ||
+                item.module.toLowerCase().includes(query) ||
+                item.desc.toLowerCase().includes(query) ||
+                item.scope.toLowerCase().includes(query);
+            return matchesCategory && matchesMethod && matchesSearch;
+        });
+    }, [docCategory, docMethod, docSearch]);
+
     const mcpEndpointUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1/mcp` : '/api/v1/mcp';
+    const apiBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}` : 'http://localhost:3000';
 
     const claudeConfigCode = `{
   "mcpServers": {
@@ -288,6 +382,10 @@ export default function ApiKeyPage() {
     }
   }
 }`;
+
+    const currentCurlCode = `curl -X ${selectedEndpoint.method} "${apiBaseUrl}${selectedEndpoint.path}" \\
+  -H "X-API-KEY: ischool_sk_YOUR_GENERATED_KEY" \\
+  -H "Content-Type: application/json"`;
 
     return (
         <div className="p-3 sm:p-4 md:p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
@@ -378,7 +476,7 @@ export default function ApiKeyPage() {
                         <Cpu className="h-3.5 w-3.5 mr-1.5" /> MCP AI Agent Protocol
                     </TabsTrigger>
                     <TabsTrigger value="docs" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-                        <BookOpen className="h-3.5 w-3.5 mr-1.5" /> REST API Documentation
+                        <BookOpen className="h-3.5 w-3.5 mr-1.5" /> REST API Documentation ({API_ENDPOINTS_DIRECTORY.length}+)
                     </TabsTrigger>
                 </TabsList>
 
@@ -651,50 +749,170 @@ export default function ApiKeyPage() {
                     </div>
                 </TabsContent>
 
-                {/* TAB 3: REST API Documentation */}
-                <TabsContent value="docs">
+                {/* TAB 3: REST API Documentation (All Modules API Endpoints Directory) */}
+                <TabsContent value="docs" className="space-y-6">
                     <Card className="pt-0 border-gray-100 shadow-md">
                         <CardHeader className="px-5 py-4 border-b border-gray-100">
-                            <CardTitle className="text-14 font-bold text-gray-800">RESTful API Endpoints Directory</CardTitle>
-                            <CardDescription className="text-11 text-gray-400 mt-0.5">
-                                Secured RESTful endpoints accessible using header <code className="bg-gray-100 px-1 py-0.5 rounded text-indigo-600 font-mono">X-API-KEY: ischool_sk_...</code>
-                            </CardDescription>
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <CardTitle className="text-15 font-bold text-gray-800 flex items-center gap-2">
+                                        <BookOpen className="h-4 w-4 text-indigo-600" />
+                                        RESTful API Endpoints Directory
+                                    </CardTitle>
+                                    <CardDescription className="text-11 text-gray-400 mt-0.5">
+                                        Secured RESTful API endpoints across all iSchool modules accessible using header <code className="bg-gray-100 px-1 py-0.5 rounded text-indigo-600 font-mono">X-API-KEY: ischool_sk_...</code>
+                                    </CardDescription>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        {filteredEndpoints.length} of {API_ENDPOINTS_DIRECTORY.length} Endpoints
+                                    </span>
+                                </div>
+                            </div>
                         </CardHeader>
+                        
                         <CardContent className="p-5 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
-                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-700">GET</span>
-                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/student-information/students</code>
-                                    <p className="text-[11px] text-gray-500">Retrieve enrolled student records with filter parameters (class, section, search).</p>
+                            
+                            {/* Search & Filters Toolbar */}
+                            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-gray-50/70 p-3 rounded-xl border border-gray-200/80">
+                                {/* Search input */}
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                    <Input
+                                        placeholder="Search endpoints by path, module, or description..."
+                                        value={docSearch}
+                                        onChange={(e) => setDocSearch(e.target.value)}
+                                        className="pl-8 text-[11px] h-9 border-gray-200 bg-white"
+                                    />
                                 </div>
 
-                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
-                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-700">GET</span>
-                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/human-resource/staff-directory</code>
-                                    <p className="text-[11px] text-gray-500">Retrieve school staff, teachers, and designation information.</p>
-                                </div>
-
-                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
-                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-700">GET</span>
-                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/fee-collection/fee-collection</code>
-                                    <p className="text-[11px] text-gray-500">Fetch student fee collection statuses and pending dues.</p>
-                                </div>
-
-                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
-                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">POST</span>
-                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/system-setting/sms-settings/test</code>
-                                    <p className="text-[11px] text-gray-500">Dispatch SMS notification via active SMS & Round Robin gateways.</p>
+                                {/* Method Filter Select */}
+                                <div className="w-full md:w-44">
+                                    <Select value={docMethod} onValueChange={setDocMethod}>
+                                        <SelectTrigger className="h-9 text-[11px] bg-white border-gray-200">
+                                            <SelectValue placeholder="All Methods" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all" className="text-[11px]">All Methods</SelectItem>
+                                            <SelectItem value="GET" className="text-[11px]">GET (Read)</SelectItem>
+                                            <SelectItem value="POST" className="text-[11px]">POST (Create / Action)</SelectItem>
+                                            <SelectItem value="PUT" className="text-[11px]">PUT (Update)</SelectItem>
+                                            <SelectItem value="DELETE" className="text-[11px]">DELETE (Remove)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[11px] font-bold text-gray-600 uppercase">Sample cURL Request</Label>
-                                <pre className="p-4 bg-gray-900 text-emerald-400 font-mono text-[11px] rounded-lg overflow-x-auto border border-gray-800">
-{`curl -X GET "${mcpEndpointUrl.replace('/mcp', '/student-information/students')}" \\
-  -H "X-API-KEY: ischool_sk_YOUR_GENERATED_KEY" \\
-  -H "Content-Type: application/json"`}
+                            {/* Module Category Filter Buttons */}
+                            <div className="flex flex-wrap gap-1.5 pb-1 border-b border-gray-100">
+                                {[
+                                    { id: "all", label: "All Modules" },
+                                    { id: "student_info", label: "Student Info" },
+                                    { id: "fees_finance", label: "Fees & Finance" },
+                                    { id: "academics_hr", label: "Academics & HR" },
+                                    { id: "attendance_exams", label: "Attendance & Exams" },
+                                    { id: "communicate_sms", label: "Communicate & SMS" },
+                                    { id: "system_setting", label: "System Settings" },
+                                    { id: "mcp_ai", label: "MCP AI Protocol" },
+                                    { id: "operations", label: "Operations & Hostel" },
+                                ].map((cat) => (
+                                    <Button
+                                        key={cat.id}
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setDocCategory(cat.id)}
+                                        className={cn(
+                                            "h-7 text-[10px] font-bold uppercase px-3 rounded-full transition-all",
+                                            docCategory === cat.id
+                                                ? "bg-indigo-600 text-white shadow-xs hover:bg-indigo-700"
+                                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                        )}
+                                    >
+                                        {cat.label}
+                                    </Button>
+                                ))}
+                            </div>
+
+                            {/* Endpoints Directory Cards Grid */}
+                            {filteredEndpoints.length === 0 ? (
+                                <div className="p-12 text-center space-y-2">
+                                    <Search className="h-10 w-10 text-gray-300 mx-auto" />
+                                    <p className="text-xs font-bold text-gray-600 uppercase">No Endpoints Match Your Query</p>
+                                    <p className="text-[11px] text-gray-400">Try adjusting your search terms or category filters.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                    {filteredEndpoints.map((ep) => {
+                                        const isSelected = selectedEndpoint.id === ep.id;
+                                        return (
+                                            <div
+                                                key={ep.id}
+                                                onClick={() => setSelectedEndpoint(ep)}
+                                                className={cn(
+                                                    "p-3.5 rounded-xl border transition-all cursor-pointer space-y-2",
+                                                    isSelected
+                                                        ? "border-indigo-500 bg-indigo-50/30 shadow-md ring-1 ring-indigo-500"
+                                                        : "border-gray-200 hover:border-indigo-200 hover:bg-gray-50/60 bg-white shadow-xs"
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span
+                                                            className={cn(
+                                                                "text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wide",
+                                                                ep.method === "GET" && "bg-blue-100 text-blue-700 border border-blue-200",
+                                                                ep.method === "POST" && "bg-emerald-100 text-emerald-700 border border-emerald-200",
+                                                                ep.method === "PUT" && "bg-amber-100 text-amber-700 border border-amber-200",
+                                                                ep.method === "DELETE" && "bg-rose-100 text-rose-700 border border-rose-200"
+                                                            )}
+                                                        >
+                                                            {ep.method}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                                            {ep.module}
+                                                        </span>
+                                                    </div>
+
+                                                    <span className="text-[9px] font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                        {ep.scope}
+                                                    </span>
+                                                </div>
+
+                                                <code className="text-xs font-mono font-bold text-gray-800 block break-all select-all">
+                                                    {ep.path}
+                                                </code>
+
+                                                <p className="text-[11px] text-gray-500 leading-snug">
+                                                    {ep.desc}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Selected Endpoint cURL Code Generator */}
+                            <div className="space-y-2 pt-2 border-t border-gray-100">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[11px] font-bold text-gray-700 uppercase flex items-center gap-1.5">
+                                        <Code className="h-3.5 w-3.5 text-indigo-600" />
+                                        Selected Request cURL Generator (<span className="text-indigo-600">{selectedEndpoint.method} {selectedEndpoint.path}</span>)
+                                    </Label>
+
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(currentCurlCode, 'snippet')}
+                                        className="h-6 text-[10px] text-indigo-600 font-bold uppercase"
+                                    >
+                                        <Copy className="h-3 w-3 mr-1" /> Copy cURL
+                                    </Button>
+                                </div>
+                                <pre className="p-4 bg-gray-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto border border-gray-800 leading-relaxed shadow-inner">
+                                    {currentCurlCode}
                                 </pre>
                             </div>
+
                         </CardContent>
                     </Card>
                 </TabsContent>
