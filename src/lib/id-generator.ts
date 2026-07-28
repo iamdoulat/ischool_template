@@ -70,6 +70,11 @@ export function formatAutoIdentifier(
 }
 
 export interface AutoGenSettings {
+    auto_admission_no?: boolean;
+    admission_no_prefix?: string;
+    admission_no_digit?: number;
+    admission_start_from?: string | number;
+
     auto_roll_no?: boolean;
     roll_no_prefix?: string;
     roll_no_digit?: number;
@@ -89,13 +94,29 @@ export interface AutoGenSettings {
 export function generateAutoStudentIds(
     settings: AutoGenSettings = {},
     className?: string,
-    sectionName?: string
+    sectionName?: string,
+    offset: number = 0
 ) {
+    const parseStart = (val: string | number | undefined, defaultVal: number) => {
+        const num = typeof val === "number" ? val : parseInt(String(val || ""));
+        return (isNaN(num) ? defaultVal : num) + offset;
+    };
+
+    const admissionNo = settings.auto_admission_no !== false
+        ? formatAutoIdentifier(
+            settings.admission_no_prefix || "ADM-{class}{section}",
+            settings.admission_no_digit || 4,
+            parseStart(settings.admission_start_from, 1),
+            className,
+            sectionName
+        )
+        : "";
+
     const rollNo = settings.auto_roll_no !== false
         ? formatAutoIdentifier(
             settings.roll_no_prefix || "RL-{class}{section}",
             settings.roll_no_digit || 4,
-            settings.roll_no_start_from || 100,
+            parseStart(settings.roll_no_start_from, 100),
             className,
             sectionName
         )
@@ -105,7 +126,7 @@ export function generateAutoStudentIds(
         ? formatAutoIdentifier(
             settings.username_prefix || "STD-{class}{section}",
             settings.username_digit || 4,
-            settings.username_start_from || 100,
+            parseStart(settings.username_start_from, 100),
             className,
             sectionName
         )
@@ -115,12 +136,12 @@ export function generateAutoStudentIds(
         ? formatAutoIdentifier(
             settings.parent_username_prefix || "PAR-{class}{section}",
             settings.parent_username_digit || 4,
-            settings.parent_username_start_from || 1,
+            parseStart(settings.parent_username_start_from, 1),
             className,
             sectionName
         )
         : "";
 
-    return { rollNo, username, parentUsername };
+    return { admissionNo, rollNo, username, parentUsername };
 }
 
