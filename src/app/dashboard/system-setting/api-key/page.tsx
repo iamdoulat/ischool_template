@@ -946,15 +946,21 @@ export default function ApiKeyPage() {
                             {/* Module Category Filter Buttons */}
                             <div className="flex flex-wrap gap-1.5 pb-1 border-b border-gray-100">
                                 {[
-                                    { id: "all", label: "All Modules" },
-                                    { id: "student_info", label: "Student Info" },
-                                    { id: "fees_finance", label: "Fees & Finance" },
-                                    { id: "academics_hr", label: "Academics & HR" },
-                                    { id: "attendance_exams", label: "Attendance & Exams" },
-                                    { id: "communicate_sms", label: "Communicate & SMS" },
-                                    { id: "system_setting", label: "System Settings" },
-                                    { id: "mcp_ai", label: "MCP AI Protocol" },
-                                    { id: "operations", label: "Operations & Hostel" },
+                                    { id: "all",                label: "All Modules",          count: API_ENDPOINTS_DIRECTORY.length },
+                                    { id: "auth",               label: "Auth",                 count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="auth").length },
+                                    { id: "student_info",       label: "Student Info",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="student_info").length },
+                                    { id: "front_office",       label: "Front Office",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="front_office").length },
+                                    { id: "academics",          label: "Academics",            count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="academics").length },
+                                    { id: "academics_hr",       label: "HR & Payroll",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="academics_hr").length },
+                                    { id: "fees_finance",       label: "Fees & Finance",       count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="fees_finance").length },
+                                    { id: "attendance_exams",   label: "Attendance & Exams",   count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="attendance_exams").length },
+                                    { id: "communicate_sms",    label: "Communicate & SMS",    count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="communicate_sms").length },
+                                    { id: "operations",         label: "Ops / Hostel",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="operations").length },
+                                    { id: "reports",            label: "Reports",              count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="reports").length },
+                                    { id: "front_cms",          label: "Front CMS",            count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="front_cms").length },
+                                    { id: "system_setting",     label: "System Settings",      count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="system_setting").length },
+                                    { id: "mcp_ai",             label: "API Keys & MCP",       count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="mcp_ai").length },
+                                    { id: "dashboard",          label: "Dashboard",            count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="dashboard").length },
                                 ].map((cat) => (
                                     <Button
                                         key={cat.id}
@@ -962,13 +968,17 @@ export default function ApiKeyPage() {
                                         size="sm"
                                         onClick={() => setDocCategory(cat.id)}
                                         className={cn(
-                                            "h-7 text-[10px] font-bold uppercase px-3 rounded-full transition-all",
+                                            "h-7 text-[10px] font-bold uppercase px-2.5 rounded-full transition-all gap-1.5",
                                             docCategory === cat.id
                                                 ? "bg-indigo-600 text-white shadow-xs hover:bg-indigo-700"
                                                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                         )}
                                     >
                                         {cat.label}
+                                        <span className={cn(
+                                            "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                                            docCategory === cat.id ? "bg-white/25 text-white" : "bg-white text-gray-500"
+                                        )}>{cat.count}</span>
                                     </Button>
                                 ))}
                             </div>
