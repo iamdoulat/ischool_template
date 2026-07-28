@@ -61,8 +61,15 @@ next-env.d.ts
 .claude/
 .gemini/
 CLAUDE.md
+AGENTS.md
+skills-lock.json
 .idea/
 .vscode/
+
+# Dev Scripts & Duplicate Configs
+download-models.js
+next.config.js
+scripts/
 
 # Build Executables & Temp
 composer.phar
