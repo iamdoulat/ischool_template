@@ -1,0 +1,774 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+import {
+    KeyRound,
+    Cpu,
+    Plus,
+    Copy,
+    Check,
+    Trash2,
+    ShieldCheck,
+    Zap,
+    Terminal,
+    RefreshCw,
+    Send,
+    Loader2,
+    CheckCircle2,
+    XCircle,
+    BookOpen,
+    Code2,
+    Activity,
+    Layers
+} from "lucide-react";
+import api from "@/lib/api";
+import { useTranslation } from "@/hooks/use-translation";
+import { toast as sonnerToast } from "sonner";
+
+interface ApiKeyItem {
+    id: number;
+    name: string;
+    key: string;
+    secret?: string;
+    permissions: string[];
+    rate_limit: number;
+    status: boolean;
+    last_used_at: string | null;
+    created_at: string;
+}
+
+const PERMISSION_SCOPES = [
+    { id: "*", label: "Full Access (*)", desc: "All module endpoints & MCP tools" },
+    { id: "students.read", label: "Students (Read)", desc: "View student directory & profiles" },
+    { id: "students.write", label: "Students (Write)", desc: "Create & update student records" },
+    { id: "staff.read", label: "Staff (Read)", desc: "View staff directory & designations" },
+    { id: "fees.read", label: "Fee Collection (Read)", desc: "View fee structures & due reports" },
+    { id: "attendance.read", label: "Attendance (Read)", desc: "View student & staff attendance" },
+    { id: "mcp.all", label: "MCP Protocol (All)", desc: "Execute Model Context Protocol tools" },
+];
+
+export default function ApiKeyPage() {
+    const { t } = useTranslation();
+
+    const [activeTab, setActiveTab] = useState<string>("keys");
+    const [loading, setLoading] = useState<boolean>(true);
+    const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
+    const [stats, setStats] = useState<{ total_keys: number; active_keys: number; mcp_status: string }>({
+        total_keys: 0,
+        active_keys: 0,
+        mcp_status: "Active"
+    });
+
+    // Create Modal state
+    const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
+    const [creating, setCreating] = useState<boolean>(false);
+    const [newKeyName, setNewKeyName] = useState<string>("");
+    const [newRateLimit, setNewRateLimit] = useState<number>(60);
+    const [selectedPermissions, setSelectedPermissions] = useState<string[]>(["*"]);
+
+    // Created Secret Key Modal
+    const [createdSecret, setCreatedSecret] = useState<string | null>(null);
+    const [copiedSecret, setCopiedSecret] = useState<boolean>(false);
+
+    // MCP Tester state
+    const [mcpTool, setMcpTool] = useState<string>("get_students");
+    const [mcpSearch, setMcpSearch] = useState<string>("");
+    const [mcpPhone, setMcpPhone] = useState<string>("+1234567890");
+    const [mcpMessage, setMcpMessage] = useState<string>("Hello from iSchool MCP!");
+    const [mcpTesting, setMcpTesting] = useState<boolean>(false);
+    const [mcpResult, setMcpResult] = useState<any>(null);
+
+    // Copy snippet helper
+    const [copiedSnippet, setCopiedSnippet] = useState<boolean>(false);
+
+    useEffect(() => {
+        fetchApiKeys();
+    }, []);
+
+    const fetchApiKeys = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get('/system-setting/api-keys');
+            if (res.data?.status === 'success') {
+                setApiKeys(res.data.data || []);
+                if (res.data.stats) {
+                    setStats(res.data.stats);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load API keys:", error);
+            sonnerToast.error("Failed to load API keys");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreateKey = async () => {
+        if (!newKeyName.trim()) {
+            sonnerToast.error("Please enter an API Key name");
+            return;
+        }
+
+        setCreating(true);
+        try {
+            const res = await api.post('/system-setting/api-keys', {
+                name: newKeyName.trim(),
+                permissions: selectedPermissions,
+                rate_limit: newRateLimit,
+            });
+
+            if (res.data?.status === 'success') {
+                setCreatedSecret(res.data.raw_token);
+                setIsCreateOpen(false);
+                setNewKeyName("");
+                setSelectedPermissions(["*"]);
+                setNewRateLimit(60);
+                fetchApiKeys();
+                sonnerToast.success("API Key generated successfully!");
+            } else {
+                sonnerToast.error(res.data?.message || "Failed to generate API Key");
+            }
+        } catch (error: any) {
+            sonnerToast.error(error.response?.data?.message || "Failed to generate API Key");
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleToggleStatus = async (id: number, currentName: string) => {
+        try {
+            const res = await api.post(`/system-setting/api-keys/${id}/toggle`);
+            if (res.data?.status === 'success') {
+                const updatedStatus = res.data.data.status;
+                setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: updatedStatus } : k));
+                if (updatedStatus) {
+                    sonnerToast.success(`API Key '${currentName}' activated`);
+                } else {
+                    sonnerToast.info(`API Key '${currentName}' revoked`);
+                }
+            }
+        } catch (error) {
+            sonnerToast.error("Failed to toggle API Key status");
+        }
+    };
+
+    const handleDeleteKey = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this API key? This action cannot be undone.")) return;
+        try {
+            const res = await api.delete(`/system-setting/api-keys/${id}`);
+            if (res.data?.status === 'success') {
+                setApiKeys(prev => prev.filter(k => k.id !== id));
+                sonnerToast.success("API Key deleted");
+            }
+        } catch (error) {
+            sonnerToast.error("Failed to delete API Key");
+        }
+    };
+
+    const handleTestMcpTool = async () => {
+        setMcpTesting(true);
+        setMcpResult(null);
+        try {
+            let args: any = {};
+            if (mcpTool === "get_students" || mcpTool === "get_staff") {
+                if (mcpSearch.trim()) args.search = mcpSearch.trim();
+            } else if (mcpTool === "send_sms_notification") {
+                args.phone = mcpPhone.trim();
+                args.message = mcpMessage.trim();
+            }
+
+            const res = await api.post('/mcp', {
+                jsonrpc: "2.0",
+                id: Date.now(),
+                method: "tools/call",
+                params: {
+                    name: mcpTool,
+                    arguments: args
+                }
+            });
+
+            setMcpResult(res.data);
+            if (!res.data?.result?.isError) {
+                sonnerToast.success(`MCP Tool '${mcpTool}' executed successfully!`);
+            } else {
+                sonnerToast.error("MCP tool returned an error");
+            }
+        } catch (error: any) {
+            setMcpResult({ error: error.message || "MCP execution failed" });
+            sonnerToast.error("MCP Execution Failed");
+        } finally {
+            setMcpTesting(false);
+        }
+    };
+
+    const copyToClipboard = (text: string, type: 'secret' | 'snippet') => {
+        navigator.clipboard.writeText(text);
+        if (type === 'secret') {
+            setCopiedSecret(true);
+            setTimeout(() => setCopiedSecret(false), 2000);
+        } else {
+            setCopiedSnippet(true);
+            setTimeout(() => setCopiedSnippet(false), 2000);
+        }
+        sonnerToast.success("Copied to clipboard!");
+    };
+
+    const mcpEndpointUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1/mcp` : '/api/v1/mcp';
+
+    const claudeConfigCode = `{
+  "mcpServers": {
+    "ischool": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-fetch",
+        "${mcpEndpointUrl}"
+      ],
+      "env": {
+        "X_API_KEY": "ischool_sk_YOUR_GENERATED_KEY_HERE"
+      }
+    }
+  }
+}`;
+
+    return (
+        <div className="p-3 sm:p-4 md:p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            
+            {/* Header Banner */}
+            <Card className="pt-0 overflow-hidden border-indigo-100 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#EFF0FD] to-[#F3E8FF] border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
+                            <KeyRound className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-[16px] sm:text-[18px] font-bold text-gray-800 tracking-tight leading-tight">
+                                RESTful API Keys & Model Context Protocol (MCP)
+                            </h1>
+                            <p className="text-[11px] text-gray-500 mt-0.5">
+                                Manage API access tokens for third-party software & connect AI agents via MCP Protocol
+                            </p>
+                        </div>
+                    </div>
+
+                    <Button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-9 px-4 text-[11px] font-bold uppercase rounded-lg shadow-sm"
+                    >
+                        <Plus className="h-4 w-4 mr-1.5" /> Generate New API Key
+                    </Button>
+                </div>
+            </Card>
+
+            {/* Overview Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                        <KeyRound className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold uppercase text-gray-400">Total API Keys</p>
+                        <p className="text-18 font-extrabold text-gray-800">{loading ? "..." : stats.total_keys}</p>
+                    </div>
+                </Card>
+
+                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
+                    <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold uppercase text-gray-400">Active Keys</p>
+                        <p className="text-18 font-extrabold text-emerald-600">{loading ? "..." : stats.active_keys}</p>
+                    </div>
+                </Card>
+
+                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
+                    <div className="h-10 w-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                        <Cpu className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold uppercase text-gray-400">MCP Server Status</p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-xs font-bold text-gray-800">{stats.mcp_status} (JSON-RPC 2.0)</span>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="p-4 flex items-center gap-3 border-gray-100 shadow-xs">
+                    <div className="h-10 w-10 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                        <Zap className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold uppercase text-gray-400">Default Rate Limit</p>
+                        <p className="text-18 font-extrabold text-gray-800">60 req / min</p>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Navigation Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
+                <TabsList className="bg-white border border-gray-200 p-1 rounded-lg h-auto flex flex-wrap gap-1">
+                    <TabsTrigger value="keys" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
+                        <KeyRound className="h-3.5 w-3.5 mr-1.5" /> API Keys Management
+                    </TabsTrigger>
+                    <TabsTrigger value="mcp" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
+                        <Cpu className="h-3.5 w-3.5 mr-1.5" /> MCP AI Agent Protocol
+                    </TabsTrigger>
+                    <TabsTrigger value="docs" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
+                        <BookOpen className="h-3.5 w-3.5 mr-1.5" /> REST API Documentation
+                    </TabsTrigger>
+                </TabsList>
+
+                {/* TAB 1: API Keys Management */}
+                <TabsContent value="keys">
+                    <Card className="pt-0">
+                        <CardHeader className="px-5 py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-14 font-bold text-gray-800">Active API Keys</CardTitle>
+                                <CardDescription className="text-11 text-gray-400 mt-0.5">
+                                    Third-party software authentication keys with custom permission scopes & rate limits
+                                </CardDescription>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {loading ? (
+                                <div className="p-6 space-y-3">
+                                    <Skeleton className="h-10 w-full" />
+                                    <Skeleton className="h-10 w-full" />
+                                </div>
+                            ) : apiKeys.length === 0 ? (
+                                <div className="p-12 text-center space-y-3">
+                                    <KeyRound className="h-12 w-12 text-gray-300 mx-auto" />
+                                    <p className="text-xs font-bold text-gray-600 uppercase">No API Keys Generated</p>
+                                    <p className="text-[11px] text-gray-400">Generate an API key to allow external software to access iSchool endpoints.</p>
+                                    <Button
+                                        onClick={() => setIsCreateOpen(true)}
+                                        size="sm"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold uppercase mt-2"
+                                    >
+                                        <Plus className="h-3.5 w-3.5 mr-1" /> Create First API Key
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <Table>
+                                        <TableHeader className="bg-gray-50/50">
+                                            <TableRow>
+                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Key Name</TableHead>
+                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Token Prefix</TableHead>
+                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Permissions</TableHead>
+                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Rate Limit</TableHead>
+                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Status</TableHead>
+                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Last Used</TableHead>
+                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500 text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {apiKeys.map((item) => (
+                                                <TableRow key={item.id} className="hover:bg-gray-50/50">
+                                                    <TableCell className="font-bold text-[12px] text-gray-800">
+                                                        {item.name}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono text-[11px] text-gray-600 bg-gray-50 px-2 py-1 rounded w-fit">
+                                                        {item.secret || item.key.substring(0, 15) + "..."}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {(item.permissions || ["*"]).map((perm) => (
+                                                                <span
+                                                                    key={perm}
+                                                                    className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                                                >
+                                                                    {perm}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-[11px] text-gray-600 font-semibold">
+                                                        {item.rate_limit || 60} req/min
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Switch
+                                                                checked={item.status}
+                                                                onCheckedChange={() => handleToggleStatus(item.id, item.name)}
+                                                                className="data-[state=checked]:bg-emerald-600"
+                                                            />
+                                                            <span className={cn("text-[10px] font-bold", item.status ? "text-emerald-600" : "text-gray-400")}>
+                                                                {item.status ? "Active" : "Revoked"}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-[10px] text-gray-400">
+                                                        {item.last_used_at ? new Date(item.last_used_at).toLocaleString() : "Never"}
+                                                    </TableCell>
+                                                    <TableCell className="text-right space-x-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => copyToClipboard(item.key, 'snippet')}
+                                                            className="h-7 w-7 p-0 text-gray-500 hover:text-indigo-600"
+                                                            title="Copy Token"
+                                                        >
+                                                            <Copy className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleDeleteKey(item.id)}
+                                                            className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+                                                            title="Delete Key"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                {/* TAB 2: Model Context Protocol (MCP) Protocol */}
+                <TabsContent value="mcp" className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        
+                        {/* Left: MCP Configuration & Connection Guide */}
+                        <Card className="pt-0 border-indigo-100">
+                            <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
+                                <Cpu className="h-5 w-5 text-indigo-600" />
+                                <div>
+                                    <h2 className="text-14 font-bold text-gray-800">MCP Client Setup Guide</h2>
+                                    <p className="text-[10px] text-gray-500">Connect Claude Desktop, Cursor, or AI agents to iSchool MCP Server</p>
+                                </div>
+                            </div>
+                            <CardContent className="p-5 space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase">MCP Server Endpoint</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            readOnly
+                                            value={mcpEndpointUrl}
+                                            className="font-mono text-[11px] bg-gray-50 border-gray-200 h-9"
+                                        />
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => copyToClipboard(mcpEndpointUrl, 'snippet')}
+                                            className="h-9 px-3 text-xs border-indigo-200 text-indigo-700"
+                                        >
+                                            <Copy className="h-3.5 w-3.5 mr-1" /> Copy
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[11px] font-bold text-gray-600 uppercase">
+                                            claude_desktop_config.json Snippet
+                                        </Label>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => copyToClipboard(claudeConfigCode, 'snippet')}
+                                            className="h-6 text-[10px] text-indigo-600 font-bold uppercase"
+                                        >
+                                            {copiedSnippet ? <Check className="h-3 w-3 mr-1 text-emerald-600" /> : <Copy className="h-3 w-3 mr-1" />}
+                                            {copiedSnippet ? "Copied" : "Copy JSON"}
+                                        </Button>
+                                    </div>
+                                    <pre className="p-3 bg-gray-900 text-emerald-400 font-mono text-[10px] rounded-lg overflow-x-auto leading-relaxed border border-gray-800">
+                                        {claudeConfigCode}
+                                    </pre>
+                                </div>
+
+                                <div className="p-3 bg-indigo-50/50 rounded-lg border border-indigo-100 text-[11px] text-indigo-900 leading-relaxed">
+                                    💡 <strong>How it works:</strong> Third-party AI models (like Claude, ChatGPT, or autonomous agents) connect to this endpoint using the JSON-RPC 2.0 MCP protocol to securely query student lists, attendance rates, fee reports, and trigger automated SMS alerts.
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Right: Live Interactive MCP Tester Console */}
+                        <Card className="pt-0 border-emerald-100">
+                            <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-100">
+                                <Terminal className="h-5 w-5 text-emerald-600" />
+                                <div>
+                                    <h2 className="text-14 font-bold text-gray-800">Interactive MCP Live Inspector</h2>
+                                    <p className="text-[10px] text-gray-500">Test MCP tool execution and inspect live JSON-RPC 2.0 payloads</p>
+                                </div>
+                            </div>
+                            <CardContent className="p-5 space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase">Select MCP Tool</Label>
+                                    <Select value={mcpTool} onValueChange={setMcpTool}>
+                                        <SelectTrigger className="h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
+                                            <SelectValue placeholder="Select tool to execute" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="get_students" className="text-[11px]">get_students (Retrieve student directory)</SelectItem>
+                                            <SelectItem value="get_staff" className="text-[11px]">get_staff (Retrieve staff directory)</SelectItem>
+                                            <SelectItem value="get_attendance_summary" className="text-[11px]">get_attendance_summary (Attendance rate)</SelectItem>
+                                            <SelectItem value="get_fee_due_list" className="text-[11px]">get_fee_due_list (Overdue fee list)</SelectItem>
+                                            <SelectItem value="get_system_settings" className="text-[11px]">get_system_settings (School info)</SelectItem>
+                                            <SelectItem value="send_sms_notification" className="text-[11px]">send_sms_notification (Dispatch SMS alert)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {(mcpTool === "get_students" || mcpTool === "get_staff") && (
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">Search Filter (Optional)</Label>
+                                        <Input
+                                            type="text"
+                                            placeholder="Enter name or ID to filter..."
+                                            value={mcpSearch}
+                                            onChange={(e) => setMcpSearch(e.target.value)}
+                                            className="h-8 text-[11px] border-gray-200"
+                                        />
+                                    </div>
+                                )}
+
+                                {mcpTool === "send_sms_notification" && (
+                                    <div className="space-y-2">
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Recipient Phone *</Label>
+                                            <Input
+                                                type="text"
+                                                value={mcpPhone}
+                                                onChange={(e) => setMcpPhone(e.target.value)}
+                                                className="h-8 text-[11px] border-gray-200"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Message Text *</Label>
+                                            <Input
+                                                type="text"
+                                                value={mcpMessage}
+                                                onChange={(e) => setMcpMessage(e.target.value)}
+                                                className="h-8 text-[11px] border-gray-200"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <Button
+                                    onClick={handleTestMcpTool}
+                                    disabled={mcpTesting}
+                                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white h-9 text-xs font-bold uppercase rounded-lg shadow-sm"
+                                >
+                                    {mcpTesting ? (
+                                        <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Executing Tool...</>
+                                    ) : (
+                                        <><Send className="h-3.5 w-3.5 mr-1.5" /> Execute MCP Tool Call</>
+                                    )}
+                                </Button>
+
+                                {mcpResult && (
+                                    <div className="space-y-1 pt-2">
+                                        <Label className="text-[10px] font-bold text-gray-400 uppercase">JSON-RPC 2.0 Response</Label>
+                                        <pre className="p-3 bg-gray-900 text-emerald-400 font-mono text-[10px] rounded-lg overflow-x-auto max-h-56 border border-gray-800">
+                                            {JSON.stringify(mcpResult, null, 2)}
+                                        </pre>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                {/* TAB 3: REST API Documentation */}
+                <TabsContent value="docs">
+                    <Card className="pt-0">
+                        <CardHeader className="px-5 py-4 border-b border-gray-100">
+                            <CardTitle className="text-14 font-bold text-gray-800">RESTful API Endpoints Directory</CardTitle>
+                            <CardDescription className="text-11 text-gray-400 mt-0.5">
+                                Secured RESTful endpoints accessible using header <code className="bg-gray-100 px-1 py-0.5 rounded text-indigo-600 font-mono">X-API-KEY: ischool_sk_...</code>
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-5 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
+                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-700">GET</span>
+                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/student-information/students</code>
+                                    <p className="text-[11px] text-gray-500">Retrieve enrolled student records with filter parameters (class, section, search).</p>
+                                </div>
+
+                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
+                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-700">GET</span>
+                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/human-resource/staff-directory</code>
+                                    <p className="text-[11px] text-gray-500">Retrieve school staff, teachers, and designation information.</p>
+                                </div>
+
+                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
+                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-blue-100 text-blue-700">GET</span>
+                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/fee-collection/fee-collection</code>
+                                    <p className="text-[11px] text-gray-500">Fetch student fee collection statuses and pending dues.</p>
+                                </div>
+
+                                <div className="p-3.5 rounded-lg border border-gray-200 bg-white space-y-2">
+                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">POST</span>
+                                    <code className="text-xs font-bold text-gray-800 block">/api/v1/system-setting/sms-settings/test</code>
+                                    <p className="text-[11px] text-gray-500">Dispatch SMS notification via active SMS & Round Robin gateways.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-[11px] font-bold text-gray-600 uppercase">Sample cURL Request</Label>
+                                <pre className="p-4 bg-gray-900 text-emerald-400 font-mono text-[11px] rounded-lg overflow-x-auto border border-gray-800">
+{`curl -X GET "${mcpEndpointUrl.replace('/mcp', '/student-information/students')}" \\
+  -H "X-API-KEY: ischool_sk_YOUR_GENERATED_KEY" \\
+  -H "Content-Type: application/json"`}
+                                </pre>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+
+            {/* Create API Key Dialog */}
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-15 font-bold text-gray-800 flex items-center gap-2">
+                            <KeyRound className="h-4 w-4 text-indigo-600" />
+                            Generate New API Key
+                        </DialogTitle>
+                        <DialogDescription className="text-11 text-gray-500">
+                            Configure API key name, scope permissions, and rate limit per minute.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Key Name *</Label>
+                            <Input
+                                placeholder="e.g., Mobile App Integration / Claude MCP Client"
+                                value={newKeyName}
+                                onChange={(e) => setNewKeyName(e.target.value)}
+                                className="h-9 text-[11px] border-gray-200"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Rate Limit (Requests per minute)</Label>
+                            <Input
+                                type="number"
+                                min={1}
+                                max={10000}
+                                value={newRateLimit}
+                                onChange={(e) => setNewRateLimit(Number(e.target.value))}
+                                className="h-9 text-[11px] border-gray-200"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Permission Scopes</Label>
+                            <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto bg-gray-50/50">
+                                {PERMISSION_SCOPES.map((scope) => {
+                                    const isChecked = selectedPermissions.includes(scope.id);
+                                    return (
+                                        <div
+                                            key={scope.id}
+                                            onClick={() => {
+                                                if (scope.id === "*") {
+                                                    setSelectedPermissions(isChecked ? [] : ["*"]);
+                                                } else {
+                                                    const filtered = selectedPermissions.filter(p => p !== "*");
+                                                    if (isChecked) {
+                                                        setSelectedPermissions(filtered.filter(p => p !== scope.id));
+                                                    } else {
+                                                        setSelectedPermissions([...filtered, scope.id]);
+                                                    }
+                                                }
+                                            }}
+                                            className="flex items-start gap-2.5 p-1.5 rounded cursor-pointer hover:bg-white transition-colors"
+                                        >
+                                            <Checkbox checked={isChecked} className="mt-0.5" />
+                                            <div>
+                                                <p className="text-[11px] font-bold text-gray-800">{scope.label}</p>
+                                                <p className="text-[10px] text-gray-400">{scope.desc}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" size="sm" onClick={() => setIsCreateOpen(false)} className="text-xs">
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleCreateKey}
+                            disabled={creating || !newKeyName.trim()}
+                            size="sm"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase"
+                        >
+                            {creating ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Generating...</> : "Generate API Key"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Created Secret Key Dialog */}
+            <Dialog open={Boolean(createdSecret)} onOpenChange={(open) => !open && setCreatedSecret(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-15 font-bold text-emerald-700 flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                            API Key Secret Token Generated
+                        </DialogTitle>
+                        <DialogDescription className="text-11 text-gray-500">
+                            Please copy your secret key now. <strong>For security reasons, it will not be displayed again.</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-3 py-2">
+                        <div className="p-3 bg-gray-900 rounded-lg border border-gray-800 flex items-center justify-between gap-2">
+                            <code className="text-emerald-400 font-mono text-[11px] break-all select-all">
+                                {createdSecret}
+                            </code>
+                            <Button
+                                size="sm"
+                                onClick={() => createdSecret && copyToClipboard(createdSecret, 'secret')}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0"
+                            >
+                                {copiedSecret ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        <p className="text-[10px] text-amber-600 font-medium bg-amber-50 p-2 rounded border border-amber-200">
+                            ⚠️ Keep this key secret. Anyone with this key can access your iSchool REST API endpoints.
+                        </p>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            onClick={() => setCreatedSecret(null)}
+                            className="bg-indigo-600 text-white text-xs font-bold uppercase w-full"
+                        >
+                            I Have Saved My Secret Key
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+        </div>
+    );
+}

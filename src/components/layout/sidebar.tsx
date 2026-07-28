@@ -527,6 +527,7 @@ const menuItems = [
                     { name: "file_types", href: "/dashboard/system-setting/file-types" },
                     { name: "sidebar_menu", href: "/dashboard/system-setting/sidebar-menu" },
                     { name: "system_update", href: "/dashboard/system-setting/system-update" },
+                    { name: "api_key", href: "/dashboard/system-setting/api-key" },
                 ]
             },
         ]
