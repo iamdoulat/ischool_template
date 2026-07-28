@@ -62,7 +62,7 @@ const extractArray = (res: any): any[] => {
 /* ── Skeletons ─────────────────────────────────────────────── */
 function SectionSkeleton() {
   return (
-    <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+    <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
       <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
         <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
         <div className="space-y-1.5">
@@ -387,8 +387,8 @@ export default function QrCodeSettingPage() {
     return (
         <div className="space-y-6">
             {/* Page header */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 w-full">
-                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] overflow-hidden p-0 w-full">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Settings2 className="h-5 w-5" />
@@ -416,7 +416,7 @@ export default function QrCodeSettingPage() {
             ) : (
                 <div className="space-y-6 w-full">
                     {/* Smart Attendance Verification Methods (Merged Section) */}
-                    <Card className="border-[0.5px] border-indigo-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <Card className="border-[0.5px] border-indigo-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
                         <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-purple-50/80 via-indigo-50/60 to-blue-50/50 border-b border-indigo-100">
                             <div className="flex items-center gap-2.5">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
@@ -460,7 +460,7 @@ export default function QrCodeSettingPage() {
                     </Card>
 
                     {/* ZKTeco Biometric / NFC Access Control Manager */}
-                    <Card className="border-[0.5px] border-indigo-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <Card className="border-[0.5px] border-indigo-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
                         <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-orange-50/50 border-b border-indigo-100">
                             <div className="flex items-center gap-2.5">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#6366F1] text-white shadow-sm">
@@ -643,7 +643,7 @@ export default function QrCodeSettingPage() {
                     {/* Hardware Configuration & Processing Cards */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Hardware Configuration */}
-                        <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
                             <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                     <Monitor className="h-4 w-4" />
