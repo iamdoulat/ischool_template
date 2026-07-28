@@ -82,13 +82,14 @@ function LogoCard({
     field: string;
     dimensions: string;
     value: string;
-    onUpload: (field: string, file: File) => Promise<string | null>;
-    onSaveSuccess: (field: string, newUrl: string) => void;
-    t: (key: string) => string;
+    onUpload?: (field: string, file: File) => Promise<string | null>;
+    onSaveSuccess?: (field: string, newUrl: string) => void;
+    t?: (key: string) => string;
 }) {
     const [uploading, setUploading] = useState(false);
     const [imgErrorState, setImgErrorState] = useState<'initial' | 'proxy' | 'failed'>('initial');
     const getImageUrl = useImageUrl();
+    const tr = t || ((key: string) => key);
 
     const defaultLogos: Record<string, string> = {
         print_logo: "/logo-print.png",
@@ -117,12 +118,12 @@ function LogoCard({
         const file = e.target.files?.[0];
         if (file) {
             setUploading(true);
-            const newUrl = await onUpload(field, file);
+            const newUrl = onUpload ? await onUpload(field, file) : null;
             setUploading(false);
             e.target.value = "";
             if (newUrl) {
                 setImgErrorState('initial');
-                onSaveSuccess(field, newUrl);
+                if (onSaveSuccess) onSaveSuccess(field, newUrl);
             }
         }
     };
@@ -1640,62 +1641,6 @@ export default function GeneralSettingPage() {
                                     )}
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                );
-
-            case "Logo":
-                return (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("logo")}</h2>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            <LogoCard
-                                title={t("print_logo")}
-                                field="print_logo"
-                                dimensions="170px X 184px"
-                                value={formData.print_logo}
-                            />
-                            <LogoCard
-                                title={t("admin_logo")}
-                                field="admin_logo"
-                                dimensions="290px X 51px"
-                                value={formData.admin_logo}
-                            />
-                            <LogoCard
-                                title={t("admin_small_logo")}
-                                field="admin_small_logo"
-                                dimensions="32px X 32px"
-                                value={formData.admin_small_logo}
-                            />
-                            <LogoCard
-                                title={t("app_logo")}
-                                field="app_logo"
-                                dimensions="290px X 51px"
-                                value={formData.app_logo}
-                            />
-                        </div>
-                    </div>
-                );
-
-            case "Login Page Background":
-                return (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("login_page_background")}</h2>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl">
-                            <LogoCard
-                                title={t("admin_panel")}
-                                field="login_page_background_admin"
-                                dimensions="1460px X 1080px"
-                                value={formData.login_page_background_admin}
-                            />
-                            <LogoCard
-                                title={t("user_panel")}
-                                field="login_page_background_user"
-                                dimensions="1460px X 1080px"
-                                value={formData.login_page_background_user}
-                            />
                         </div>
                     </div>
                 );
