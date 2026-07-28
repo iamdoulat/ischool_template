@@ -341,7 +341,12 @@ export default function StudentEditPage() {
                 ifsc_code: student.ifsc_code || "",
                 previous_school_details: student.previous_school_details || "",
                 previous_academic_record: Array.isArray(student.previous_academic_record) && student.previous_academic_record.length > 0
-                    ? student.previous_academic_record 
+                    ? student.previous_academic_record.map((rec: any) => ({
+                        school_name: rec?.school_name || "",
+                        class: rec?.class || "",
+                        year: rec?.year || "",
+                        percentage: rec?.percentage || ""
+                    })) 
                     : [
                         { school_name: "", class: "", year: "", percentage: "" },
                         { school_name: "", class: "", year: "", percentage: "" }
@@ -815,7 +820,7 @@ export default function StudentEditPage() {
                                                     <input
                                                         type="text"
                                                         className="w-full px-3 py-2 bg-transparent outline-none text-xs"
-                                                        value={record.school_name}
+                                                        value={record.school_name || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
                                                             newRecords[index].school_name = e.target.value;
@@ -827,7 +832,7 @@ export default function StudentEditPage() {
                                                     <input
                                                         type="text"
                                                         className="w-full px-3 py-2 bg-transparent outline-none text-xs"
-                                                        value={record.class}
+                                                        value={record.class || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
                                                             newRecords[index].class = e.target.value;
@@ -839,7 +844,7 @@ export default function StudentEditPage() {
                                                     <input
                                                         type="text"
                                                         className="w-full px-3 py-2 bg-transparent outline-none text-xs"
-                                                        value={record.year}
+                                                        value={record.year || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
                                                             newRecords[index].year = e.target.value;
@@ -851,7 +856,7 @@ export default function StudentEditPage() {
                                                     <input
                                                         type="text"
                                                         className="w-full px-3 py-2 bg-transparent outline-none text-xs"
-                                                        value={record.percentage}
+                                                        value={record.percentage || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
                                                             newRecords[index].percentage = e.target.value;
