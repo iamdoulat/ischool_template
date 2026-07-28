@@ -623,7 +623,7 @@ export default function StudentAdmissionPage() {
                             <InputField label={t("username")} value={formData.username || ""} onChange={(val) => handleChange("username", val)} readOnly={autoUsernameEnabled} helperText={autoUsernameEnabled ? t("auto_generated") : ""} />
                             <button
                                 type="button"
-                                onClick={fetchUsername}
+                                onClick={() => fetchUsername()}
                                 className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
                                 title={t("generate_username")}
                             >
@@ -1061,7 +1061,7 @@ export default function StudentAdmissionPage() {
                             <InputField label={t("parent_username")} value={formData.parent_username || ""} onChange={(val) => handleChange("parent_username", val)} readOnly={parentAutoUsernameEnabled} helperText={parentAutoUsernameEnabled ? t("auto_generated") : ""} />
                             <button
                                 type="button"
-                                onClick={fetchParentUsername}
+                                onClick={() => fetchParentUsername()}
                                 disabled={generatingParentUsername}
                                 className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
                                 title={t("generate_parent_username")}
