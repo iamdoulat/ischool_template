@@ -18,11 +18,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast as sonnerToast } from "sonner";
 
 const gateways = [
-    "Offline", "Paypal", "Stripe", "PayU", "InstaMojo", "Paystack",
-    "Razorpay", "Paytm", "Pesapal", "Flutter Wave",
+    "Offline", "Paypal", "Stripe", "PayU",
+    "Razorpay", "Paytm", "Flutter Wave",
     "iPay Africa", "JazzCash", "SSLCommerz",
-    "Mollie", "Cashfree", "Payfast", "ToyyibPay", "Twocheckout",
-    "Skrill", "Payhere", "Onepay", "DPO Pay", "MOMO Pay"
+    "Mollie", "Payfast"
 ];
 
 const specificConfigs: Record<string, { fields: { key: string, label: string, type: string, options?: { value: string, label: string }[] }[] }> = {
@@ -52,12 +51,6 @@ const specificConfigs: Record<string, { fields: { key: string, label: string, ty
         fields: [
             { key: "key_id", label: "Key ID", type: "text" },
             { key: "key_secret", label: "Key Secret", type: "password" }
-        ]
-    },
-    "Paystack": {
-        fields: [
-            { key: "public_key", label: "Public Key", type: "text" },
-            { key: "secret_key", label: "Secret Key", type: "password" }
         ]
     }
 };
