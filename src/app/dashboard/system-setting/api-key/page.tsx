@@ -270,6 +270,65 @@ const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
     { id: "nt2", method: "DELETE", path: "/api/v1/notifications/{id}",                                 module: "Notifications",         category: "communicate_sms",   scope: "communicate.read", desc: "Mark and delete a specific notification from the inbox." },
 ];
 
+// ──────────────────────────────────────────────────────────────────────────────
+// MCP TOOLS REGISTRY — mirrors every MCP tool registered in McpController.php
+// ──────────────────────────────────────────────────────────────────────────────
+interface McpToolDef {
+    name:        string;
+    label:       string;
+    category:    string;
+    desc:        string;
+    paramType:   "none" | "search" | "class_filter" | "sms" | "date_filter" | "id" | "subject_filter";
+    paramHint?:  string;
+}
+
+const MCP_TOOLS: McpToolDef[] = [
+    // ── Student Information ─────────────────────────────────────────────
+    { name: "get_students",                category: "Students",          label: "get_students",                paramType: "search",        paramHint: "Search by name, roll, or admission number",        desc: "Retrieve student directory with optional name/ID search and class filter." },
+    { name: "get_student_by_id",           category: "Students",          label: "get_student_by_id",           paramType: "id",            paramHint: "Enter student numeric ID",                         desc: "Fetch a specific student's complete profile by numeric ID." },
+    { name: "get_online_admissions",       category: "Students",          label: "get_online_admissions",       paramType: "none",                                                                        desc: "Retrieve pending online admission applications queue." },
+    // ── Academics ────────────────────────────────────────────────────────
+    { name: "get_classes",                 category: "Academics",         label: "get_classes",                 paramType: "none",                                                                        desc: "List all school academic classes." },
+    { name: "get_sections",                category: "Academics",         label: "get_sections",                paramType: "class_filter",  paramHint: "Enter class ID to filter sections",                desc: "Retrieve class sections, optionally filtered by class ID." },
+    { name: "get_subjects",                category: "Academics",         label: "get_subjects",                paramType: "class_filter",  paramHint: "Enter class ID to filter subjects",                desc: "List curriculum subjects for a given class." },
+    { name: "get_class_timetable",         category: "Academics",         label: "get_class_timetable",         paramType: "class_filter",  paramHint: "Enter class ID",                                  desc: "Fetch the weekly timetable for a specific class." },
+    { name: "get_annual_calendar",         category: "Academics",         label: "get_annual_calendar",         paramType: "none",                                                                        desc: "Retrieve school calendar events and holidays for the active session." },
+    { name: "get_lesson_plans",            category: "Academics",         label: "get_lesson_plans",            paramType: "subject_filter", paramHint: "Enter subject ID to filter plans",               desc: "Fetch teacher lesson plans, optionally filtered by subject ID." },
+    { name: "get_homework_assignments",    category: "Academics",         label: "get_homework_assignments",    paramType: "class_filter",  paramHint: "Enter class ID to filter assignments",             desc: "Retrieve daily homework assignments for a class." },
+    // ── Human Resource ───────────────────────────────────────────────────
+    { name: "get_staff",                   category: "HR & Payroll",      label: "get_staff",                   paramType: "search",        paramHint: "Search by name or employee ID",                    desc: "Retrieve school staff directory, teachers, and designations." },
+    { name: "get_staff_attendance",        category: "HR & Payroll",      label: "get_staff_attendance",        paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Fetch daily staff attendance records for a given date." },
+    { name: "get_payroll",                 category: "HR & Payroll",      label: "get_payroll",                 paramType: "none",                                                                        desc: "Retrieve staff payroll salary slip records." },
+    { name: "get_leave_requests",          category: "HR & Payroll",      label: "get_leave_requests",          paramType: "none",                                                                        desc: "List pending and approved staff leave requests." },
+    { name: "get_teacher_ratings",         category: "HR & Payroll",      label: "get_teacher_ratings",         paramType: "none",                                                                        desc: "Fetch teacher performance rating submissions." },
+    // ── Fees & Finance ───────────────────────────────────────────────────
+    { name: "get_fee_due_list",            category: "Fees & Finance",    label: "get_fee_due_list",            paramType: "class_filter",  paramHint: "Enter class ID to filter dues",                    desc: "Generate overdue fee list across classes." },
+    { name: "get_fee_collection_report",   category: "Fees & Finance",    label: "get_fee_collection_report",   paramType: "date_filter",   paramHint: "Enter date range (e.g. 2024-01-01)",               desc: "Fetch fee collection ledger and transaction summary." },
+    { name: "get_income_report",           category: "Fees & Finance",    label: "get_income_report",           paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Retrieve school income entries for a given period." },
+    { name: "get_expense_report",          category: "Fees & Finance",    label: "get_expense_report",          paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Retrieve school expense vouchers for a given period." },
+    // ── Attendance ───────────────────────────────────────────────────────
+    { name: "get_attendance_summary",      category: "Attendance",        label: "get_attendance_summary",      paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Fetch student attendance summary for a specific date." },
+    { name: "get_period_attendance",       category: "Attendance",        label: "get_period_attendance",       paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Fetch subject/period-wise attendance for a specific date." },
+    { name: "get_leave_applications",      category: "Attendance",        label: "get_leave_applications",      paramType: "none",                                                                        desc: "List pending student leave requests awaiting approval." },
+    // ── Examinations ─────────────────────────────────────────────────────
+    { name: "get_exam_groups",             category: "Examinations",      label: "get_exam_groups",             paramType: "none",                                                                        desc: "Fetch examination groups with schedules and grading config." },
+    { name: "get_exam_results",            category: "Examinations",      label: "get_exam_results",            paramType: "class_filter",  paramHint: "Enter class ID to filter results",                 desc: "Retrieve student exam marksheets and grade reports." },
+    { name: "get_online_exams",            category: "Examinations",      label: "get_online_exams",            paramType: "none",                                                                        desc: "Fetch available online test papers and question bank entries." },
+    // ── Communications ───────────────────────────────────────────────────
+    { name: "get_notices",                 category: "Communicate",       label: "get_notices",                 paramType: "none",                                                                        desc: "Fetch active notice board announcements for all roles." },
+    { name: "send_sms_notification",       category: "Communicate",       label: "send_sms_notification",       paramType: "sms",                                                                         desc: "Dispatch an SMS notification to a specified phone number." },
+    { name: "get_communication_logs",      category: "Communicate",       label: "get_communication_logs",      paramType: "none",                                                                        desc: "Retrieve sent SMS/email communication log history." },
+    // ── Operations ───────────────────────────────────────────────────────
+    { name: "get_front_office_enquiries",  category: "Operations",        label: "get_front_office_enquiries",  paramType: "none",                                                                        desc: "Fetch admission enquiry logs with follow-up status." },
+    { name: "get_inventory",               category: "Operations",        label: "get_inventory",               paramType: "search",        paramHint: "Search by item name or category",                  desc: "List inventory items with stock levels and store location." },
+    { name: "get_transport_routes",        category: "Operations",        label: "get_transport_routes",        paramType: "none",                                                                        desc: "Retrieve transport routes, pickup points, and vehicle assignments." },
+    { name: "get_hostel_rooms",            category: "Operations",        label: "get_hostel_rooms",            paramType: "none",                                                                        desc: "Fetch hostel room occupancy and resident student assignments." },
+    // ── System & Dashboard ───────────────────────────────────────────────
+    { name: "get_system_settings",         category: "System",            label: "get_system_settings",         paramType: "none",                                                                        desc: "Retrieve school profile, session year, and general settings." },
+    { name: "get_dashboard_stats",         category: "System",            label: "get_dashboard_stats",         paramType: "none",                                                                        desc: "Fetch main dashboard KPIs: student count, fee collection, attendance rate." },
+    { name: "get_reports_summary",         category: "System",            label: "get_reports_summary",         paramType: "none",                                                                        desc: "Generate a comprehensive report summary across all modules." },
+];
+
 export default function ApiKeyPage() {
     const { t } = useTranslation();
 
@@ -303,6 +362,8 @@ export default function ApiKeyPage() {
 
     // MCP Tester state
     const [mcpTool, setMcpTool] = useState<string>("get_students");
+    const [mcpToolSearch, setMcpToolSearch] = useState<string>("");
+    const [mcpToolCategory, setMcpToolCategory] = useState<string>("All");
     const [mcpSearch, setMcpSearch] = useState<string>("");
     const [mcpPhone, setMcpPhone] = useState<string>("+1234567890");
     const [mcpMessage, setMcpMessage] = useState<string>("Hello from iSchool MCP!");
@@ -443,12 +504,16 @@ export default function ApiKeyPage() {
     const handleTestMcpTool = async () => {
         setMcpTesting(true);
         setMcpResult(null);
+        const toolDef = MCP_TOOLS.find(t => t.name === mcpTool);
         try {
             let args: any = {};
-            if (mcpTool === "get_students" || mcpTool === "get_staff") {
-                if (mcpSearch.trim()) args.search = mcpSearch.trim();
-            } else if (mcpTool === "send_sms_notification") {
-                args.phone = mcpPhone.trim();
+            if (toolDef?.paramType === "search" && mcpSearch.trim())        args.search  = mcpSearch.trim();
+            if (toolDef?.paramType === "class_filter" && mcpSearch.trim())  args.class_id = mcpSearch.trim();
+            if (toolDef?.paramType === "date_filter" && mcpSearch.trim())   args.date    = mcpSearch.trim();
+            if (toolDef?.paramType === "id" && mcpSearch.trim())            args.id      = mcpSearch.trim();
+            if (toolDef?.paramType === "subject_filter" && mcpSearch.trim()) args.subject_id = mcpSearch.trim();
+            if (toolDef?.paramType === "sms") {
+                args.phone   = mcpPhone.trim();
                 args.message = mcpMessage.trim();
             }
 
@@ -456,20 +521,17 @@ export default function ApiKeyPage() {
                 jsonrpc: "2.0",
                 id: Date.now(),
                 method: "tools/call",
-                params: {
-                    name: mcpTool,
-                    arguments: args
-                }
+                params: { name: mcpTool, arguments: args }
             });
 
             setMcpResult(res.data);
             if (!res.data?.result?.isError) {
                 sonnerToast.success(`MCP Tool '${mcpTool}' executed successfully!`);
             } else {
-                sonnerToast.error("MCP tool returned an error");
+                sonnerToast.error("MCP tool returned an error response");
             }
         } catch (error: any) {
-            setMcpResult({ error: error.message || "MCP Execution Failed" });
+            setMcpResult({ error: error.response?.data?.message || error.message || "MCP Execution Failed" });
             sonnerToast.error("MCP Execution Failed");
         } finally {
             setMcpTesting(false);
@@ -811,58 +873,129 @@ export default function ApiKeyPage() {
                                 </div>
                             </div>
                             <CardContent className="p-5 space-y-4">
+                                {/* ── MCP Tool Search & Category Filter ── */}
                                 <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-600 uppercase">Select MCP Tool</Label>
-                                    <Select value={mcpTool} onValueChange={setMcpTool}>
-                                        <SelectTrigger className="h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
-                                            <SelectValue placeholder="Select tool to execute" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="get_students" className="text-[11px]">get_students (Retrieve student directory)</SelectItem>
-                                            <SelectItem value="get_staff" className="text-[11px]">get_staff (Retrieve staff directory)</SelectItem>
-                                            <SelectItem value="get_attendance_summary" className="text-[11px]">get_attendance_summary (Attendance rate)</SelectItem>
-                                            <SelectItem value="get_fee_due_list" className="text-[11px]">get_fee_due_list (Overdue fee list)</SelectItem>
-                                            <SelectItem value="get_system_settings" className="text-[11px]">get_system_settings (School info)</SelectItem>
-                                            <SelectItem value="send_sms_notification" className="text-[11px]">send_sms_notification (Dispatch SMS alert)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[11px] font-bold text-gray-600 uppercase">Select MCP Tool</Label>
+                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                            {MCP_TOOLS.length} Tools Available
+                                        </span>
+                                    </div>
 
-                                {(mcpTool === "get_students" || mcpTool === "get_staff") && (
-                                    <div className="space-y-1.5">
-                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">Search Filter (Optional)</Label>
+                                    {/* Category filter pills */}
+                                    <div className="flex flex-wrap gap-1">
+                                        {["All", ...Array.from(new Set(MCP_TOOLS.map(t => t.category)))].map(cat => (
+                                            <button
+                                                key={cat}
+                                                type="button"
+                                                onClick={() => setMcpToolCategory(cat)}
+                                                className={cn(
+                                                    "text-[9px] font-bold px-2 py-0.5 rounded-full transition-all border",
+                                                    mcpToolCategory === cat
+                                                        ? "bg-emerald-600 text-white border-emerald-600"
+                                                        : "bg-gray-50 text-gray-500 border-gray-200 hover:border-emerald-300"
+                                                )}
+                                            >
+                                                {cat}
+                                                {cat !== "All" && (
+                                                    <span className={cn("ml-1", mcpToolCategory === cat ? "opacity-70" : "opacity-50")}>
+                                                        ({MCP_TOOLS.filter(t => t.category === cat).length})
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Tool search input */}
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-gray-400" />
                                         <Input
-                                            type="text"
-                                            placeholder="Enter name or ID to filter..."
-                                            value={mcpSearch}
-                                            onChange={(e) => setMcpSearch(e.target.value)}
-                                            className="h-8 text-[11px] border-gray-200"
+                                            placeholder="Search tools…"
+                                            value={mcpToolSearch}
+                                            onChange={e => setMcpToolSearch(e.target.value)}
+                                            className="pl-7 h-8 text-[11px] border-gray-200 bg-white"
                                         />
                                     </div>
-                                )}
 
-                                {mcpTool === "send_sms_notification" && (
-                                    <div className="space-y-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Recipient Phone *</Label>
-                                            <Input
-                                                type="text"
-                                                value={mcpPhone}
-                                                onChange={(e) => setMcpPhone(e.target.value)}
-                                                className="h-8 text-[11px] border-gray-200"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Message Text *</Label>
-                                            <Input
-                                                type="text"
-                                                value={mcpMessage}
-                                                onChange={(e) => setMcpMessage(e.target.value)}
-                                                className="h-8 text-[11px] border-gray-200"
-                                            />
-                                        </div>
+                                    {/* Scrollable tool card list */}
+                                    <div className="max-h-56 overflow-y-auto space-y-1 pr-0.5 rounded-lg border border-gray-100 bg-gray-50/40 p-1.5">
+                                        {MCP_TOOLS
+                                            .filter(t =>
+                                                (mcpToolCategory === "All" || t.category === mcpToolCategory) &&
+                                                (mcpToolSearch === "" || t.name.toLowerCase().includes(mcpToolSearch.toLowerCase()) || t.desc.toLowerCase().includes(mcpToolSearch.toLowerCase()))
+                                            )
+                                            .map(t => (
+                                                <div
+                                                    key={t.name}
+                                                    onClick={() => { setMcpTool(t.name); setMcpSearch(""); }}
+                                                    className={cn(
+                                                        "p-2 rounded-lg cursor-pointer border transition-all",
+                                                        mcpTool === t.name
+                                                            ? "border-emerald-500 bg-emerald-50/60 shadow-sm"
+                                                            : "border-transparent hover:border-emerald-200 hover:bg-white"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center justify-between gap-1">
+                                                        <span className="text-[10px] font-bold font-mono text-gray-800">{t.name}</span>
+                                                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">{t.category}</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{t.desc}</p>
+                                                </div>
+                                            ))
+                                        }
+                                        {MCP_TOOLS.filter(t =>
+                                            (mcpToolCategory === "All" || t.category === mcpToolCategory) &&
+                                            (mcpToolSearch === "" || t.name.toLowerCase().includes(mcpToolSearch.toLowerCase()) || t.desc.toLowerCase().includes(mcpToolSearch.toLowerCase()))
+                                        ).length === 0 && (
+                                            <div className="p-4 text-center text-[10px] text-gray-400">No tools match your filter.</div>
+                                        )}
                                     </div>
-                                )}
+
+                                    {/* Selected tool info banner */}
+                                    {mcpTool && (() => {
+                                        const sel = MCP_TOOLS.find(t => t.name === mcpTool);
+                                        return sel ? (
+                                            <div className="flex items-start gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-emerald-800 font-mono">{sel.name}</p>
+                                                    <p className="text-[9px] text-emerald-700 mt-0.5">{sel.desc}</p>
+                                                </div>
+                                            </div>
+                                        ) : null;
+                                    })()}
+                                </div>
+
+                                {/* Dynamic parameter inputs based on paramType */}
+                                {(() => {
+                                    const sel = MCP_TOOLS.find(t => t.name === mcpTool);
+                                    if (!sel) return null;
+                                    if (sel.paramType === "sms") return (
+                                        <div className="space-y-2">
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Recipient Phone *</Label>
+                                                <Input type="text" value={mcpPhone} onChange={e => setMcpPhone(e.target.value)} className="h-8 text-[11px] border-gray-200" placeholder="+880xxxxxxxxxx" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Message Text *</Label>
+                                                <Input type="text" value={mcpMessage} onChange={e => setMcpMessage(e.target.value)} className="h-8 text-[11px] border-gray-200" placeholder="Your message here…" />
+                                            </div>
+                                        </div>
+                                    );
+                                    if (sel.paramType !== "none") return (
+                                        <div className="space-y-1">
+                                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Parameter (Optional)</Label>
+                                            <Input
+                                                type="text"
+                                                value={mcpSearch}
+                                                onChange={e => setMcpSearch(e.target.value)}
+                                                className="h-8 text-[11px] border-gray-200"
+                                                placeholder={sel.paramHint || "Enter filter value…"}
+                                            />
+                                        </div>
+                                    );
+                                    return null;
+                                })()}
 
                                 <Button
                                     onClick={handleTestMcpTool}
