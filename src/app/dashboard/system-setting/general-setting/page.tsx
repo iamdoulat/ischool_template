@@ -41,7 +41,10 @@ import {
     Trash2,
     Settings,
     Search,
-    ChevronDown
+    ChevronDown,
+    CheckCircle2,
+    AlertTriangle,
+    Save
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import axios from "axios";
@@ -49,7 +52,6 @@ import { useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import api from "@/lib/api";
 import { getImageUrl, useImageUrl } from "@/lib/image-url";
-import { CheckCircle2, AlertTriangle, Save, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/hooks/use-translation";
