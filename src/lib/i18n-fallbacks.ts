@@ -1,6 +1,8 @@
 // Built-in English fallbacks for the i18n system.
 
 export const i18nFallbacks: Record<string, string> = {
+  header_shortcuts: "Header Shortcuts",
+  internal_chat: "Internal Chat",
   add_x: "Add {label}",
   edit_x: "Edit {label}",
   x_list: "{label} List",

@@ -238,6 +238,7 @@ const menuItems = [
                 color: "sky",
                 submenus: [
                     { name: "notice_board", href: "/dashboard/communicate/notice-board" },
+                    { name: "internal_chat", href: "/dashboard/communicate/chat" },
                     { name: "send_email", href: "/dashboard/communicate/send-email" },
                     { name: "send_sms", href: "/dashboard/communicate/send-sms" },
                     { name: "send_wa", href: "/dashboard/communicate/send-wa" },
@@ -526,6 +527,7 @@ const menuItems = [
                     { name: "admission_form", href: "/dashboard/system-setting/admission-form" },
                     { name: "file_types", href: "/dashboard/system-setting/file-types" },
                     { name: "sidebar_menu", href: "/dashboard/system-setting/sidebar-menu" },
+                    { name: "header_shortcuts", href: "/dashboard/system-setting/header-shortcuts" },
                     { name: "system_update", href: "/dashboard/system-setting/system-update" },
                     { name: "api_key", href: "/dashboard/system-setting/api-key" },
                 ]

@@ -35,16 +35,16 @@ export function StaffSection({ staff: propStaff, sectionTitle, sectionSubtitle }
 
     return (
         <section className="py-[50px] bg-slate-50">
-            <div className="container mx-auto px-4 md:px-8 text-center space-y-8">
+            <div className="container mx-auto px-6 sm:px-8 md:px-12 text-center space-y-8">
                 <div className="space-y-4 max-w-2xl mx-auto">
                     <h2 className="text-3xl md:text-4xl font-bold text-slate-900 uppercase tracking-tight">
                         {sectionTitle || "Our Experienced Staffs"}
                     </h2>
                     <div className="h-1 w-20 bg-primary mx-auto rounded-full" />
                     {sectionSubtitle && (
-                      <p className="text-muted-foreground text-lg">
-                          {sectionSubtitle}
-                      </p>
+                        <p className="text-muted-foreground text-lg">
+                            {sectionSubtitle}
+                        </p>
                     )}
                 </div>
 

@@ -106,6 +106,7 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
 
   // Communicate
   "/dashboard/communicate/notice-board": { moduleKey: "communicate", submenuName: "notice_board" },
+  "/dashboard/communicate/chat": { moduleKey: "communicate", submenuName: "internal_chat" },
   "/dashboard/communicate/send-email": { moduleKey: "communicate", submenuName: "send_email" },
   "/dashboard/communicate/send-sms": { moduleKey: "communicate", submenuName: "send_sms" },
   "/dashboard/communicate/send-wa": { moduleKey: "communicate", submenuName: "send_wa" },
@@ -276,6 +277,7 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
   "/dashboard/system-setting/admission-form": { moduleKey: "system_setting", submenuName: "admission_form" },
   "/dashboard/system-setting/file-types": { moduleKey: "system_setting", submenuName: "file_types" },
   "/dashboard/system-setting/sidebar-menu": { moduleKey: "system_setting", submenuName: "sidebar_menu" },
+  "/dashboard/system-setting/header-shortcuts": { moduleKey: "system_setting", submenuName: "header_shortcuts" },
 
   "/dashboard/system-setting/system-update": { moduleKey: "system_setting", submenuName: "system_update" },
 };

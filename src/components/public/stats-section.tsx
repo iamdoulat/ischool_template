@@ -65,7 +65,7 @@ export function StatsSection({ students = 2500, teachers = 150, awards = 50, cou
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
 
-            <div className="container mx-auto px-4 md:px-8 relative z-10">
+            <div className="container mx-auto pl-3 pr-5 sm:px-6 md:px-8 relative z-10">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
                     {stats.map((stat) => (
                         <div

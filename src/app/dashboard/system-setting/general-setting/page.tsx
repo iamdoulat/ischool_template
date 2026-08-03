@@ -38,6 +38,8 @@ import {
     Upload,
     RefreshCw,
     Clock,
+    Trash2,
+    Settings,
     Search,
     ChevronDown
 } from "lucide-react";
@@ -536,6 +538,25 @@ export default function GeneralSettingPage() {
             handleSave(updated);
             return updated;
         });
+    };
+
+    const [clearingCache, setClearingCache] = useState(false);
+
+    const handleClearCache = async () => {
+        setClearingCache(true);
+        try {
+            const res = await api.post("/system-setting/clear-cache");
+            if (res.data?.success || res.data?.status === "success") {
+                toast("success", "System cache cleared successfully!");
+            } else {
+                toast("success", "Cache cleared!");
+            }
+        } catch (error) {
+            console.error("Failed to clear system cache:", error);
+            toast("error", "Failed to clear system cache.");
+        } finally {
+            setClearingCache(false);
+        }
     };
 
     const renderContent = () => {
@@ -2556,6 +2577,16 @@ export default function GeneralSettingPage() {
                             <p className="text-xs text-gray-500 mt-1">{t("configure_your_schools_general_settings")}</p>
                         </div>
                     </div>
+
+                    <Button
+                        variant="outline"
+                        onClick={handleClearCache}
+                        disabled={clearingCache}
+                        className="h-9 px-4 rounded-full text-xs font-bold gap-2 border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-all shadow-sm shrink-0"
+                    >
+                        {clearingCache ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        Clear System Cache
+                    </Button>
                 </div>
                 <CardContent className="p-6 pt-4">
                     <div className="flex flex-col md:flex-row gap-6">

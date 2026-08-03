@@ -164,18 +164,18 @@ export function PublicHeader() {
     return (
         <header className="w-full flex flex-col z-50 sticky top-0 bg-white shadow-sm overflow-x-clip">
             {/* Top Bar */}
-            <div className="bg-white border-b border-gray-200/80 py-2 px-4 md:px-8 text-xs font-medium text-slate-600 transition-all duration-300">
-                <div className="container mx-auto flex flex-wrap justify-between items-center gap-3">
+            <div className="bg-white border-b border-gray-200/80 pt-3.5 pb-2 sm:py-2 md:py-2.5 px-4 sm:px-6 md:px-8 text-xs font-medium text-slate-600">
+                <div className="container mx-auto flex flex-wrap justify-between items-center gap-2 sm:gap-3">
                     {/* Contact Information */}
-                    <div className="flex items-center gap-4 flex-wrap">
-                        <a href={`tel:${settings?.phone || "+1 (800) 555-1234"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors">
+                    <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 sm:gap-4 pr-1.5 sm:pr-0">
+                        <a href={`tel:${settings?.phone || "+1 (800) 555-1234"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
                             <Phone className="h-3.5 w-3.5 text-[#044E43]" />
                             <span>{settings?.phone || "+1 (800) 555-1234"}</span>
                         </a>
                         <div className="w-px h-3.5 bg-gray-300 hidden sm:block" />
-                        <a href={`mailto:${settings?.email || "hello@eduex.com"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors">
+                        <a href={`mailto:${settings?.email || "hello@ischool.com"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
                             <Mail className="h-3.5 w-3.5 text-[#044E43]" />
-                            <span>{settings?.email || "hello@eduex.com"}</span>
+                            <span>{settings?.email || "hello@ischool.com"}</span>
                         </a>
                         <div className="w-px h-3.5 bg-gray-300 hidden md:block" />
                         <div className="hidden lg:flex items-center gap-1.5">
@@ -185,7 +185,7 @@ export function PublicHeader() {
                     </div>
 
                     {/* Social Icons, Language Dropdown, Search & Login/Dashboard */}
-                    <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+                    <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 sm:gap-4 flex-wrap">
                         {/* Circular Social Buttons */}
                         <div className="flex items-center gap-2">
                             <a
@@ -228,79 +228,82 @@ export function PublicHeader() {
                             )}
                         </div>
 
-                        {/* Functional Language Selector (English, Bangla) */}
-                        <div className="relative">
-                            <select
-                                value={currentLangCode}
-                                onChange={(e) => handleLanguageChange(e.target.value)}
-                                className="appearance-none bg-white border border-gray-300 rounded-full py-1 pl-3 pr-7 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#044E43] shadow-sm hover:border-gray-400 transition-all"
+                        {/* Right-aligned Search & Action controls */}
+                        <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0 pr-1.5 sm:pr-0">
+                            {/* Functional Language Selector (English, Bangla) - Hidden on small mobile screens */}
+                            <div className="relative hidden sm:block">
+                                <select
+                                    value={currentLangCode}
+                                    onChange={(e) => handleLanguageChange(e.target.value)}
+                                    className="appearance-none bg-white border border-gray-300 rounded-full py-1 pl-3 pr-7 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#044E43] shadow-sm hover:border-gray-400 transition-all"
+                                >
+                                    {LANGUAGES.map((lang) => (
+                                        <option key={lang.short_code} value={lang.short_code}>
+                                            {lang.label}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="h-3.5 w-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            </div>
+
+                            {/* Search Trigger Button */}
+                            <button
+                                onClick={() => setIsSearchOpen(true)}
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-[#044E43] hover:text-white transition-all duration-300 shadow-sm"
+                                title={t("search")}
                             >
-                                {LANGUAGES.map((lang) => (
-                                    <option key={lang.short_code} value={lang.short_code}>
-                                        {lang.label}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown className="h-3.5 w-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <Search className="h-3.5 w-3.5" />
+                            </button>
+
+                            {/* Login / Dashboard Button */}
+                            {!mounted || !user ? (
+                                <Link href="/login" className="group">
+                                    <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
+                                        <span>{t("login")}</span>
+                                        <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                            <ArrowUpRight className="h-3 w-3" />
+                                        </div>
+                                    </div>
+                                </Link>
+                            ) : (
+                                <Link href={getDashboardUrl()} className="group">
+                                    <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
+                                        <span>{t("dashboard")}</span>
+                                        <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                            <LayoutGrid className="h-3 w-3" />
+                                        </div>
+                                    </div>
+                                </Link>
+                            )}
                         </div>
-
-                        {/* Search Trigger Button */}
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-[#044E43] hover:text-white transition-all duration-300 shadow-sm"
-                            title={t("search")}
-                        >
-                            <Search className="h-3.5 w-3.5" />
-                        </button>
-
-                        {/* Login / Dashboard Button */}
-                        {!mounted || !user ? (
-                            <Link href="/login" className="group">
-                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
-                                    <span>{t("login")}</span>
-                                    <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                        <ArrowUpRight className="h-3 w-3" />
-                                    </div>
-                                </div>
-                            </Link>
-                        ) : (
-                            <Link href={getDashboardUrl()} className="group">
-                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
-                                    <span>{t("dashboard")}</span>
-                                    <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                        <LayoutGrid className="h-3 w-3" />
-                                    </div>
-                                </div>
-                            </Link>
-                        )}
                     </div>
                 </div>
             </div>
 
             {/* Main Navigation */}
-            <div className="bg-[#F4F6F5] border-b border-gray-200/60 sticky top-0 shadow-sm z-40">
-                <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between relative">
+            <div className="bg-[#F4F6F5] border-b border-gray-200/60 w-full">
+                <div className="container mx-auto px-4 sm:px-6 md:px-8 h-11 sm:h-14 md:h-18 flex items-center justify-between relative">
 
                     {/* Logo with Curved Dark Teal Badge */}
                     <div className="relative flex items-center h-full shrink-0">
-                        <div className="bg-[#044E43] h-full px-4 sm:px-5 md:px-6 flex items-center relative z-10 shadow-sm min-w-[160px] sm:min-w-[190px] md:min-w-[220px] lg:min-w-[250px] before:content-[''] before:absolute before:right-full before:top-0 before:bottom-0 before:w-[100vw] before:bg-[#044E43]">
-                            <Link href="/" className="flex items-center gap-2.5 text-white group relative z-10 py-1">
+                        <div className="bg-[#044E43] h-full pl-1 pr-3 sm:px-5 md:px-6 flex items-center relative z-10 min-w-[110px] sm:min-w-[180px] md:min-w-[220px] lg:min-w-[250px] before:content-[''] before:absolute before:right-full before:top-0 before:bottom-0 before:w-[100vw] before:bg-[#044E43]">
+                            <Link href="/" className="flex items-center gap-2 text-white group relative z-10 py-0.5">
                                 {logoSrc ? (
                                     <img
                                         src={getImageUrl(logoSrc)}
                                         alt={settings?.school_name || "School Logo"}
-                                        className="h-10 sm:h-11 md:h-12 lg:h-13 w-auto max-w-[170px] sm:max-w-[200px] md:max-w-[230px] lg:max-w-[260px] object-contain transition-transform group-hover:scale-105 drop-shadow-sm"
+                                        className="h-7 sm:h-9 md:h-11 lg:h-12 w-auto max-w-[125px] sm:max-w-[180px] md:max-w-[220px] lg:max-w-[260px] object-contain transition-transform group-hover:scale-105 drop-shadow-sm"
                                     />
                                 ) : (
                                     <>
-                                        <div className="flex items-center justify-center p-1.5 rounded-xl bg-white/10 text-white shrink-0">
-                                            <GraduationCap className="h-6 w-6 sm:h-7 sm:w-7 transition-transform group-hover:scale-110" />
+                                        <div className="flex items-center justify-center p-1 sm:p-1.5 rounded-xl bg-white/10 text-white shrink-0">
+                                            <GraduationCap className="h-4 w-4 sm:h-6 sm:w-6 transition-transform group-hover:scale-110" />
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="font-black text-base sm:text-lg md:text-xl tracking-tight leading-none text-white font-sans whitespace-nowrap">
+                                            <span className="font-black text-xs sm:text-base md:text-xl tracking-tight leading-none text-white font-sans whitespace-nowrap">
                                                 {settings?.school_name || "EduEx LMS"}
                                             </span>
-                                            <span className="text-[8px] sm:text-[9px] font-semibold tracking-widest text-emerald-200 uppercase mt-0.5 whitespace-nowrap">
+                                            <span className="text-[6.5px] sm:text-[8.5px] font-semibold tracking-widest text-emerald-200 uppercase mt-0.5 whitespace-nowrap">
                                                 {settings?.school_slogan || "Education & LMS"}
                                             </span>
                                         </div>
@@ -308,8 +311,8 @@ export function PublicHeader() {
                                 )}
                             </Link>
 
-                            {/* SVG Curved Shape Flange - Extra Sweeping Curve */}
-                            <div className="absolute left-full top-0 h-full w-16 sm:w-24 md:w-28 lg:w-32 xl:w-36 text-[#044E43] pointer-events-none">
+                            {/* SVG Curved Shape Flange - Extra Sweeping Curve without gray line seam */}
+                            <div className="absolute left-[calc(100%-1px)] top-0 h-full w-9 sm:w-20 md:w-28 lg:w-32 xl:w-36 text-[#044E43] pointer-events-none">
                                 <svg className="h-full w-full" viewBox="0 0 160 100" fill="currentColor" preserveAspectRatio="none">
                                     <path d="M 0 0 C 45 0 70 25 85 50 C 100 75 120 100 160 100 L 0 100 Z" />
                                 </svg>
@@ -341,15 +344,15 @@ export function PublicHeader() {
                     </nav>
 
                     {/* Mobile Menu Toggle */}
-                    <div className="lg:hidden flex items-center">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-slate-800"
+                    <div className="lg:hidden flex items-center pr-1 sm:pr-0">
+                        <button
+                            type="button"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-[#044E43] hover:text-white transition-all duration-300 shadow-sm"
+                            aria-label="Toggle Menu"
                         >
-                            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-                        </Button>
+                            {isMenuOpen ? <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Menu className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                        </button>
                     </div>
                 </div>
 

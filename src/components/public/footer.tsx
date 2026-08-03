@@ -64,8 +64,8 @@ export function PublicFooter() {
     return (
         <footer className="bg-slate-900 text-slate-300">
             {/* Main Footer Content */}
-            <div className="container mx-auto px-4 md:px-8 py-12 md:py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
+            <div className="container mx-auto px-4 sm:px-6 md:px-8 py-12 md:py-16">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 md:gap-12">
                     {/* Brand Column (Column 1) */}
                     <div className="space-y-4">
                         <Link href="/" className="flex items-center gap-3 text-white group">
@@ -97,85 +97,95 @@ export function PublicFooter() {
 
                         <div className="flex gap-4 pt-2">
                             {settings?.facebook_url && (
-                                <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
                                     <Facebook className="h-5 w-5" />
                                 </a>
                             )}
                             {settings?.twitter_url && (
-                                <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
                                     <Twitter className="h-5 w-5" />
                                 </a>
                             )}
                             {settings?.instagram_url && (
-                                <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
                                     <Instagram className="h-5 w-5" />
                                 </a>
                             )}
                             {settings?.youtube_url && (
-                                <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
                                     <Youtube className="h-5 w-5" />
                                 </a>
                             )}
                             {settings?.linkedin_url && (
-                                <a href={settings.linkedin_url} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                                <a href={settings.linkedin_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
                                     <Linkedin className="h-5 w-5" />
                                 </a>
                             )}
                         </div>
                     </div>
 
-                    {/* Column 2: Quick Links */}
-                    <div>
-                        <h3 className="text-white font-bold text-lg mb-4">{t("quick_links")}</h3>
-                        <ul className="space-y-1 text-sm">
+                    {/* Quick Links Column (Column 2) */}
+                    <div className="space-y-4">
+                        <h4 className="text-white font-bold text-base uppercase tracking-tight">{settings?.footer_menu_label || t("quick_links")}</h4>
+                        <div className="w-12 h-1 bg-[#044E43] rounded-full" />
+                        <ul className="space-y-2 text-sm text-slate-400">
                             {getColumnMenus(2).length > 0 ? (
                                 getColumnMenus(2).map(item => (
                                     <li key={item.id}>{renderMenuLink(item)}</li>
                                 ))
                             ) : (
                                 <>
-                                    <li><Link href="/" className="hover:text-primary transition-colors">{t("home")}</Link></li>
-                                    <li><Link href="/academics" className="hover:text-primary transition-colors">{t("academics")}</Link></li>
-                                    <li><Link href="/online_admission" className="hover:text-primary transition-colors">{t("admissions")}</Link></li>
+                                    <li><Link href="/about" className="hover:text-white transition-colors">{t("about_us")}</Link></li>
+                                    <li><Link href="/academics" className="hover:text-white transition-colors">{t("academics")}</Link></li>
+                                    <li><Link href="/online_admission" className="hover:text-white transition-colors">{t("admissions")}</Link></li>
+                                    <li><Link href="/exam-results" className="hover:text-white transition-colors">{t("exam_results")}</Link></li>
+                                    <li><Link href="/notices" className="hover:text-white transition-colors">{t("notices")}</Link></li>
+                                    <li><Link href="/contact-us" className="hover:text-white transition-colors">{t("contact")}</Link></li>
                                 </>
                             )}
                         </ul>
                     </div>
 
-                    {/* Column 3: Information */}
-                    <div>
-                        <h3 className="text-white font-bold text-lg mb-4">{t("information")}</h3>
-                        <ul className="space-y-1 text-sm">
+                    {/* Information Column (Column 3) */}
+                    <div className="space-y-4">
+                        <h4 className="text-white font-bold text-base uppercase tracking-tight">{t("information")}</h4>
+                        <div className="w-12 h-1 bg-[#044E43] rounded-full" />
+                        <ul className="space-y-2 text-sm text-slate-400">
                             {informationMenus.length > 0 ? (
                                 informationMenus.map(item => (
                                     <li key={item.id}>{renderMenuLink(item)}</li>
                                 ))
                             ) : (
                                 <>
-                                    <li><Link href="/academics" className="hover:text-primary transition-colors">{t("about_us")}</Link></li>
-                                    <li><Link href="/contact-us" className="hover:text-primary transition-colors">{t("contact_us")}</Link></li>
-                                    <li><Link href="/exam-results" className="hover:text-primary transition-colors">{t("exam_results")}</Link></li>
-                                    <li><Link href="/notices" className="hover:text-primary transition-colors">{t("notices")}</Link></li>
+                                    <li><Link href="/online_admission" className="hover:text-white transition-colors">{t("online_admission")}</Link></li>
+                                    <li><Link href="/exam-results" className="hover:text-white transition-colors">{t("exam_results")}</Link></li>
+                                    <li><Link href="/notices" className="hover:text-white transition-colors">{t("notice_board")}</Link></li>
+                                    <li><Link href="/contact-us" className="hover:text-white transition-colors">{t("contact_us")}</Link></li>
                                 </>
                             )}
                         </ul>
                     </div>
 
-                    {/* Column 4: Contact Info */}
-                    <div>
-                        <h3 className="text-white font-bold text-lg mb-4">{settings?.footer_contact_title || t("contact_us")}</h3>
-                        <ul className="space-y-4 text-sm mb-4">
+                    {/* Contact Us Column (Column 4) */}
+                    <div className="space-y-4">
+                        <h4 className="text-white font-bold text-base uppercase tracking-tight">{settings?.footer_contact_info_label || t("contact_us")}</h4>
+                        <div className="w-12 h-1 bg-[#044E43] rounded-full" />
+                        <ul className="space-y-3 text-sm text-slate-400">
                             <li className="flex items-start gap-3">
-                                <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                                <span>{settings?.address || "123 Education Street, Knowledge City, State - 400001"}</span>
+                                <MapPin className="h-5 w-5 text-[#044E43] shrink-0 mt-0.5" />
+                                <span>{settings?.address || "371 7th Ave, New York, NY 10001, USA"}</span>
                             </li>
                             <li className="flex items-center gap-3">
-                                <Phone className="h-5 w-5 text-primary shrink-0" />
-                                <span>{settings?.phone || "+1 234 567 8900"}</span>
+                                <Phone className="h-5 w-5 text-[#044E43] shrink-0" />
+                                <a href={`tel:${settings?.phone || "+1 (800) 555-1234"}`} className="hover:text-white transition-colors">
+                                    {settings?.phone || "+1 (800) 555-1234"}
+                                </a>
                             </li>
                             <li className="flex items-center gap-3">
-                                <Mail className="h-5 w-5 text-primary shrink-0" />
-                                <span>{settings?.email || "info@smartschool.com.bd"}</span>
+                                <Mail className="h-5 w-5 text-[#044E43] shrink-0" />
+                                <a href={`mailto:${settings?.email || "hello@eduex.com"}`} className="hover:text-white transition-colors">
+                                    {settings?.email || "hello@eduex.com"}
+                                </a>
                             </li>
                         </ul>
                         {/* Dynamic Column 4 Links */}
@@ -193,7 +203,7 @@ export function PublicFooter() {
 
             {/* Copyright Bar */}
             <div className="border-t border-slate-800 bg-slate-950/50">
-                <div className="container mx-auto px-4 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] text-slate-500">
+                <div className="container mx-auto pl-3 pr-5 sm:px-6 md:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-[12px] text-slate-500">
                     <p>© {new Date().getFullYear()} {settings?.school_name || "iSchool"}. {t("all_rights_reserved")}.</p>
                     <div className="flex gap-6">
                         <Link href="/privacy-policy" className="hover:text-white transition-colors">{t("privacy_policy")}</Link>

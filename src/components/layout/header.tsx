@@ -22,7 +22,10 @@ import {
     GraduationCap
 } from "lucide-react";
 import { CurrencySwitcher } from "./currency-switcher";
+import { BranchSwitcher } from "./branch-switcher";
+import { HeaderShortcutsPopover } from "./header-shortcuts-popover";
 import { ThemeToggle } from "./theme-toggle";
+import { InternalChatDialog } from "@/components/chat/internal-chat-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -216,8 +219,8 @@ function HeaderStudentSearch({ user }: { user?: any }) {
     }, []);
 
     const isStudentUser = mounted && Boolean(
-        user?.role === "Student" || 
-        user?.role === "Parent" || 
+        user?.role === "Student" ||
+        user?.role === "Parent" ||
         (typeof window !== "undefined" && window.location.pathname.startsWith("/user"))
     );
 
@@ -232,7 +235,7 @@ function HeaderStudentSearch({ user }: { user?: any }) {
 
         if (isStudentUser) {
             setLoading(true);
-            const matchedPortalItems = STUDENT_PORTAL_SEARCH_ITEMS.filter(item => 
+            const matchedPortalItems = STUDENT_PORTAL_SEARCH_ITEMS.filter(item =>
                 item.title.toLowerCase().includes(q) ||
                 item.subtitle.toLowerCase().includes(q) ||
                 item.keywords.some(k => k.toLowerCase().includes(q))
@@ -464,7 +467,7 @@ function HeaderStudentSearch({ user }: { user?: any }) {
                                 })
                             ) : !loading ? (
                                 <div className="p-4 text-center text-xs text-muted-foreground">
-                                    {isStudentUser 
+                                    {isStudentUser
                                         ? `No personal portal items match "${query}"`
                                         : `No students found matching "${query}"`}
                                 </div>
@@ -492,7 +495,26 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const { settings, loading } = useSettings();
     const { selectedLanguage, setSelectedLanguage, setUserContext, t } = useLanguage();
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
     const getImageUrl = useImageUrl();
+
+    useEffect(() => {
+        const fetchUnreadChatCount = async () => {
+            try {
+                const res = await api.get('/chat/unread-count', { skipGlobalErrorHandler: true });
+                if (res.data?.success) {
+                    setUnreadChatCount(res.data.count || 0);
+                }
+            } catch {
+                // Silently ignore
+            }
+        };
+
+        fetchUnreadChatCount();
+        const interval = setInterval(fetchUnreadChatCount, 15000);
+        return () => clearInterval(interval);
+    }, []);
 
     const NotificationBell = () => {
         const [notifications, setNotifications] = useState<any[]>([]);
@@ -588,8 +610,8 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         ) : (
                             <div className="flex flex-col">
                                 {notifications.map((notif) => (
-                                    <div 
-                                        key={notif.id} 
+                                    <div
+                                        key={notif.id}
                                         className={cn(
                                             "flex items-start gap-3 p-3 border-b border-muted/30 hover:bg-muted/30 transition-colors cursor-pointer",
                                             !notif.is_read ? "bg-primary/5" : ""
@@ -738,9 +760,9 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     };
 
     return (
-        <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl pl-2 pr-4 md:pr-8 flex items-center justify-between gap-4 sticky top-0 z-30 transition-all duration-300">
-            <div className="flex items-center gap-4 min-w-0 shrink-0">
-                <div className="relative group">
+        <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-30 transition-all duration-300 w-full">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                <div className="relative group shrink-0">
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary/40 to-indigo-500/40 rounded-xl blur opacity-25 group-hover:opacity-100 transition duration-300 animate-pulse" />
                     <Button
                         variant="ghost"
@@ -751,12 +773,12 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         <Menu className="h-5 w-5" />
                     </Button>
                 </div>
-                <div className="flex flex-col min-w-0 text-left">
-                    <h1 className="text-base md:text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-600 to-rose-500 animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap overflow-hidden text-ellipsis">
+                <div className="flex flex-col text-left">
+                    <h1 className="text-xs sm:text-base md:text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-600 to-rose-500 animate-in fade-in slide-in-from-left-4 duration-500 whitespace-normal sm:whitespace-nowrap leading-tight">
                         {loading ? (
                             <div className="h-6 w-32 bg-muted-foreground/10 animate-pulse rounded-md" />
                         ) : (
-                            settings?.school_name || t("smart_school")
+                            settings?.school_name || (typeof t === "function" ? t("smart_school") : "Smart School")
                         )}
                     </h1>
                     <div className="h-0.5 w-12 bg-gradient-to-r from-primary to-transparent rounded-full mt-[-2px] hidden md:block opacity-70" />
@@ -788,33 +810,17 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                 )}
 
                 <div className="hidden md:flex items-center gap-1 md:gap-2">
-                    <Button variant="ghost" size="icon" className="hidden sm:flex text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                        <LayoutGrid className="h-5 w-5" />
-                    </Button>
+                    <HeaderShortcutsPopover />
+
+                    <BranchSwitcher user={user} />
 
                     {user && ['Super Admin', 'Admin'].includes(user.role) && (
-                        <>
-                            <div className="relative group hidden sm:block">
-                                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                                    <ArrowLeftRight className="h-5 w-5" />
-                                </Button>
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1.5 bg-[#6366f1] text-white text-[11px] font-bold rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#6366f1] rotate-45" />
-                                    {t("switch_branch")}
-                                </div>
-                            </div>
-
-                            <CurrencySwitcher />
-                        </>
+                        <CurrencySwitcher />
                     )}
 
                     <LanguageSelector />
 
                     <NotificationBell />
-
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl">
-                        <MessageSquare className="h-5 w-5" />
-                    </Button>
 
                     {mounted && (
                         <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
@@ -850,6 +856,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
                             {/* Mobile mode quick action icons inside profile action menu */}
                             <div className="md:hidden p-2 border-b border-muted/50 mb-2 bg-muted/20 rounded-xl flex items-center justify-between gap-1">
+                                <BranchSwitcher user={user} />
                                 {user && ['Super Admin', 'Admin'].includes(user.role) && (
                                     <CurrencySwitcher />
                                 )}
@@ -885,6 +892,12 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                     </Popover>
                 )}
             </div>
+
+            <InternalChatDialog
+                open={chatOpen}
+                onOpenChange={setChatOpen}
+                currentUser={user}
+            />
         </header>
     );
 }

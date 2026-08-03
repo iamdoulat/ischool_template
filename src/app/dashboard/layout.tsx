@@ -84,12 +84,12 @@ function DashboardLayoutContent({
             <div className="flex flex-col flex-1 h-screen min-h-0 overflow-hidden shadow-2xl relative">
                 <Header onToggleSidebar={toggleSidebar} />
                 <main className={cn(
-                    "flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8",
+                    "flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-4 md:py-6 lg:py-8 w-full max-w-full min-w-0",
                     settings?.box_content === 'compact' ? "max-w-[1400px] mx-auto w-full" : "w-full"
                 )}>
                     <PageGuard>{children}</PageGuard>
                 </main>
-                <footer className="h-14 flex-shrink-0 border-t bg-background flex items-center justify-between px-4 md:px-8 z-20">
+                <footer className="h-14 flex-shrink-0 border-t bg-background flex items-center justify-between px-4 md:px-8 z-20 w-full max-w-full">
                     <div className="flex items-center gap-4 hidden md:flex">
                         <p className="text-[12px] text-muted-foreground/60 font-medium">
                             {t("version_x", { version: settings?.app_version || "1.0.0" })}

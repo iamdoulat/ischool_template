@@ -19,7 +19,7 @@ const defaultAccordions: { id: number; title: string; content: string }[] = [
 export function AboutSection({ about }: { about?: { section_title?: string; section_subtitle?: string; title?: string; description?: string; image_url?: string; accordions?: { id: number; title: string; content: string }[] } }) {
     const { t } = useTranslation();
     const accordions = (about?.accordions && about.accordions.length > 0) ? about.accordions : defaultAccordions;
-    
+
     const displaySectionTitle = about?.section_title
         ? (t(about.section_title.toLowerCase().trim().replace(/[\s\-_]+/g, '_')) !== about.section_title.toLowerCase().trim().replace(/[\s\-_]+/g, '_')
             ? t(about.section_title.toLowerCase().trim().replace(/[\s\-_]+/g, '_'))
@@ -32,16 +32,16 @@ export function AboutSection({ about }: { about?: { section_title?: string; sect
             <div className="absolute top-20 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10" />
             <div className="absolute bottom-20 left-0 w-96 h-96 bg-[#C71585]/5 rounded-full blur-3xl -z-10" />
 
-            <div className="container mx-auto px-4 md:px-8">
+            <div className="container mx-auto pl-3 pr-5 sm:px-6 md:px-8">
                 <div className="text-center space-y-4 mb-10 md:mb-12">
                     <h2 className="text-3xl md:text-5xl font-extrabold text-slate-900 uppercase tracking-tight">
                         {displaySectionTitle}
                     </h2>
                     <div className="h-1.5 w-24 bg-primary mx-auto rounded-full" />
                     {(about?.section_subtitle) && (
-                      <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-                          {about.section_subtitle}
-                      </p>
+                        <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+                            {about.section_subtitle}
+                        </p>
                     )}
                 </div>
 

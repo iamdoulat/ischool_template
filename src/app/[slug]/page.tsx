@@ -66,7 +66,7 @@ export default function DynamicPage() {
                 {/* Hero Section */}
                 <div className="bg-slate-900 text-white py-20 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center" />
-                    <div className="container mx-auto px-4 md:px-8 relative z-10">
+                    <div className="container mx-auto px-6 sm:px-8 md:px-12 relative z-10">
                         <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight uppercase">
                             {page.title}
                         </h1>
@@ -74,7 +74,7 @@ export default function DynamicPage() {
                 </div>
 
                 {/* Content Section */}
-                <div className="container mx-auto px-4 md:px-8 py-16">
+                <div className="container mx-auto px-6 sm:px-8 md:px-12 py-16">
                     {(() => {
                         if (!page.content) {
                             return (

@@ -9,7 +9,7 @@ export default function NoticesPage() {
     <div className="min-h-screen flex flex-col font-sans">
       <PublicHeader />
       <main className="flex-1 py-[50px] bg-slate-50">
-        <div className="container mx-auto px-4 md:px-8 max-w-5xl space-y-8">
+        <div className="container mx-auto px-6 sm:px-8 md:px-12 max-w-5xl space-y-8">
           <div className="text-center space-y-4">
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 uppercase tracking-tight">
               All Notices

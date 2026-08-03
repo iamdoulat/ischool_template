@@ -53,16 +53,16 @@ export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubt
     return (
         <>
             <section className="py-[50px] bg-white">
-                <div className="container mx-auto px-4 md:px-8 space-y-12">
+                <div className="container mx-auto pl-3 pr-5 sm:px-6 md:px-8 space-y-12">
                     <div className="text-center space-y-4 mb-8 md:mb-10">
                         <h2 className="text-3xl md:text-4xl font-bold text-slate-900 uppercase tracking-tight">
                             {sectionTitle || t("our_main_courses")}
                         </h2>
                         <div className="h-1 w-20 bg-primary mx-auto rounded-full" />
                         {sectionSubtitle && (
-                          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                              {sectionSubtitle}
-                          </p>
+                            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                                {sectionSubtitle}
+                            </p>
                         )}
                     </div>
 
