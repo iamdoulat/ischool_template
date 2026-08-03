@@ -168,20 +168,23 @@ export function InternalChatDialog({
         };
     }, []);
 
-    const fetchContacts = useCallback(async () => {
-        setLoadingContacts(true);
+    const fetchContacts = useCallback(async (isInitial = false) => {
+        if (isInitial) setLoadingContacts(true);
         try {
             const res = await api.get("/chat/contacts", { skipGlobalErrorHandler: true });
             if (res.data?.success) {
                 const list: Contact[] = res.data.data || [];
-                setContacts(list);
+                setContacts((prev) => {
+                    if (JSON.stringify(prev) === JSON.stringify(list)) return prev;
+                    return list;
+                });
                 const unreadSum = list.reduce((acc, curr) => acc + (curr.unread_count || 0), 0);
                 setTotalUnreadCount(unreadSum);
             }
         } catch {
             // Silence
         } finally {
-            setLoadingContacts(false);
+            if (isInitial) setLoadingContacts(false);
         }
     }, []);
 
@@ -189,32 +192,42 @@ export function InternalChatDialog({
         try {
             const res = await api.get("/chat/requests", { skipGlobalErrorHandler: true });
             if (res.data?.success) {
-                setRequests(res.data.data || []);
+                const list = res.data.data || [];
+                setRequests((prev) => {
+                    if (JSON.stringify(prev) === JSON.stringify(list)) return prev;
+                    return list;
+                });
             }
         } catch {
             // Silence
         }
     }, []);
 
-    const fetchMessages = useCallback(async (contactId: number) => {
-        setLoadingMessages(true);
+    const fetchMessages = useCallback(async (contactId: number, isInitial = false) => {
+        if (isInitial) setLoadingMessages(true);
         try {
             const res = await api.get(`/chat/messages/${contactId}`, { skipGlobalErrorHandler: true });
             if (res.data?.success) {
-                setMessages(res.data.data || []);
+                const list: Message[] = res.data.data || [];
+                setMessages((prev) => {
+                    if (prev.length === list.length && prev[prev.length - 1]?.id === list[list.length - 1]?.id) {
+                        return prev;
+                    }
+                    return list;
+                });
             }
         } catch {
             // Silence
         } finally {
-            setLoadingMessages(false);
+            if (isInitial) setLoadingMessages(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchContacts();
+        fetchContacts(true);
         fetchRequests();
         const interval = setInterval(() => {
-            fetchContacts();
+            fetchContacts(false);
             fetchRequests();
         }, 10000);
         return () => clearInterval(interval);
@@ -222,16 +235,20 @@ export function InternalChatDialog({
 
     useEffect(() => {
         if (selectedContact && open && !isMinimized) {
-            fetchMessages(selectedContact.id);
+            fetchMessages(selectedContact.id, true);
             const interval = setInterval(() => {
-                fetchMessages(selectedContact.id);
+                fetchMessages(selectedContact.id, false);
             }, 4000);
             return () => clearInterval(interval);
         }
     }, [selectedContact, open, isMinimized, fetchMessages]);
 
+    const prevMsgLengthRef = useRef(0);
     useEffect(() => {
-        scrollToBottom();
+        if (messages.length > prevMsgLengthRef.current) {
+            scrollToBottom();
+        }
+        prevMsgLengthRef.current = messages.length;
     }, [messages]);
 
     useEffect(() => {
