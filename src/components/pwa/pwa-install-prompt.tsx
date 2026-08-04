@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { Button } from "@/components/ui/button";
 import { Download, Share, Plus, X, Smartphone } from "lucide-react";
-import { useImageUrl } from "@/lib/image-url";
+import { getImageUrl } from "@/lib/image-url";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -15,7 +15,6 @@ interface BeforeInstallPromptEvent extends Event {
 export function PWAInstallPrompt() {
   const pathname = usePathname();
   const { settings } = useSettings();
-  const { getImageUrl } = useImageUrl();
   
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
