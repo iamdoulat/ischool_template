@@ -26,6 +26,19 @@ function UserLayoutContent({
     const { setTheme } = useTheme();
     const { t } = useTranslation();
 
+    // Set PWA Manifest start_url to Student Portal
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
+            if (!manifestLink) {
+                manifestLink = document.createElement("link");
+                manifestLink.rel = "manifest";
+                document.head.appendChild(manifestLink);
+            }
+            manifestLink.href = "/manifest.json?portal=user";
+        }
+    }, []);
+
     // Set page title and sync theme settings
     useEffect(() => {
         if (!loading && settings) {

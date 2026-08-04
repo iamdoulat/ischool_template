@@ -26,7 +26,20 @@ function DashboardLayoutContent({
     const { setTheme } = useTheme();
     const { t } = useTranslation();
 
-    // Set dashboard page title and sync theme settings
+    // Set PWA Manifest start_url to Admin Portal
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
+            if (!manifestLink) {
+                manifestLink = document.createElement("link");
+                manifestLink.rel = "manifest";
+                document.head.appendChild(manifestLink);
+            }
+            manifestLink.href = "/manifest.json?portal=admin";
+        }
+    }, []);
+
+    // Set page title and sync theme settings
     useEffect(() => {
         if (!loading && settings) {
             // Set Page Title
