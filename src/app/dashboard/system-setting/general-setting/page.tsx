@@ -199,6 +199,8 @@ export default function GeneralSettingPage() {
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         school_name: "",
+        header_desktop_font_size: "22",
+        header_mobile_font_size: "14",
         school_slogan: "",
         school_description: "",
         school_code: "",
@@ -403,8 +405,8 @@ export default function GeneralSettingPage() {
         setLoading(true);
         try {
             const response = await api.get("/system-setting/general-setting");
-            if (response.data.status === "Success") {
-                const incomingData = response.data.data || {};
+            if (response.data.status === "Success" || response.data.status === "success" || response.data.data) {
+                const incomingData = response.data.data || response.data || {};
 
                 setFormData(prev => {
                     const normalizedData: any = { ...prev };
@@ -430,6 +432,16 @@ export default function GeneralSettingPage() {
                         }
                     });
 
+                    // Restore saved font sizes from localStorage if backend value is empty
+                    if (!normalizedData.header_desktop_font_size && typeof window !== 'undefined') {
+                        const savedDesk = localStorage.getItem("header_desktop_font_size");
+                        if (savedDesk) normalizedData.header_desktop_font_size = savedDesk;
+                    }
+                    if (!normalizedData.header_mobile_font_size && typeof window !== 'undefined') {
+                        const savedMob = localStorage.getItem("header_mobile_font_size");
+                        if (savedMob) normalizedData.header_mobile_font_size = savedMob;
+                    }
+
                     return normalizedData;
                 });
             }
@@ -447,10 +459,16 @@ export default function GeneralSettingPage() {
     const handleChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
 
-        // Real-time update for theme fields to provide instant feedback
-        const themeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content'];
-        if (themeFields.includes(field)) {
+        // Real-time auto preview for theme and font size fields
+        const realTimeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content', 'header_desktop_font_size', 'header_mobile_font_size'];
+        if (realTimeFields.includes(field)) {
             updateSettingsLocal({ [field]: value });
+            if (field === 'header_desktop_font_size' && typeof window !== 'undefined') {
+                document.documentElement.style.setProperty('--preview-header-desktop-fz', value ? `${value}px` : '');
+            }
+            if (field === 'header_mobile_font_size' && typeof window !== 'undefined') {
+                document.documentElement.style.setProperty('--preview-header-mobile-fz', value ? `${value}px` : '');
+            }
         }
     };
 
@@ -488,6 +506,15 @@ export default function GeneralSettingPage() {
             const isReactEvent = overrideData && (overrideData.nativeEvent || overrideData.target || overrideData._reactName || typeof overrideData.preventDefault === 'function');
             const dataToSave = (overrideData && !isReactEvent) ? overrideData : formData;
             const payload = { ...dataToSave } as Record<string, any>;
+            
+            // Persist font sizes in localStorage so font preference is preserved
+            if (payload.header_desktop_font_size !== undefined && payload.header_desktop_font_size !== null && typeof window !== 'undefined') {
+                localStorage.setItem("header_desktop_font_size", String(payload.header_desktop_font_size));
+            }
+            if (payload.header_mobile_font_size !== undefined && payload.header_mobile_font_size !== null && typeof window !== 'undefined') {
+                localStorage.setItem("header_mobile_font_size", String(payload.header_mobile_font_size));
+            }
+
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
             if (payload.contact_form_receiver_email === null) delete payload.contact_form_receiver_email;
             const response = await api.post("/system-setting/general-setting", payload);
@@ -598,7 +625,7 @@ export default function GeneralSettingPage() {
                         <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("general_setting")}</h2>
 
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-medium text-gray-600">{t("school_name")} <span className="text-red-500">*</span></Label>
                                     <Input
@@ -609,6 +636,26 @@ export default function GeneralSettingPage() {
                                     />
                                 </div>
                                 <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Desktop Header Font Size (px)</Label>
+                                    <Input
+                                        type="number"
+                                        value={formData.header_desktop_font_size || ""}
+                                        onChange={(e) => handleChange("header_desktop_font_size", e.target.value)}
+                                        placeholder="e.g. 22"
+                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Mobile Header Font Size (px)</Label>
+                                    <Input
+                                        type="number"
+                                        value={formData.header_mobile_font_size || ""}
+                                        onChange={(e) => handleChange("header_mobile_font_size", e.target.value)}
+                                        placeholder="e.g. 14"
+                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                    />
+                                </div>
+                                <div className="space-y-1.5 md:col-span-3">
                                     <Label className="text-xs font-medium text-gray-600">{t("school_slogan")}</Label>
                                     <Input
                                         value={formData.school_slogan}
@@ -617,7 +664,7 @@ export default function GeneralSettingPage() {
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
-                                <div className="space-y-1.5 md:col-span-2">
+                                <div className="space-y-1.5 md:col-span-3">
                                     <Label className="text-xs font-medium text-gray-600">{t("school_description")}</Label>
                                     <Textarea
                                         value={formData.school_description}

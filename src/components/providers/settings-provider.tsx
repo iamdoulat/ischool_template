@@ -55,6 +55,8 @@ interface GeneralSettings {
     student_attendance_settings: Array<{ type: string; from: string; upto: string; total: string }>;
     footer_contact_title?: string;
     footer_contact_info_label?: string;
+    header_desktop_font_size?: string;
+    header_mobile_font_size?: string;
     facebook_url?: string;
     twitter_url?: string;
     instagram_url?: string;

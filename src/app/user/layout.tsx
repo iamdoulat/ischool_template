@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { PageGuard } from "@/components/auth/page-guard";
 import { getPageTitleFromPathname } from "@/lib/page-title";
 
+import { MobileNavbar } from "@/components/layout/mobile-navbar";
+
 function UserLayoutContent({
     children,
 }: {
@@ -84,12 +86,12 @@ function UserLayoutContent({
             <div className="flex flex-col flex-1 h-screen min-h-0 overflow-hidden shadow-2xl relative">
                 <Header onToggleSidebar={toggleSidebar} />
                 <main className={cn(
-                    "flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 py-4 md:py-6 lg:py-8 w-full max-w-full min-w-0",
+                    "flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 pt-4 md:pt-6 lg:pt-8 pb-24 md:pb-8 w-full max-w-full min-w-0",
                     settings?.box_content === 'compact' ? "max-w-[1400px] mx-auto w-full" : "w-full"
                 )}>
                     <PageGuard>{children}</PageGuard>
                 </main>
-                <footer className="h-14 flex-shrink-0 border-t bg-background flex items-center justify-between px-4 md:px-8 z-20 w-full max-w-full">
+                <footer className="hidden md:flex h-14 flex-shrink-0 border-t bg-background items-center justify-between px-4 md:px-8 z-20 w-full max-w-full">
                     <div className="flex items-center gap-4 hidden md:flex">
                         <p className="text-[12px] text-muted-foreground/60 font-medium">
                             Version {settings?.app_version || "1.0.0"}
@@ -99,6 +101,7 @@ function UserLayoutContent({
                         © 2026 {loading ? "" : (settings?.school_name || "iSchool")}. {t("all_rights_reserved")}
                     </p>
                 </footer>
+                <MobileNavbar portalType="user" />
             </div>
         </div>
     );

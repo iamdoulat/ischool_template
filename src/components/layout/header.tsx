@@ -761,7 +761,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
 
     return (
         <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-30 transition-all duration-300 w-full">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 max-w-full">
                 <div className="relative group shrink-0">
                     <div className="absolute -inset-1 bg-gradient-to-r from-primary/40 to-indigo-500/40 rounded-xl blur opacity-25 group-hover:opacity-100 transition duration-300 animate-pulse" />
                     <Button
@@ -773,19 +773,42 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                         <Menu className="h-5 w-5" />
                     </Button>
                 </div>
-                <div className="flex flex-col text-left">
-                    <h1 className="text-xs sm:text-base md:text-2xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-600 to-rose-500 animate-in fade-in slide-in-from-left-4 duration-500 whitespace-normal sm:whitespace-nowrap leading-tight">
-                        {loading ? (
-                            <div className="h-6 w-32 bg-muted-foreground/10 animate-pulse rounded-md" />
-                        ) : (
-                            settings?.school_name || (typeof t === "function" ? t("smart_school") : "Smart School")
-                        )}
-                    </h1>
+                <div className="flex flex-col text-left min-w-0 flex-1">
+                    {(() => {
+                        const localMobFz = mounted && typeof window !== 'undefined' ? localStorage.getItem("header_mobile_font_size") : null;
+                        const localDeskFz = mounted && typeof window !== 'undefined' ? localStorage.getItem("header_desktop_font_size") : null;
+
+                        const mobVal = settings?.header_mobile_font_size || localMobFz;
+                        const deskVal = settings?.header_desktop_font_size || localDeskFz;
+
+                        const mobileFz = mobVal ? (String(mobVal).endsWith('px') ? String(mobVal) : `${mobVal}px`) : undefined;
+                        const desktopFz = deskVal ? (String(deskVal).endsWith('px') ? String(deskVal) : `${deskVal}px`) : undefined;
+
+                        return (
+                            <h1
+                                title={settings?.school_name}
+                                suppressHydrationWarning
+                                style={{
+                                    '--mobile-header-fz': `var(--preview-header-mobile-fz, ${mobileFz || '14px'})`,
+                                    '--desktop-header-fz': `var(--preview-header-desktop-fz, ${desktopFz || '22px'})`,
+                                } as React.CSSProperties}
+                                className={cn(
+                                    "font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-600 to-rose-500 animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap truncate leading-tight [font-size:var(--mobile-header-fz)] md:[font-size:var(--desktop-header-fz)]"
+                                )}
+                            >
+                                {loading ? (
+                                    <div className="h-6 w-32 md:w-48 bg-muted-foreground/10 animate-pulse rounded-md" />
+                                ) : (
+                                    settings?.school_name || (typeof t === "function" ? t("smart_school") : "Smart School")
+                                )}
+                            </h1>
+                        );
+                    })()}
                     <div className="h-0.5 w-12 bg-gradient-to-r from-primary to-transparent rounded-full mt-[-2px] hidden md:block opacity-70" />
                 </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 md:gap-6 flex-1 min-w-0">
+            <div className="flex items-center justify-end gap-2 sm:gap-4 shrink-0">
                 <HeaderStudentSearch user={user} />
 
                 {mounted && typeof window !== "undefined" && localStorage.getItem("admin_auth_token") && (

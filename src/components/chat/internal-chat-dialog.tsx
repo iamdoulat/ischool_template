@@ -397,7 +397,7 @@ export function InternalChatDialog({
                 onClick={handleLauncherClick}
                 style={buttonPos ? { left: `${buttonPos.x}px`, top: `${buttonPos.y}px`, bottom: "auto", right: "auto" } : undefined}
                 className={cn(
-                    "fixed bottom-6 right-6 z-[99999] w-14 h-14 rounded-full bg-gradient-to-br from-[#FF9800] via-[#818cf8] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#4f46e5] text-white shadow-2xl transition-all duration-150 flex items-center justify-center cursor-grab active:cursor-grabbing group select-none touch-none",
+                    "fixed bottom-20 md:bottom-18 right-4 sm:right-6 z-[99999] w-14 h-14 rounded-full bg-gradient-to-br from-[#FF9800] via-[#818cf8] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#4f46e5] text-white shadow-2xl transition-all duration-150 flex items-center justify-center cursor-grab active:cursor-grabbing group select-none touch-none",
                     open && !isMinimized ? "ring-4 ring-primary/40 scale-105" : "",
                     isDragging ? "scale-110 shadow-indigo-500/50" : "hover:scale-110"
                 )}
@@ -418,7 +418,7 @@ export function InternalChatDialog({
                         "fixed z-[99998] bg-card/98 backdrop-blur-2xl border border-muted/60 shadow-2xl rounded-2xl flex flex-col md:flex-row overflow-hidden transition-all duration-300",
                         isMaximized
                             ? "top-14 bottom-4 left-4 right-4 md:left-20 animate-in zoom-in-95"
-                            : "bottom-24 right-6 w-[95vw] sm:w-[720px] md:w-[780px] h-[560px] max-h-[80vh] animate-in slide-in-from-bottom-5"
+                            : "bottom-[88px] md:bottom-36 right-4 sm:right-6 w-[95vw] sm:w-[720px] md:w-[780px] h-[560px] max-h-[75vh] animate-in slide-in-from-bottom-5"
                     )}
                 >
                     {/* Left Sidebar: Contacts, Requests, Status & Add */}
