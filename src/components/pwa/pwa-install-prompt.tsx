@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { Button } from "@/components/ui/button";
-import { Download, Share, Plus, X, Smartphone, Monitor } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Download, Share, Plus, X, Smartphone } from "lucide-react";
 
 export function PWAInstallPrompt() {
+  const pathname = usePathname();
   const { settings } = useSettings();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isIOS, setIsIOS] = useState(false);
@@ -17,21 +18,31 @@ export function PWAInstallPrompt() {
   const appName = settings?.pwa_app_short_name || settings?.school_name || "iSchool";
   const appLogo = settings?.pwa_icon_192 || settings?.app_logo || "/logo-app.png";
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // Target exclusively user portal (/user/*) and admin portal (/dashboard/*)
+  const isTargetPortal = Boolean(pathname?.startsWith("/user") || pathname?.startsWith("/dashboard"));
 
-    // Check if already running in standalone mode (already installed as PWA)
+  useEffect(() => {
+    if (typeof window === "undefined" || !isTargetPortal) return;
+
+    // 1. Check if PWA is already installed or running in standalone mode
     const isStandaloneMode =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+      (window.navigator as any).standalone === true ||
+      localStorage.getItem("pwa_installed") === "true";
 
     setIsStandalone(isStandaloneMode);
 
     if (isStandaloneMode) return;
 
-    // Check if dismissed previously in this session
-    const isDismissed = localStorage.getItem("pwa_install_dismissed");
-    if (isDismissed === "true") return;
+    // 2. 60-minute reminder interval check
+    const dismissedAt = localStorage.getItem("pwa_install_dismissed_at");
+    if (dismissedAt) {
+      const timePassed = Date.now() - parseInt(dismissedAt, 10);
+      const SIXTY_MINUTES = 60 * 60 * 1000;
+      if (timePassed < SIXTY_MINUTES) {
+        return; // Suppress notification until 60 minutes pass
+      }
+    }
 
     // Detect iOS devices
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -39,8 +50,7 @@ export function PWAInstallPrompt() {
     setIsIOS(iosDevice);
 
     if (iosDevice && !isStandaloneMode) {
-      // Delay prompt slightly for smoother UX
-      const timer = setTimeout(() => setShowPrompt(true), 3000);
+      const timer = setTimeout(() => setShowPrompt(true), 2000);
       return () => clearTimeout(timer);
     }
 
@@ -51,12 +61,22 @@ export function PWAInstallPrompt() {
       setShowPrompt(true);
     };
 
+    // Event listener when installation completes (permanently disables notifications)
+    const handleAppInstalled = () => {
+      localStorage.setItem("pwa_installed", "true");
+      setIsStandalone(true);
+      setShowPrompt(false);
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [isTargetPortal, pathname]);
 
   const handleInstallClick = async () => {
     if (isIOS) {
@@ -70,6 +90,8 @@ export function PWAInstallPrompt() {
     const { outcome } = await deferredPrompt.userChoice;
     
     if (outcome === "accepted") {
+      localStorage.setItem("pwa_installed", "true");
+      setIsStandalone(true);
       setShowPrompt(false);
       setDeferredPrompt(null);
     }
@@ -78,14 +100,15 @@ export function PWAInstallPrompt() {
   const handleDismiss = () => {
     setShowPrompt(false);
     setShowIOSModal(false);
-    localStorage.setItem("pwa_install_dismissed", "true");
+    // Save timestamp to trigger 60-minute reminder interval
+    localStorage.setItem("pwa_install_dismissed_at", Date.now().toString());
   };
 
-  if (isStandalone || !showPrompt) return null;
+  if (!isTargetPortal || isStandalone || !showPrompt) return null;
 
   return (
     <>
-      {/* Floating PWA Install Banner */}
+      {/* Floating PWA Install Banner (Portal-Scoped) */}
       <div className="fixed bottom-20 md:bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[99990] animate-in slide-in-from-bottom-5 duration-300">
         <div className="bg-card/95 backdrop-blur-xl border border-primary/20 shadow-2xl rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#FF9800] via-[#818cf8] to-[#6366F1]" />
