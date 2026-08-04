@@ -27,28 +27,69 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { LanguageProvider } from "@/components/providers/language-provider";
 import { PWAInit } from "@/components/providers/pwa-init";
 
-export const metadata: Metadata = {
-  title: "iSchool",
-  description: "Comprehensive School Management System",
-  manifest: "/manifest.json",
-  icons: {
-    icon: [
-      { url: "/logo-app.png", sizes: "192x192", type: "image/png" },
-      { url: "/logo-app.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [
-      { url: "/logo-app.png", sizes: "180x180", type: "image/png" },
-    ],
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "iSchool",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-};
+import { getImageUrl } from "@/lib/image-url";
+
+export async function generateMetadata(): Promise<Metadata> {
+  let appTitle = "iSchool";
+  let appIcon = "/logo-app.png";
+
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+    const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
+      next: { revalidate: 30 },
+      headers: { Accept: "application/json" },
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      const settings = json.data || json;
+
+      if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
+        appTitle = settings.pwa_app_short_name;
+      } else if (settings.school_name) {
+        appTitle = settings.school_name;
+      }
+
+      if (settings.pwa_icon_192) {
+        appIcon = settings.pwa_icon_192;
+      } else if (settings.pwa_icon_512) {
+        appIcon = settings.pwa_icon_512;
+      } else if (settings.app_logo) {
+        appIcon = settings.app_logo;
+      }
+    }
+  } catch (error) {
+    console.error("Error generating SSR layout metadata:", error);
+  }
+
+  const resolvedIconUrl = getImageUrl(appIcon) || appIcon;
+
+  return {
+    title: appTitle,
+    description: "Comprehensive School Management System & Portal",
+    manifest: "/manifest.json",
+    icons: {
+      icon: [
+        { url: resolvedIconUrl, sizes: "192x192", type: "image/png" },
+        { url: resolvedIconUrl, sizes: "512x512", type: "image/png" },
+      ],
+      apple: [
+        { url: resolvedIconUrl, sizes: "180x180", type: "image/png" },
+        { url: resolvedIconUrl, sizes: "192x192", type: "image/png" },
+        { url: resolvedIconUrl, sizes: "512x512", type: "image/png" },
+      ],
+      shortcut: [resolvedIconUrl],
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "default",
+      title: appTitle,
+    },
+    formatDetection: {
+      telephone: false,
+    },
+  };
+}
 
 export default function RootLayout({
   children,

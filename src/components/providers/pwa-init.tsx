@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import { PWAInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 
+import { getImageUrl } from "@/lib/image-url";
+
 export function PWAInit() {
   const { settings } = useSettings();
 
@@ -30,7 +32,8 @@ export function PWAInit() {
     const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
 
     const appShortName = settings?.pwa_app_short_name || localShortName || settings?.school_name || "iSchool";
-    const appIcon = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.app_logo || "/logo-app.png";
+    const rawAppIcon = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.app_logo || "/logo-app.png";
+    const appIcon = getImageUrl(rawAppIcon) || "/logo-app.png";
 
     // 1. Sync iOS Apple App Title meta tag
     let appleTitleTag = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-title']");
