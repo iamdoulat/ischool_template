@@ -29,14 +29,11 @@ export async function GET(request: NextRequest) {
       const json = await res.json();
       const settings = json.data || json;
 
-      if (settings.school_name) {
-        schoolName = settings.school_name;
-      }
-
+      let pwaName = "iSchool";
       if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
-        shortName = settings.pwa_app_short_name;
+        pwaName = settings.pwa_app_short_name;
       } else if (settings.school_name) {
-        shortName = settings.school_name;
+        pwaName = settings.school_name;
       }
 
       if (settings.pwa_app_description && settings.pwa_app_description.trim() !== "") {
@@ -56,6 +53,9 @@ export async function GET(request: NextRequest) {
       } else if (settings.app_logo) {
         icon192 = settings.app_logo;
       }
+
+      schoolName = pwaName;
+      shortName = pwaName;
     }
   } catch (error) {
     console.error("Dynamic manifest fetch error, using default settings:", error);

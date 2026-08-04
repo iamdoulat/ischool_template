@@ -18,28 +18,28 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
       const json = await res.json();
       const settings = json.data || json;
 
-      if (settings.school_name) schoolName = settings.school_name;
+      let pwaName = "iSchool";
       if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
-        shortName = settings.pwa_app_short_name;
+        pwaName = settings.pwa_app_short_name;
       } else if (settings.school_name) {
-        shortName = settings.school_name;
+        pwaName = settings.school_name;
       }
+
       if (settings.pwa_app_description && settings.pwa_app_description.trim() !== "") {
         description = settings.pwa_app_description;
       } else if (settings.school_description) {
         description = settings.school_description;
       }
       if (settings.pwa_icon_512) icon512 = settings.pwa_icon_512;
-      if (settings.pwa_icon_192) icon192 = settings.pwa_icon_192;
-    }
-  } catch (e) {
-    console.error("Error in manifest.ts fetch:", e);
-  }
+      else if (settings.app_logo) icon512 = settings.app_logo;
 
-  return {
-    id: "/dashboard",
-    name: schoolName,
-    short_name: shortName,
+      if (settings.pwa_icon_192) icon192 = settings.pwa_icon_192;
+      else if (settings.app_logo) icon192 = settings.app_logo;
+
+      return {
+        id: "/dashboard",
+        name: pwaName,
+        short_name: pwaName,
     description: description,
     start_url: "/dashboard",
     scope: "/",
