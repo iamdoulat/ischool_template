@@ -60,6 +60,12 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
         src: icon512,
         sizes: "512x512",
         type: "image/png",
+        purpose: "any"
+      },
+      {
+        src: icon512,
+        sizes: "512x512",
+        type: "image/png",
         purpose: "maskable"
       }
     ],

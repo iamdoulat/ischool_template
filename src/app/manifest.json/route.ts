@@ -85,7 +85,13 @@ export async function GET(request: NextRequest) {
         src: icon512,
         sizes: "512x512",
         type: "image/png",
-        purpose: "any maskable"
+        purpose: "any"
+      },
+      {
+        src: icon512,
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable"
       }
     ],
     shortcuts: [

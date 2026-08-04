@@ -22,14 +22,26 @@
       "src": "/logo-app.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-app.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Dashboard",
-      "short_name": "Dashboard",
-      "description": "Open main portal dashboard",
+      "name": "Student Portal",
+      "short_name": "Student",
+      "description": "Open Student Dashboard",
+      "url": "/user/dashboard"
+    },
+    {
+      "name": "Admin Portal",
+      "short_name": "Admin",
+      "description": "Open Admin Dashboard",
       "url": "/dashboard"
     },
     {

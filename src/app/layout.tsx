@@ -31,6 +31,15 @@ export const metadata: Metadata = {
   title: "iSchool",
   description: "Comprehensive School Management System",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/logo-app.png", sizes: "192x192", type: "image/png" },
+      { url: "/logo-app.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/logo-app.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

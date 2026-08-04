@@ -50,11 +50,24 @@ export function PWAInit() {
     }
     appleIconTag.href = appIcon;
 
-    // 3. Sync shortcut favicon icon
-    let shortcutIconTag = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']");
-    if (shortcutIconTag) {
-      shortcutIconTag.href = appIcon;
+    // 3. Sync mobile icon link tags for Android Chrome
+    let icon192Tag = document.querySelector<HTMLLinkElement>("link[rel='icon'][sizes='192x192']");
+    if (!icon192Tag) {
+      icon192Tag = document.createElement("link");
+      icon192Tag.rel = "icon";
+      icon192Tag.setAttribute("sizes", "192x192");
+      document.head.appendChild(icon192Tag);
     }
+    icon192Tag.href = appIcon;
+
+    let icon512Tag = document.querySelector<HTMLLinkElement>("link[rel='icon'][sizes='512x512']");
+    if (!icon512Tag) {
+      icon512Tag = document.createElement("link");
+      icon512Tag.rel = "icon";
+      icon512Tag.setAttribute("sizes", "512x512");
+      document.head.appendChild(icon512Tag);
+    }
+    icon512Tag.href = settings?.pwa_icon_512 || localIcon512 || appIcon;
   }, [settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.school_name, settings?.app_logo]);
 
   return <PWAInstallPrompt />;
