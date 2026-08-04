@@ -664,37 +664,37 @@ export default function GeneralSettingPage() {
                         <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("general_setting")}</h2>
 
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-1.5">
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                                <div className="space-y-1.5 md:col-span-6 lg:col-span-7">
                                     <Label className="text-xs font-medium text-gray-600">{t("school_name")} <span className="text-red-500">*</span></Label>
                                     <Input
                                         value={formData.school_name}
                                         onChange={(e) => handleChange("school_name", e.target.value)}
                                         placeholder="Enter School Name"
-                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded w-full"
                                     />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-gray-600">Desktop Header Font Size (px)</Label>
+                                <div className="space-y-1.5 md:col-span-3 lg:col-span-2.5">
+                                    <Label className="text-xs font-medium text-gray-600 whitespace-nowrap">Desktop Header Font (px)</Label>
                                     <Input
                                         type="number"
                                         value={formData.header_desktop_font_size || ""}
                                         onChange={(e) => handleChange("header_desktop_font_size", e.target.value)}
                                         placeholder="e.g. 22"
-                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded max-w-[130px] w-full"
                                     />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-gray-600">Mobile Header Font Size (px)</Label>
+                                <div className="space-y-1.5 md:col-span-3 lg:col-span-2.5">
+                                    <Label className="text-xs font-medium text-gray-600 whitespace-nowrap">Mobile Header Font (px)</Label>
                                     <Input
                                         type="number"
                                         value={formData.header_mobile_font_size || ""}
                                         onChange={(e) => handleChange("header_mobile_font_size", e.target.value)}
                                         placeholder="e.g. 14"
-                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded max-w-[130px] w-full"
                                     />
                                 </div>
-                                <div className="space-y-1.5 md:col-span-3">
+                                <div className="space-y-1.5 md:col-span-12">
                                     <Label className="text-xs font-medium text-gray-600">{t("school_slogan")}</Label>
                                     <Input
                                         value={formData.school_slogan}
@@ -703,7 +703,7 @@ export default function GeneralSettingPage() {
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
-                                <div className="space-y-1.5 md:col-span-3">
+                                <div className="space-y-1.5 md:col-span-12">
                                     <Label className="text-xs font-medium text-gray-600">{t("school_description")}</Label>
                                     <Textarea
                                         value={formData.school_description}

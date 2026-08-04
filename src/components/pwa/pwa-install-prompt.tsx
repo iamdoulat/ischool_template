@@ -6,10 +6,15 @@ import { useSettings } from "@/components/providers/settings-provider";
 import { Button } from "@/components/ui/button";
 import { Download, Share, Plus, X, Smartphone } from "lucide-react";
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export function PWAInstallPrompt() {
   const pathname = usePathname();
   const { settings } = useSettings();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
@@ -27,12 +32,13 @@ export function PWAInstallPrompt() {
     // 1. Check if PWA is already installed or running in standalone mode
     const isStandaloneMode =
       window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
       localStorage.getItem("pwa_installed") === "true";
 
-    setIsStandalone(isStandaloneMode);
-
-    if (isStandaloneMode) return;
+    if (isStandaloneMode) {
+      setIsStandalone(true);
+      return;
+    }
 
     // 2. 60-minute reminder interval check
     const dismissedAt = localStorage.getItem("pwa_install_dismissed_at");
@@ -49,7 +55,7 @@ export function PWAInstallPrompt() {
     const iosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(iosDevice);
 
-    if (iosDevice && !isStandaloneMode) {
+    if (iosDevice) {
       const timer = setTimeout(() => setShowPrompt(true), 2000);
       return () => clearTimeout(timer);
     }
@@ -57,7 +63,7 @@ export function PWAInstallPrompt() {
     // Standard Android / Desktop PWA event listener
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowPrompt(true);
     };
 

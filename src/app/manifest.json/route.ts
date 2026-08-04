@@ -119,51 +119,6 @@ export async function GET(request: NextRequest) {
       }
     ]
   };
-    scope: "/",
-    display: "standalone",
-    orientation: "any",
-    background_color: "#ffffff",
-    theme_color: "#6366f1",
-    categories: ["education", "productivity", "management"],
-    prefer_related_applications: false,
-    icons: [
-      {
-        src: icon192,
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "any"
-      },
-      {
-        src: icon512,
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any maskable"
-      }
-    ],
-    shortcuts: [
-      {
-        name: "Dashboard",
-        short_name: "Dashboard",
-        description: "Open main portal dashboard",
-        url: "/dashboard",
-        icons: [{ src: icon192, sizes: "192x192" }]
-      },
-      {
-        name: "Notice Board",
-        short_name: "Notices",
-        description: "View school notices & updates",
-        url: "/user/notice-board",
-        icons: [{ src: icon192, sizes: "192x192" }]
-      },
-      {
-        name: "Collect Fees",
-        short_name: "Fees",
-        description: "Fees collection & payments",
-        url: "/dashboard/fees-collection/collect-fees",
-        icons: [{ src: icon192, sizes: "192x192" }]
-      }
-    ]
-  };
 
   return NextResponse.json(manifestData, {
     headers: {
