@@ -885,7 +885,13 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                 )}
                                 <LanguageSelector />
                                 <NotificationBell />
-                                <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setChatOpen(true)}
+                                    className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
+                                    title="Open Chat"
+                                >
                                     <MessageSquare className="h-4 w-4" />
                                 </Button>
                                 {mounted && (
@@ -894,6 +900,14 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                             </div>
 
                             <div className="space-y-1">
+                                <Button
+                                    variant="ghost"
+                                    className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
+                                    onClick={() => setChatOpen(true)}
+                                >
+                                    <MessageSquare className="h-4 w-4 text-primary" />
+                                    {t("chat") || "Chat & Messages"}
+                                </Button>
                                 <Button
                                     variant="ghost"
                                     className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"

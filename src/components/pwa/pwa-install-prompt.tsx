@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { Button } from "@/components/ui/button";
 import { Download, Share, Plus, X, Smartphone } from "lucide-react";
+import { useImageUrl } from "@/lib/image-url";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -14,14 +15,23 @@ interface BeforeInstallPromptEvent extends Event {
 export function PWAInstallPrompt() {
   const pathname = usePathname();
   const { settings } = useSettings();
+  const { getImageUrl } = useImageUrl();
+  
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
-  const appName = settings?.pwa_app_short_name || settings?.school_name || "iSchool";
-  const appLogo = settings?.pwa_icon_192 || settings?.app_logo || "/logo-app.png";
+  const localShortName = typeof window !== "undefined" ? localStorage.getItem("ischool_pwa_app_short_name") : null;
+  const localIcon192 = typeof window !== "undefined" ? localStorage.getItem("ischool_pwa_icon_192") : null;
+  const localIcon512 = typeof window !== "undefined" ? localStorage.getItem("ischool_pwa_icon_512") : null;
+
+  const appName = settings?.pwa_app_short_name || localShortName || settings?.school_name || "iSchool";
+  
+  const rawLogo = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.app_logo || "/logo-app.png";
+  const appLogo = getImageUrl(rawLogo) || "/logo-app.png";
 
   // Target exclusively user portal (/user/*) and admin portal (/dashboard/*)
   const isTargetPortal = Boolean(pathname?.startsWith("/user") || pathname?.startsWith("/dashboard"));
@@ -119,16 +129,19 @@ export function PWAInstallPrompt() {
         <div className="bg-card/95 backdrop-blur-xl border border-primary/20 shadow-2xl rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#FF9800] via-[#818cf8] to-[#6366F1]" />
           
-          <div className="w-12 h-12 rounded-xl bg-muted/60 border border-muted flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-            <img
-              src={appLogo}
-              alt={appName}
-              className="w-10 h-10 object-contain"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = "none";
-              }}
-            />
-            <Smartphone className="w-6 h-6 text-primary hidden group-has-[img[style*='display: none']]:block" />
+          <div className="w-12 h-12 rounded-xl bg-muted/60 border border-muted/80 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+            {!imgError && appLogo ? (
+              <img
+                src={appLogo}
+                alt={appName}
+                className="w-10 h-10 object-contain rounded-lg"
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-primary text-white flex items-center justify-center font-black text-base shadow-inner">
+                {appName[0]?.toUpperCase() || <Smartphone className="w-5 h-5" />}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 min-w-0 pr-6">

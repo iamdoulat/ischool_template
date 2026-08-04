@@ -397,7 +397,7 @@ export function InternalChatDialog({
                 onClick={handleLauncherClick}
                 style={buttonPos ? { left: `${buttonPos.x}px`, top: `${buttonPos.y}px`, bottom: "auto", right: "auto" } : undefined}
                 className={cn(
-                    "fixed bottom-20 md:bottom-18 right-4 sm:right-6 z-[99999] w-14 h-14 rounded-full bg-gradient-to-br from-[#FF9800] via-[#818cf8] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#4f46e5] text-white shadow-2xl transition-all duration-150 flex items-center justify-center cursor-grab active:cursor-grabbing group select-none touch-none",
+                    "fixed bottom-20 md:bottom-18 right-4 sm:right-6 z-[99999] w-14 h-14 rounded-full bg-gradient-to-br from-[#FF9800] via-[#818cf8] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#4f46e5] text-white shadow-2xl transition-all duration-150 hidden md:flex items-center justify-center cursor-grab active:cursor-grabbing group select-none touch-none",
                     open && !isMinimized ? "ring-4 ring-primary/40 scale-105" : "",
                     isDragging ? "scale-110 shadow-indigo-500/50" : "hover:scale-110"
                 )}
