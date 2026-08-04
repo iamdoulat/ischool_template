@@ -100,6 +100,9 @@ function LogoCard({
         admin_logo: "/logo-admin.png",
         admin_small_logo: "/logo-admin-small.png",
         app_logo: "/logo-app.png",
+        pwa_icon_512: "/logo-app.png",
+        pwa_icon_192: "/logo-app.png",
+        pwa_icon_maskable: "/logo-app.png",
         login_page_background_admin: "/bg-admin.jpg",
         login_page_background_user: "/bg-user.jpg",
     };
@@ -220,6 +223,11 @@ export default function GeneralSettingPage() {
         admin_logo: "",
         admin_small_logo: "",
         app_logo: "",
+        pwa_icon_512: "",
+        pwa_icon_192: "",
+        pwa_icon_maskable: "",
+        pwa_app_short_name: "",
+        pwa_app_description: "",
         login_page_background_admin: "",
         login_page_background_user: "",
         theme_mode: "light",
@@ -432,7 +440,7 @@ export default function GeneralSettingPage() {
                         }
                     });
 
-                    // Restore saved font sizes from localStorage if backend value is empty
+                    // Restore saved font sizes & logo fields from localStorage if backend value is empty
                     if (!normalizedData.header_desktop_font_size && typeof window !== 'undefined') {
                         const savedDesk = localStorage.getItem("header_desktop_font_size");
                         if (savedDesk) normalizedData.header_desktop_font_size = savedDesk;
@@ -441,6 +449,19 @@ export default function GeneralSettingPage() {
                         const savedMob = localStorage.getItem("header_mobile_font_size");
                         if (savedMob) normalizedData.header_mobile_font_size = savedMob;
                     }
+
+                    // Restore PWA, logo, and text fields from localStorage if empty
+                    const pwaTextAndLogoFields = [
+                        'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
+                        'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable',
+                        'pwa_app_short_name', 'pwa_app_description'
+                    ];
+                    pwaTextAndLogoFields.forEach(lf => {
+                        if (!normalizedData[lf] && typeof window !== 'undefined') {
+                            const savedVal = localStorage.getItem(`ischool_${lf}`);
+                            if (savedVal) normalizedData[lf] = savedVal;
+                        }
+                    });
 
                     return normalizedData;
                 });
@@ -459,8 +480,8 @@ export default function GeneralSettingPage() {
     const handleChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
 
-        // Real-time auto preview for theme and font size fields
-        const realTimeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content', 'header_desktop_font_size', 'header_mobile_font_size'];
+        // Real-time auto preview for theme, font size, and PWA fields
+        const realTimeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content', 'header_desktop_font_size', 'header_mobile_font_size', 'pwa_app_short_name', 'pwa_app_description'];
         if (realTimeFields.includes(field)) {
             updateSettingsLocal({ [field]: value });
             if (field === 'header_desktop_font_size' && typeof window !== 'undefined') {
@@ -468,6 +489,9 @@ export default function GeneralSettingPage() {
             }
             if (field === 'header_mobile_font_size' && typeof window !== 'undefined') {
                 document.documentElement.style.setProperty('--preview-header-mobile-fz', value ? `${value}px` : '');
+            }
+            if ((field === 'pwa_app_short_name' || field === 'pwa_app_description') && typeof window !== 'undefined') {
+                localStorage.setItem(`ischool_${field}`, String(value));
             }
         }
     };
@@ -514,6 +538,18 @@ export default function GeneralSettingPage() {
             if (payload.header_mobile_font_size !== undefined && payload.header_mobile_font_size !== null && typeof window !== 'undefined') {
                 localStorage.setItem("header_mobile_font_size", String(payload.header_mobile_font_size));
             }
+
+            // Persist all logo, PWA text and icon paths in localStorage
+            const pwaTextAndLogoFields = [
+                'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
+                'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable',
+                'pwa_app_short_name', 'pwa_app_description'
+            ];
+            pwaTextAndLogoFields.forEach(lf => {
+                if (payload[lf] !== undefined && payload[lf] !== null && typeof window !== 'undefined') {
+                    localStorage.setItem(`ischool_${lf}`, String(payload[lf]));
+                }
+            });
 
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
             if (payload.contact_form_receiver_email === null) delete payload.contact_form_receiver_email;
@@ -562,6 +598,9 @@ export default function GeneralSettingPage() {
     };
 
     const handleLogoSuccess = (field: string, newUrl: string) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(`ischool_${field}`, newUrl);
+        }
         setFormData(prev => {
             const updated = { ...prev, [field]: newUrl };
             handleSave(updated);
@@ -1023,6 +1062,64 @@ export default function GeneralSettingPage() {
                                 onSaveSuccess={handleLogoSuccess}
                                 t={t}
                             />
+                        </div>
+
+                        <div className="pt-6 border-t border-gray-100 space-y-4">
+                            <div>
+                                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">PWA App Details & Icons (Progressive Web App)</h3>
+                                <p className="text-[11px] text-gray-400">Configure PWA app short name, description, and mobile install logos.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/60 p-4 rounded-lg border border-gray-100">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">PWA App Short Name (App Name) <span className="text-red-500">*</span></Label>
+                                    <Input
+                                        value={formData.pwa_app_short_name || ""}
+                                        onChange={(e) => handleChange("pwa_app_short_name", e.target.value)}
+                                        placeholder="e.g. iSchool"
+                                        className="h-8 text-xs bg-white border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">PWA App Description</Label>
+                                    <Input
+                                        value={formData.pwa_app_description || ""}
+                                        onChange={(e) => handleChange("pwa_app_description", e.target.value)}
+                                        placeholder="e.g. Comprehensive School Management System"
+                                        className="h-8 text-xs bg-white border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
+                                <LogoCard
+                                    title="PWA Icon (512x512)"
+                                    field="pwa_icon_512"
+                                    dimensions="512px x 512px (PNG)"
+                                    value={formData.pwa_icon_512}
+                                    onUpload={handleLogoUpload}
+                                    onSaveSuccess={handleLogoSuccess}
+                                    t={t}
+                                />
+                                <LogoCard
+                                    title="PWA Icon (192x192)"
+                                    field="pwa_icon_192"
+                                    dimensions="192px x 192px (PNG)"
+                                    value={formData.pwa_icon_192}
+                                    onUpload={handleLogoUpload}
+                                    onSaveSuccess={handleLogoSuccess}
+                                    t={t}
+                                />
+                                <LogoCard
+                                    title="PWA Maskable Icon"
+                                    field="pwa_icon_maskable"
+                                    dimensions="512px x 512px (PNG)"
+                                    value={formData.pwa_icon_maskable}
+                                    onUpload={handleLogoUpload}
+                                    onSaveSuccess={handleLogoSuccess}
+                                    t={t}
+                                />
+                            </div>
                         </div>
                     </div>
                 );

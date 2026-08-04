@@ -23,13 +23,23 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { LanguageProvider } from "@/components/providers/language-provider";
+import { PWAInit } from "@/components/providers/pwa-init";
+
 export const metadata: Metadata = {
   title: "iSchool",
   description: "Comprehensive School Management System",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "iSchool",
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
-
-import { ThemeProvider } from "@/components/providers/theme-provider";
-import { LanguageProvider } from "@/components/providers/language-provider";
 
 export default function RootLayout({
   children,
@@ -48,6 +58,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <PWAInit />
           <MSWInit>
             <ToastProvider duration={3000}>
               <LanguageProvider>

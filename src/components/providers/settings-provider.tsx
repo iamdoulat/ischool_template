@@ -57,6 +57,11 @@ interface GeneralSettings {
     footer_contact_info_label?: string;
     header_desktop_font_size?: string;
     header_mobile_font_size?: string;
+    pwa_icon_512?: string;
+    pwa_icon_192?: string;
+    pwa_icon_maskable?: string;
+    pwa_app_short_name?: string;
+    pwa_app_description?: string;
     facebook_url?: string;
     twitter_url?: string;
     instagram_url?: string;
@@ -94,6 +99,11 @@ function createDefaultSettings(): GeneralSettings {
         admin_logo: "/logo-admin.png",
         admin_small_logo: "/logo-admin-small.png",
         app_logo: "/logo-app.png",
+        pwa_icon_512: "/logo-app.png",
+        pwa_icon_192: "/logo-app.png",
+        pwa_icon_maskable: "/logo-app.png",
+        pwa_app_short_name: "iSchool",
+        pwa_app_description: "Comprehensive School Management System & Portal",
         login_page_background_admin: "/bg-admin.jpg",
         login_page_background_user: "/bg-user.jpg",
         theme_mode: "light",
@@ -188,7 +198,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 // Resolve logo & background image paths to absolute URLs if uploaded
                 const imageFields = [
                     'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
-                    'login_page_background_admin', 'login_page_background_user'
+                    'login_page_background_admin', 'login_page_background_user',
+                    'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable'
                 ];
 
                 imageFields.forEach(imgField => {
