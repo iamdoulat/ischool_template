@@ -444,8 +444,8 @@ export function InternalChatDialog({
                                 <span className="text-xs font-bold text-foreground">Internal Chat</span>
                             </div>
 
-                            {/* Presence Menu */}
-                            <div className="flex items-center gap-2">
+                            {/* Presence Menu & Top Right Window Controls */}
+                            <div className="flex items-center gap-1.5">
                                 <select
                                     value={userPresence}
                                     onChange={(e) => handleUpdatePresence(e.target.value as any)}
@@ -455,6 +455,36 @@ export function InternalChatDialog({
                                     <option value="offline">⚪ Offline</option>
                                     <option value="invisible">👻 Invisible</option>
                                 </select>
+
+                                <div className="flex items-center gap-0.5 border-l border-muted/60 pl-1.5 ml-0.5">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setIsMinimized(true)}
+                                        className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                                        title="Minimize"
+                                    >
+                                        <Minus className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setIsMaximized(!isMaximized)}
+                                        className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg hidden sm:inline-flex"
+                                        title={isMaximized ? "Restore Window" : "Maximize Window"}
+                                    >
+                                        {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => onOpenChange(false)}
+                                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                        title="Close"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -700,35 +730,10 @@ export function InternalChatDialog({
                                 </div>
                             )}
 
-                            {/* Window Controls: Minimize (-), Maximize ([ ]), Close (x) */}
-                            <div className="flex items-center gap-1 shrink-0">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setIsMinimized(true)}
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
-                                    title="Minimize"
-                                >
-                                    <Minus className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setIsMaximized(!isMaximized)}
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
-                                    title={isMaximized ? "Restore Window" : "Maximize Window"}
-                                >
-                                    {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => onOpenChange(false)}
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-lg"
-                                    title="Close"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </Button>
+                            {/* Desktop stream indicators */}
+                            <div className="hidden sm:flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+                                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                {selectedContact ? selectedContact.name : "Select a contact to message"}
                             </div>
                         </div>
 
