@@ -163,6 +163,23 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
     const [dueDate, setDueDate] = useState("");
     const [saving, setSaving] = useState(false);
 
+    const isBookReturned = (b: any) => {
+        if (!b || !b.return_date) return false;
+        const str = String(b.return_date).trim().toLowerCase();
+        if (
+            str === "" ||
+            str === "null" ||
+            str === "undefined" ||
+            str.includes("0000-00-00") ||
+            str.includes("1970-01-01") ||
+            str === "—" ||
+            str === "-"
+        ) {
+            return false;
+        }
+        return str.length >= 8;
+    };
+
     const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
@@ -484,58 +501,61 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        issuedBooks.map((book) => (
-                                            <TableRow
-                                                key={book.id}
-                                                className={cn(
-                                                    "text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap",
-                                                    book.return_date
-                                                        ? "bg-green-50/50"
-                                                        : book.is_return_requested
-                                                            ? "bg-amber-50/50 hover:bg-amber-50/80"
-                                                            : ""
-                                                )}
-                                            >
-                                                <TableCell className="py-3 text-gray-700 font-medium">{book.book.title}</TableCell>
-                                                <TableCell className="py-3 text-gray-500">{book.book.book_number}</TableCell>
-                                                <TableCell className="py-3 text-gray-500">{book.issue_date ? formatDate(book.issue_date) : "-"}</TableCell>
-                                                <TableCell className="py-3 text-gray-500">{book.due_date ? formatDate(book.due_date) : "-"}</TableCell>
-                                                <TableCell className="py-3 text-gray-500">{book.return_date ? formatDate(book.return_date) : "-"}</TableCell>
-                                                <TableCell className="py-3 text-right">
-                                                    {book.return_date ? (
-                                                        <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
-                                                            {t("returned")}
-                                                        </Badge>
-                                                    ) : book.is_return_requested ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-medium gap-1 animate-pulse">
-                                                                <Clock className="h-3 w-3 text-amber-600" />
-                                                                {t("return_requested") || "Return Requested"}
+                                        issuedBooks.map((book) => {
+                                            const isReturned = isBookReturned(book);
+                                            return (
+                                                <TableRow
+                                                    key={book.id}
+                                                    className={cn(
+                                                        "text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap",
+                                                        isReturned
+                                                            ? "bg-green-50/50"
+                                                            : book.is_return_requested
+                                                                ? "bg-amber-50/50 hover:bg-amber-50/80"
+                                                                : ""
+                                                    )}
+                                                >
+                                                    <TableCell className="py-3 text-gray-700 font-medium">{book.book.title}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{book.book.book_number}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{book.issue_date ? formatDate(book.issue_date) : "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{book.due_date ? formatDate(book.due_date) : "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{isReturned ? formatDate(book.return_date) : "-"}</TableCell>
+                                                    <TableCell className="py-3 text-right">
+                                                        {isReturned ? (
+                                                            <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
+                                                                {t("returned")}
                                                             </Badge>
+                                                        ) : book.is_return_requested ? (
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-medium gap-1 animate-pulse">
+                                                                    <Clock className="h-3 w-3 text-amber-600" />
+                                                                    {t("return_requested") || "Return Requested"}
+                                                                </Badge>
+                                                                <Button
+                                                                    size="sm"
+                                                                    onClick={() => handleReturnBook(book.id)}
+                                                                    className="h-7 px-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1 active:scale-95 transition-all"
+                                                                    title={t("accept_return") || "Accept Return"}
+                                                                >
+                                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                                    <span>{t("accept_return") || "Accept Return"}</span>
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
                                                             <Button
                                                                 size="sm"
                                                                 onClick={() => handleReturnBook(book.id)}
                                                                 className="h-7 px-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1 active:scale-95 transition-all"
-                                                                title={t("accept_return") || "Accept Return"}
+                                                                title={t("return_book")}
                                                             >
                                                                 <RotateCcw className="h-3.5 w-3.5" />
-                                                                <span>{t("accept_return") || "Accept Return"}</span>
+                                                                <span>{t("return_book") || "Return Book"}</span>
                                                             </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={() => handleReturnBook(book.id)}
-                                                            className="h-7 px-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[10px] font-bold rounded-lg shadow-sm flex items-center gap-1 active:scale-95 transition-all"
-                                                            title={t("return_book")}
-                                                        >
-                                                            <RotateCcw className="h-3.5 w-3.5" />
-                                                            <span>{t("return_book")}</span>
-                                                        </Button>
-                                                    )}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
