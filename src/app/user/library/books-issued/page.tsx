@@ -307,22 +307,23 @@ export default function UserBooksIssuedPage() {
 
                     {/* ── Desktop table ── */}
                     <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
-                        <Table className="min-w-[1050px]">
+                        <Table className="min-w-[1100px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
                                     <SortHead label={t("book_title")} field="title" className="w-[22%]" />
-                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[12%]" />
-                                    <SortHead label={t("author")} field="author" className="w-[14%]" />
-                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[12%]" />
-                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[12%]" />
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[18%]">{t("return_date")}</TableHead>
+                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[11%]" />
+                                    <SortHead label={t("author")} field="author" className="w-[12%]" />
+                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[11%]" />
+                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[11%]" />
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[11%]">{t("return_date")}</TableHead>
                                     <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[10%]">{t("status")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[12%]">{t("action") || "Action"}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center">
+                                        <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
                                                 <span>{t("loading")}</span>
@@ -331,7 +332,7 @@ export default function UserBooksIssuedPage() {
                                     </TableRow>
                                 ) : paginated.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center">
+                                        <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <BookOpen className="h-8 w-8 opacity-30" />
                                                 <span className="text-sm">{t("no_books_issued")}</span>
@@ -370,37 +371,39 @@ export default function UserBooksIssuedPage() {
                                             )}>
                                                 {fmt(b.dueReturnDate)}
                                             </TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600 overflow-visible">
+                                            <TableCell className="py-3 px-4 text-gray-600">
                                                 {isBookReturned(b) ? (
                                                     <span className="font-medium text-gray-700">{fmt(b.returnDate)}</span>
                                                 ) : (
-                                                    <div className="flex items-center gap-2 flex-nowrap">
-                                                        <span className="text-gray-400 font-medium">—</span>
-                                                        {b.returnRequested ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); handleCancelReturn(b.id); }}
-                                                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap"
-                                                                title={t("cancel_return_request") || "Cancel Return Request"}
-                                                            >
-                                                                <XCircle className="h-3.5 w-3.5 text-red-500" />
-                                                                <span>Cancel</span>
-                                                            </button>
-                                                        ) : (
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => { e.stopPropagation(); handleRequestReturn(b.id); }}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 rounded-md transition-all shadow-xs shrink-0 active:scale-95 cursor-pointer whitespace-nowrap"
-                                                                title={t("request_return") || "Return Book"}
-                                                            >
-                                                                <RotateCcw className="h-3.5 w-3.5" />
-                                                                <span>Return</span>
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    <span className="text-gray-400 font-medium">—</span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-center">{getStatusBadge(b)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center">
+                                                {isBookReturned(b) ? (
+                                                    <span className="text-gray-400 text-[11px]">—</span>
+                                                ) : b.returnRequested ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); handleCancelReturn(b.id); }}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                                                        title={t("cancel_return_request") || "Cancel Return Request"}
+                                                    >
+                                                        <XCircle className="h-3.5 w-3.5" />
+                                                        <span>Cancel</span>
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); handleRequestReturn(b.id); }}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                                                        title={t("request_return") || "Return Book"}
+                                                    >
+                                                        <RotateCcw className="h-3.5 w-3.5" />
+                                                        <span>Return Book</span>
+                                                    </button>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 )}
