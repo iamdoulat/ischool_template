@@ -186,6 +186,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             email_setting: "Email Gateway",
             email_sms_log: "Email / SMS / WA Logs",
             schedule_email_sms_log: "Schedule Email / SMS / WA Logs",
+            issue_return: "Issue Books",
         };
 
         if (overrides[key]) return overrides[key];
