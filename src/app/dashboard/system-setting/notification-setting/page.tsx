@@ -170,6 +170,20 @@ const eventVariables: Record<string, string[]> = {
         "class_title",
     ],
 
+    // ── Zoom Live Classes & Meetings ────────────────────────────────
+    "Zoom Live Meeting": [
+        "meeting_title", "meeting_date_time", "created_by",
+    ],
+    "Zoom Live Meeting Start": [
+        "meeting_title",
+    ],
+    "Zoom Live Classes": [
+        "class_title", "class_date_time", "class", "section", "teacher_name",
+    ],
+    "Zoom Live Classes Start": [
+        "class_title",
+    ],
+
     // ── Online Examination ───────────────────────────────────────────
     "Online Examination Publish Exam": [
         "exam_title", "duration", "total_marks", "exam_from", "exam_to",
