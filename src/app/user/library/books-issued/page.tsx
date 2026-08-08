@@ -124,21 +124,27 @@ export default function UserBooksIssuedPage() {
     const start = sorted.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
     const end = Math.min(currentPage * pageSize, sorted.length);
 
+    const isBookReturned = (b: BookIssued) => {
+        if (!b || !b.returnDate) return false;
+        const str = String(b.returnDate).trim().toLowerCase();
+        return str !== "" && str !== "null" && str !== "undefined" && str !== "0000-00-00" && str !== "—" && str !== "-";
+    };
+
     const isOverdue = (b: BookIssued) =>
-        !b.returnDate && !!b.dueReturnDate &&
+        !isBookReturned(b) && !!b.dueReturnDate &&
         new Date(b.dueReturnDate + "T23:59:59") < new Date();
 
     const overdueCount = useMemo(() => books.filter(isOverdue).length, [books]);
-    const outstandingCount = useMemo(() => books.filter((b) => !b.returnDate).length, [books]);
+    const outstandingCount = useMemo(() => books.filter((b) => !isBookReturned(b)).length, [books]);
 
     const getStatusBadge = (b: BookIssued) => {
-        if (b.returnDate)
+        if (isBookReturned(b))
             return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">{t("returned")}</Badge>;
         if (b.returnRequested)
             return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 gap-1"><Clock className="h-3 w-3 text-amber-600 animate-pulse" />{t("pending")}</Badge>;
         if (isOverdue(b))
             return <Badge className="bg-red-100 text-red-600 border-red-200 hover:bg-red-100 gap-1"><AlertTriangle className="h-3 w-3" />{t("overdue")}</Badge>;
-        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">{t("issued")}</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">{t("issued")}</Badge>;
     };
 
     const copyToClipboard = useCallback(() => {
@@ -340,32 +346,34 @@ export default function UserBooksIssuedPage() {
                                                 {fmt(b.dueReturnDate)}
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span>{b.returnDate ? fmt(b.returnDate) : "—"}</span>
-                                                    {!b.returnDate && (
-                                                        b.returnRequested ? (
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                onClick={() => handleCancelReturn(b.id)}
-                                                                className="h-7 w-7 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 active:scale-95 transition-all shadow-none shrink-0"
+                                                {isBookReturned(b) ? (
+                                                    <span className="font-medium text-gray-700">{fmt(b.returnDate)}</span>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-gray-400 font-medium">—</span>
+                                                        {b.returnRequested ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); handleCancelReturn(b.id); }}
+                                                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all shadow-xs shrink-0 cursor-pointer"
                                                                 title={t("cancel_return_request") || "Cancel Return Request"}
                                                             >
                                                                 <XCircle className="h-3.5 w-3.5 text-red-500" />
-                                                            </Button>
+                                                                <span>Cancel</span>
+                                                            </button>
                                                         ) : (
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                onClick={() => handleRequestReturn(b.id)}
-                                                                className="h-7 w-7 rounded-lg bg-indigo-50 text-[#6366F1] hover:bg-indigo-100 hover:text-indigo-700 active:scale-95 transition-all shadow-none shrink-0"
-                                                                title={t("request_return") || "Request Return"}
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); handleRequestReturn(b.id); }}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 rounded-md transition-all shadow-xs shrink-0 active:scale-95 cursor-pointer"
+                                                                title={t("request_return") || "Return Book"}
                                                             >
                                                                 <RotateCcw className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        )
-                                                    )}
-                                                </div>
+                                                                <span>Return</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-center">{getStatusBadge(b)}</TableCell>
                                         </TableRow>
