@@ -519,7 +519,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                                     <TableCell className="py-3 text-gray-500">{book.book.book_number}</TableCell>
                                                     <TableCell className="py-3 text-gray-500">{book.issue_date ? formatDate(book.issue_date) : "-"}</TableCell>
                                                     <TableCell className="py-3 text-gray-500">{book.due_date ? formatDate(book.due_date) : "-"}</TableCell>
-                                                    <TableCell className="py-3 text-gray-500">{isReturned ? formatDate(book.return_date) : "-"}</TableCell>
+                                                    <TableCell className="py-3 text-gray-500">{(isReturned && book.return_date) ? formatDate(book.return_date) : "-"}</TableCell>
                                                     <TableCell className="py-3 text-right">
                                                         {isReturned ? (
                                                             <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
