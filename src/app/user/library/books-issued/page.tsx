@@ -306,12 +306,13 @@ export default function UserBooksIssuedPage() {
                     </div>
 
                     {/* ── Desktop table ── */}
-                    <div className="hidden md:block rounded-md border border-gray-200 print:hidden">
-                        <Table>
+                    <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
+                        <Table className="w-full min-w-[900px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
                                     <SortHead label={t("book_title")} field="title" />
                                     <SortHead label={t("book_number")} field="bookNumber" />
+                                    <SortHead label={t("author")} field="author" />
                                     <SortHead label={t("issue_date")} field="issueDate" />
                                     <SortHead label={t("due_return_date")} field="dueReturnDate" />
                                     <TableHead className="font-bold text-gray-700 py-3 px-4">{t("return_date")}</TableHead>
@@ -322,7 +323,7 @@ export default function UserBooksIssuedPage() {
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center">
+                                        <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
                                                 <span>{t("loading")}</span>
@@ -331,7 +332,7 @@ export default function UserBooksIssuedPage() {
                                     </TableRow>
                                 ) : paginated.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center">
+                                        <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <BookOpen className="h-8 w-8 opacity-30" />
                                                 <span className="text-sm">{t("no_books_issued")}</span>
@@ -362,6 +363,7 @@ export default function UserBooksIssuedPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">{b.bookNumber || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">{b.author || "—"}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">{fmt(b.issueDate)}</TableCell>
                                             <TableCell className={cn(
                                                 "py-3 px-4 font-medium",
