@@ -19,6 +19,7 @@ import {
     Search, ChevronLeft, ChevronRight, ArrowUpDown,
     Copy, FileSpreadsheet, FileDown, Printer, Loader2, BookOpen,
     BookMarked, Calendar, CalendarCheck, User, Hash, AlertTriangle,
+    RotateCcw, XCircle, Clock,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn, formatDate } from "@/lib/utils";
@@ -34,6 +35,7 @@ type BookIssued = {
     issueDate: string;
     dueReturnDate: string;
     returnDate: string;
+    returnRequested?: boolean;
 };
 
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -70,6 +72,30 @@ export default function UserBooksIssuedPage() {
         fetchBooks();
     }, [toast]);
 
+    const handleRequestReturn = async (bookIssueId: number) => {
+        try {
+            await api.post(`/user/library/books-issued/${bookIssueId}/request-return`);
+            setBooks((prev) =>
+                prev.map((b) => (b.id === bookIssueId ? { ...b, returnRequested: true } : b))
+            );
+            toast({ title: t("success"), description: t("return_request_submitted") || "Return request submitted to librarian." });
+        } catch {
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_request_return") || "Failed to submit return request." });
+        }
+    };
+
+    const handleCancelReturn = async (bookIssueId: number) => {
+        try {
+            await api.post(`/user/library/books-issued/${bookIssueId}/cancel-return`);
+            setBooks((prev) =>
+                prev.map((b) => (b.id === bookIssueId ? { ...b, returnRequested: false } : b))
+            );
+            toast({ title: t("success"), description: t("return_request_cancelled") || "Return request cancelled." });
+        } catch {
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_cancel_return") || "Failed to cancel return request." });
+        }
+    };
+
     const handleSort = (key: SortKey) => {
         if (sortKey === key) setSortAsc((a) => !a);
         else { setSortKey(key); setSortAsc(true); }
@@ -85,7 +111,6 @@ export default function UserBooksIssuedPage() {
         );
     }, [books, searchTerm]);
 
-    // ISO date strings sort correctly with localeCompare (lexicographic = chronological)
     const sorted = useMemo(() => {
         return [...filtered].sort((a, b) => {
             const av = a[sortKey] ?? "";
@@ -109,9 +134,11 @@ export default function UserBooksIssuedPage() {
     const getStatusBadge = (b: BookIssued) => {
         if (b.returnDate)
             return <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100">{t("returned")}</Badge>;
+        if (b.returnRequested)
+            return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100 gap-1"><Clock className="h-3 w-3 text-amber-600 animate-pulse" />{t("pending")}</Badge>;
         if (isOverdue(b))
             return <Badge className="bg-red-100 text-red-600 border-red-200 hover:bg-red-100 gap-1"><AlertTriangle className="h-3 w-3" />{t("overdue")}</Badge>;
-        return <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-100">{t("issued")}</Badge>;
+        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">{t("issued")}</Badge>;
     };
 
     const copyToClipboard = useCallback(() => {
@@ -252,19 +279,20 @@ export default function UserBooksIssuedPage() {
                         <Table className="min-w-[860px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
-                                    <SortHead label={t("book_title")} field="title" className="w-[28%]" />
-                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[14%]" />
-                                    <SortHead label={t("author")} field="author" className="w-[18%]" />
-                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[13%]" />
-                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[13%]" />
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[8%]">{t("return_date")}</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[9%]">{t("status")}</TableHead>
+                                    <SortHead label={t("book_title")} field="title" className="w-[24%]" />
+                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[12%]" />
+                                    <SortHead label={t("author")} field="author" className="w-[16%]" />
+                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[12%]" />
+                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[12%]" />
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[10%]">{t("return_date")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[8%]">{t("status")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-right w-[12%]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center">
+                                        <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
                                                 <span>{t("loading")}</span>
@@ -273,7 +301,7 @@ export default function UserBooksIssuedPage() {
                                     </TableRow>
                                 ) : paginated.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="h-32 text-center">
+                                        <TableCell colSpan={8} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <BookOpen className="h-8 w-8 opacity-30" />
                                                 <span className="text-sm">{t("no_books_issued")}</span>
@@ -288,9 +316,11 @@ export default function UserBooksIssuedPage() {
                                                 "text-[13px] border-b border-gray-100 transition-colors",
                                                 b.returnDate
                                                     ? "bg-green-50/60 hover:bg-green-50"
-                                                    : isOverdue(b)
-                                                        ? "bg-red-50/60 hover:bg-red-50"
-                                                        : "hover:bg-gray-50/60"
+                                                    : b.returnRequested
+                                                        ? "bg-amber-50/40 hover:bg-amber-50/60"
+                                                        : isOverdue(b)
+                                                            ? "bg-red-50/60 hover:bg-red-50"
+                                                            : "hover:bg-gray-50/60"
                                             )}
                                         >
                                             <TableCell className="py-3 px-4 font-medium text-gray-800">
@@ -312,6 +342,32 @@ export default function UserBooksIssuedPage() {
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">{b.returnDate ? fmt(b.returnDate) : "—"}</TableCell>
                                             <TableCell className="py-3 px-4 text-center">{getStatusBadge(b)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-right">
+                                                {b.returnDate ? (
+                                                    <span className="text-[11px] font-semibold text-green-600">{t("returned")}</span>
+                                                ) : b.returnRequested ? (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => handleCancelReturn(b.id)}
+                                                        className="h-7 px-2.5 border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold gap-1 rounded-md active:scale-95 transition-all shadow-none"
+                                                        title={t("cancel_return_request")}
+                                                    >
+                                                        <XCircle className="h-3.5 w-3.5 text-red-500" />
+                                                        <span>Cancel</span>
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleRequestReturn(b.id)}
+                                                        className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold gap-1 rounded-md shadow-sm active:scale-95 transition-all"
+                                                        title={t("request_return")}
+                                                    >
+                                                        <RotateCcw className="h-3.5 w-3.5" />
+                                                        <span>Return</span>
+                                                    </Button>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -339,9 +395,11 @@ export default function UserBooksIssuedPage() {
                                         "rounded-xl border p-3.5 shadow-sm",
                                         b.returnDate
                                             ? "border-green-200 bg-green-50/50"
-                                            : isOverdue(b)
-                                                ? "border-red-200 bg-red-50/50"
-                                                : "border-gray-200 bg-white"
+                                            : b.returnRequested
+                                                ? "border-amber-200 bg-amber-50/50"
+                                                : isOverdue(b)
+                                                    ? "border-red-200 bg-red-50/50"
+                                                    : "border-gray-200 bg-white"
                                     )}
                                 >
                                     <div className="flex items-start justify-between gap-2">
@@ -376,10 +434,34 @@ export default function UserBooksIssuedPage() {
                                             <Calendar className={cn("h-3 w-3", isOverdue(b) ? "text-red-400" : "text-gray-400")} />
                                             {t("due")}: <span className={cn("font-medium", isOverdue(b) ? "text-red-600" : "text-gray-700")}>{fmt(b.dueReturnDate)}</span>
                                         </span>
-                                        <span className="flex items-center gap-1.5 col-span-2">
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2.5">
+                                        <span className="text-[11px] text-gray-500 flex items-center gap-1.5">
                                             <CalendarCheck className="h-3 w-3 text-gray-400" />
                                             {t("returned")}: <span className="font-medium text-gray-700">{b.returnDate ? fmt(b.returnDate) : "—"}</span>
                                         </span>
+                                        {!b.returnDate && (
+                                            b.returnRequested ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleCancelReturn(b.id)}
+                                                    className="h-7 px-2.5 border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold gap-1 rounded-md"
+                                                >
+                                                    <XCircle className="h-3.5 w-3.5 text-red-500" />
+                                                    <span>Cancel</span>
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => handleRequestReturn(b.id)}
+                                                    className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[11px] font-bold gap-1 rounded-md"
+                                                >
+                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                    <span>Return</span>
+                                                </Button>
+                                            )
+                                        )}
                                     </div>
                                 </div>
                             ))
