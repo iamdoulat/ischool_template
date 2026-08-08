@@ -695,5 +695,13 @@ export const handlers = [
       status: 'success',
       message: 'Return request cancelled successfully',
     });
+  }),
+
+  // Admin return book
+  http.put('*/api/v1/library/book-issues/:id/return', async () => {
+    return HttpResponse.json({
+      status: 'success',
+      message: 'Book returned successfully',
+    });
   })
 ]
