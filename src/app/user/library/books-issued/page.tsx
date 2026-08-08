@@ -315,7 +315,7 @@ export default function UserBooksIssuedPage() {
                                     <SortHead label={t("due_return_date")} field="dueReturnDate" />
                                     <TableHead className="font-bold text-gray-700 py-3 px-4">{t("return_date")}</TableHead>
                                     <TableHead className="font-bold text-gray-700 py-3 px-4 text-center">{t("status")}</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center min-w-[140px]">{t("action") || "Action"}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center min-w-[140px]">Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
