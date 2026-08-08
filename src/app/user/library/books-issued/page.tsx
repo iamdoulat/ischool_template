@@ -279,20 +279,19 @@ export default function UserBooksIssuedPage() {
                         <Table className="min-w-[860px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
-                                    <SortHead label={t("book_title")} field="title" className="w-[24%]" />
-                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[12%]" />
-                                    <SortHead label={t("author")} field="author" className="w-[16%]" />
-                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[12%]" />
-                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[12%]" />
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[10%]">{t("return_date")}</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[8%]">{t("status")}</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-right w-[12%]">{t("action")}</TableHead>
+                                    <SortHead label={t("book_title")} field="title" className="w-[28%]" />
+                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[14%]" />
+                                    <SortHead label={t("author")} field="author" className="w-[18%]" />
+                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[14%]" />
+                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[14%]" />
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[12%]">{t("return_date")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[10%]">{t("status")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="h-32 text-center">
+                                        <TableCell colSpan={7} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
                                                 <Loader2 className="h-5 w-5 animate-spin" />
                                                 <span>{t("loading")}</span>
@@ -301,7 +300,7 @@ export default function UserBooksIssuedPage() {
                                     </TableRow>
                                 ) : paginated.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={8} className="h-32 text-center">
+                                        <TableCell colSpan={7} className="h-32 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                                                 <BookOpen className="h-8 w-8 opacity-30" />
                                                 <span className="text-sm">{t("no_books_issued")}</span>
@@ -340,34 +339,35 @@ export default function UserBooksIssuedPage() {
                                             )}>
                                                 {fmt(b.dueReturnDate)}
                                             </TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">{b.returnDate ? fmt(b.returnDate) : "—"}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">{getStatusBadge(b)}</TableCell>
-                                            <TableCell className="py-3 px-4 text-right">
-                                                {b.returnDate ? (
-                                                    <span className="text-[11px] font-semibold text-green-600">{t("returned")}</span>
-                                                ) : b.returnRequested ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleCancelReturn(b.id)}
-                                                        className="h-7 px-2.5 border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold gap-1 rounded-md active:scale-95 transition-all shadow-none"
-                                                        title={t("cancel_return_request")}
-                                                    >
-                                                        <XCircle className="h-3.5 w-3.5 text-red-500" />
-                                                        <span>Cancel</span>
-                                                    </Button>
-                                                ) : (
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => handleRequestReturn(b.id)}
-                                                        className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold gap-1 rounded-md shadow-sm active:scale-95 transition-all"
-                                                        title={t("request_return")}
-                                                    >
-                                                        <RotateCcw className="h-3.5 w-3.5" />
-                                                        <span>Return</span>
-                                                    </Button>
-                                                )}
+                                            <TableCell className="py-3 px-4 text-gray-600">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span>{b.returnDate ? fmt(b.returnDate) : "—"}</span>
+                                                    {!b.returnDate && (
+                                                        b.returnRequested ? (
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                onClick={() => handleCancelReturn(b.id)}
+                                                                className="h-7 w-7 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 active:scale-95 transition-all shadow-none shrink-0"
+                                                                title={t("cancel_return_request") || "Cancel Return Request"}
+                                                            >
+                                                                <XCircle className="h-3.5 w-3.5 text-red-500" />
+                                                            </Button>
+                                                        ) : (
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                onClick={() => handleRequestReturn(b.id)}
+                                                                className="h-7 w-7 rounded-lg bg-indigo-50 text-[#6366F1] hover:bg-indigo-100 hover:text-indigo-700 active:scale-95 transition-all shadow-none shrink-0"
+                                                                title={t("request_return") || "Request Return"}
+                                                            >
+                                                                <RotateCcw className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )
+                                                    )}
+                                                </div>
                                             </TableCell>
+                                            <TableCell className="py-3 px-4 text-center">{getStatusBadge(b)}</TableCell>
                                         </TableRow>
                                     ))
                                 )}
