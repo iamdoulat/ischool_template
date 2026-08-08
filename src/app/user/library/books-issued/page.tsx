@@ -280,9 +280,9 @@ export default function UserBooksIssuedPage() {
                             </Select>
                             <div className="flex items-center rounded-[10px] border border-gray-200 bg-gray-50 overflow-hidden shrink-0">
                                 {[
-                                    { icon: Copy, fn: handleCopy, title: t("copy") || "Copy" },
-                                    { icon: FileSpreadsheet, fn: handleExcel, title: t("excel") || "Excel" },
-                                    { icon: FileDown, fn: handlePdf, title: t("pdf") || "PDF" },
+                                    { icon: Copy, fn: copyToClipboard, title: t("copy") || "Copy" },
+                                    { icon: FileSpreadsheet, fn: exportToExcel, title: t("excel") || "Excel" },
+                                    { icon: FileDown, fn: exportToPDF, title: t("pdf") || "PDF" },
                                     { icon: Printer, fn: () => window.print(), title: t("print") || "Print" },
                                 ].map(({ icon: Icon, fn, title }, i, arr) => (
                                     <Button
