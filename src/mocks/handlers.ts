@@ -679,5 +679,21 @@ export const handlers = [
         message: 'Application not found'
       }, { status: 404 });
     }
+  }),
+
+  // Request book return
+  http.post('*/api/v1/user/library/books-issued/:id/request-return', async () => {
+    return HttpResponse.json({
+      status: 'success',
+      message: 'Return request submitted successfully',
+    });
+  }),
+
+  // Cancel book return
+  http.post('*/api/v1/user/library/books-issued/:id/cancel-return', async () => {
+    return HttpResponse.json({
+      status: 'success',
+      message: 'Return request cancelled successfully',
+    });
   })
 ]
