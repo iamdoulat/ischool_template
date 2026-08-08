@@ -58,12 +58,22 @@ export default function UserBooksIssuedPage() {
         const fetchBooks = async () => {
             try {
                 const res = await api.get("/user/library/books-issued");
-                if (res.data.success) {
-                    setBooks(res.data.data ?? []);
-                } else {
-                    toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_books") });
+                const rawList = res.data?.data ?? res.data ?? [];
+                if (Array.isArray(rawList)) {
+                    const normalized: BookIssued[] = rawList.map((item: any) => ({
+                        id: Number(item.id),
+                        title: item.title || item.book?.title || item.book_title || "",
+                        bookNumber: item.bookNumber || item.book_number || item.book?.book_number || "",
+                        author: item.author || item.book?.author || "",
+                        issueDate: item.issueDate || item.issue_date || "",
+                        dueReturnDate: item.dueReturnDate || item.due_date || item.due_return_date || "",
+                        returnDate: item.returnDate || item.return_date || "",
+                        returnRequested: Boolean(item.returnRequested ?? item.return_requested ?? item.is_return_requested ?? false),
+                    }));
+                    setBooks(normalized);
                 }
-            } catch {
+            } catch (err) {
+                console.error("Error loading issued books:", err);
                 toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_issued_books") });
             } finally {
                 setLoading(false);
