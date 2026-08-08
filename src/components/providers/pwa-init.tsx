@@ -71,6 +71,32 @@ export function PWAInit() {
       document.head.appendChild(icon512Tag);
     }
     icon512Tag.href = settings?.pwa_icon_512 || localIcon512 || appIcon;
+    // Auto-reload on Next.js ChunkLoadError (e.g. after production deployments update chunk hashes)
+    const handleChunkError = (message?: string) => {
+      if (message && /Loading chunk [\d]+ failed|ChunkLoadError/i.test(message)) {
+        const storageKey = "ischool_chunk_load_reload";
+        const lastReload = sessionStorage.getItem(storageKey);
+        const now = Date.now();
+        if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+          sessionStorage.setItem(storageKey, now.toString());
+          window.location.reload();
+        }
+      }
+    };
+
+    const onError = (e: ErrorEvent) => handleChunkError(e.message);
+    const onUnhandledRejection = (e: PromiseRejectionEvent) => {
+      const reason = e.reason?.message || String(e.reason || "");
+      handleChunkError(reason);
+    };
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    };
   }, [settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.school_name, settings?.app_logo]);
 
   return <PWAInstallPrompt />;
