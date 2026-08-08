@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -551,13 +552,13 @@ export default function LibraryMembersPage() {
             {/* Issue Book Modal */}
             <Dialog open={isIssueModalOpen} onOpenChange={setIsIssueModalOpen}>
                 <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden rounded-xl">
-                    <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 border-b border-gray-100 flex flex-row items-center gap-3 space-y-0">
+                    <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 border-b border-gray-100 flex flex-row items-center gap-3 space-y-0 text-left">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <BookPlus className="h-5 w-5" />
                         </span>
-                        <div>
+                        <div className="flex flex-col text-left">
                             <DialogTitle className="text-base font-bold text-gray-800">{t("issue_books")}</DialogTitle>
-                            <p className="text-xs text-gray-500 mt-0.5">{t("lend_book_to_student_or_member")}</p>
+                            <DialogDescription className="text-xs text-gray-500 mt-0.5">{t("lend_book_to_student_or_member")}</DialogDescription>
                         </div>
                     </DialogHeader>
 
