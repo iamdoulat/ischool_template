@@ -1,5 +1,6 @@
 "use client";
 
+// Trigger HMR re-compilation
 import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
