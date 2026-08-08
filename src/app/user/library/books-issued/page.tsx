@@ -137,7 +137,19 @@ export default function UserBooksIssuedPage() {
     const isBookReturned = (b: BookIssued) => {
         if (!b || !b.returnDate) return false;
         const str = String(b.returnDate).trim().toLowerCase();
-        return str !== "" && str !== "null" && str !== "undefined" && str !== "0000-00-00" && str !== "—" && str !== "-";
+        if (
+            str === "" ||
+            str === "null" ||
+            str === "undefined" ||
+            str === "0000-00-00" ||
+            str === "1970-01-01" ||
+            str.startsWith("1970-01-01") ||
+            str === "—" ||
+            str === "-"
+        ) {
+            return false;
+        }
+        return true;
     };
 
     const isOverdue = (b: BookIssued) =>
