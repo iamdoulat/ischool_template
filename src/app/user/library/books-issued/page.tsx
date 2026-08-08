@@ -113,8 +113,8 @@ export default function UserBooksIssuedPage() {
 
     const sorted = useMemo(() => {
         return [...filtered].sort((a, b) => {
-            const av = a[sortKey] ?? "";
-            const bv = b[sortKey] ?? "";
+            const av = String(a[sortKey] ?? "");
+            const bv = String(b[sortKey] ?? "");
             return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
         });
     }, [filtered, sortKey, sortAsc]);
