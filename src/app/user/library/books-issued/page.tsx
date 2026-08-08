@@ -60,16 +60,19 @@ export default function UserBooksIssuedPage() {
                 const res = await api.get("/user/library/books-issued");
                 const rawList = res.data?.data ?? res.data ?? [];
                 if (Array.isArray(rawList)) {
-                    const normalized: BookIssued[] = rawList.map((item: any) => ({
-                        id: Number(item.id),
-                        title: item.title || item.book?.title || item.book_title || "",
-                        bookNumber: item.bookNumber || item.book_number || item.book?.book_number || "",
-                        author: item.author || item.book?.author || "",
-                        issueDate: item.issueDate || item.issue_date || "",
-                        dueReturnDate: item.dueReturnDate || item.due_date || item.due_return_date || "",
-                        returnDate: item.returnDate || item.return_date || "",
-                        returnRequested: Boolean(item.returnRequested ?? item.return_requested ?? item.is_return_requested ?? false),
-                    }));
+                    const normalized: BookIssued[] = rawList.map((item: any) => {
+                        const rd = item.returnDate || item.return_date || "";
+                        return {
+                            id: Number(item.id),
+                            title: item.title || item.book?.title || item.book_title || "",
+                            bookNumber: item.bookNumber || item.book_number || item.book?.book_number || "",
+                            author: item.author || item.book?.author || "",
+                            issueDate: item.issueDate || item.issue_date || "",
+                            dueReturnDate: item.dueReturnDate || item.due_date || item.due_return_date || "",
+                            returnDate: rd,
+                            returnRequested: Boolean(item.returnRequested ?? item.return_requested ?? item.is_return_requested ?? false),
+                        };
+                    });
                     setBooks(normalized);
                 }
             } catch (err) {
@@ -304,15 +307,15 @@ export default function UserBooksIssuedPage() {
 
                     {/* ── Desktop table ── */}
                     <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
-                        <Table className="min-w-[860px]">
+                        <Table className="min-w-[1050px]">
                             <TableHeader>
                                 <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
-                                    <SortHead label={t("book_title")} field="title" className="w-[28%]" />
-                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[14%]" />
-                                    <SortHead label={t("author")} field="author" className="w-[18%]" />
-                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[14%]" />
-                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[14%]" />
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[12%]">{t("return_date")}</TableHead>
+                                    <SortHead label={t("book_title")} field="title" className="w-[22%]" />
+                                    <SortHead label={t("book_number")} field="bookNumber" className="w-[12%]" />
+                                    <SortHead label={t("author")} field="author" className="w-[14%]" />
+                                    <SortHead label={t("issue_date")} field="issueDate" className="w-[12%]" />
+                                    <SortHead label={t("due_return_date")} field="dueReturnDate" className="w-[12%]" />
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 w-[18%]">{t("return_date")}</TableHead>
                                     <TableHead className="font-bold text-gray-700 py-3 px-4 text-center w-[10%]">{t("status")}</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -341,7 +344,7 @@ export default function UserBooksIssuedPage() {
                                             key={b.id}
                                             className={cn(
                                                 "text-[13px] border-b border-gray-100 transition-colors",
-                                                b.returnDate
+                                                isBookReturned(b)
                                                     ? "bg-green-50/60 hover:bg-green-50"
                                                     : b.returnRequested
                                                         ? "bg-amber-50/40 hover:bg-amber-50/60"
@@ -367,17 +370,17 @@ export default function UserBooksIssuedPage() {
                                             )}>
                                                 {fmt(b.dueReturnDate)}
                                             </TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">
+                                            <TableCell className="py-3 px-4 text-gray-600 overflow-visible">
                                                 {isBookReturned(b) ? (
                                                     <span className="font-medium text-gray-700">{fmt(b.returnDate)}</span>
                                                 ) : (
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 flex-nowrap">
                                                         <span className="text-gray-400 font-medium">—</span>
                                                         {b.returnRequested ? (
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => { e.stopPropagation(); handleCancelReturn(b.id); }}
-                                                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all shadow-xs shrink-0 cursor-pointer"
+                                                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all shadow-xs shrink-0 cursor-pointer whitespace-nowrap"
                                                                 title={t("cancel_return_request") || "Cancel Return Request"}
                                                             >
                                                                 <XCircle className="h-3.5 w-3.5 text-red-500" />
@@ -387,7 +390,7 @@ export default function UserBooksIssuedPage() {
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => { e.stopPropagation(); handleRequestReturn(b.id); }}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 rounded-md transition-all shadow-xs shrink-0 active:scale-95 cursor-pointer"
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 rounded-md transition-all shadow-xs shrink-0 active:scale-95 cursor-pointer whitespace-nowrap"
                                                                 title={t("request_return") || "Return Book"}
                                                             >
                                                                 <RotateCcw className="h-3.5 w-3.5" />
@@ -423,7 +426,7 @@ export default function UserBooksIssuedPage() {
                                     key={b.id}
                                     className={cn(
                                         "rounded-xl border p-3.5 shadow-sm",
-                                        b.returnDate
+                                        isBookReturned(b)
                                             ? "border-green-200 bg-green-50/50"
                                             : b.returnRequested
                                                 ? "border-amber-200 bg-amber-50/50"
@@ -468,9 +471,9 @@ export default function UserBooksIssuedPage() {
                                     <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2.5">
                                         <span className="text-[11px] text-gray-500 flex items-center gap-1.5">
                                             <CalendarCheck className="h-3 w-3 text-gray-400" />
-                                            {t("returned")}: <span className="font-medium text-gray-700">{b.returnDate ? fmt(b.returnDate) : "—"}</span>
+                                            {t("returned")}: <span className="font-medium text-gray-700">{isBookReturned(b) ? fmt(b.returnDate) : "—"}</span>
                                         </span>
-                                        {!b.returnDate && (
+                                        {!isBookReturned(b) && (
                                             b.returnRequested ? (
                                                 <Button
                                                     size="sm"
