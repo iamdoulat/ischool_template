@@ -108,13 +108,13 @@ function LogoCard({
     };
 
     const effectiveValue = value || defaultLogos[field] || "";
-    const primaryUrl = effectiveValue ? getImageUrl(effectiveValue) : "";
-    const displaySrc = imgErrorState === 'proxy' && primaryUrl
+    const primaryUrl = effectiveValue ? getImageUrl(effectiveValue) : (defaultLogos[field] || "");
+    const displaySrc = (imgErrorState === 'proxy' && primaryUrl && (primaryUrl.startsWith('http://') || primaryUrl.startsWith('https://')))
         ? `/api/proxy-image?url=${encodeURIComponent(primaryUrl)}`
-        : primaryUrl;
+        : (primaryUrl || defaultLogos[field] || "/logo-print.png");
 
     const handleImageError = () => {
-        if (imgErrorState === 'initial' && primaryUrl) {
+        if (imgErrorState === 'initial' && primaryUrl && (primaryUrl.startsWith('http://') || primaryUrl.startsWith('https://'))) {
             setImgErrorState('proxy');
         } else {
             setImgErrorState('failed');

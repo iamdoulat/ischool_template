@@ -1,4 +1,5 @@
 import { useSettings } from "@/components/providers/settings-provider";
+import { getImageUrl } from "@/lib/image-url";
 import { useEffect, useState } from "react";
 import api from "@/lib/api";
 
@@ -47,11 +48,7 @@ export function PrintHeader({ title, headerImageUrl: externalHeaderImageUrl, tab
                 {/* Left Side: Logo and School Name */}
                 <div className="flex flex-col justify-center items-start">
                     <div className="h-6 md:h-7 relative flex items-center mb-1">
-                        {settings.print_logo ? (
-                            <img src={settings.print_logo} alt="Logo" className="max-h-full object-contain" />
-                        ) : (
-                            <div className="text-sm font-bold bg-green-500 text-white px-2 py-0.5 rounded">iSCHOOL</div>
-                        )}
+                        <img src={getImageUrl(settings.print_logo || settings.admin_logo || settings.app_logo || "/logo-print.png")} alt="Logo" className="max-h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).src = "/logo-print.png"; }} />
                     </div>
                     <div>
                         <h1 className="text-lg md:text-xl font-bold text-gray-900 tracking-tight leading-none uppercase">
