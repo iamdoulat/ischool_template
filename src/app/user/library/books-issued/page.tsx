@@ -221,7 +221,6 @@ export default function UserBooksIssuedPage() {
     return (
         <div className="p-4 lg:p-6 animate-in fade-in duration-500">
             <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
-                {/* ── Header (Print button on the right) ── */}
                 <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
@@ -247,53 +246,52 @@ export default function UserBooksIssuedPage() {
                 </div>
 
                 <CardContent className="p-4">
-                    {/* Overdue alert */}
                     {!loading && overdueCount > 0 && (
-                        <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-2.5 text-[12px] text-red-700 print:hidden">
-                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                        <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700 text-xs font-medium print:hidden">
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
                             <span>
-                                {t("you_have")} <span className="font-bold">{overdueCount}</span> {t("overdue_book").toLowerCase()}{overdueCount === 1 ? "" : "s"}. {t("please_return_to_library")}
+                                {t("you_have")} <strong>{overdueCount}</strong> {t("overdue_book")}{overdueCount === 1 ? "" : "s"}. {t("please_return_prompt")}
                             </span>
                         </div>
                     )}
 
-                    {/* Toolbar */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 print:hidden">
-                        <div className="relative w-full sm:w-64">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 print:hidden">
+                        <div className="relative w-full sm:w-72">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder={t("search_title_book_no_author")}
                                 value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                                className="pl-8 h-9 text-sm rounded-[10px]"
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder={t("search_title_bookno_author") || "Search Title, Book No, Author..."}
+                                className="pl-9 h-9 text-[12px] bg-gray-50 border-gray-200 rounded-[10px] focus:bg-white transition-colors"
                             />
                         </div>
-
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
                             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
+                                <SelectTrigger className="h-9 text-[12px] w-20 border-gray-200 rounded-[10px] bg-gray-50">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {PAGE_SIZES.map((s) => (
-                                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                                    {[10, 25, 50, 100].map((n) => (
+                                        <SelectItem key={n} value={String(n)} className="text-[12px]">
+                                            {n}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-
-                            <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
+                            <div className="flex items-center rounded-[10px] border border-gray-200 bg-gray-50 overflow-hidden shrink-0">
                                 {[
-                                    { icon: Copy, label: t("copy"), action: copyToClipboard },
-                                    { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
-                                    { icon: FileDown, label: t("pdf"), action: exportToPDF },
-                                    { icon: Printer, label: t("print"), action: () => window.print() },
-                                ].map(({ icon: Icon, label, action }, i, arr) => (
+                                    { icon: Copy, fn: handleCopy, title: t("copy") || "Copy" },
+                                    { icon: FileSpreadsheet, fn: handleExcel, title: t("excel") || "Excel" },
+                                    { icon: FileDown, fn: handlePdf, title: t("pdf") || "PDF" },
+                                    { icon: Printer, fn: () => window.print(), title: t("print") || "Print" },
+                                ].map(({ icon: Icon, fn, title }, i, arr) => (
                                     <Button
-                                        key={label}
+                                        key={i}
+                                        type="button"
                                         variant="ghost"
-                                        size="icon"
-                                        title={label}
-                                        onClick={action}
+                                        size="sm"
+                                        onClick={fn}
+                                        title={title}
                                         className={cn(
                                             "h-9 w-9 rounded-none hover:bg-gray-100",
                                             i < arr.length - 1 && "border-r border-gray-200"
@@ -306,7 +304,6 @@ export default function UserBooksIssuedPage() {
                         </div>
                     </div>
 
-                    {/* ── Desktop table ── */}
                     <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
                         <Table className="w-full min-w-[900px]">
                             <TableHeader>
@@ -318,7 +315,7 @@ export default function UserBooksIssuedPage() {
                                     <SortHead label={t("due_return_date")} field="dueReturnDate" />
                                     <TableHead className="font-bold text-gray-700 py-3 px-4">{t("return_date")}</TableHead>
                                     <TableHead className="font-bold text-gray-700 py-3 px-4 text-center">{t("status")}</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center">{t("action") || "Action"}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center min-w-[140px]">{t("action") || "Action"}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -380,29 +377,32 @@ export default function UserBooksIssuedPage() {
                                                 )}
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-center">{getStatusBadge(b)}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">
+                                            <TableCell className="py-3 px-4 text-center min-w-[140px]">
                                                 {isBookReturned(b) ? (
-                                                    <span className="text-gray-400 text-[11px]">—</span>
+                                                    <span className="text-gray-400 text-[11px] font-medium">—</span>
                                                 ) : b.returnRequested ? (
-                                                    <button
+                                                    <Button
                                                         type="button"
+                                                        size="sm"
+                                                        variant="outline"
                                                         onClick={(e) => { e.stopPropagation(); handleCancelReturn(b.id); }}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                                                        className="h-8 px-3 border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold gap-1.5 rounded-lg shadow-sm cursor-pointer whitespace-nowrap"
                                                         title={t("cancel_return_request") || "Cancel Return Request"}
                                                     >
-                                                        <XCircle className="h-3.5 w-3.5" />
+                                                        <XCircle className="h-3.5 w-3.5 text-red-500" />
                                                         <span>Cancel</span>
-                                                    </button>
+                                                    </Button>
                                                 ) : (
-                                                    <button
+                                                    <Button
                                                         type="button"
+                                                        size="sm"
                                                         onClick={(e) => { e.stopPropagation(); handleRequestReturn(b.id); }}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 rounded-lg transition-all shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
+                                                        className="h-8 px-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white text-[11px] font-bold gap-1.5 rounded-lg shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
                                                         title={t("request_return") || "Return Book"}
                                                     >
                                                         <RotateCcw className="h-3.5 w-3.5" />
                                                         <span>Return Book</span>
-                                                    </button>
+                                                    </Button>
                                                 )}
                                             </TableCell>
                                         </TableRow>
@@ -412,7 +412,6 @@ export default function UserBooksIssuedPage() {
                         </Table>
                     </div>
 
-                    {/* ── Mobile cards ── */}
                     <div className="md:hidden space-y-3 print:hidden">
                         {loading ? (
                             <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
