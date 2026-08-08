@@ -154,7 +154,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     ],
     library: [
         { name: "book_list", label: "Book List" },
-        { name: "issue_return", label: "Issue & Return" },
+        { name: "issue_return", label: "Issue Books" },
         { name: "add_student", label: "Add Student" },
         { name: "add_staff_member", label: "Add Staff Member" },
     ],

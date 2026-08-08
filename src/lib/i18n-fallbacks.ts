@@ -599,7 +599,7 @@ export const i18nFallbacks: Record<string, string> = {
   course_details: "Course Details",
   x_teachers_available: "{count} Teachers Available",
   book_list: "Book List",
-  issue_return: "Issue Return",
+  issue_return: "Issue Books",
   add_student: "Add Student",
   add_staff_member: "Add Staff Member",
   issue_item: "Issue Item",
