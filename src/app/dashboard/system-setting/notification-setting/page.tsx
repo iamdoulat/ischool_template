@@ -177,6 +177,14 @@ const eventVariables: Record<string, string[]> = {
     "Online Examination Publish Result": [
         "exam_title",
     ],
+
+    // ── Library ──────────────────────────────────────────────────────
+    "Book Issued": [
+        "student_name", "admission_no", "book_title", "book_number", "author", "issue_date", "due_date",
+    ],
+    "Book Returned": [
+        "student_name", "admission_no", "book_title", "book_number", "author", "return_date",
+    ],
 };
 
 function VariableChip({ name, onClick }: { name: string; onClick: (v: string) => void }) {
