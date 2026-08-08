@@ -187,7 +187,7 @@ export const handlers = [
 
   // Save online admission fields
   http.post('*/api/v1/system-setting/online-admission/fields', async ({ request }) => {
-    await request.json()
+    await request.json().catch(() => ({}));
     return HttpResponse.json({
       success: true,
       message: 'Fields updated successfully'
@@ -431,7 +431,7 @@ export const handlers = [
 
   // Syllabus Status Report
   http.post('*/api/v1/reports/lesson-plan/syllabus-status', async ({ request }) => {
-    const body = await request.json() as { class_id?: string };
+    const body = (await request.json().catch(() => ({}))) as { class_id?: string };
     const classId = body.class_id;
 
     interface SyllabusEntry {
@@ -625,7 +625,7 @@ export const handlers = [
 
   // Toggle a CV setting
   http.post('*/api/v1/student-cv/settings/toggle', async ({ request }) => {
-    await request.json();
+    await request.json().catch(() => ({}));
     return HttpResponse.json({ success: true, message: 'Setting updated' });
   }),
 

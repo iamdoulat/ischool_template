@@ -74,7 +74,7 @@ export default function UserBooksIssuedPage() {
 
     const handleRequestReturn = async (bookIssueId: number) => {
         try {
-            await api.post(`/user/library/books-issued/${bookIssueId}/request-return`);
+            await api.post(`/user/library/books-issued/${bookIssueId}/request-return`, {});
             setBooks((prev) =>
                 prev.map((b) => (b.id === bookIssueId ? { ...b, returnRequested: true } : b))
             );
@@ -86,7 +86,7 @@ export default function UserBooksIssuedPage() {
 
     const handleCancelReturn = async (bookIssueId: number) => {
         try {
-            await api.post(`/user/library/books-issued/${bookIssueId}/cancel-return`);
+            await api.post(`/user/library/books-issued/${bookIssueId}/cancel-return`, {});
             setBooks((prev) =>
                 prev.map((b) => (b.id === bookIssueId ? { ...b, returnRequested: false } : b))
             );
