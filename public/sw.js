@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ischool-pwa-v2';
+const CACHE_NAME = 'ischool-pwa-v3';
 
 const urlsToCache = [
   '/',
@@ -30,6 +30,12 @@ self.addEventListener('activate', (event) => {
     })
   );
   self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -79,7 +85,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Assets/Resources: Cache first, fallback to network
+  // Assets & Chunks: Cache first, fallback to network. NEVER fallback to '/' HTML for JS/CSS assets.
   event.respondWith(
     caches.match(event.request).then((response) => {
       if (response) {
@@ -99,9 +105,8 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => {});
         return networkResponse;
       });
-    }).catch(() => {
-      return caches.match('/');
     })
   );
 });
+
 

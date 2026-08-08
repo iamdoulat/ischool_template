@@ -12,13 +12,27 @@ export function PWAInit() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Register Service Worker
+    // Register Service Worker and force update / activation
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
         navigator.serviceWorker
           .register("/sw.js")
           .then((reg) => {
             console.log("PWA Service Worker registered with scope:", reg.scope);
+            reg.update();
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: "SKIP_WAITING" });
+            }
+            reg.onupdatefound = () => {
+              const installingWorker = reg.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                    installingWorker.postMessage({ type: "SKIP_WAITING" });
+                  }
+                };
+              }
+            };
           })
           .catch((err) => {
             console.log("PWA Service Worker registration failed:", err);
