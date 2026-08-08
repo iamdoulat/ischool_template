@@ -115,7 +115,16 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 function getLibraryMemberId(m: any): string {
     if (!m) return "";
-    return String(m.id || m.member_id || m.library_member?.id || m.library_member?.member_id || "");
+    return String(
+        m.member_id ||
+        m.library_member?.member_id ||
+        m.admission_no ||
+        m.user?.admission_no ||
+        m.staff_id ||
+        m.user?.staff_id ||
+        m.id ||
+        ""
+    );
 }
 
 function getMemberDisplayName(m: any): string {
@@ -324,9 +333,18 @@ export default function LibraryMembersPage() {
             tt.success("book_issued_successfully");
             setIsIssueModalOpen(false);
             fetchMembers(1);
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error issuing book:", err);
-            tt.error("failed_to_issue_book");
+            const msg =
+                err.response?.data?.errors?.member_id?.[0] ||
+                err.response?.data?.errors?.book_id?.[0] ||
+                err.response?.data?.errors?.due_date?.[0] ||
+                err.response?.data?.message;
+            if (msg) {
+                tt.error(msg);
+            } else {
+                tt.error("failed_to_issue_book");
+            }
         } finally {
             setSubmitting(false);
         }
