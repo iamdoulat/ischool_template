@@ -113,6 +113,37 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
     );
 }
 
+function getLibraryMemberId(m: any): string {
+    if (!m) return "";
+    return String(m.id || m.member_id || m.library_member?.id || m.library_member?.member_id || "");
+}
+
+function getMemberDisplayName(m: any): string {
+    if (!m) return "Unknown Member";
+    return (
+        m.user?.name ||
+        m.name ||
+        m.student?.name ||
+        m.staff?.name ||
+        m.full_name ||
+        (m.first_name ? `${m.first_name} ${m.last_name || ""}`.trim() : "") ||
+        `Member #${m.member_id || m.library_member?.member_id || m.id || ""}`
+    );
+}
+
+function getMemberCardInfo(m: any): string {
+    if (!m) return "";
+    const memberCode = m.member_id || m.library_member?.member_id || m.user?.admission_no || m.user?.staff_id || m.admission_no || m.staff_id || "";
+    const cardNo = m.library_card_no || m.library_member?.library_card_no || "";
+    const rawType = m.member_type || m.type || (m.admission_no || m.user?.admission_no ? "student" : "member");
+    const typeStr = String(rawType).toUpperCase();
+
+    const parts = [typeStr];
+    if (memberCode) parts.push(`ID: ${memberCode}`);
+    if (cardNo) parts.push(`Card: ${cardNo}`);
+    return parts.join(" | ");
+}
+
 export default function LibraryMembersPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
@@ -186,14 +217,14 @@ export default function LibraryMembersPage() {
             }
 
             // Fetch all members for modal selection dropdown
-            const memRes = await api.get("/library/members?no_paginate=true").catch(() => null);
+            const memRes = await api.get("/library/members?only_members=1&no_paginate=true").catch(() => null);
             const rawMems = memRes?.data?.data ?? memRes?.data ?? members;
             const memList = Array.isArray(rawMems) && rawMems.length > 0 ? rawMems : members;
             setAllMembers(memList);
             setFilteredMembers(memList);
 
             if (memberToPreselect) {
-                setSelectedMemberId(String(memberToPreselect.id));
+                setSelectedMemberId(getLibraryMemberId(memberToPreselect));
             } else {
                 setSelectedMemberId("");
             }
@@ -230,8 +261,13 @@ export default function LibraryMembersPage() {
             console.error("Error fetching sections:", err);
         }
 
-        const filtered = allMembers.filter((m) => {
-            const clsId = m.user?.school_class_id || m.user?.schoolClass?.id || m.user?.school_class?.id;
+        const filtered = allMembers.filter((m: any) => {
+            const clsId =
+                m.user?.school_class_id ||
+                m.user?.schoolClass?.id ||
+                m.user?.school_class?.id ||
+                m.school_class_id ||
+                m.class_id;
             return String(clsId) === String(classId);
         });
         setFilteredMembers(filtered.length > 0 ? filtered : allMembers);
@@ -242,16 +278,21 @@ export default function LibraryMembersPage() {
         setSelectedMemberId("");
 
         if (sectionId === "all") {
-            const filtered = allMembers.filter((m) => {
-                const clsId = m.user?.school_class_id || m.user?.schoolClass?.id || m.user?.school_class?.id;
+            const filtered = allMembers.filter((m: any) => {
+                const clsId =
+                    m.user?.school_class_id ||
+                    m.user?.schoolClass?.id ||
+                    m.user?.school_class?.id ||
+                    m.school_class_id ||
+                    m.class_id;
                 return selectedClass === "all" || String(clsId) === String(selectedClass);
             });
             setFilteredMembers(filtered.length > 0 ? filtered : allMembers);
             return;
         }
 
-        const filtered = allMembers.filter((m) => {
-            const secId = m.user?.section_id || m.user?.section?.id;
+        const filtered = allMembers.filter((m: any) => {
+            const secId = m.user?.section_id || m.user?.section?.id || m.section_id;
             return String(secId) === String(sectionId);
         });
         setFilteredMembers(filtered.length > 0 ? filtered : allMembers);
@@ -556,11 +597,16 @@ export default function LibraryMembersPage() {
                                         <SelectValue placeholder={t("select_student_or_staff")} />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-[220px]">
-                                        {filteredMembers.map((m) => (
-                                            <SelectItem key={m.id} value={String(m.id)}>
-                                                {m.user?.name || `Member #${m.member_id}`} ({m.member_type?.toUpperCase()}) - Card: {m.library_card_no || m.member_id}
-                                            </SelectItem>
-                                        ))}
+                                        {filteredMembers.map((m: any, idx) => {
+                                            const memValue = getLibraryMemberId(m);
+                                            if (!memValue) return null;
+                                            return (
+                                                <SelectItem key={m.id || idx} value={memValue}>
+                                                    <span className="font-semibold text-gray-800">{getMemberDisplayName(m)}</span>
+                                                    <span className="text-[10px] text-gray-500 ml-1.5">({getMemberCardInfo(m)})</span>
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>
