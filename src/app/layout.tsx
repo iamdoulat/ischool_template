@@ -34,7 +34,7 @@ export async function generateMetadata(): Promise<Metadata> {
   let appIcon = "/logo-app.png";
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
     const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
       next: { revalidate: 30 },
       headers: { Accept: "application/json" },
@@ -50,7 +50,9 @@ export async function generateMetadata(): Promise<Metadata> {
         appTitle = settings.school_name;
       }
 
-      if (settings.pwa_icon_192) {
+      if (settings.favicon) {
+        appIcon = settings.favicon;
+      } else if (settings.pwa_icon_192) {
         appIcon = settings.pwa_icon_192;
       } else if (settings.pwa_icon_512) {
         appIcon = settings.pwa_icon_512;

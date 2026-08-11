@@ -625,6 +625,7 @@ export function Sidebar({
 }) {
     const pathname = usePathname();
     const { settings, loading: settingsLoading } = useSettings();
+    const isChatEnabled = settings?.enable_chat !== false && (typeof window === 'undefined' || localStorage.getItem('ischool_enable_chat') !== 'false');
     const getImageUrl = useImageUrl();
     const { t, language } = useTranslation();
     const isNonEnglish = language?.short_code !== "en";
@@ -735,9 +736,19 @@ export function Sidebar({
                 .filter(item => item.is_visible)
                 .sort((a, b) => a.sort_order - b.sort_order);
 
-            return { ...group, items: filteredItems };
+            const processedItems = filteredItems.map(item => {
+                if (!isChatEnabled && item.submenus) {
+                    return {
+                        ...item,
+                        submenus: item.submenus.filter((sm: any) => sm.name !== "internal_chat")
+                    };
+                }
+                return item;
+            }).filter(item => isChatEnabled || item.name !== "internal_chat");
+
+            return { ...group, items: processedItems };
         }).filter(group => group.items.length > 0);
-    }, [sidebarConfig, fetchingSidebar]);
+    }, [sidebarConfig, fetchingSidebar, isChatEnabled]);
 
     const activeSession = sessions.find(s => s.is_active);
 

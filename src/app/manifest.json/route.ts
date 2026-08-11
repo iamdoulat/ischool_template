@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getImageUrl } from "@/lib/image-url";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -15,11 +16,13 @@ export async function GET(request: NextRequest) {
   let schoolName = "iSchool Management System";
   let shortName = "iSchool";
   let description = "Comprehensive School Management System & Portal";
-  let icon512 = "/logo-app.png";
-  let icon192 = "/logo-app.png";
+  let rawIcon512 = "/logo-app.png";
+  let rawIcon192 = "/logo-app.png";
+  let rawMaskable = "/logo-app.png";
+  let baseUrl = "";
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
     const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
       next: { revalidate: 60 },
       headers: { Accept: "application/json" },
@@ -28,6 +31,7 @@ export async function GET(request: NextRequest) {
     if (res.ok) {
       const json = await res.json();
       const settings = json.data || json;
+      baseUrl = settings.base_url || "";
 
       let pwaName = "iSchool";
       if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
@@ -43,15 +47,21 @@ export async function GET(request: NextRequest) {
       }
 
       if (settings.pwa_icon_512) {
-        icon512 = settings.pwa_icon_512;
+        rawIcon512 = settings.pwa_icon_512;
       } else if (settings.app_logo) {
-        icon512 = settings.app_logo;
+        rawIcon512 = settings.app_logo;
       }
 
       if (settings.pwa_icon_192) {
-        icon192 = settings.pwa_icon_192;
+        rawIcon192 = settings.pwa_icon_192;
       } else if (settings.app_logo) {
-        icon192 = settings.app_logo;
+        rawIcon192 = settings.app_logo;
+      }
+
+      if (settings.pwa_icon_maskable) {
+        rawMaskable = settings.pwa_icon_maskable;
+      } else {
+        rawMaskable = rawIcon512;
       }
 
       schoolName = pwaName;
@@ -61,6 +71,10 @@ export async function GET(request: NextRequest) {
     console.error("Dynamic manifest fetch error, using default settings:", error);
   }
 
+  const icon192 = getImageUrl(rawIcon192, baseUrl) || "/logo-app.png";
+  const icon512 = getImageUrl(rawIcon512, baseUrl) || "/logo-app.png";
+  const maskable = getImageUrl(rawMaskable, baseUrl) || icon512;
+
   const manifestData = {
     id: startUrl,
     name: schoolName,
@@ -69,6 +83,7 @@ export async function GET(request: NextRequest) {
     start_url: startUrl,
     scope: "/",
     display: "standalone",
+    display_override: ["standalone", "window-controls-overlay", "minimal-ui"],
     orientation: "any",
     background_color: "#ffffff",
     theme_color: "#6366f1",
@@ -88,7 +103,7 @@ export async function GET(request: NextRequest) {
         purpose: "any"
       },
       {
-        src: icon512,
+        src: maskable,
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable"

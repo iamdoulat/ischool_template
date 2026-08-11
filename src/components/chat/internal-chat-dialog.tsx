@@ -26,6 +26,7 @@ import {
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useImageUrl } from "@/lib/image-url";
+import { useSettings } from "@/components/providers/settings-provider";
 import { cn } from "@/lib/utils";
 
 interface Contact {
@@ -86,6 +87,8 @@ export function InternalChatDialog({
 }: InternalChatDialogProps) {
     const { toast } = useToast();
     const getImageUrl = useImageUrl();
+    const { settings } = useSettings();
+    const isChatEnabled = settings?.enable_chat !== false && (typeof window === 'undefined' || localStorage.getItem('ischool_enable_chat') !== 'false');
 
     const [mounted, setMounted] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
@@ -397,7 +400,7 @@ export function InternalChatDialog({
         }
     };
 
-    if (!mounted) return null;
+    if (!mounted || !isChatEnabled) return null;
 
     return createPortal(
         <>

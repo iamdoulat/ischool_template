@@ -4,10 +4,29 @@ import { useState } from "react";
 import { InternalChatDialog } from "@/components/chat/internal-chat-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, Users, UserPlus, ShieldCheck, FileText, CheckCircle2 } from "lucide-react";
+import { useSettings } from "@/components/providers/settings-provider";
+import { MessageSquare, Users, UserPlus, ShieldCheck, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function ChatPage() {
+    const { settings } = useSettings();
+    const isChatEnabled = settings?.enable_chat !== false && (typeof window === 'undefined' || localStorage.getItem('ischool_enable_chat') !== 'false');
     const [chatOpen, setChatOpen] = useState(true);
+
+    if (!isChatEnabled) {
+        return (
+            <div className="space-y-6 p-4 md:p-6 bg-gray-50/30 font-sans min-h-[60vh] flex items-center justify-center">
+                <Card className="max-w-md border-amber-200 bg-amber-50/40 shadow-sm text-center p-8 rounded-3xl">
+                    <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                        <AlertCircle className="w-7 h-7" />
+                    </div>
+                    <h2 className="text-lg font-bold text-gray-800 mb-2">Chat System Disabled</h2>
+                    <p className="text-xs text-gray-600 leading-relaxed mb-6">
+                        The real-time internal chat system has been turned <strong className="text-amber-700">OFF</strong> by Admin in General Settings.
+                    </p>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 p-4 md:p-6 bg-gray-50/30 font-sans">

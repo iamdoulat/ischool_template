@@ -493,6 +493,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
     const { settings, loading } = useSettings();
+    const isChatEnabled = settings?.enable_chat !== false && (typeof window === 'undefined' || localStorage.getItem('ischool_enable_chat') !== 'false');
     const { selectedLanguage, setSelectedLanguage, setUserContext, t } = useLanguage();
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
     const [chatOpen, setChatOpen] = useState(false);
@@ -885,29 +886,33 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                 )}
                                 <LanguageSelector />
                                 <NotificationBell />
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setChatOpen(true)}
-                                    className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
-                                    title="Open Chat"
-                                >
-                                    <MessageSquare className="h-4 w-4" />
-                                </Button>
+                                {isChatEnabled && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => setChatOpen(true)}
+                                        className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
+                                        title="Open Chat"
+                                    >
+                                        <MessageSquare className="h-4 w-4" />
+                                    </Button>
+                                )}
                                 {mounted && (
                                     <ThemeToggle className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl" />
                                 )}
                             </div>
 
                             <div className="space-y-1">
-                                <Button
-                                    variant="ghost"
-                                    className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
-                                    onClick={() => setChatOpen(true)}
-                                >
-                                    <MessageSquare className="h-4 w-4 text-primary" />
-                                    {t("chat") || "Chat & Messages"}
-                                </Button>
+                                {isChatEnabled && (
+                                    <Button
+                                        variant="ghost"
+                                        className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
+                                        onClick={() => setChatOpen(true)}
+                                    >
+                                        <MessageSquare className="h-4 w-4 text-primary" />
+                                        {t("chat") || "Chat & Messages"}
+                                    </Button>
+                                )}
                                 <Button
                                     variant="ghost"
                                     className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"

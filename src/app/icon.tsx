@@ -1,39 +1,57 @@
-import { ImageResponse } from 'next/og'
+import { getImageUrl } from "@/lib/image-url";
 
-// Route segment config
-export const runtime = 'edge'
+export const runtime = 'nodejs';
+export const revalidate = 10;
 
-// Image metadata
 export const size = {
     width: 32,
     height: 32,
-}
-export const contentType = 'image/png'
+};
+export const contentType = 'image/png';
 
-// Image generation
-export default function Icon() {
-    return new ImageResponse(
-        (
-            // ImageResponse JSX element
-            <div
-                style={{
-                    fontSize: 24,
-                    background: 'transparent',
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}
-            >
-                🎓
-            </div>
-        ),
-        // ImageResponse options
-        {
-            // For convenience, we can re-use the exported icons size metadata
-            // config to also set the ImageResponse's width and height.
-            ...size,
+export default async function Icon() {
+    let faviconUrl = "";
+
+    try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+        const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
+            next: { revalidate: 10 },
+            headers: { Accept: "application/json" },
+        });
+
+        if (res.ok) {
+            const json = await res.json();
+            const settings = json.data || json;
+            const raw = settings.favicon || settings.app_favicon || settings.admin_small_logo || settings.app_logo;
+            if (raw) {
+                faviconUrl = getImageUrl(raw, settings.base_url);
+            }
         }
-    )
+    } catch (error) {
+        console.error("Error fetching icon in icon.tsx:", error);
+    }
+
+    if (faviconUrl) {
+        try {
+            const imgRes = await fetch(faviconUrl);
+            if (imgRes.ok) {
+                const arrayBuffer = await imgRes.arrayBuffer();
+                const mimeType = imgRes.headers.get("content-type") || "image/png";
+                return new Response(arrayBuffer, {
+                    headers: {
+                        "Content-Type": mimeType,
+                        "Cache-Control": "public, max-age=60, s-maxage=60",
+                    },
+                });
+            }
+        } catch (e) {
+            console.error("Error proxying favicon in icon.tsx:", e);
+        }
+    }
+
+    // Default fallback to public logo-admin-small.png
+    return new Response(null, {
+        status: 302,
+        headers: { Location: "/logo-admin-small.png" },
+    });
 }

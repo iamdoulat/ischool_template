@@ -71,6 +71,7 @@ interface GeneralSettings {
     contact_form_receiver_email?: string;
     app_version?: string;
     maintenance_mode?: boolean;
+    enable_chat?: boolean;
     website?: string;
     url?: string;
     [key: string]: any;
@@ -99,6 +100,7 @@ function createDefaultSettings(): GeneralSettings {
         admin_logo: "/logo-admin.png",
         admin_small_logo: "/logo-admin-small.png",
         app_logo: "/logo-app.png",
+        favicon: "/logo-admin-small.png",
         pwa_icon_512: "/logo-app.png",
         pwa_icon_192: "/logo-app.png",
         pwa_icon_maskable: "/logo-app.png",
@@ -138,7 +140,8 @@ function createDefaultSettings(): GeneralSettings {
         pinterest_url: "",
         contact_form_receiver_email: "",
         app_version: "1.0.0",
-        maintenance_mode: false
+        maintenance_mode: false,
+        enable_chat: true
     };
 }
 
@@ -184,7 +187,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                             key.includes('login') ||
                             key === 'allow_student_to_add_timeline' ||
                             key === 'biometric_attendance' ||
-                            key === 'maintenance_mode'
+                            key === 'maintenance_mode' ||
+                            key === 'enable_chat'
                         ) {
                             normalizedData[key] = (value === 1 || value === true || value === '1' || value === 'true');
                         } else if (key === 'staff_attendance_settings' || key === 'student_attendance_settings') {
@@ -197,7 +201,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
                 // Resolve logo & background image paths to absolute URLs if uploaded
                 const imageFields = [
-                    'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
+                    'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo', 'favicon',
                     'login_page_background_admin', 'login_page_background_user',
                     'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable'
                 ];

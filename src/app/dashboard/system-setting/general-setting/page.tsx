@@ -44,7 +44,8 @@ import {
     ChevronDown,
     CheckCircle2,
     AlertTriangle,
-    Save
+    Save,
+    MessageSquare
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import axios from "axios";
@@ -100,12 +101,18 @@ function LogoCard({
         admin_logo: "/logo-admin.png",
         admin_small_logo: "/logo-admin-small.png",
         app_logo: "/logo-app.png",
+        favicon: "/logo-admin-small.png",
+        app_favicon: "/logo-admin-small.png",
         pwa_icon_512: "/logo-app.png",
         pwa_icon_192: "/logo-app.png",
         pwa_icon_maskable: "/logo-app.png",
         login_page_background_admin: "/bg-admin.jpg",
         login_page_background_user: "/bg-user.jpg",
     };
+
+    useEffect(() => {
+        setImgErrorState('initial');
+    }, [value, field]);
 
     const effectiveValue = value || defaultLogos[field] || "";
     const primaryUrl = effectiveValue ? getImageUrl(effectiveValue) : (defaultLogos[field] || "");
@@ -223,6 +230,7 @@ export default function GeneralSettingPage() {
         admin_logo: "",
         admin_small_logo: "",
         app_logo: "",
+        favicon: "",
         pwa_icon_512: "",
         pwa_icon_192: "",
         pwa_icon_maskable: "",
@@ -246,6 +254,7 @@ export default function GeneralSettingPage() {
         parent_login_mobile_no: true,
         parent_login_email: false,
         allow_student_to_add_timeline: false,
+        enable_chat: true,
         attendance_type: "day_wise",
         biometric_attendance: false,
         devices: "",
@@ -452,7 +461,7 @@ export default function GeneralSettingPage() {
 
                     // Restore PWA, logo, and text fields from localStorage if empty
                     const pwaTextAndLogoFields = [
-                        'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
+                        'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo', 'favicon',
                         'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable',
                         'pwa_app_short_name', 'pwa_app_description'
                     ];
@@ -462,6 +471,11 @@ export default function GeneralSettingPage() {
                             if (savedVal) normalizedData[lf] = savedVal;
                         }
                     });
+
+                    if (typeof window !== 'undefined') {
+                        const savedChat = localStorage.getItem("ischool_enable_chat");
+                        if (savedChat !== null) normalizedData.enable_chat = savedChat === "true";
+                    }
 
                     return normalizedData;
                 });
@@ -541,7 +555,7 @@ export default function GeneralSettingPage() {
 
             // Persist all logo, PWA text and icon paths in localStorage
             const pwaTextAndLogoFields = [
-                'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo',
+                'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo', 'favicon',
                 'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable',
                 'pwa_app_short_name', 'pwa_app_description'
             ];
@@ -550,6 +564,10 @@ export default function GeneralSettingPage() {
                     localStorage.setItem(`ischool_${lf}`, String(payload[lf]));
                 }
             });
+
+            if (payload.enable_chat !== undefined && payload.enable_chat !== null && typeof window !== 'undefined') {
+                localStorage.setItem("ischool_enable_chat", String(payload.enable_chat));
+            }
 
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
             if (payload.contact_form_receiver_email === null) delete payload.contact_form_receiver_email;
@@ -1025,7 +1043,7 @@ export default function GeneralSettingPage() {
                             <h2 className="text-sm font-bold text-gray-700">{t("logo_settings")}</h2>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
                             <LogoCard
                                 title={t("print_logo") || "Print Logo"}
                                 field="print_logo"
@@ -1062,12 +1080,21 @@ export default function GeneralSettingPage() {
                                 onSaveSuccess={handleLogoSuccess}
                                 t={t}
                             />
+                            <LogoCard
+                                title={t("favicon") || "Browser Favicon"}
+                                field="favicon"
+                                dimensions="32px x 32px (ICO/PNG)"
+                                value={formData.favicon}
+                                onUpload={handleLogoUpload}
+                                onSaveSuccess={handleLogoSuccess}
+                                t={t}
+                            />
                         </div>
 
                         <div className="pt-6 border-t border-gray-100 space-y-4">
                             <div>
                                 <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">PWA App Details & Icons (Progressive Web App)</h3>
-                                <p className="text-[11px] text-gray-400">Configure PWA app short name, description, and mobile install logos.</p>
+                                <p className="text-[11px] text-gray-400">Configure PWA app short name, description, and mobile install logos for Android and iOS PWA installation.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/60 p-4 rounded-lg border border-gray-100">
@@ -2490,10 +2517,33 @@ export default function GeneralSettingPage() {
             case "Chat":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
+                        <div className="pb-2 border-b border-gray-100 flex items-center justify-between">
                             <h2 className="text-sm font-bold text-gray-700">{t("chat")}</h2>
                         </div>
                         <div className="space-y-6 max-w-4xl">
+                            {/* Primary Chat System Master Toggle */}
+                            <div className="border border-indigo-100 rounded-lg p-6 bg-gradient-to-r from-indigo-50/40 via-white to-purple-50/20 shadow-sm flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                        <MessageSquare className="h-4 w-4 text-indigo-600" />
+                                        Enable Chat System (ON / OFF)
+                                    </h3>
+                                    <p className="text-xs text-gray-500">
+                                        Turn the real-time internal chat system ON or OFF across the entire application (hides floating chat icon, header chat button, and messages).
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className={cn("text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-colors", formData.enable_chat ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200")}>
+                                        {formData.enable_chat ? "ON" : "OFF"}
+                                    </span>
+                                    <Switch
+                                        checked={Boolean(formData.enable_chat)}
+                                        onCheckedChange={(checked) => handleChange('enable_chat', checked)}
+                                        className="data-[state=checked]:bg-indigo-600 scale-110"
+                                    />
+                                </div>
+                            </div>
+
                             <div className="border border-gray-100 rounded-lg p-6 bg-white shadow-sm">
                                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-6 border-b border-gray-50 pb-2">{t("student_guardian_panel")}</h3>
                                 <div className="space-y-6">

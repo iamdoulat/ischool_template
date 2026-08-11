@@ -40,16 +40,55 @@ export function PWAInit() {
       });
     }
 
-    // Dynamic Head Tag Sync for iOS Safari & Android mobile app installation
+    // Dynamic Head Tag Sync for iOS Safari, Browser Favicon & Android mobile app installation
+    const localFavicon = localStorage.getItem("ischool_favicon");
     const localShortName = localStorage.getItem("ischool_pwa_app_short_name");
     const localIcon192 = localStorage.getItem("ischool_pwa_icon_192");
     const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
 
     const appShortName = settings?.pwa_app_short_name || localShortName || settings?.school_name || "iSchool";
+    const rawFavicon = settings?.favicon || localFavicon || settings?.pwa_icon_192 || localIcon192 || settings?.admin_small_logo || settings?.app_logo || "/logo-admin-small.png";
     const rawAppIcon = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.app_logo || "/logo-app.png";
+    
+    const resolvedFaviconUrl = getImageUrl(rawFavicon) || "/logo-admin-small.png";
     const appIcon = getImageUrl(rawAppIcon) || "/logo-app.png";
 
-    // 1. Sync iOS Apple App Title meta tag
+    // 1. Sync Browser Main Favicon link tag
+    const faviconHref = resolvedFaviconUrl ? `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}` : resolvedFaviconUrl;
+
+    let faviconLink = document.querySelector<HTMLLinkElement>("link[rel='icon']:not([sizes])");
+    if (!faviconLink) {
+      faviconLink = document.createElement("link");
+      faviconLink.rel = "icon";
+      document.head.appendChild(faviconLink);
+    }
+    faviconLink.href = faviconHref;
+
+    let shortcutIconLink = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']");
+    if (!shortcutIconLink) {
+      shortcutIconLink = document.createElement("link");
+      shortcutIconLink.rel = "shortcut icon";
+      document.head.appendChild(shortcutIconLink);
+    }
+    shortcutIconLink.href = faviconHref;
+
+    // 2. Sync iOS Safari Apple App meta & touch icon tags
+    let appleCapableTag = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-capable']");
+    if (!appleCapableTag) {
+      appleCapableTag = document.createElement("meta");
+      appleCapableTag.name = "apple-mobile-web-app-capable";
+      document.head.appendChild(appleCapableTag);
+    }
+    appleCapableTag.content = "yes";
+
+    let appleStatusTag = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-status-bar-style']");
+    if (!appleStatusTag) {
+      appleStatusTag = document.createElement("meta");
+      appleStatusTag.name = "apple-mobile-web-app-status-bar-style";
+      document.head.appendChild(appleStatusTag);
+    }
+    appleStatusTag.content = "default";
+
     let appleTitleTag = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-title']");
     if (!appleTitleTag) {
       appleTitleTag = document.createElement("meta");
@@ -58,7 +97,6 @@ export function PWAInit() {
     }
     appleTitleTag.content = appShortName;
 
-    // 2. Sync iOS Apple Touch Icon link tag
     let appleIconTag = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
     if (!appleIconTag) {
       appleIconTag = document.createElement("link");
@@ -67,7 +105,32 @@ export function PWAInit() {
     }
     appleIconTag.href = appIcon;
 
-    // 3. Sync mobile icon link tags for Android Chrome
+    // 3. Sync Windows PC PWA & Start Menu Tile meta tags
+    let msAppTitle = document.querySelector<HTMLMetaElement>("meta[name='application-name']");
+    if (!msAppTitle) {
+      msAppTitle = document.createElement("meta");
+      msAppTitle.name = "application-name";
+      document.head.appendChild(msAppTitle);
+    }
+    msAppTitle.content = appShortName;
+
+    let msTileImage = document.querySelector<HTMLMetaElement>("meta[name='msapplication-TileImage']");
+    if (!msTileImage) {
+      msTileImage = document.createElement("meta");
+      msTileImage.name = "msapplication-TileImage";
+      document.head.appendChild(msTileImage);
+    }
+    msTileImage.content = appIcon;
+
+    let msTileColor = document.querySelector<HTMLMetaElement>("meta[name='msapplication-TileColor']");
+    if (!msTileColor) {
+      msTileColor = document.createElement("meta");
+      msTileColor.name = "msapplication-TileColor";
+      document.head.appendChild(msTileColor);
+    }
+    msTileColor.content = "#6366f1";
+
+    // 4. Sync mobile icon link tags for Android Chrome
     let icon192Tag = document.querySelector<HTMLLinkElement>("link[rel='icon'][sizes='192x192']");
     if (!icon192Tag) {
       icon192Tag = document.createElement("link");
@@ -84,7 +147,7 @@ export function PWAInit() {
       icon512Tag.setAttribute("sizes", "512x512");
       document.head.appendChild(icon512Tag);
     }
-    icon512Tag.href = settings?.pwa_icon_512 || localIcon512 || appIcon;
+    icon512Tag.href = getImageUrl(settings?.pwa_icon_512 || localIcon512 || rawAppIcon) || appIcon;
     // Auto-reload on Next.js ChunkLoadError (e.g. after production deployments update chunk hashes)
     const handleChunkError = (message?: string) => {
       if (message && /Loading chunk [\d]+ failed|ChunkLoadError/i.test(message)) {
@@ -111,7 +174,7 @@ export function PWAInit() {
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onUnhandledRejection);
     };
-  }, [settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.school_name, settings?.app_logo]);
+  }, [settings?.favicon, settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.school_name, settings?.app_logo, settings?.admin_small_logo]);
 
   return <PWAInstallPrompt />;
 }

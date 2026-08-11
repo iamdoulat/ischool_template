@@ -253,7 +253,8 @@ export default function BackupRestorePage() {
                 }
             }
 
-            const blob = new Blob([response.data], { type: response.headers["content-type"] || "application/octet-stream" });
+            const contentTypeHeader = typeof response.headers["content-type"] === "string" ? response.headers["content-type"] : "application/octet-stream";
+            const blob = new Blob([response.data], { type: contentTypeHeader });
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
