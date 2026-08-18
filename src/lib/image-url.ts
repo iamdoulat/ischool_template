@@ -18,7 +18,7 @@ export function getImageUrl(
 
   const defaultDomain = isLocalHost
     ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : "https://api.ischool.mddoulat.com";
+    : (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "");
 
   let domain = (
     baseUrl ||
@@ -30,13 +30,6 @@ export function getImageUrl(
 
   if (typeof window !== "undefined" && window.location.protocol === "https:") {
     domain = domain.replace(/^http:\/\//i, "https://");
-  }
-
-  // Ensure production live site requests point to backend api domain, not frontend app domain
-  if (!isLocalHost) {
-    if (!domain || (domain.includes("ischool.mddoulat.com") && !domain.includes("api.ischool.mddoulat.com"))) {
-      domain = "https://api.ischool.mddoulat.com";
-    }
   }
 
   // Handle absolute URLs

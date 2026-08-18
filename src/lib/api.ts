@@ -17,12 +17,9 @@ const getBaseUrl = () => {
         if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.endsWith('.local')) {
             return `${protocol}//${host}:8000/api/v1`;
         }
-        if (host.includes('mddoulat.com')) {
-            return 'https://api.ischool.mddoulat.com/api/v1';
-        }
         return `${protocol}//${host}/api/v1`;
     }
-    return 'https://api.ischool.mddoulat.com/api/v1';
+    return 'http://127.0.0.1:8000/api/v1';
 };
 
 const api = axios.create({
