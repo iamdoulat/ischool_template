@@ -14,32 +14,33 @@ import {
 } from "@/components/ui/popover"
 
 interface DatePickerProps {
-  value?: string; // YYYY-MM-DD
+  value?: string; // YYYY-MM-DD or other valid date string
   onChange?: (date: string) => void; // YYYY-MM-DD
   placeholder?: string;
   className?: string;
   disabled?: boolean;
 }
 
+function parseDateSafely(val?: string): Date | undefined {
+  if (!val || typeof val !== "string" || !val.trim()) return undefined;
+  const trimmed = val.trim();
+  let d = parseISO(trimmed);
+  if (isValid(d)) return d;
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+    const parts = trimmed.split('/');
+    d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+    if (isValid(d)) return d;
+  }
+  d = new Date(trimmed);
+  return isValid(d) ? d : undefined;
+}
+
 export function DatePicker({ value, onChange, placeholder = "DD/MM/YYYY", className, disabled }: DatePickerProps) {
-  const [date, setDate] = React.useState<Date | undefined>(() => {
-    if (!value) return undefined;
-    const d = parseISO(value);
-    return isValid(d) ? d : undefined;
-  });
+  const [date, setDate] = React.useState<Date | undefined>(() => parseDateSafely(value));
 
   // Sync internal date state with value prop
   React.useEffect(() => {
-    if (value) {
-      const parsedDate = parseISO(value);
-      if (isValid(parsedDate)) {
-        setDate(parsedDate);
-      } else {
-        setDate(undefined);
-      }
-    } else {
-      setDate(undefined);
-    }
+    setDate(parseDateSafely(value));
   }, [value]);
 
   const handleSelect = (selectedDate: Date | undefined) => {
