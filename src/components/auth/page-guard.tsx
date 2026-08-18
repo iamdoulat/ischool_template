@@ -22,8 +22,14 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
         setUserRole(role);
         const permissions: string[] = user?.permissions || [];
 
-        // Allow Student/Parent to access user portal routes
-        if (pathname.startsWith("/user/") && (role === "Student" || role === "Parent")) {
+        // Allow access to user portal routes
+        if (pathname.startsWith("/user")) {
+          setIsAuthorized(true);
+          return;
+        }
+
+        // Allow Admins and Super Admins full access
+        if (role.toLowerCase().includes("admin")) {
           setIsAuthorized(true);
           return;
         }

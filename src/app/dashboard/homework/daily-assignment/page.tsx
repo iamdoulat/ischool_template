@@ -464,8 +464,11 @@ export default function DailyAssignmentPage() {
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("date")}</Label>
-                            <Input type="date" value={filters.date} onChange={e => setFilters({ ...filters, date: e.target.value })}
-                                className="h-9 border-gray-200 text-xs focus-visible:ring-indigo-500 rounded shadow-none" />
+                            <DatePicker
+                                value={filters.date}
+                                onChange={d => setFilters({ ...filters, date: d })}
+                                className="h-9 border-gray-200 text-xs rounded shadow-none"
+                            />
                         </div>
                         <div className="flex justify-end pt-2">
                             <Button type="submit" className="btn-gradient gap-2 h-9 px-8 text-[11px] font-bold uppercase rounded-full shadow-md">

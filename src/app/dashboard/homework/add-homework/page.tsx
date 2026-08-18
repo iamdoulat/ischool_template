@@ -977,11 +977,10 @@ export default function AddHomeworkPage() {
                                             </div>
                                             <div className="space-y-1">
                                                 <Label className="text-[10px] uppercase font-bold text-gray-500">Date</Label>
-                                                <Input 
-                                                    type="date" 
+                                                <DatePicker 
                                                     value={evalFormData.evaluation_date}
-                                                    onChange={e => setEvalFormData({...evalFormData, evaluation_date: e.target.value})}
-                                                    className="h-8 text-xs" 
+                                                    onChange={val => setEvalFormData({...evalFormData, evaluation_date: val})}
+                                                    className="h-8 text-xs rounded" 
                                                 />
                                             </div>
                                             <div className="col-span-2 space-y-1">

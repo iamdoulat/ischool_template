@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import {
     Loader2,
     Mail,
@@ -20,6 +22,13 @@ import {
     AlertCircle,
     Percent,
     CalendarDays,
+    MessageSquare,
+    Paperclip,
+    Award,
+    ArrowRight,
+    ChevronRight,
+    FileText,
+    Eye,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import QRCode from "qrcode";
@@ -28,6 +37,7 @@ import { mockUserDashboardData } from "@/lib/mock-user-dashboard";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
+import { InternalChatDialog } from "@/components/chat/internal-chat-dialog";
 
 // ─── Reusable presentational helpers ────────────────────────────────────────────
 
@@ -74,7 +84,7 @@ function SectionCard({
     bodyClassName,
 }: {
     icon: LucideIcon;
-    title: string;
+    title: React.ReactNode;
     count?: number;
     children: React.ReactNode;
     className?: string;
@@ -86,9 +96,11 @@ function SectionCard({
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                     <Icon className="h-4 w-4" />
                 </span>
-                <h3 className="text-sm font-bold text-gray-800 truncate">{title}</h3>
+                <div className="text-sm font-bold text-gray-800 flex items-center gap-2 min-w-0">{title}</div>
                 {count != null && (
-                    <span className="ml-auto text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{count}</span>
+                    <span className="ml-auto min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] shadow-xs shrink-0">
+                        {count}
+                    </span>
                 )}
             </div>
             <CardContent className={cn("p-0 flex-1 overflow-y-auto custom-scrollbar", bodyClassName)}>
@@ -114,21 +126,36 @@ export default function UserDashboardPage() {
     const [loading, setLoading] = useState(true);
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
     const [selectedNotice, setSelectedNotice] = useState<any>(null);
+    const [selectedHomework, setSelectedHomework] = useState<any>(null);
+    const [selectedDailyAssignment, setSelectedDailyAssignment] = useState<any>(null);
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatTargetContact, setChatTargetContact] = useState<any>(null);
+    const [chatTargetUserId, setChatTargetUserId] = useState<number | null>(null);
+
+    const handleStartTeacherChat = (teacher: any) => {
+        setChatTargetUserId(teacher.id);
+        setChatTargetContact({
+            id: teacher.id,
+            name: teacher.name,
+            email: teacher.email || "",
+            role: "Teacher",
+            avatar: teacher.avatar || null,
+            chat_presence: teacher.chat_presence || "online",
+        });
+        setChatOpen(true);
+    };
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
                 // Live data from the backend (kept in sync with the admin panel)
                 const response = await api.get('/user/dashboard');
-                if (response.data && response.data.success) {
-                    setData(response.data.data);
-                } else {
-                    setData(mockUserDashboardData);
+                const resData = response.data?.data || response.data;
+                if (resData) {
+                    setData(resData);
                 }
             } catch (error) {
                 console.error("Error fetching dashboard data:", error);
-                // Fallback to mock data if API fails
-                setData(mockUserDashboardData);
             } finally {
                 setLoading(false);
             }
@@ -161,6 +188,7 @@ export default function UserDashboardPage() {
         subjectProgress,
         upcomingClasses,
         homework,
+        dailyAssignments,
         teachers,
         visitors,
         libraryBooks,
@@ -174,8 +202,8 @@ export default function UserDashboardPage() {
         return !!widgets[key];
     };
 
-    const attendance = Number(profile.attendance_percentage) || 0;
-    const minAttendance = Number(profile.minimum_attendance) || 0;
+    const attendance = Number(profile?.attendance_percentage) || 0;
+    const minAttendance = Number(profile?.minimum_attendance) || 0;
     const isAboveMin = attendance >= minAttendance;
     const pendingHomework = (homework || []).filter((h: any) => h.status === "Pending").length;
 
@@ -343,9 +371,9 @@ export default function UserDashboardPage() {
             </div>
             )}
 
-            {/* ── Middle Row ── */}
-            {(showWidget("subject_progress") || showWidget("upcoming_class") || showWidget("homework")) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* ── Academics Row: Subject Progress & Upcoming Classes ── */}
+            {(showWidget("subject_progress") || showWidget("upcoming_class")) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Subject Progress */}
                 {showWidget("subject_progress") && (
                 <SectionCard icon={BookOpen} title={t("subject_progress")} count={subjectProgress?.length}>
@@ -372,26 +400,37 @@ export default function UserDashboardPage() {
 
                 {/* Upcoming Class */}
                 {showWidget("upcoming_class") && (
-                <SectionCard icon={CalendarClock} title={t("upcoming_class")} count={upcomingClasses?.length}>
+                <SectionCard
+                    icon={CalendarClock}
+                    title={
+                        <div className="flex items-center gap-2">
+                            <span>{t("upcoming_class")}</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] shadow-xs">
+                                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()]}
+                            </span>
+                        </div>
+                    }
+                    count={upcomingClasses?.length}
+                >
                     {upcomingClasses.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {upcomingClasses.map((item: any) => (
                                 <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-indigo-50/30 transition-colors">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-500 flex items-center justify-center shrink-0">
+                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 shadow-xs">
                                             <User className="h-5 w-5" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-[13px] font-semibold text-gray-800 truncate">{item.teacher}{item.code ? ` (${item.code})` : ""}</p>
-                                            <p className="text-[11px] text-gray-500 truncate">{item.subject}</p>
+                                            <p className="text-[13px] font-bold text-black dark:text-zinc-100 truncate">{item.subject}</p>
+                                            <p className="text-[12px] font-medium text-gray-600 dark:text-zinc-400 truncate">{item.teacher}{item.code ? ` (${item.code})` : ""}</p>
                                         </div>
                                     </div>
                                     <div className="text-right shrink-0">
-                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
                                             <MapPin className="h-3 w-3" /> {t("room")} {item.room}
                                         </span>
-                                        <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1 justify-end whitespace-nowrap">
-                                            <Clock className="h-3 w-3" /> {item.time}
+                                        <p className="text-[11px] font-bold text-black dark:text-zinc-100 mt-1 flex items-center gap-1 justify-end whitespace-nowrap">
+                                            <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> {item.time}
                                         </p>
                                     </div>
                                 </div>
@@ -402,26 +441,94 @@ export default function UserDashboardPage() {
                     )}
                 </SectionCard>
                 )}
+            </div>
+            )}
 
+            {/* ── Assignments Row: Homework & Daily Assignment ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Homework */}
-                {showWidget("homework") && (
-                <SectionCard icon={ClipboardList} title={t("homework")} count={homework?.length}>
-                    {homework.length > 0 ? (
+                <SectionCard
+                    icon={ClipboardList}
+                    title={
+                        <div className="flex items-center justify-between w-full pr-2">
+                            <span>{t("homework")}</span>
+                            <Link
+                                href="/user/homework"
+                                className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
+                            >
+                                {t("view_all") || "View All"} <ChevronRight className="h-3 w-3" />
+                            </Link>
+                        </div>
+                    }
+                    count={homework?.length}
+                >
+                    {(homework || []).length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {homework.map((item: any) => (
-                                <div key={item.id} className="p-3.5 hover:bg-indigo-50/30 transition-colors">
-                                    <div className="flex items-center justify-between gap-2 mb-1.5">
-                                        <p className="text-[13px] font-semibold text-gray-800 truncate">{item.subject}</p>
-                                        <span className={cn(
-                                            "shrink-0 px-2 py-0.5 text-[10px] rounded-full font-bold text-white uppercase",
-                                            item.status === "Pending" ? "bg-red-500" : "bg-[#5cb85c]"
-                                        )}>
-                                            {item.status === "Pending" ? t("pending") : item.status === "Completed" ? t("completed") : item.status}
-                                        </span>
+                                <div
+                                    key={item.id}
+                                    onClick={() => setSelectedHomework(item)}
+                                    className="p-3.5 hover:bg-indigo-50/40 transition-all cursor-pointer group"
+                                >
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-bold text-gray-800 dark:text-zinc-100 group-hover:text-indigo-600 transition-colors truncate">
+                                                {item.title || item.subject}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
+                                                    {item.subject}
+                                                </span>
+                                                {item.class && (
+                                                    <span className="text-[10px] text-gray-500 font-medium">• {item.class}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className={cn(
+                                                "px-2 py-0.5 text-[10px] rounded-full font-bold uppercase shadow-xs",
+                                                item.status === "Pending" ? "bg-amber-500 text-white" :
+                                                item.status === "Submitted" ? "bg-blue-500 text-white" :
+                                                "bg-emerald-500 text-white"
+                                            )}>
+                                                {item.status === "Pending" ? t("pending") : item.status === "Completed" || item.status === "Submitted" ? t("submitted") || "Submitted" : item.status}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col gap-0.5 text-[11px] text-gray-500">
-                                        <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-gray-400" /> {t("assigned")}: {item.date}</span>
-                                        <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-gray-400" /> {t("submission")}: {item.submission}</span>
+
+                                    {item.description && (
+                                        <p className="text-[11px] text-gray-500 line-clamp-1 mb-2">
+                                            {item.description}
+                                        </p>
+                                    )}
+
+                                    <div className="flex flex-wrap items-center justify-between gap-y-1 text-[11px] text-gray-500 pt-1.5 border-t border-dashed border-gray-100 mt-1">
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex items-center gap-1 text-gray-600 dark:text-zinc-400">
+                                                <CalendarDays className="h-3 w-3 text-amber-500" />
+                                                <span className="text-gray-400">{t("assigned")}:</span> {item.date || item.homework_date}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-gray-600 dark:text-zinc-400">
+                                                <Clock className="h-3 w-3 text-indigo-500" />
+                                                <span className="text-gray-400">{t("submission")}:</span> {item.submission || item.submission_date}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 ml-auto">
+                                            {item.created_by && (
+                                                <span className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                                                    <User className="h-2.5 w-2.5 text-indigo-500" /> {item.created_by}
+                                                </span>
+                                            )}
+                                            {item.max_marks != null && (
+                                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                                    <Award className="h-2.5 w-2.5" />
+                                                    {item.marks_obtained != null ? `${item.marks_obtained}/${item.max_marks}` : `Max: ${item.max_marks}`}
+                                                </span>
+                                            )}
+                                            {item.attachment && (
+                                                <Paperclip className="h-3 w-3 text-gray-400" />
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -430,9 +537,95 @@ export default function UserDashboardPage() {
                         <EmptyState icon={ClipboardList} text={t("no_homework_assigned")} />
                     )}
                 </SectionCard>
-                )}
+
+                {/* Daily Assignment */}
+                <SectionCard
+                    icon={ClipboardList}
+                    title={
+                        <div className="flex items-center justify-between w-full pr-2">
+                            <span>{t("daily_assignment") || "Daily Assignment"}</span>
+                            <Link
+                                href="/user/homework/daily-assignment"
+                                className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
+                            >
+                                {t("view_all") || "View All"} <ChevronRight className="h-3 w-3" />
+                            </Link>
+                        </div>
+                    }
+                    count={dailyAssignments?.length}
+                >
+                    {(dailyAssignments || []).length > 0 ? (
+                        <div className="divide-y divide-gray-100">
+                            {dailyAssignments.map((item: any) => (
+                                <div
+                                    key={item.id}
+                                    onClick={() => setSelectedDailyAssignment(item)}
+                                    className="p-3.5 hover:bg-indigo-50/40 transition-all cursor-pointer group"
+                                >
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-bold text-gray-800 dark:text-zinc-100 group-hover:text-indigo-600 transition-colors truncate">
+                                                {item.title || item.subject}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
+                                                    {item.subject}
+                                                </span>
+                                                {item.class && (
+                                                    <span className="text-[10px] text-gray-500 font-medium">• {item.class}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className={cn(
+                                                "px-2 py-0.5 text-[10px] rounded-full font-bold uppercase shadow-xs",
+                                                item.status === "Pending" ? "bg-amber-500 text-white" :
+                                                item.status === "Submitted" ? "bg-blue-500 text-white" :
+                                                "bg-emerald-500 text-white"
+                                            )}>
+                                                {item.status === "Pending" ? t("pending") : item.status === "Completed" || item.status === "Evaluated" ? t("evaluated") || "Evaluated" : item.status}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {item.description && (
+                                        <p className="text-[11px] text-gray-500 line-clamp-1 mb-2">
+                                            {item.description}
+                                        </p>
+                                    )}
+
+                                    <div className="flex flex-wrap items-center justify-between gap-y-1 text-[11px] text-gray-500 pt-1.5 border-t border-dashed border-gray-100 mt-1">
+                                        <div className="flex items-center gap-3">
+                                            <span className="flex items-center gap-1 text-gray-600 dark:text-zinc-400">
+                                                <CalendarDays className="h-3 w-3 text-indigo-500" />
+                                                <span className="text-gray-400">{t("submission") || "Date"}:</span> {item.date || item.submission_date}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 ml-auto">
+                                            {item.evaluator && (
+                                                <span className="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+                                                    <User className="h-2.5 w-2.5 text-indigo-500" /> {item.evaluator}
+                                                </span>
+                                            )}
+                                            {item.marks_obtained != null && (
+                                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                                                    <Award className="h-2.5 w-2.5" />
+                                                    {item.marks_obtained} Marks
+                                                </span>
+                                            )}
+                                            {item.attachment && (
+                                                <Paperclip className="h-3 w-3 text-gray-400" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <EmptyState icon={ClipboardList} text={t("no_assignments_found") || "No daily assignments assigned"} />
+                    )}
+                </SectionCard>
             </div>
-            )}
 
             {/* ── Bottom Row ── */}
             {(showWidget("teacher_list") || showWidget("visitor_list") || showWidget("library")) && (
@@ -443,21 +636,31 @@ export default function UserDashboardPage() {
                     {teachers.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {teachers.map((item: any) => (
-                                <div key={item.id} className="p-3.5 flex items-center gap-3 hover:bg-indigo-50/30 transition-colors">
-                                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-500 flex items-center justify-center shrink-0">
-                                        <User className="h-5 w-5" />
-                                    </div>
-                                    <div className="min-w-0 flex flex-col items-start">
-                                        <p className="text-[13px] font-semibold text-gray-800 truncate">{item.name}</p>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[11px] text-gray-500">({item.code})</span>
-                                            {item.isClassTeacher && (
-                                                <span className="bg-[#5cb85c] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-bold">
-                                                    {t("class_teacher")}
-                                                </span>
-                                            )}
+                                <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-indigo-50/30 transition-colors">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-500 flex items-center justify-center shrink-0">
+                                            <User className="h-5 w-5" />
+                                        </div>
+                                        <div className="min-w-0 flex flex-col items-start">
+                                            <p className="text-[13px] font-semibold text-gray-800 truncate">{item.name}</p>
+                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                <span className="text-[11px] text-gray-500">({item.code})</span>
+                                                {item.isClassTeacher && (
+                                                    <span className="bg-[#5cb85c] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-bold">
+                                                        {t("class_teacher")}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleStartTeacherChat(item)}
+                                        className="h-8 w-8 rounded-lg bg-indigo-50 hover:bg-gradient-to-r hover:from-[#FF9800] hover:to-[#6366F1] text-indigo-600 hover:text-white flex items-center justify-center transition-all shadow-2xs hover:scale-105 shrink-0 cursor-pointer"
+                                        title={t("chat_with_teacher") || "Chat with Teacher"}
+                                    >
+                                        <MessageSquare className="h-4 w-4" />
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -553,6 +756,252 @@ export default function UserDashboardPage() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Homework Details Dialog */}
+            <Dialog open={!!selectedHomework} onOpenChange={(open) => !open && setSelectedHomework(null)}>
+                <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden bg-white dark:bg-card border-0 shadow-2xl rounded-2xl">
+                    <DialogHeader className="p-5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
+                                <ClipboardList className="h-4 w-4" />
+                            </span>
+                            <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">{selectedHomework?.subject}</span>
+                        </div>
+                        <DialogTitle className="text-lg font-bold text-white leading-tight">
+                            {selectedHomework?.title || selectedHomework?.subject || "Homework Details"}
+                        </DialogTitle>
+                        <DialogDescription className="sr-only">Homework assignment details and submission information</DialogDescription>
+                    </DialogHeader>
+                    {selectedHomework && (
+                        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                            {/* Status & Marks Badges */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className={cn(
+                                    "px-2.5 py-1 text-[11px] rounded-full font-bold uppercase",
+                                    selectedHomework.status === "Pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" :
+                                    selectedHomework.status === "Submitted" ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" :
+                                    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                )}>
+                                    {selectedHomework.status}
+                                </span>
+                                {selectedHomework.class && (
+                                    <span className="px-2.5 py-1 text-[11px] font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-full">
+                                        {selectedHomework.class}
+                                    </span>
+                                )}
+                                {selectedHomework.max_marks != null && (
+                                    <span className="px-2.5 py-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-full flex items-center gap-1">
+                                        <Award className="h-3.5 w-3.5" />
+                                        {selectedHomework.marks_obtained != null
+                                            ? `Marks: ${selectedHomework.marks_obtained} / ${selectedHomework.max_marks}`
+                                            : `Max Marks: ${selectedHomework.max_marks}`}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Key Info Grid */}
+                            <div className="grid grid-cols-2 gap-3 p-3.5 bg-gray-50/80 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400">Homework Date</p>
+                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedHomework.date || selectedHomework.homework_date || "—"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400">Submission Date</p>
+                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedHomework.submission || selectedHomework.submission_date || "—"}</p>
+                                </div>
+                                {selectedHomework.evaluation_date && (
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">Evaluation Date</p>
+                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedHomework.evaluation_date}</p>
+                                    </div>
+                                )}
+                                {selectedHomework.created_by && (
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">Assigned By</p>
+                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1">
+                                            <User className="h-3 w-3 text-indigo-500" />
+                                            {selectedHomework.created_by}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Description / Instructions */}
+                            {selectedHomework.description && (
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Description / Instructions</p>
+                                    <div className="p-3.5 bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs text-gray-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                                        {selectedHomework.description}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Attachment Link */}
+                            {selectedHomework.attachment && (
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Attachment</p>
+                                    <a
+                                        href={selectedHomework.attachment.startsWith("http") ? selectedHomework.attachment : `/storage/${selectedHomework.attachment}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-lg transition-colors"
+                                    >
+                                        <Paperclip className="h-3.5 w-3.5" />
+                                        Download / View Attachment
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Footer Actions */}
+                            <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-zinc-800">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelectedHomework(null)}
+                                    className="rounded-lg text-xs"
+                                >
+                                    Close
+                                </Button>
+                                <Link
+                                    href="/user/homework"
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity"
+                                >
+                                    Go to Homework Portal <ArrowRight className="h-3.5 w-3.5" />
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Daily Assignment Details Dialog */}
+            <Dialog open={!!selectedDailyAssignment} onOpenChange={(open) => !open && setSelectedDailyAssignment(null)}>
+                <DialogContent className="sm:max-w-[540px] p-0 overflow-hidden bg-white dark:bg-card border-0 shadow-2xl rounded-2xl">
+                    <DialogHeader className="p-5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
+                                <ClipboardList className="h-4 w-4" />
+                            </span>
+                            <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">{selectedDailyAssignment?.subject}</span>
+                        </div>
+                        <DialogTitle className="text-lg font-bold text-white leading-tight">
+                            {selectedDailyAssignment?.title || selectedDailyAssignment?.subject || "Daily Assignment Details"}
+                        </DialogTitle>
+                        <DialogDescription className="sr-only">Daily assignment details and submission information</DialogDescription>
+                    </DialogHeader>
+                    {selectedDailyAssignment && (
+                        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
+                            {/* Status & Marks Badges */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className={cn(
+                                    "px-2.5 py-1 text-[11px] rounded-full font-bold uppercase",
+                                    selectedDailyAssignment.status === "Pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" :
+                                    selectedDailyAssignment.status === "Submitted" ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" :
+                                    "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                )}>
+                                    {selectedDailyAssignment.status}
+                                </span>
+                                {selectedDailyAssignment.class && (
+                                    <span className="px-2.5 py-1 text-[11px] font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-full">
+                                        {selectedDailyAssignment.class}
+                                    </span>
+                                )}
+                                {selectedDailyAssignment.marks_obtained != null && (
+                                    <span className="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-full flex items-center gap-1">
+                                        <Award className="h-3.5 w-3.5" />
+                                        Marks Obtained: {selectedDailyAssignment.marks_obtained}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Key Info Grid */}
+                            <div className="grid grid-cols-2 gap-3 p-3.5 bg-gray-50/80 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400">Submission Date</p>
+                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedDailyAssignment.date || selectedDailyAssignment.submission_date || "—"}</p>
+                                </div>
+                                {selectedDailyAssignment.evaluation_date && (
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">Evaluation Date</p>
+                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedDailyAssignment.evaluation_date}</p>
+                                    </div>
+                                )}
+                                {selectedDailyAssignment.evaluator && (
+                                    <div>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">Evaluated By</p>
+                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1">
+                                            <User className="h-3 w-3 text-indigo-500" />
+                                            {selectedDailyAssignment.evaluator}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Description / Instructions */}
+                            {selectedDailyAssignment.description && (
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Description / Assignment Details</p>
+                                    <div className="p-3.5 bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs text-gray-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                                        {selectedDailyAssignment.description}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Evaluation Remarks */}
+                            {selectedDailyAssignment.evaluation_remarks && (
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Teacher Evaluation Remarks</p>
+                                    <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900 text-xs text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap leading-relaxed">
+                                        {selectedDailyAssignment.evaluation_remarks}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Attachment Link */}
+                            {selectedDailyAssignment.attachment && (
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Attachment</p>
+                                    <a
+                                        href={selectedDailyAssignment.attachment.startsWith("http") ? selectedDailyAssignment.attachment : `/storage/${selectedDailyAssignment.attachment.replace(/^\/?storage\/?/, "")}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-lg transition-colors"
+                                    >
+                                        <Paperclip className="h-3.5 w-3.5" />
+                                        Download / View Attachment
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Footer Actions */}
+                            <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-zinc-800">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setSelectedDailyAssignment(null)}
+                                    className="rounded-lg text-xs"
+                                >
+                                    Close
+                                </Button>
+                                <Link
+                                    href="/user/homework/daily-assignment"
+                                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity"
+                                >
+                                    Go to Daily Assignment Portal <ArrowRight className="h-3.5 w-3.5" />
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Internal Chat Dialog for Direct Teacher Messaging */}
+            <InternalChatDialog
+                open={chatOpen}
+                onOpenChange={setChatOpen}
+                initialContact={chatTargetContact}
+                initialContactId={chatTargetUserId}
+            />
         </div>
     );
 }

@@ -19,7 +19,8 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("admin");
-    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; app_name?: string; base_url?: string; [key: string]: unknown } | null>(null);
+    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; app_name?: string; tagline?: string; base_url?: string; [key: string]: any } | null>(null);
+    const [mounted, setMounted] = useState(false);
     const getImageUrl = useImageUrl();
 
     // Captcha (driven by system-setting → captcha-setting, "User login" / "Login" aliases)
@@ -36,6 +37,7 @@ export default function LoginPage() {
     };
 
     useEffect(() => {
+        setMounted(true);
         api.get("/system-setting/general-setting").then(r => {
             const data = r.data?.data || r.data || {};
             setSettings(data);
@@ -48,6 +50,11 @@ export default function LoginPage() {
             if (enabled) regenerateCaptcha();
         }).catch(() => {});
     }, []);
+
+    const handleTabChange = (val: string) => {
+        setActiveTab(val);
+        setError("");
+    };
 
     const handleLogin = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -63,17 +70,21 @@ export default function LoginPage() {
 
         try {
             const response = await api.post("/login", { email_or_username: emailOrUsername, password });
-            const { access_token, user } = response.data.data;
+            const resData = response.data.data || response.data;
+            const access_token = resData?.access_token || resData?.token;
+            const user = resData?.user;
 
             // Store token
-            localStorage.setItem("auth_token", access_token);
+            if (access_token) {
+                localStorage.setItem("auth_token", access_token);
+            }
 
             // Redirect based on role
             const userRole = user?.role || "";
             if (userRole === "Student" || userRole === "Parent") {
-                router.push("/user/dashboard");
+                window.location.href = "/user/dashboard";
             } else {
-                router.push("/dashboard");
+                window.location.href = "/dashboard";
             }
         } catch (err: unknown) {
             console.error("Login attempt failed:", err);
@@ -99,15 +110,21 @@ export default function LoginPage() {
             "PAR-0100": "parent123",
         };
         setPassword(passwords[roleEmail] || "password123");
+        setError("");
+        if (roleEmail === "STD-0100" || roleEmail === "PAR-0100") {
+            setActiveTab("user");
+        } else {
+            setActiveTab("admin");
+        }
     };
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center bg-slate-900 overflow-hidden font-sans p-4 sm:p-6 lg:p-12">
+        <div className="min-h-screen relative flex items-center justify-center bg-slate-900 overflow-hidden font-sans p-4 sm:p-6 lg:p-12" suppressHydrationWarning>
             {/* Dynamic Background Elements */}
             <div className="absolute inset-0 z-0">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523050853064-850439649520?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay" />
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay" />
             </div>
 
             <div className="container relative z-10 max-w-6xl mx-auto">
@@ -116,7 +133,7 @@ export default function LoginPage() {
                     {/* Left Column: Logo, School Name, Slogan */}
                     <div className="lg:col-span-6 text-center space-y-6 animate-in fade-in slide-in-from-left-4 duration-700 flex flex-col items-center justify-center">
                         <div className="flex justify-center">
-                            {settings?.app_logo ? (
+                            {mounted && settings?.app_logo ? (
                                 <img
                                     src={getImageUrl(settings.app_logo)}
                                     alt={settings?.school_name || "School Logo"}
@@ -129,53 +146,27 @@ export default function LoginPage() {
                             )}
                         </div>
 
-                        <div className="space-y-3 text-center">
-                            <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl lg:text-5xl leading-tight">
-                                {settings?.school_name || settings?.app_name || "iSchool"}
+                        <div className="space-y-2" suppressHydrationWarning>
+                            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight" suppressHydrationWarning>
+                                {mounted ? (settings?.school_name || "iSchool Management System") : "iSchool Management System"}
                             </h1>
-                            <p className="text-indigo-200/90 text-lg sm:text-xl font-medium max-w-lg mx-auto">
-                                Comprehensive School Management System
-                            </p>
-                            <p className="text-slate-400 text-sm sm:text-base max-w-md mx-auto leading-relaxed hidden sm:block">
-                                Streamlining education management, empowering teachers, students, and parents with seamlessly integrated digital tools.
+                            <p className="text-slate-400 text-sm sm:text-base max-w-md mx-auto" suppressHydrationWarning>
+                                {mounted ? (settings?.tagline || settings?.school_name || "Empowering education with modern, intelligent management solutions.") : "Empowering education with modern, intelligent management solutions."}
                             </p>
                         </div>
-
-                        {/* Desktop Feature Highlights */}
-                        <div className="hidden lg:grid grid-cols-2 gap-4 pt-4 border-t border-white/10 w-full max-w-lg">
-                            <div className="p-3.5 rounded-xl bg-slate-800/40 border border-white/5 backdrop-blur-sm text-center">
-                                <div className="text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-1">Smart Management</div>
-                                <div className="text-slate-300 text-sm">Automated attendance, grading & scheduling</div>
-                            </div>
-                            <div className="p-3.5 rounded-xl bg-slate-800/40 border border-white/5 backdrop-blur-sm text-center">
-                                <div className="text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-1">Secure & Fast</div>
-                                <div className="text-slate-300 text-sm">Role-based access & encrypted records</div>
-                            </div>
-                        </div>
                     </div>
 
-                    {/* Middle Stylistic Divider (Desktop) */}
-                    <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[80%] w-px flex-col items-center justify-center z-20 pointer-events-none">
-                        <div className="w-[1px] h-full bg-gradient-to-b from-transparent via-indigo-500/40 to-transparent" />
-                        <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-indigo-500 border-2 border-slate-900 shadow-[0_0_12px_#6366f1]" />
-                    </div>
-
-                    {/* Mobile Stylistic Divider */}
-                    <div className="lg:hidden w-full flex items-center justify-center my-2">
-                        <div className="h-[1px] w-full max-w-xs bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-                    </div>
-
-                    {/* Right Column: Login Card Section */}
-                    <div className="lg:col-span-6 w-full max-w-md mx-auto lg:max-w-lg space-y-6 animate-in fade-in slide-in-from-right-4 duration-700">
-                        <Card className="border-white/10 bg-slate-800/60 backdrop-blur-xl shadow-2xl">
-                            <Tabs defaultValue="admin" value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    {/* Right Column: Dynamic Login Box */}
+                    <div className="lg:col-span-6 w-full max-w-md mx-auto animate-in fade-in slide-in-from-right-4 duration-700">
+                        <Card className="border-white/10 bg-slate-800/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+                            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                                 <CardHeader className="space-y-4 pb-4">
-                                    <TabsList className="grid w-full grid-cols-2 h-12 bg-slate-900/50 p-1 border border-white/5 rounded-xl">
+                                    <TabsList className="grid grid-cols-2 bg-slate-900/60 p-1 rounded-xl border border-white/5">
                                         <TabsTrigger 
                                             value="user" 
                                             className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold transition-all"
                                         >
-                                            Student/Parent
+                                            User Login
                                         </TabsTrigger>
                                         <TabsTrigger 
                                             value="admin" 
@@ -192,7 +183,7 @@ export default function LoginPage() {
                                     </div>
                                 </CardHeader>
                                 
-                                <form onSubmit={handleLogin}>
+                                <form onSubmit={handleLogin} suppressHydrationWarning>
                                     <CardContent className="space-y-4">
                                         {error && (
                                             <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm text-center">
@@ -200,45 +191,33 @@ export default function LoginPage() {
                                             </div>
                                         )}
                                         <div className="space-y-2">
-                                            <div className="relative">
+                                            <div className="relative" suppressHydrationWarning>
                                                 <Input
                                                     id="email"
                                                     type="text"
+                                                    autoComplete="username"
                                                     placeholder="Email / Username"
                                                     required
                                                     value={emailOrUsername}
                                                     onChange={(e) => setEmailOrUsername(e.target.value)}
                                                     className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-12 text-base rounded-md"
                                                 />
-                                                <div className="absolute right-3 top-3 h-6 w-6 bg-slate-300 rounded flex items-center justify-center">
-                                                    <div className="flex space-x-0.5">
-                                                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                                                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                                                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                                                    </div>
-                                                </div>
-                                                <Mail className="absolute right-12 top-4 h-4 w-4 text-slate-400" />
+                                                <Mail className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
                                             </div>
                                         </div>
                                         <div className="space-y-2">
-                                            <div className="relative">
+                                            <div className="relative" suppressHydrationWarning>
                                                 <Input
                                                     id="password"
                                                     type="password"
+                                                    autoComplete="current-password"
                                                     placeholder="Password"
                                                     required
                                                     value={password}
                                                     onChange={(e) => setPassword(e.target.value)}
                                                     className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-12 text-base rounded-md"
                                                 />
-                                                <div className="absolute right-3 top-3 h-6 w-6 bg-slate-300 rounded flex items-center justify-center">
-                                                    <div className="flex space-x-0.5">
-                                                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                                                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                                                        <div className="w-1 h-1 bg-white rounded-full"></div>
-                                                    </div>
-                                                </div>
-                                                <Lock className="absolute right-12 top-4 h-4 w-4 text-slate-400" />
+                                                <Lock className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
                                             </div>
                                             <div className="flex justify-end pt-1">
                                                 <Link href="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline transition-colors">Forgot password?</Link>

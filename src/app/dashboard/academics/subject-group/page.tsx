@@ -205,9 +205,27 @@ export default function SubjectGroupPage() {
             resetForm();
             fetchSubjectGroups(currentPage);
         } catch (error) {
-            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            const err = error as {
+                response?: {
+                    data?: {
+                        message?: string;
+                        errors?: Record<string, string[]>;
+                        data?: Record<string, string[]>;
+                    };
+                    status?: number;
+                };
+            };
             console.error("Error saving subject group:", error);
-            tt.error(err.response?.data?.message || "failed_to_save");
+            const errData = err.response?.data;
+            let errMsg = errData?.message;
+            if (errData?.errors && typeof errData.errors === 'object') {
+                const firstErr = Object.values(errData.errors).flat()[0];
+                if (firstErr) errMsg = firstErr;
+            } else if (errData?.data && typeof errData.data === 'object' && !Array.isArray(errData.data)) {
+                const firstErr = Object.values(errData.data).flat()[0];
+                if (typeof firstErr === 'string') errMsg = firstErr;
+            }
+            tt.error(errMsg || "failed_to_save");
         } finally {
             setSaving(false);
         }

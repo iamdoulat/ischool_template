@@ -41,7 +41,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import api from "@/lib/api";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useLanguage } from "@/components/providers/language-provider";
 import { cn } from "@/lib/utils";
@@ -492,6 +492,7 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState<any>(null);
     const router = useRouter();
+    const pathname = usePathname();
     const { settings, loading } = useSettings();
     const isChatEnabled = settings?.enable_chat !== false && (typeof window === 'undefined' || localStorage.getItem('ischool_enable_chat') !== 'false');
     const { selectedLanguage, setSelectedLanguage, setUserContext, t } = useLanguage();
@@ -916,7 +917,16 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                 <Button
                                     variant="ghost"
                                     className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl hover:bg-primary/10 hover:text-primary transition-all"
-                                    onClick={() => router.push(`/dashboard/hr/staff-directory/edit/${user?.staff_id}`)}
+                                    onClick={() => {
+                                        const isStudentPortal = pathname?.startsWith('/user') || user?.role === 'Student' || user?.role === 'Parent' || user?.role === 'Guardian';
+                                        if (isStudentPortal) {
+                                            router.push('/user/profile');
+                                        } else if (user?.staff_id) {
+                                            router.push(`/dashboard/hr/staff-directory/edit/${user?.staff_id}`);
+                                        } else {
+                                            router.push('/dashboard');
+                                        }
+                                    }}
                                 >
                                     <UserIcon className="h-4 w-4" />
                                     {t("my_profile")}

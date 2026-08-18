@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     MessageSquare,
@@ -76,6 +77,7 @@ interface InternalChatDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     initialContactId?: number | null;
+    initialContact?: any;
     currentUser?: any;
 }
 
@@ -83,6 +85,7 @@ export function InternalChatDialog({
     open,
     onOpenChange,
     initialContactId,
+    initialContact,
     currentUser
 }: InternalChatDialogProps) {
     const { toast } = useToast();
@@ -119,6 +122,8 @@ export function InternalChatDialog({
     const [sending, setSending] = useState(false);
     const [userPresence, setUserPresence] = useState<"online" | "offline" | "invisible">("online");
     const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+    const [contactConnectionStatus, setContactConnectionStatus] = useState<"accepted" | "pending_sent" | "pending_received" | "none" | "rejected">("accepted");
+    const [requestSentPopup, setRequestSentPopup] = useState<{ open: boolean; targetName: string } | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -228,6 +233,9 @@ export function InternalChatDialog({
                     }
                     return list;
                 });
+                if (res.data.connection_status) {
+                    setContactConnectionStatus(res.data.connection_status);
+                }
             }
         } catch {
             // Silence
@@ -265,11 +273,27 @@ export function InternalChatDialog({
     }, [messages]);
 
     useEffect(() => {
-        if (initialContactId && contacts.length > 0) {
+        if (initialContact) {
+            setSelectedContact({
+                id: initialContact.id,
+                name: initialContact.name,
+                email: initialContact.email || "",
+                role: initialContact.role || "Teacher",
+                avatar: initialContact.avatar || null,
+                chat_presence: initialContact.chat_presence || "online",
+                unread_count: 0,
+            });
+            setActiveTab("chats");
+            setIsMinimized(false);
+        } else if (initialContactId) {
             const target = contacts.find(c => c.id === initialContactId);
-            if (target) setSelectedContact(target);
+            if (target) {
+                setSelectedContact(target);
+                setActiveTab("chats");
+                setIsMinimized(false);
+            }
         }
-    }, [initialContactId, contacts]);
+    }, [initialContactId, initialContact, contacts]);
 
     const handleSearchUsers = async (query: string) => {
         setSearchQuery(query);
@@ -293,16 +317,21 @@ export function InternalChatDialog({
         }
     };
 
-    const handleSendContactRequest = async (receiverId: number) => {
+    const handleSendContactRequest = async (receiverId: number, isDirectFromChat = false) => {
         try {
             const res = await api.post("/chat/request", { receiver_id: receiverId });
             if (res.data?.success) {
-                toast({ title: "Success", description: "Contact request sent!" });
-                handleSearchUsers(searchQuery);
+                setContactConnectionStatus("pending_sent");
+                setRequestSentPopup({
+                    open: true,
+                    targetName: selectedContact?.name || "Teacher / Contact"
+                });
+                if (searchQuery) handleSearchUsers(searchQuery);
                 fetchRequests();
+                fetchContacts();
             }
-        } catch {
-            toast({ title: "Error", description: "Failed to send request.", variant: "destructive" });
+        } catch (error: any) {
+            toast({ title: "Error", description: error?.response?.data?.message || "Failed to send request.", variant: "destructive" });
         }
     };
 
@@ -364,15 +393,25 @@ export function InternalChatDialog({
                 setInputText("");
                 setSelectedFile(null);
                 setFilePreviewUrl(null);
+                setContactConnectionStatus("accepted");
                 fetchMessages(selectedContact.id);
                 fetchContacts();
             }
-        } catch {
-            toast({
-                title: "Failed",
-                description: "Could not send message. Please ensure the contact request is accepted.",
-                variant: "destructive"
-            });
+        } catch (error: any) {
+            const errData = error?.response?.data;
+            if (errData?.requires_request || errData?.connection_status) {
+                setContactConnectionStatus("pending_sent");
+                setRequestSentPopup({
+                    open: true,
+                    targetName: selectedContact?.name || "Teacher / Contact"
+                });
+            } else {
+                toast({
+                    title: "Notice",
+                    description: errData?.message || "Could not send message. Please ensure the contact request is accepted.",
+                    variant: "destructive"
+                });
+            }
         } finally {
             setSending(false);
         }
@@ -447,7 +486,7 @@ export function InternalChatDialog({
                                 <span className="text-xs font-bold text-foreground">Internal Chat</span>
                             </div>
 
-                            {/* Presence Menu & Top Right Window Controls */}
+                            {/* Presence Menu */}
                             <div className="flex items-center gap-1.5">
                                 <select
                                     value={userPresence}
@@ -458,36 +497,6 @@ export function InternalChatDialog({
                                     <option value="offline">⚪ Offline</option>
                                     <option value="invisible">👻 Invisible</option>
                                 </select>
-
-                                <div className="flex items-center gap-0.5 border-l border-muted/60 pl-1.5 ml-0.5">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setIsMinimized(true)}
-                                        className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
-                                        title="Minimize"
-                                    >
-                                        <Minus className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setIsMaximized(!isMaximized)}
-                                        className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg hidden sm:inline-flex"
-                                        title={isMaximized ? "Restore Window" : "Maximize Window"}
-                                    >
-                                        {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => onOpenChange(false)}
-                                        className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                                        title="Close"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
                             </div>
                         </div>
 
@@ -733,10 +742,35 @@ export function InternalChatDialog({
                                 </div>
                             )}
 
-                            {/* Desktop stream indicators */}
-                            <div className="hidden sm:flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-                                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                {selectedContact ? selectedContact.name : "Select a contact to message"}
+                            {/* Window Action Controls (Top-Right of Modal) */}
+                            <div className="flex items-center gap-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setIsMinimized(true)}
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                                    title="Minimize"
+                                >
+                                    <Minus className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setIsMaximized(!isMaximized)}
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg hidden sm:inline-flex"
+                                    title={isMaximized ? "Restore Window" : "Maximize Window"}
+                                >
+                                    {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => onOpenChange(false)}
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                                    title="Close"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
 
@@ -749,62 +783,113 @@ export function InternalChatDialog({
                                             <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
                                             Loading messages...
                                         </div>
-                                    ) : messages.length > 0 ? (
-                                        messages.map((msg) => {
-                                            const isMine = currentUser && msg.sender_id === currentUser.id;
-                                            return (
-                                                <div
-                                                    key={msg.id}
-                                                    className={cn("flex flex-col max-w-[78%]", isMine ? "ml-auto items-end" : "mr-auto items-start")}
-                                                >
-                                                    <div className={cn(
-                                                        "p-3 rounded-2xl text-xs shadow-sm space-y-1.5",
-                                                        isMine
-                                                            ? "bg-gradient-to-r from-primary to-indigo-600 text-white rounded-tr-none"
-                                                            : "bg-muted/50 border border-muted/60 text-foreground rounded-tl-none"
-                                                    )}>
-                                                        {msg.message && <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>}
+                                    ) : (
+                                        <>
+                                            {/* Status Banner for Pending or Unconnected Contacts */}
+                                            {contactConnectionStatus === "pending_sent" && (
+                                                <div className="mx-auto max-w-sm my-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2.5 shadow-xs">
+                                                    <div className="h-10 w-10 mx-auto rounded-full bg-amber-500/20 text-amber-600 flex items-center justify-center">
+                                                        <Clock className="h-5 w-5 animate-pulse" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-amber-900">Friend Request Pending</h4>
+                                                        <p className="text-[11px] text-amber-800/90 leading-relaxed mt-1">
+                                                            Waiting for <span className="font-semibold">{selectedContact.name}</span> to accept your request. Once accepted, live chatting will be enabled.
+                                                        </p>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={() => handleSendContactRequest(selectedContact.id, true)}
+                                                        className="h-7 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg gap-1.5 shadow-2xs cursor-pointer"
+                                                    >
+                                                        <UserPlus className="h-3.5 w-3.5" /> Resend Friend Request
+                                                    </Button>
+                                                </div>
+                                            )}
 
-                                                        {/* File/Image Attachment Preview */}
-                                                        {msg.attachment_url && (
-                                                            <div className="mt-1 pt-1 border-t border-white/20">
-                                                                {msg.attachment_type === "image" ? (
-                                                                    <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl">
-                                                                        <img
-                                                                            src={msg.attachment_url}
-                                                                            alt={msg.attachment_name || "Image"}
-                                                                            className="max-h-40 w-auto object-cover hover:scale-105 transition-transform"
-                                                                        />
-                                                                    </a>
-                                                                ) : (
-                                                                    <a
-                                                                        href={msg.attachment_url}
-                                                                        target="_blank"
-                                                                        download
-                                                                        rel="noopener noreferrer"
-                                                                        className={cn(
-                                                                            "flex items-center gap-2 p-2 rounded-xl text-xs font-semibold transition-colors",
-                                                                            isMine ? "bg-white/20 text-white hover:bg-white/30" : "bg-muted text-foreground hover:bg-muted/80"
+                                            {contactConnectionStatus === "none" && (
+                                                <div className="mx-auto max-w-sm my-4 p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-center space-y-2.5 shadow-xs">
+                                                    <div className="h-10 w-10 mx-auto rounded-full bg-indigo-500/20 text-indigo-600 flex items-center justify-center">
+                                                        <UserPlus className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-xs font-bold text-indigo-900">Connect with {selectedContact.name}</h4>
+                                                        <p className="text-[11px] text-indigo-800/90 leading-relaxed mt-1">
+                                                            Send a friend request to start communicating directly with {selectedContact.name}.
+                                                        </p>
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={() => handleSendContactRequest(selectedContact.id, true)}
+                                                        className="h-7 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg gap-1.5 shadow-2xs cursor-pointer"
+                                                    >
+                                                        <UserPlus className="h-3.5 w-3.5" /> Send Friend Request
+                                                    </Button>
+                                                </div>
+                                            )}
+
+                                            {messages.length > 0 ? (
+                                                messages.map((msg) => {
+                                                    const isMine = currentUser && msg.sender_id === currentUser.id;
+                                                    return (
+                                                        <div
+                                                            key={msg.id}
+                                                            className={cn("flex flex-col max-w-[78%]", isMine ? "ml-auto items-end" : "mr-auto items-start")}
+                                                        >
+                                                            <div className={cn(
+                                                                "p-3 rounded-2xl text-xs shadow-sm space-y-1.5",
+                                                                isMine
+                                                                    ? "bg-gradient-to-r from-primary to-indigo-600 text-white rounded-tr-none"
+                                                                    : "bg-muted/50 border border-muted/60 text-foreground rounded-tl-none"
+                                                            )}>
+                                                                {msg.message && <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>}
+
+                                                                {/* File/Image Attachment Preview */}
+                                                                {msg.attachment_url && (
+                                                                    <div className="mt-1 pt-1 border-t border-white/20">
+                                                                        {msg.attachment_type === "image" ? (
+                                                                            <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl">
+                                                                                <img
+                                                                                    src={msg.attachment_url}
+                                                                                    alt={msg.attachment_name || "Image"}
+                                                                                    className="max-h-40 w-auto object-cover hover:scale-105 transition-transform"
+                                                                                />
+                                                                            </a>
+                                                                        ) : (
+                                                                            <a
+                                                                                href={msg.attachment_url}
+                                                                                target="_blank"
+                                                                                download
+                                                                                rel="noopener noreferrer"
+                                                                                className={cn(
+                                                                                    "flex items-center gap-2 p-2 rounded-xl text-xs font-semibold transition-colors",
+                                                                                    isMine ? "bg-white/20 text-white hover:bg-white/30" : "bg-muted text-foreground hover:bg-muted/80"
+                                                                                )}
+                                                                            >
+                                                                                <FileText className="h-4 w-4 shrink-0" />
+                                                                                <span className="truncate max-w-[130px]">{msg.attachment_name || "Attachment"}</span>
+                                                                                <Download className="h-3.5 w-3.5 ml-auto shrink-0" />
+                                                                            </a>
                                                                         )}
-                                                                    >
-                                                                        <FileText className="h-4 w-4 shrink-0" />
-                                                                        <span className="truncate max-w-[130px]">{msg.attachment_name || "Attachment"}</span>
-                                                                        <Download className="h-3.5 w-3.5 ml-auto shrink-0" />
-                                                                    </a>
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                        )}
+                                                            <span className="text-[9px] text-muted-foreground mt-1 px-1">
+                                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })
+                                            ) : (
+                                                contactConnectionStatus === "accepted" && (
+                                                    <div className="py-12 text-center text-xs text-muted-foreground italic">
+                                                        No messages yet. Say hello!
                                                     </div>
-                                                    <span className="text-[9px] text-muted-foreground mt-1 px-1">
-                                                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="py-12 text-center text-xs text-muted-foreground italic">
-                                            No messages yet. Say hello!
-                                        </div>
+                                                )
+                                            )}
+                                        </>
                                     )}
                                     <div ref={messagesEndRef} />
                                 </div>
@@ -877,6 +962,41 @@ export function InternalChatDialog({
                     </div>
                 </div>
             )}
+
+            {/* Student-friendly Friend Request Sent Confirmation Dialog */}
+            <Dialog open={!!requestSentPopup?.open} onOpenChange={(o) => !o && setRequestSentPopup(null)}>
+                <DialogContent className="sm:max-w-[420px] rounded-2xl p-6 text-center">
+                    <div className="h-14 w-14 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                        <UserCheck className="h-7 w-7" />
+                    </div>
+                    <DialogHeader>
+                        <DialogTitle className="text-base font-bold text-gray-900 text-center">
+                            Friend Request Sent!
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-gray-500 text-center mt-1">
+                            Your contact request has been delivered to <span className="font-bold text-gray-800">{requestSentPopup?.targetName}</span>.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="bg-amber-50 border border-amber-200/80 rounded-xl p-3.5 text-left text-xs text-amber-800 space-y-1.5 mt-3">
+                        <div className="flex items-center gap-1.5 font-bold">
+                            <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+                            <span>Waiting for Acceptance</span>
+                        </div>
+                        <p className="text-[11px] text-amber-700 leading-relaxed">
+                            Once {requestSentPopup?.targetName} accepts your friend request, you can send text messages, questions, and attachments in real-time.
+                        </p>
+                    </div>
+                    <div className="pt-4 flex justify-center">
+                        <Button
+                            type="button"
+                            onClick={() => setRequestSentPopup(null)}
+                            className="h-9 px-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold rounded-xl shadow-sm cursor-pointer"
+                        >
+                            Got it
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>,
         document.body
     );

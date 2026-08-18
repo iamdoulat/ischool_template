@@ -26,9 +26,14 @@ export const mockUserDashboardData = {
         { id: 4, teacher: "Aman Verma", code: "654", subject: "Science (111)", room: "100", time: "10:15 AM-11:00 AM" }
     ],
     homework: [
-        { id: 1, subject: "Social Studies (212)", date: "06/23/2026", submission: "06/30/2026", status: "Pending" },
-        { id: 2, subject: "Science (111)", date: "06/17/2026", submission: "06/23/2026", status: "Pending" },
-        { id: 3, subject: "Mathematics (110)", date: "06/11/2026", submission: "06/17/2026", status: "Submitted" }
+        { id: 1, title: "Chapter 4: Indian Constitution", subject: "Social Studies (212)", class: "Class 10 (A)", date: "06/23/2026", submission: "06/30/2026", evaluation_date: "", max_marks: 50, marks_obtained: null, created_by: "Shivam Verma", description: "Write short notes on Fundamental Rights and Duties as discussed in class.", status: "Pending" },
+        { id: 2, title: "Lab Report: Chemical Reactions", subject: "Science (111)", class: "Class 10 (A)", date: "06/17/2026", submission: "06/23/2026", evaluation_date: "", max_marks: 25, marks_obtained: null, created_by: "Aman Verma", description: "Submit the observations and conclusions for Experiment 3.", status: "Pending" },
+        { id: 3, title: "Quadratic Equations Exercise 4.2", subject: "Mathematics (110)", class: "Class 10 (A)", date: "06/11/2026", submission: "06/17/2026", evaluation_date: "06/19/2026", max_marks: 20, marks_obtained: 18, created_by: "Nishant Khare", description: "Solve all problems from Question 1 to 10 in your homework notebook.", status: "Submitted" }
+    ],
+    dailyAssignments: [
+        { id: 1, title: "Vocabulary Drill - Unit 3", subject: "English (210)", class: "Class 10 (A)", date: "06/25/2026", submission_date: "2026-06-25", evaluation_date: "06/26/2026", marks_obtained: 10, max_marks: 10, evaluator: "Shivam Verma", description: "Complete sentences using new vocabulary words from Unit 3 lesson.", status: "Evaluated" },
+        { id: 2, title: "Daily Math Practice - Linear Graphs", subject: "Mathematics (110)", class: "Class 10 (A)", date: "06/24/2026", submission_date: "2026-06-24", evaluation_date: "", marks_obtained: null, max_marks: 10, evaluator: "Nishant Khare", description: "Plot given coordinates and find the slope of the lines in graph sheet.", status: "Submitted" },
+        { id: 3, title: "Science Short Question Set", subject: "Science (111)", class: "Class 10 (A)", date: "06/23/2026", submission_date: "2026-06-23", evaluation_date: "", marks_obtained: null, max_marks: 10, evaluator: "Aman Verma", description: "Answer questions 1 to 5 based on today's classroom lecture.", status: "Pending" }
     ],
     teachers: [
         { id: 1, name: "Shivam Verma", code: "9002", isClassTeacher: true },

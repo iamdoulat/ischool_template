@@ -63,6 +63,7 @@ export function DatePicker({ value, onChange, placeholder = "DD/MM/YYYY", classN
     <Popover>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant={"outline"}
           disabled={disabled}
           className={cn(

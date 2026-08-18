@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { formatDate } from "@/lib/utils";
@@ -76,6 +77,13 @@ interface LessonPlanItem {
     subject: string;
     subjectCode: string;
     className: string;
+    rawClassName?: string;
+    rawSection?: string;
+    rawSubject?: string;
+    school_class_id?: number | string;
+    section_id?: number | string;
+    subject_id?: number | string;
+    subject_group_id?: number | string;
     timeRange: string;
     roomNo: string;
     plan: {
@@ -95,19 +103,35 @@ interface DayPlan {
     lessons: LessonPlanItem[];
 }
 
-interface LessonOption {
-    name: string;
+interface RawLessonGroup {
+    id: string | number;
+    className: string;
+    section: string;
+    subjectGroup?: string;
+    subject: string;
+    lessons: string[];
+    lesson_ids?: (string | number)[];
 }
 
-interface TopicOption {
-    name: string;
+interface RawTopicGroup {
+    id: string | number;
+    className: string;
+    section: string;
+    subjectGroup?: string;
+    subject: string;
     lesson: string;
+    topics: { id: string | number; name: string; is_completed?: boolean; completion_date?: string | null }[];
+    topic_ids?: (string | number)[];
 }
 
 export default function ManageLessonPlanPage() {
     const { toast } = useToast();
     const [teachers, setTeachers] = useState<TeacherOption[]>([]);
     const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+    const [classes, setClasses] = useState<{ id: number | string; name: string }[]>([]);
+    const [sections, setSections] = useState<{ id: number | string; name: string; school_class_id?: number | string }[]>([]);
+    const [selectedClassId, setSelectedClassId] = useState<string>("all");
+    const [selectedSectionId, setSelectedSectionId] = useState<string>("all");
     const [startDate, setStartDate] = useState<Date>(() => {
         const d = new Date();
         const day = d.getDay();
@@ -118,8 +142,8 @@ export default function ManageLessonPlanPage() {
     const [loading, setLoading] = useState(false);
 
     // Lesson & Topic data for dropdowns
-    const [lessonNames, setLessonNames] = useState<string[]>([]);
-    const [topicOptions, setTopicOptions] = useState<TopicOption[]>([]);
+    const [allLessonGroups, setAllLessonGroups] = useState<RawLessonGroup[]>([]);
+    const [allTopicGroups, setAllTopicGroups] = useState<RawTopicGroup[]>([]);
     const [lessonsLoading, setLessonsLoading] = useState(false);
 
     // Form Dialog State
@@ -134,15 +158,127 @@ export default function ManageLessonPlanPage() {
         objectives: ""
     });
 
-    // Filtered topics based on selected lesson
-    const filteredTopics = formData.lesson
-        ? topicOptions.filter(t => t.lesson === formData.lesson).map(t => t.name)
-        : [];
+    // Helper normalizers
+    const norm = (s?: string) => (s || "").trim().toLowerCase();
+    const cleanSec = (s?: string) => (s || "").replace(/^section\s+/i, "").trim().toLowerCase();
+
+    // Available lessons for current selected slot filtered by subject, class, and section
+    const availableLessons = useMemo(() => {
+        if (!selectedSlot) return [];
+        const targetSubj = norm(selectedSlot.lesson.rawSubject || selectedSlot.lesson.subject);
+        const targetCls = norm(selectedSlot.lesson.rawClassName || selectedSlot.lesson.className.replace(/\s*\(.*\)$/, ""));
+        const targetSec = cleanSec(selectedSlot.lesson.rawSection || selectedSlot.lesson.className.match(/\((.*?)\)/)?.[1]);
+
+        // 1. Strict match: Subject + Class + Section
+        let matched = allLessonGroups.filter(g => {
+            const mSubj = norm(g.subject) === targetSubj;
+            const mCls = norm(g.className) === targetCls;
+            const mSec = !targetSec || cleanSec(g.section) === targetSec || cleanSec(g.section) === "";
+            return mSubj && mCls && mSec;
+        });
+
+        // 2. Fallback: Subject + Class
+        if (matched.length === 0) {
+            matched = allLessonGroups.filter(g => {
+                const mSubj = norm(g.subject) === targetSubj;
+                const mCls = norm(g.className) === targetCls;
+                return mSubj && mCls;
+            });
+        }
+
+        // 3. Fallback: Subject only
+        if (matched.length === 0) {
+            matched = allLessonGroups.filter(g => norm(g.subject) === targetSubj);
+        }
+
+        const set = new Set<string>();
+        matched.forEach(g => {
+            (g.lessons || []).forEach(l => {
+                if (l && l.trim()) set.add(l.trim());
+            });
+        });
+
+        const list = Array.from(set).sort();
+        if (formData.lesson && !list.includes(formData.lesson)) {
+            return [formData.lesson, ...list];
+        }
+        return list;
+    }, [selectedSlot, allLessonGroups, formData.lesson]);
+
+    // Available topics for current selected slot & chosen lesson
+    const availableTopics = useMemo(() => {
+        if (!selectedSlot || !formData.lesson) return [];
+        const targetSubj = norm(selectedSlot.lesson.rawSubject || selectedSlot.lesson.subject);
+        const targetCls = norm(selectedSlot.lesson.rawClassName || selectedSlot.lesson.className.replace(/\s*\(.*\)$/, ""));
+        const targetSec = cleanSec(selectedSlot.lesson.rawSection || selectedSlot.lesson.className.match(/\((.*?)\)/)?.[1]);
+        const targetLes = norm(formData.lesson);
+
+        // 1. Strict match: Lesson + Subject + Class + Section
+        let matched = allTopicGroups.filter(g => {
+            const mLes = norm(g.lesson) === targetLes;
+            const mSubj = norm(g.subject) === targetSubj;
+            const mCls = norm(g.className) === targetCls;
+            const mSec = !targetSec || cleanSec(g.section) === targetSec || cleanSec(g.section) === "";
+            return mLes && mSubj && mCls && mSec;
+        });
+
+        // 2. Fallback: Lesson + Subject + Class
+        if (matched.length === 0) {
+            matched = allTopicGroups.filter(g => {
+                const mLes = norm(g.lesson) === targetLes;
+                const mSubj = norm(g.subject) === targetSubj;
+                const mCls = norm(g.className) === targetCls;
+                return mLes && mSubj && mCls;
+            });
+        }
+
+        // 3. Fallback: Lesson + Subject
+        if (matched.length === 0) {
+            matched = allTopicGroups.filter(g => {
+                const mLes = norm(g.lesson) === targetLes;
+                const mSubj = norm(g.subject) === targetSubj;
+                return mLes && mSubj;
+            });
+        }
+
+        // 4. Fallback: Lesson only
+        if (matched.length === 0) {
+            matched = allTopicGroups.filter(g => norm(g.lesson) === targetLes);
+        }
+
+        const set = new Set<string>();
+        matched.forEach(g => {
+            (g.topics || []).forEach(t => {
+                const name = typeof t === "string" ? t : (t as any)?.name;
+                if (name && name.trim()) set.add(name.trim());
+            });
+        });
+
+        const list = Array.from(set).sort();
+        if (formData.topic && !list.includes(formData.topic)) {
+            return [formData.topic, ...list];
+        }
+        return list;
+    }, [selectedSlot, formData.lesson, allTopicGroups, formData.topic]);
 
     useEffect(() => {
         fetchTeachers();
+        fetchClassesAndSections();
         fetchLessonsAndTopics();
     }, []);
+
+    const fetchClassesAndSections = async () => {
+        try {
+            const [classRes, secRes] = await Promise.all([
+                api.get('/academics/classes?no_paginate=true'),
+                api.get('/academics/sections?with_class=true&no_paginate=true')
+            ]);
+            setClasses(classRes.data?.data?.data || classRes.data?.data || []);
+            setSections(secRes.data?.data || secRes.data || []);
+        } catch (error) {
+            console.error("Failed to fetch classes/sections", error);
+        }
+    };
 
     const fetchTeachers = async () => {
         try {
@@ -165,22 +301,11 @@ export default function ManageLessonPlanPage() {
                 api.get('/lesson-plan/lessons').catch(() => ({ data: [] })),
                 api.get('/lesson-plan/topics').catch(() => ({ data: [] }))
             ]);
-            const lessonsData = lessonsRes.data?.data || lessonsRes.data || [];
-            const topicsData = topicsRes.data?.data || topicsRes.data || [];
+            const lessonsData: RawLessonGroup[] = lessonsRes.data?.data || lessonsRes.data || [];
+            const topicsData: RawTopicGroup[] = topicsRes.data?.data || topicsRes.data || [];
 
-            const names = new Set<string>();
-            lessonsData.forEach((g: any) => {
-                (g.lessons || []).forEach((l: string) => names.add(l));
-            });
-            setLessonNames(Array.from(names).sort());
-
-            const topics: TopicOption[] = [];
-            topicsData.forEach((g: any) => {
-                (g.topics || []).forEach((t: any) => {
-                    if (t.name) topics.push({ name: t.name, lesson: g.lesson || '' });
-                });
-            });
-            setTopicOptions(topics);
+            setAllLessonGroups(lessonsData);
+            setAllTopicGroups(topicsData);
         } catch (error) {
             console.error("Failed to fetch lessons/topics", error);
         } finally {
@@ -203,13 +328,20 @@ export default function ManageLessonPlanPage() {
             const endDate = new Date(startDate);
             endDate.setDate(startDate.getDate() + 6);
 
-            const response = await api.get('/lesson-plan/manage-lesson-plan', {
-                params: {
-                    staff_id: selectedTeacherId,
-                    start_date: formatLocalDate(startDate),
-                    end_date: formatLocalDate(endDate)
-                }
-            });
+            const params: Record<string, any> = {
+                staff_id: selectedTeacherId,
+                start_date: formatLocalDate(startDate),
+                end_date: formatLocalDate(endDate)
+            };
+
+            if (selectedClassId && selectedClassId !== "all") {
+                params.school_class_id = selectedClassId;
+            }
+            if (selectedSectionId && selectedSectionId !== "all") {
+                params.section_id = selectedSectionId;
+            }
+
+            const response = await api.get('/lesson-plan/manage-lesson-plan', { params });
             const serverData: DayPlan[] = response.data || [];
             setWeekPlan(serverData);
         } catch (error) {
@@ -221,7 +353,7 @@ export default function ManageLessonPlanPage() {
 
     useEffect(() => {
         if (selectedTeacherId) fetchWeekPlan();
-    }, [selectedTeacherId, startDate]);
+    }, [selectedTeacherId, startDate, selectedClassId, selectedSectionId]);
 
     const handleNavigate = (direction: 'next' | 'prev') => {
         const newDate = new Date(startDate);
@@ -244,6 +376,7 @@ export default function ManageLessonPlanPage() {
             });
         }
         setIsDialogOpen(true);
+        fetchLessonsAndTopics();
     };
 
     const handleSave = async () => {
@@ -334,13 +467,13 @@ export default function ManageLessonPlanPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                    <div className="space-y-3 max-w-2xl">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                            Teachers <span className="text-red-500">*</span>
-                        </Label>
-                        <div className="flex gap-3 items-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                                Teachers <span className="text-red-500">*</span>
+                            </Label>
                             <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
-                                <SelectTrigger className="w-full h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500">
+                                <SelectTrigger className="w-full h-11 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500">
                                     <SelectValue placeholder="Select Teacher" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -349,7 +482,56 @@ export default function ManageLessonPlanPage() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Button onClick={fetchWeekPlan} className="btn-gradient text-white gap-2 h-11 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full">
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                                Class
+                            </Label>
+                            <Select
+                                value={selectedClassId}
+                                onValueChange={(val) => {
+                                    setSelectedClassId(val);
+                                    setSelectedSectionId("all");
+                                }}
+                            >
+                                <SelectTrigger className="w-full h-11 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="All Classes" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Classes</SelectItem>
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                                Section
+                            </Label>
+                            <Select
+                                value={selectedSectionId}
+                                onValueChange={setSelectedSectionId}
+                                disabled={selectedClassId === "all"}
+                            >
+                                <SelectTrigger className="w-full h-11 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500">
+                                    <SelectValue placeholder="All Sections" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Sections</SelectItem>
+                                    {sections
+                                        .filter(s => selectedClassId === "all" || String(s.school_class_id) === String(selectedClassId))
+                                        .map(s => (
+                                            <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div>
+                            <Button onClick={fetchWeekPlan} className="btn-gradient text-white gap-2 h-11 w-full text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-xl">
                                 <Search className="h-4 w-4" /> Search
                             </Button>
                         </div>
@@ -499,6 +681,9 @@ export default function ManageLessonPlanPage() {
                                 </span>
                                 {dialogMode === "view" ? "View Lesson Plan" : dialogMode === "edit" ? "Edit Lesson Plan" : "Add Lesson Plan"}
                             </DialogTitle>
+                            <DialogDescription className="sr-only">
+                                {dialogMode === "view" ? "View lesson plan details" : dialogMode === "edit" ? "Edit lesson plan details" : "Add new lesson plan"}
+                            </DialogDescription>
                             <div className="flex flex-wrap gap-2 mt-3">
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold backdrop-blur-sm">
                                     <CalendarIcon className="h-3 w-3" />
@@ -542,13 +727,13 @@ export default function ManageLessonPlanPage() {
                                             <SelectValue placeholder={lessonsLoading ? "Loading lessons..." : "Select lesson"} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {lessonNames.length === 0 && (
+                                            {availableLessons.length === 0 && (
                                                 <div className="flex flex-col items-center gap-1 p-4 text-xs text-gray-400">
                                                     <FileText className="h-5 w-5 opacity-40" />
-                                                    <span>No lessons found</span>
+                                                    <span>No lessons found for this subject/class</span>
                                                 </div>
                                             )}
-                                            {lessonNames.map((name) => (
+                                            {availableLessons.map((name) => (
                                                 <SelectItem key={name} value={name}>{name}</SelectItem>
                                             ))}
                                         </SelectContent>
@@ -576,13 +761,13 @@ export default function ManageLessonPlanPage() {
                                             } />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {filteredTopics.length === 0 && formData.lesson && (
+                                            {availableTopics.length === 0 && formData.lesson && (
                                                 <div className="flex flex-col items-center gap-1 p-4 text-xs text-gray-400">
                                                     <ClipboardList className="h-5 w-5 opacity-40" />
                                                     <span>No topics for this lesson</span>
                                                 </div>
                                             )}
-                                            {filteredTopics.map((name) => (
+                                            {availableTopics.map((name) => (
                                                 <SelectItem key={name} value={name}>{name}</SelectItem>
                                             ))}
                                         </SelectContent>

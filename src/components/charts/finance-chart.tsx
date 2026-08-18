@@ -40,9 +40,9 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                 <Badge variant="secondary" className="font-bold text-[10px] py-1 px-3 bg-primary/10 text-primary border-primary/20 uppercase tracking-tighter">Session 2025-26</Badge>
             </CardHeader>
             <CardContent className="pb-0">
-                <div className="h-[320px] min-h-[320px] w-full">
+                <div className="h-[320px] min-h-[320px] w-full min-w-0">
                     {mounted ? (
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={320}>
+                        <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={320}>
                             <ChartComponent data={data} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorCollections" x1="0" y1="0" x2="0" y2="1">

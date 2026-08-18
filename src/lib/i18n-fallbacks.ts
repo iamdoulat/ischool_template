@@ -686,6 +686,7 @@ export const i18nFallbacks: Record<string, string> = {
   google_drive_setting: "Google Drive Setting",
   whatsapp_settings: "WhatsApp Settings",
   chat: "Chat",
+  chat_with_teacher: "Chat with Teacher",
   maintenance_mode: "Maintenance Mode",
   miscellaneous_settings: "Miscellaneous Settings",
   attendance_type: "Attendance Type",

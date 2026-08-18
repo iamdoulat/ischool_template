@@ -29,9 +29,9 @@ export function DistributionChart({ title, data }: DistributionChartProps) {
                 <CardTitle className="text-sm font-bold text-foreground/80 uppercase tracking-widest">{title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-center relative pb-6 px-0">
-                <div className="h-[320px] min-h-[320px] w-full relative">
+                <div className="h-[320px] min-h-[320px] w-full min-w-0 relative">
                     {mounted ? (
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={320}>
+                        <ResponsiveContainer width="100%" height={320} minWidth={0} minHeight={320}>
                             <PieChart margin={{ top: 0, right: 0, left: 0, bottom: -10 }}>
                             <defs>
                                 {data.map((item, index) => (
