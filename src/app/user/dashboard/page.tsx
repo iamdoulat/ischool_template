@@ -79,6 +79,7 @@ function SectionCard({
     icon: Icon,
     title,
     count,
+    action,
     children,
     className,
     bodyClassName,
@@ -86,22 +87,28 @@ function SectionCard({
     icon: LucideIcon;
     title: React.ReactNode;
     count?: number;
+    action?: React.ReactNode;
     children: React.ReactNode;
     className?: string;
     bodyClassName?: string;
 }) {
     return (
         <Card className={cn("flex flex-col h-[340px] p-0 gap-0 border border-gray-200 shadow-sm rounded-xl overflow-hidden", className)}>
-            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                    <Icon className="h-4 w-4" />
-                </span>
-                <div className="text-sm font-bold text-gray-800 flex items-center gap-2 min-w-0">{title}</div>
-                {count != null && (
-                    <span className="ml-auto min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] shadow-xs shrink-0">
-                        {count}
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Icon className="h-4 w-4" />
                     </span>
-                )}
+                    <div className="text-sm font-bold text-gray-800 dark:text-zinc-100 flex items-center gap-2 min-w-0">{title}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                    {action}
+                    {count != null && (
+                        <span className="min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] shadow-xs shrink-0">
+                            {count}
+                        </span>
+                    )}
+                </div>
             </div>
             <CardContent className={cn("p-0 flex-1 overflow-y-auto custom-scrollbar", bodyClassName)}>
                 {children}
@@ -449,16 +456,15 @@ export default function UserDashboardPage() {
                 {/* Homework */}
                 <SectionCard
                     icon={ClipboardList}
-                    title={
-                        <div className="flex items-center justify-between w-full pr-2">
-                            <span>{t("homework")}</span>
-                            <Link
-                                href="/user/homework"
-                                className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
-                            >
-                                {t("view_all") || "View All"} <ChevronRight className="h-3 w-3" />
-                            </Link>
-                        </div>
+                    title={t("homework")}
+                    action={
+                        <Link
+                            href="/user/homework"
+                            className="px-2.5 py-1 text-[11px] font-semibold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] rounded-full shadow-xs hover:shadow-md transition-all duration-200 inline-flex items-center gap-1 hover:scale-105 active:scale-95"
+                        >
+                            <span>{t("view_all") || "View All"}</span>
+                            <ChevronRight className="h-3 w-3" />
+                        </Link>
                     }
                     count={homework?.length}
                 >
@@ -541,16 +547,15 @@ export default function UserDashboardPage() {
                 {/* Daily Assignment */}
                 <SectionCard
                     icon={ClipboardList}
-                    title={
-                        <div className="flex items-center justify-between w-full pr-2">
-                            <span>{t("daily_assignment") || "Daily Assignment"}</span>
-                            <Link
-                                href="/user/homework/daily-assignment"
-                                className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
-                            >
-                                {t("view_all") || "View All"} <ChevronRight className="h-3 w-3" />
-                            </Link>
-                        </div>
+                    title={t("daily_assignment") || "Daily Assignment"}
+                    action={
+                        <Link
+                            href="/user/homework/daily-assignment"
+                            className="px-2.5 py-1 text-[11px] font-semibold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] rounded-full shadow-xs hover:shadow-md transition-all duration-200 inline-flex items-center gap-1 hover:scale-105 active:scale-95"
+                        >
+                            <span>{t("view_all") || "View All"}</span>
+                            <ChevronRight className="h-3 w-3" />
+                        </Link>
                     }
                     count={dailyAssignments?.length}
                 >
