@@ -162,26 +162,27 @@ export default function LoginPage() {
                                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight" suppressHydrationWarning>
                                     {mounted ? (settings?.school_name || "iSchool Management System") : "iSchool Management System"}
                                 </h1>
-                                <p className="text-indigo-300 font-semibold text-sm sm:text-base tracking-wide" suppressHydrationWarning>
-                                    {mounted ? (settings?.school_slogan || settings?.tagline || "Empowering education with modern, intelligent management solutions.") : "Empowering education with modern, intelligent management solutions."}
-                                </p>
+                                {mounted && (settings?.school_slogan || settings?.tagline) && (
+                                    <p className="text-indigo-300 font-semibold text-sm sm:text-base tracking-wide" suppressHydrationWarning>
+                                        {settings?.school_slogan || settings?.tagline}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
-                        {/* School Description Container (Fetches school_description from General Setting) */}
-                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xl space-y-2.5 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 transition-all" suppressHydrationWarning>
-                            <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-                            <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
-                                <BookOpen className="w-4 h-4" />
-                                <span>School Overview</span>
+                        {/* School Description Container (Only shown when school_description is available) */}
+                        {mounted && settings?.school_description && settings.school_description.trim() !== "" && (
+                            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xl space-y-2.5 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 transition-all" suppressHydrationWarning>
+                                <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+                                <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                                    <BookOpen className="w-4 h-4" />
+                                    <span>School Overview</span>
+                                </div>
+                                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed" suppressHydrationWarning>
+                                    {settings.school_description}
+                                </p>
                             </div>
-                            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed" suppressHydrationWarning>
-                                {mounted && settings?.school_description
-                                    ? settings.school_description
-                                    : "Providing quality education focused on holistic development, academic excellence, and character building. Access course materials, attendance records, exam results, and school communications seamlessly."
-                                }
-                            </p>
-                        </div>
+                        )}
 
                         {/* Feature Highlights Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
