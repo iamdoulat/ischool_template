@@ -84,6 +84,7 @@ export function PublicHeader() {
         const checkAuth = async () => {
             const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
             if (!token) {
+                setUser(null);
                 setUserContext(null);
                 setMounted(true);
                 return;
@@ -91,13 +92,16 @@ export function PublicHeader() {
             try {
                 const response = await api.get("/profile", { skipGlobalErrorHandler: true });
                 if (response.data?.success) {
-                    setUser(response.data.data);
-                    setUserContext(response.data.data);
+                    const userData = response.data.data;
+                    setUser(userData);
+                    setUserContext(userData);
                 } else {
+                    setUser(null);
                     setUserContext(null);
                 }
             } catch (error) {
                 console.error("Failed to fetch profile in public header:", error);
+                setUser(null);
                 setUserContext(null);
             } finally {
                 setMounted(true);
@@ -380,6 +384,16 @@ export function PublicHeader() {
                                     </Link>
                                 );
                             })}
+                            <div className="pt-2 border-t border-gray-100">
+                                <Link
+                                    href={!user ? "/login" : getDashboardUrl()}
+                                    className="w-full py-2.5 px-4 bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-sm rounded-lg flex items-center justify-between shadow-sm transition-all"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    <span>{!user ? t("login") : t("dashboard")}</span>
+                                    <ArrowUpRight className="h-4 w-4 text-[#FF9800]" />
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 )}
