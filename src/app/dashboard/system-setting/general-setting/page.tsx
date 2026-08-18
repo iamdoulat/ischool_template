@@ -730,7 +730,7 @@ export default function GeneralSettingPage() {
                                         className="min-h-[100px] text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
-                                <div className="space-y-1.5">
+                                <div className="space-y-1.5 md:col-span-6 lg:col-span-4">
                                     <Label className="text-xs font-medium text-gray-600">{t("school_code")}</Label>
                                     <Input
                                         value={formData.school_code}
