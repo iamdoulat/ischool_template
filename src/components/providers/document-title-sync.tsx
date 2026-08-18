@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useTranslation } from "@/hooks/use-translation";
-import { getPageTitleFromPathname } from "@/lib/page-title";
+import { getPageTitleFromPathname, formatDocumentTitle } from "@/lib/page-title";
 
 export function DocumentTitleSync() {
     const pathname = usePathname();
@@ -13,8 +13,7 @@ export function DocumentTitleSync() {
 
     useEffect(() => {
         const schoolName = settings?.school_name || "iSchool";
-        const pageName = getPageTitleFromPathname(pathname, t);
-        document.title = `${pageName} || ${schoolName}`;
+        document.title = formatDocumentTitle(pathname, schoolName, t);
     }, [pathname, settings, loading, t]);
 
     return null;

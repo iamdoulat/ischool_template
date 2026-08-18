@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall } from "lucide-react";
+import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall, Sparkles, BarChart3, Zap } from "lucide-react";
 import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
@@ -19,7 +19,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("admin");
-    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; app_name?: string; tagline?: string; base_url?: string; [key: string]: any } | null>(null);
+    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; app_name?: string; tagline?: string; base_url?: string;[key: string]: any } | null>(null);
     const [mounted, setMounted] = useState(false);
     const getImageUrl = useImageUrl();
 
@@ -41,14 +41,14 @@ export default function LoginPage() {
         api.get("/system-setting/general-setting").then(r => {
             const data = r.data?.data || r.data || {};
             setSettings(data);
-        }).catch(() => {});
+        }).catch(() => { });
 
         api.get("/system-setting/captcha-settings/public").then(r => {
             const map = r.data?.data || {};
             const enabled = !!(map.user_login || map.login);
             setCaptchaEnabled(enabled);
             if (enabled) regenerateCaptcha();
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     const handleTabChange = (val: string) => {
@@ -127,62 +127,130 @@ export default function LoginPage() {
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay" />
             </div>
 
-            <div className="container relative z-10 max-w-6xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center relative">
+            <div className="container relative z-10 max-w-6xl mx-auto px-4 py-6 sm:py-10">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
                     
-                    {/* Left Column: Logo, School Name, Slogan */}
-                    <div className="lg:col-span-6 text-center space-y-6 animate-in fade-in slide-in-from-left-4 duration-700 flex flex-col items-center justify-center">
-                        <div className="flex justify-center">
-                            {mounted && settings?.app_logo ? (
-                                <img
-                                    src={getImageUrl(settings.app_logo)}
-                                    alt={settings?.school_name || "School Logo"}
-                                    className="h-16 max-h-16 w-auto object-contain bg-slate-800/80 p-2.5 rounded-2xl border border-white/10 shadow-xl backdrop-blur-md"
-                                />
-                            ) : (
-                                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-4 rounded-2xl shadow-xl shadow-indigo-500/30 border border-white/10">
-                                    <GraduationCap className="h-10 w-10 text-white" />
-                                </div>
-                            )}
+                    {/* Left Column: Logo, School Name, School Slogan, School Description & Features */}
+                    <div className="lg:col-span-6 xl:col-span-7 space-y-5 animate-in fade-in slide-in-from-left-4 duration-700">
+                        
+                        {/* Header & Logo Block (Center Aligned) */}
+                        <div className="space-y-3.5 text-center flex flex-col items-center">
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold backdrop-blur-md">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                                <span>Smart School Management Portal</span>
+                            </div>
+
+                            {/* Logo Display */}
+                            <div className="pt-0.5 flex justify-center w-full">
+                                {mounted && settings?.app_logo ? (
+                                    <div className="inline-block bg-slate-800/80 p-2.5 rounded-2xl border border-white/10 shadow-xl backdrop-blur-md">
+                                        <img
+                                            src={getImageUrl(settings.app_logo)}
+                                            alt={settings?.school_name || "School Logo"}
+                                            className="h-12 sm:h-14 w-auto max-w-[260px] object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="inline-flex bg-gradient-to-br from-indigo-500 to-purple-600 p-3.5 rounded-2xl shadow-xl shadow-indigo-500/30 border border-white/10">
+                                        <GraduationCap className="h-8 w-8 text-white" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* School Title & Slogan */}
+                            <div className="space-y-1 pt-1 text-center w-full">
+                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight" suppressHydrationWarning>
+                                    {mounted ? (settings?.school_name || "iSchool Management System") : "iSchool Management System"}
+                                </h1>
+                                <p className="text-indigo-300 font-semibold text-sm sm:text-base tracking-wide" suppressHydrationWarning>
+                                    {mounted ? (settings?.school_slogan || settings?.tagline || "Empowering education with modern, intelligent management solutions.") : "Empowering education with modern, intelligent management solutions."}
+                                </p>
+                            </div>
                         </div>
 
-                        <div className="space-y-2" suppressHydrationWarning>
-                            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight" suppressHydrationWarning>
-                                {mounted ? (settings?.school_name || "iSchool Management System") : "iSchool Management System"}
-                            </h1>
-                            <p className="text-slate-400 text-sm sm:text-base max-w-md mx-auto" suppressHydrationWarning>
-                                {mounted ? (settings?.tagline || settings?.school_name || "Empowering education with modern, intelligent management solutions.") : "Empowering education with modern, intelligent management solutions."}
+                        {/* School Description Container (Fetches school_description from General Setting) */}
+                        <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xl space-y-2.5 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 transition-all" suppressHydrationWarning>
+                            <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+                            <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                                <BookOpen className="w-4 h-4" />
+                                <span>School Overview</span>
+                            </div>
+                            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed" suppressHydrationWarning>
+                                {mounted && settings?.school_description
+                                    ? settings.school_description
+                                    : "Providing quality education focused on holistic development, academic excellence, and character building. Access course materials, attendance records, exam results, and school communications seamlessly."
+                                }
                             </p>
                         </div>
+
+                        {/* Feature Highlights Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="bg-slate-800/30 border border-white/10 rounded-xl p-3 backdrop-blur-md flex items-center gap-3 hover:bg-slate-800/50 transition-colors">
+                                <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
+                                    <Users className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-200">Student & Parent Portal</h4>
+                                    <p className="text-[11px] text-slate-400">Attendance, fees & report cards</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-800/30 border border-white/10 rounded-xl p-3 backdrop-blur-md flex items-center gap-3 hover:bg-slate-800/50 transition-colors">
+                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                                    <BarChart3 className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-200">Smart Reports & Results</h4>
+                                    <p className="text-[11px] text-slate-400">Automated grading & analytics</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Announcement / Status Footer */}
+                        <div className="bg-gradient-to-r from-indigo-950/60 via-slate-900/60 to-purple-950/60 border border-indigo-500/20 rounded-xl p-3 backdrop-blur-md flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-300 shrink-0">
+                                <Zap className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 text-xs text-slate-300 flex items-center justify-between gap-2">
+                                <span className="text-slate-400 truncate">
+                                    Academic Portal Session Active
+                                </span>
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    Online
+                                </span>
+                            </div>
+                        </div>
+
                     </div>
 
                     {/* Right Column: Dynamic Login Box */}
-                    <div className="lg:col-span-6 w-full max-w-md mx-auto animate-in fade-in slide-in-from-right-4 duration-700">
+                    <div className="lg:col-span-6 xl:col-span-5 w-full max-w-md mx-auto lg:ml-auto animate-in fade-in slide-in-from-right-4 duration-700">
                         <Card className="border-white/10 bg-slate-800/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
                             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                                 <CardHeader className="space-y-4 pb-4">
                                     <TabsList className="grid grid-cols-2 bg-slate-900/60 p-1 rounded-xl border border-white/5">
-                                        <TabsTrigger 
-                                            value="user" 
+                                        <TabsTrigger
+                                            value="user"
                                             className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold transition-all"
                                         >
                                             User Login
                                         </TabsTrigger>
-                                        <TabsTrigger 
-                                            value="admin" 
+                                        <TabsTrigger
+                                            value="admin"
                                             className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold transition-all"
                                         >
                                             Admin Login
                                         </TabsTrigger>
                                     </TabsList>
-                                    
+
                                     <div>
                                         <CardTitle className="text-2xl text-white font-bold">
                                             {activeTab === 'admin' ? 'Admin Login' : 'User Login'}
                                         </CardTitle>
                                     </div>
                                 </CardHeader>
-                                
+
                                 <form onSubmit={handleLogin} suppressHydrationWarning>
                                     <CardContent className="space-y-4">
                                         {error && (
@@ -223,7 +291,7 @@ export default function LoginPage() {
                                                 <Link href="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline transition-colors">Forgot password?</Link>
                                             </div>
                                         </div>
-                                        
+
                                         {captchaEnabled && (
                                             <div className="space-y-2">
                                                 <Label className="text-slate-300 text-xs font-medium">Captcha Verification</Label>

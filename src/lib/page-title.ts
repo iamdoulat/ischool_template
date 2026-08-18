@@ -70,3 +70,16 @@ export function getPageTitleFromPathname(pathname: string, t?: (key: string) => 
 
     return words;
 }
+
+export function formatDocumentTitle(pathname: string, schoolName: string, t?: (key: string) => string): string {
+    const cleanSchoolName = schoolName || "iSchool";
+    if (!pathname || pathname === "/" || pathname === "") {
+        return cleanSchoolName;
+    }
+    const pageName = getPageTitleFromPathname(pathname, t);
+    if (!pageName || pageName === "Home") {
+        return cleanSchoolName;
+    }
+    return `${pageName} || ${cleanSchoolName}`;
+}
+

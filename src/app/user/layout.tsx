@@ -11,8 +11,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { PageGuard } from "@/components/auth/page-guard";
-import { getPageTitleFromPathname } from "@/lib/page-title";
-
+import { getPageTitleFromPathname, formatDocumentTitle } from "@/lib/page-title";
 import { MobileNavbar } from "@/components/layout/mobile-navbar";
 
 function UserLayoutContent({
@@ -44,8 +43,7 @@ function UserLayoutContent({
         if (!loading && settings) {
             // Set Page Title
             const schoolName = settings.school_name || "iSchool";
-            const pageName = getPageTitleFromPathname(window.location.pathname, t);
-            document.title = `${pageName} || ${schoolName}`;
+            document.title = formatDocumentTitle(window.location.pathname, schoolName, t);
 
             // Sync Theme Mode only if no user local preference exists
             const savedTheme = typeof window !== 'undefined' ? localStorage.getItem("theme") : null;
