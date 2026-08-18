@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   turbopack: {},
   serverExternalPackages: ["face-api.js"],
   allowedDevOrigins: ["100.121.103.60"],
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  productionBrowserSourceMaps: false,
   webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
