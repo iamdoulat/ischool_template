@@ -35,6 +35,7 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
         const role: string = user?.role || "";
         setUserRole(role);
         const permissions: string[] = user?.permissions || [];
+        const roleLower = role.toLowerCase();
 
         // Allow access to user portal routes for all authorized users
         if (pathname.startsWith("/user")) {
@@ -42,14 +43,15 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Allow Super Admin, Admin, and Staff full access to administrative pages
-        const isStaffOrAdmin = !role || role.toLowerCase().includes("admin") || ["Staff", "Teacher", "Accountant", "Librarian", "Receptionist"].includes(role);
-        if (isStaffOrAdmin && (pathname === "/dashboard" || pathname === "/dashboard/")) {
-          setIsAuthorized(true);
-          return;
-        }
+        // Super Admin, Admin, and all Staff roles have full access to administrative dashboard modules
+        const isStaffOrAdmin =
+          !role ||
+          roleLower.includes("admin") ||
+          role === "Super Admin" ||
+          role === "superadmin" ||
+          ["staff", "teacher", "accountant", "librarian", "receptionist"].includes(roleLower);
 
-        if (role.toLowerCase().includes("admin")) {
+        if (isStaffOrAdmin) {
           setIsAuthorized(true);
           return;
         }
@@ -64,7 +66,6 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
         if (permissions && permissions.length > 0) {
           setIsAuthorized(checkPageAccess(pathname, permissions));
         } else {
-          // If no granular permission limits are defined, allow staff access
           setIsAuthorized(true);
         }
       } catch (err: any) {
@@ -76,8 +77,8 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
           }
           return;
         }
-        // If on main dashboard, allow rendering
-        if (pathname === "/dashboard" || pathname === "/dashboard/") {
+        // For administrative dashboard routes, default to authorized
+        if (pathname.startsWith("/dashboard")) {
           setIsAuthorized(true);
         } else {
           setIsAuthorized(false);
