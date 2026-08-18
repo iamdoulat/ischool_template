@@ -15,20 +15,40 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const check = async () => {
+      // If no token exists in storage, redirect to login
+      const token = typeof window !== 'undefined' ? localStorage.getItem("auth_token") : null;
+      if (!token) {
+        if (typeof window !== 'undefined') {
+          window.location.href = "/login";
+        }
+        return;
+      }
+
+      // Root admin dashboard and root user portal are always authorized
+      if (pathname === "/dashboard" || pathname === "/dashboard/" || pathname === "/user/dashboard") {
+        setIsAuthorized(true);
+      }
+
       try {
         const res = await api.get("/profile");
-        const user = res.data.data;
+        const user = res.data?.data || res.data;
         const role: string = user?.role || "";
         setUserRole(role);
         const permissions: string[] = user?.permissions || [];
 
-        // Allow access to user portal routes
+        // Allow access to user portal routes for all authorized users
         if (pathname.startsWith("/user")) {
           setIsAuthorized(true);
           return;
         }
 
-        // Allow Admins and Super Admins full access
+        // Allow Super Admin, Admin, and Staff full access to administrative pages
+        const isStaffOrAdmin = !role || role.toLowerCase().includes("admin") || ["Staff", "Teacher", "Accountant", "Librarian", "Receptionist"].includes(role);
+        if (isStaffOrAdmin && (pathname === "/dashboard" || pathname === "/dashboard/")) {
+          setIsAuthorized(true);
+          return;
+        }
+
         if (role.toLowerCase().includes("admin")) {
           setIsAuthorized(true);
           return;
@@ -40,9 +60,28 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setIsAuthorized(checkPageAccess(pathname, permissions));
-      } catch {
-        setIsAuthorized(false);
+        // Check granular permissions for other submodules
+        if (permissions && permissions.length > 0) {
+          setIsAuthorized(checkPageAccess(pathname, permissions));
+        } else {
+          // If no granular permission limits are defined, allow staff access
+          setIsAuthorized(true);
+        }
+      } catch (err: any) {
+        // If unauthenticated (401), send to login
+        if (err?.response?.status === 401) {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem("auth_token");
+            window.location.href = "/login";
+          }
+          return;
+        }
+        // If on main dashboard, allow rendering
+        if (pathname === "/dashboard" || pathname === "/dashboard/") {
+          setIsAuthorized(true);
+        } else {
+          setIsAuthorized(false);
+        }
       }
     };
     check();
