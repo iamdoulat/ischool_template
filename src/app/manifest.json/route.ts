@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   let baseUrl = "";
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production' ? "https://api.ischool.mddoulat.com/api/v1" : "http://127.0.0.1:8000/api/v1");
     const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
       next: { revalidate: 60 },
       headers: { Accept: "application/json" },
