@@ -219,12 +219,11 @@
 .dark .text-slate-900:not([class*="bg-"]):not([class*="badge"]),
 .dark .text-slate-800:not([class*="bg-"]):not([class*="badge"]),
 .dark .text-slate-700:not([class*="bg-"]):not([class*="badge"]),
-.dark .text-slate-600:not([class*="bg-"]):not([class*="badge"]),
-.dark .text-[#333]:not([class*="bg-"]),
-.dark .text-[#555]:not([class*="bg-"]),
-.dark .text-[#222]:not([class*="bg-"]),
-.dark .text-[#111]:not([class*="bg-"]),
-.dark .text-[#444]:not([class*="bg-"]) {
+.dark [class*="text-[#333]"]:not([class*="bg-"]),
+.dark [class*="text-[#555]"]:not([class*="bg-"]),
+.dark [class*="text-[#222]"]:not([class*="bg-"]),
+.dark [class*="text-[#111]"]:not([class*="bg-"]),
+.dark [class*="text-[#444]"]:not([class*="bg-"]) {
   color: #ffffff;
 }
 
