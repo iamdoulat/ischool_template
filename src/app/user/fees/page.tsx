@@ -12,6 +12,8 @@ import { useTranslation } from "@/hooks/use-translation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 import {
     Printer, CreditCard, Copy, FileSpreadsheet, FileDown,
     User, Loader2, Wallet, ArrowLeft, ChevronRight, Receipt,
@@ -463,7 +465,7 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
     const [selectedGateway, setSelectedGateway] = useState<string>("offline");
 
     // form data
-    const [paymentDate, setPaymentDate] = useState("");
+    const [paymentDate, setPaymentDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
     const [amount, setAmount] = useState("");
     const [referenceNo, setReferenceNo] = useState("");
     const [bankName, setBankName] = useState("");
@@ -485,9 +487,10 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                 .finally(() => setLoading(false));
             
             if (fee) setAmount(fee.balance.toString());
+            setPaymentDate(format(new Date(), "yyyy-MM-dd"));
         } else {
             // reset form
-            setPaymentDate("");
+            setPaymentDate(format(new Date(), "yyyy-MM-dd"));
             setReferenceNo("");
             setBankName("");
             setBankAccountNo("");
@@ -559,7 +562,12 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                                     </div>
                                     <div className="space-y-2">
                                         <Label>{t("payment_date")}</Label>
-                                        <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} required />
+                                        <DatePicker
+                                            value={paymentDate}
+                                            onChange={(d) => setPaymentDate(d)}
+                                            placeholder="DD/MM/YYYY"
+                                            className="h-10 border-input bg-background"
+                                        />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
