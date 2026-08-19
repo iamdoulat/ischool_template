@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall, Sparkles, BarChart3, Zap } from "lucide-react";
+import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall, Sparkles, BarChart3, Zap, ExternalLink } from "lucide-react";
 import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
@@ -19,7 +19,7 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("admin");
-    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; app_name?: string; tagline?: string; base_url?: string;[key: string]: any } | null>(null);
+    const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; app_name?: string; tagline?: string; school_slogan?: string; school_description?: string; session?: string; base_url?: string; [key: string]: unknown } | null>(null);
     const [mounted, setMounted] = useState(false);
     const getImageUrl = useImageUrl();
 
@@ -119,51 +119,51 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen relative flex items-center justify-center bg-slate-900 overflow-hidden font-sans p-4 sm:p-6 lg:p-12" suppressHydrationWarning>
+        <div className="min-h-screen relative flex items-center justify-center bg-slate-900 overflow-x-hidden font-sans p-2 sm:p-4 lg:p-6" suppressHydrationWarning>
             {/* Dynamic Background Elements */}
-            <div className="absolute inset-0 z-0">
+            <div className="absolute inset-0 z-0 pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px]" />
                 <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-20 mix-blend-overlay" />
             </div>
 
-            <div className="container relative z-10 max-w-6xl mx-auto px-4 py-6 sm:py-10">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            <div className="container relative z-10 max-w-6xl mx-auto px-2 sm:px-4 py-2 sm:py-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
                     
                     {/* Left Column: Logo, School Name, School Slogan, School Description & Features */}
-                    <div className="lg:col-span-6 xl:col-span-7 space-y-5 animate-in fade-in slide-in-from-left-4 duration-700">
+                    <div className="lg:col-span-6 xl:col-span-7 space-y-3 sm:space-y-4 animate-in fade-in slide-in-from-left-4 duration-700">
                         
                         {/* Header & Logo Block (Center Aligned) */}
-                        <div className="space-y-3.5 text-center flex flex-col items-center">
-                            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold backdrop-blur-md">
-                                <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-                                <span>Smart School Management Portal</span>
+                        <div className="space-y-2 text-center flex flex-col items-center">
+                            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs sm:text-sm font-bold tracking-wide backdrop-blur-md shadow-md">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse shrink-0" />
+                                <span>iSchool Management Portal</span>
                             </div>
 
                             {/* Logo Display */}
                             <div className="pt-0.5 flex justify-center w-full">
                                 {mounted && settings?.app_logo ? (
-                                    <div className="inline-block bg-slate-800/80 p-2.5 rounded-2xl border border-white/10 shadow-xl backdrop-blur-md">
+                                    <div className="inline-block bg-slate-800/80 p-2 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md">
                                         <img
                                             src={getImageUrl(settings.app_logo)}
                                             alt={settings?.school_name || "School Logo"}
-                                            className="h-12 sm:h-14 w-auto max-w-[260px] object-contain"
+                                            className="h-10 sm:h-12 w-auto max-w-[240px] object-contain"
                                         />
                                     </div>
                                 ) : (
-                                    <div className="inline-flex bg-gradient-to-br from-indigo-500 to-purple-600 p-3.5 rounded-2xl shadow-xl shadow-indigo-500/30 border border-white/10">
-                                        <GraduationCap className="h-8 w-8 text-white" />
+                                    <div className="inline-flex bg-gradient-to-br from-indigo-500 to-purple-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-500/30 border border-white/10">
+                                        <GraduationCap className="h-7 w-7 text-white" />
                                     </div>
                                 )}
                             </div>
 
                             {/* School Title & Slogan */}
-                            <div className="space-y-1 pt-1 text-center w-full">
-                                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight" suppressHydrationWarning>
+                            <div className="space-y-0.5 pt-0.5 text-center w-full">
+                                <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight" suppressHydrationWarning>
                                     {mounted ? (settings?.school_name || "iSchool Management System") : "iSchool Management System"}
                                 </h1>
                                 {mounted && (settings?.school_slogan || settings?.tagline) && (
-                                    <p className="text-indigo-300 font-semibold text-sm sm:text-base tracking-wide" suppressHydrationWarning>
+                                    <p className="text-indigo-300 font-semibold text-xs sm:text-sm tracking-wide" suppressHydrationWarning>
                                         {settings?.school_slogan || settings?.tagline}
                                     </p>
                                 )}
@@ -172,51 +172,51 @@ export default function LoginPage() {
 
                         {/* School Description Container (Only shown when school_description is available) */}
                         {mounted && settings?.school_description && settings.school_description.trim() !== "" && (
-                            <div className="bg-slate-800/50 border border-white/10 rounded-2xl p-4 sm:p-5 backdrop-blur-xl space-y-2.5 shadow-2xl relative overflow-hidden group hover:border-indigo-500/30 transition-all" suppressHydrationWarning>
+                            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-3 sm:p-3.5 backdrop-blur-xl space-y-1.5 shadow-xl relative overflow-hidden group hover:border-indigo-500/30 transition-all" suppressHydrationWarning>
                                 <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-                                <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
-                                    <BookOpen className="w-4 h-4" />
+                                <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-[11px] uppercase tracking-wider">
+                                    <BookOpen className="w-3.5 h-3.5" />
                                     <span>School Overview</span>
                                 </div>
-                                <p className="text-slate-300 text-xs sm:text-sm leading-relaxed" suppressHydrationWarning>
+                                <p className="text-slate-300 text-xs leading-relaxed line-clamp-3" suppressHydrationWarning>
                                     {settings.school_description}
                                 </p>
                             </div>
                         )}
 
                         {/* Feature Highlights Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="bg-slate-800/30 border border-white/10 rounded-xl p-3 backdrop-blur-md flex items-center gap-3 hover:bg-slate-800/50 transition-colors">
-                                <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
-                                    <Users className="w-4 h-4" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div className="bg-slate-800/30 border border-white/10 rounded-xl p-2.5 backdrop-blur-md flex items-center gap-2.5 hover:bg-slate-800/50 transition-colors">
+                                <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
+                                    <Users className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-bold text-slate-200">Student & Parent Portal</h4>
-                                    <p className="text-[11px] text-slate-400">Attendance, fees & report cards</p>
+                                    <p className="text-[10px] text-slate-400">Attendance, fees & report cards</p>
                                 </div>
                             </div>
 
-                            <div className="bg-slate-800/30 border border-white/10 rounded-xl p-3 backdrop-blur-md flex items-center gap-3 hover:bg-slate-800/50 transition-colors">
-                                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
-                                    <BarChart3 className="w-4 h-4" />
+                            <div className="bg-slate-800/30 border border-white/10 rounded-xl p-2.5 backdrop-blur-md flex items-center gap-2.5 hover:bg-slate-800/50 transition-colors">
+                                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                                    <BarChart3 className="w-3.5 h-3.5" />
                                 </div>
                                 <div>
                                     <h4 className="text-xs font-bold text-slate-200">Smart Reports & Results</h4>
-                                    <p className="text-[11px] text-slate-400">Automated grading & analytics</p>
+                                    <p className="text-[10px] text-slate-400">Automated grading & analytics</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Announcement / Status Footer */}
-                        <div className="bg-gradient-to-r from-indigo-950/60 via-slate-900/60 to-purple-950/60 border border-indigo-500/20 rounded-xl p-3 backdrop-blur-md flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-300 shrink-0">
-                                <Zap className="w-4 h-4" />
+                        <div className="bg-gradient-to-r from-indigo-950/60 via-slate-900/60 to-purple-950/60 border border-indigo-500/20 rounded-xl p-2.5 backdrop-blur-md flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 shrink-0">
+                                <Zap className="w-3.5 h-3.5" />
                             </div>
-                            <div className="flex-1 text-xs text-slate-300 flex items-center justify-between gap-2">
-                                <span className="text-slate-400 truncate">
-                                    Academic Portal Session Active
+                            <div className="flex-1 text-[11px] sm:text-xs text-slate-300 flex items-center justify-between gap-2">
+                                <span className="text-slate-300 font-medium truncate" suppressHydrationWarning>
+                                    Academic Portal Session {mounted && settings?.session ? settings.session : (settings?.session || "2025-2026")} Active
                                 </span>
-                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                     Online
                                 </span>
@@ -229,37 +229,37 @@ export default function LoginPage() {
                     <div className="lg:col-span-6 xl:col-span-5 w-full max-w-md mx-auto lg:ml-auto animate-in fade-in slide-in-from-right-4 duration-700">
                         <Card className="border-white/10 bg-slate-800/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
                             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                                <CardHeader className="space-y-4 pb-4">
-                                    <TabsList className="grid grid-cols-2 bg-slate-900/60 p-1 rounded-xl border border-white/5">
+                                <CardHeader className="space-y-2 p-3.5 sm:p-4 pb-2">
+                                    <TabsList className="grid grid-cols-2 bg-slate-900/60 p-0.5 rounded-xl border border-white/5 h-9">
                                         <TabsTrigger
                                             value="user"
-                                            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold transition-all"
+                                            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold text-xs transition-all"
                                         >
                                             User Login
                                         </TabsTrigger>
                                         <TabsTrigger
                                             value="admin"
-                                            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold transition-all"
+                                            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold text-xs transition-all"
                                         >
                                             Admin Login
                                         </TabsTrigger>
                                     </TabsList>
 
                                     <div>
-                                        <CardTitle className="text-2xl text-white font-bold">
+                                        <CardTitle className="text-xl sm:text-2xl text-white font-bold">
                                             {activeTab === 'admin' ? 'Admin Login' : 'User Login'}
                                         </CardTitle>
                                     </div>
                                 </CardHeader>
 
                                 <form onSubmit={handleLogin} suppressHydrationWarning>
-                                    <CardContent className="space-y-4">
+                                    <CardContent className="space-y-2.5 sm:space-y-3 p-3.5 sm:p-4 pt-1">
                                         {error && (
-                                            <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm text-center">
+                                            <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-2 rounded-lg text-xs text-center">
                                                 {error}
                                             </div>
                                         )}
-                                        <div className="space-y-2">
+                                        <div className="space-y-1.5">
                                             <div className="relative" suppressHydrationWarning>
                                                 <Input
                                                     id="email"
@@ -269,12 +269,12 @@ export default function LoginPage() {
                                                     required
                                                     value={emailOrUsername}
                                                     onChange={(e) => setEmailOrUsername(e.target.value)}
-                                                    className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-12 text-base rounded-md"
+                                                    className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-10 sm:h-11 text-sm rounded-md"
                                                 />
-                                                <Mail className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
+                                                <Mail className="absolute right-3.5 top-3 sm:top-3.5 h-4 w-4 text-slate-400" />
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-1">
                                             <div className="relative" suppressHydrationWarning>
                                                 <Input
                                                     id="password"
@@ -284,21 +284,21 @@ export default function LoginPage() {
                                                     required
                                                     value={password}
                                                     onChange={(e) => setPassword(e.target.value)}
-                                                    className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-12 text-base rounded-md"
+                                                    className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-10 sm:h-11 text-sm rounded-md"
                                                 />
-                                                <Lock className="absolute right-4 top-4 h-4 w-4 text-slate-400" />
+                                                <Lock className="absolute right-3.5 top-3 sm:top-3.5 h-4 w-4 text-slate-400" />
                                             </div>
-                                            <div className="flex justify-end pt-1">
-                                                <Link href="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline transition-colors">Forgot password?</Link>
+                                            <div className="flex justify-end pt-0.5">
+                                                <Link href="/forgot-password" className="text-[11px] text-indigo-400 hover:text-indigo-300 hover:underline transition-colors">Forgot password?</Link>
                                             </div>
                                         </div>
 
                                         {captchaEnabled && (
-                                            <div className="space-y-2">
-                                                <Label className="text-slate-300 text-xs font-medium">Captcha Verification</Label>
-                                                <div className="flex items-center gap-3">
+                                            <div className="space-y-1.5">
+                                                <Label className="text-slate-300 text-[11px] font-medium">Captcha Verification</Label>
+                                                <div className="flex items-center gap-2">
                                                     <div
-                                                        className="select-none px-4 h-12 flex items-center justify-center bg-white text-slate-800 font-bold text-lg rounded-md tracking-widest cursor-pointer"
+                                                        className="select-none px-3 h-10 flex items-center justify-center bg-white text-slate-800 font-bold text-base rounded-md tracking-widest cursor-pointer"
                                                         onClick={regenerateCaptcha}
                                                         title="Click to refresh"
                                                     >
@@ -310,7 +310,7 @@ export default function LoginPage() {
                                                         required
                                                         value={captchaAnswer}
                                                         onChange={(e) => setCaptchaAnswer(e.target.value)}
-                                                        className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-12 text-base rounded-md flex-1"
+                                                        className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-10 text-sm rounded-md flex-1"
                                                     />
                                                 </div>
                                             </div>
@@ -318,12 +318,12 @@ export default function LoginPage() {
 
                                         <Button
                                             type="submit"
-                                            className="w-full h-12 mt-2 text-lg font-bold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] bg-[#4caf50] hover:bg-[#43a047] text-white shadow-lg shadow-green-600/20 rounded-md"
+                                            className="w-full h-10 sm:h-11 mt-1 text-base font-bold transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] bg-[#4caf50] hover:bg-[#43a047] text-white shadow-md shadow-green-600/20 rounded-md"
                                             disabled={loading}
                                         >
                                             {loading ? (
                                                 <>
-                                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                                     Authenticating...
                                                 </>
                                             ) : (
@@ -332,38 +332,38 @@ export default function LoginPage() {
                                         </Button>
 
                                         {/* Quick Login Role Buttons */}
-                                        <div className="pt-2 space-y-3">
+                                        <div className="pt-1 space-y-1.5">
                                             <TabsContent value="admin" className="m-0 space-y-1">
                                                 <div className="grid grid-cols-3 gap-1">
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('superadmin@ischool.com')} className="bg-[#0284c7] hover:bg-[#0369a1] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-1.5 px-0 rounded-sm">
-                                                        <Shield className="w-3.5 h-3.5" /> <span className="text-[11px] sm:text-xs">Super Admin</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('superadmin@ischool.com')} className="bg-[#0284c7] hover:bg-[#0369a1] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1 px-0 rounded-sm">
+                                                        <Shield className="w-3 h-3" /> <span className="text-[10px] sm:text-[11px]">Super Admin</span>
                                                     </Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('admin@ischool.com')} className="bg-[#00bcd4] hover:bg-[#00acc1] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-1.5 px-0 rounded-sm">
-                                                        <Briefcase className="w-3.5 h-3.5" /> <span className="text-[11px] sm:text-xs">Admin</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('admin@ischool.com')} className="bg-[#00bcd4] hover:bg-[#00acc1] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1 px-0 rounded-sm">
+                                                        <Briefcase className="w-3 h-3" /> <span className="text-[10px] sm:text-[11px]">Admin</span>
                                                     </Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('teacher@ischool.com')} className="bg-[#9ca3af] hover:bg-[#6b7280] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-1.5 px-0 rounded-sm">
-                                                        <BookOpen className="w-3.5 h-3.5" /> <span className="text-[11px] sm:text-xs">Teacher</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('teacher@ischool.com')} className="bg-[#9ca3af] hover:bg-[#6b7280] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1 px-0 rounded-sm">
+                                                        <BookOpen className="w-3 h-3" /> <span className="text-[10px] sm:text-[11px]">Teacher</span>
                                                     </Button>
                                                 </div>
                                                 <div className="grid grid-cols-3 gap-1">
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('accountant@ischool.com')} className="bg-[#9ca3af] hover:bg-[#6b7280] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-1.5 px-0 rounded-sm">
-                                                        <Calculator className="w-3.5 h-3.5" /> <span className="text-[11px] sm:text-xs">Accountant</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('accountant@ischool.com')} className="bg-[#9ca3af] hover:bg-[#6b7280] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1 px-0 rounded-sm">
+                                                        <Calculator className="w-3 h-3" /> <span className="text-[10px] sm:text-[11px]">Accountant</span>
                                                     </Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('receptionist@ischool.com')} className="bg-[#e91e63] hover:bg-[#d81b60] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-1.5 px-0 rounded-sm">
-                                                        <PhoneCall className="w-3.5 h-3.5" /> <span className="text-[11px] sm:text-xs">Receptionist</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('receptionist@ischool.com')} className="bg-[#e91e63] hover:bg-[#d81b60] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1 px-0 rounded-sm">
+                                                        <PhoneCall className="w-3 h-3" /> <span className="text-[10px] sm:text-[11px]">Receptionist</span>
                                                     </Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('librarian@ischool.com')} className="bg-[#4caf50] hover:bg-[#43a047] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-1.5 px-0 rounded-sm">
-                                                        <BookOpen className="w-3.5 h-3.5" /> <span className="text-[11px] sm:text-xs">Librarian</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('librarian@ischool.com')} className="bg-[#4caf50] hover:bg-[#43a047] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1 px-0 rounded-sm">
+                                                        <BookOpen className="w-3 h-3" /> <span className="text-[10px] sm:text-[11px]">Librarian</span>
                                                     </Button>
                                                 </div>
                                             </TabsContent>
                                             <TabsContent value="user" className="m-0">
                                                 <div className="grid grid-cols-2 gap-1">
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('STD-0100')} className="bg-[#0284c7] hover:bg-[#0369a1] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-2 rounded-sm">
-                                                        <User className="w-4 h-4" /> <span>Student</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('STD-0100')} className="bg-[#0284c7] hover:bg-[#0369a1] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1.5 rounded-sm">
+                                                        <User className="w-3.5 h-3.5" /> <span className="text-xs">Student</span>
                                                     </Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('PAR-0100')} className="bg-[#e91e63] hover:bg-[#d81b60] text-white border-none hover:text-white h-10 shadow-sm flex items-center justify-center gap-2 rounded-sm">
-                                                        <Users className="w-4 h-4" /> <span>Parent</span>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleRoleFill('PAR-0100')} className="bg-[#e91e63] hover:bg-[#d81b60] text-white border-none hover:text-white h-8 sm:h-8.5 shadow-xs flex items-center justify-center gap-1.5 rounded-sm">
+                                                        <Users className="w-3.5 h-3.5" /> <span className="text-xs">Parent</span>
                                                     </Button>
                                                 </div>
                                             </TabsContent>
@@ -372,13 +372,30 @@ export default function LoginPage() {
                                 </form>
                             </Tabs>
                         </Card>
-
-                        <p className="text-center text-slate-400 text-xs font-medium">
-                            © {new Date().getFullYear()} {settings?.school_name || settings?.app_name || "iSchool"}. All rights reserved.
-                        </p>
                     </div>
 
                 </div>
+
+                {/* Bottom Middle Credit / Footer */}
+                <div className="mt-4 pt-2.5 border-t border-white/5 text-center flex flex-col sm:flex-row items-center justify-center gap-2 text-[11px] text-slate-400">
+                    <span>
+                        © {new Date().getFullYear()} {mounted ? (settings?.school_name || settings?.app_name || "iSchool") : "iSchool"}. All rights reserved.
+                    </span>
+                    <span className="hidden sm:inline text-slate-600">•</span>
+                    <div className="inline-flex items-center gap-1.5 text-slate-300">
+                        <span>Developed by</span>
+                        <a
+                            href="https://uddoktasoft.com"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-500/15 hover:bg-indigo-500/30 text-indigo-300 hover:text-white font-semibold text-[11px] border border-indigo-500/30 hover:border-indigo-400 shadow-xs transition-all duration-200 active:scale-95 group"
+                        >
+                            <span>Uddokta Soft</span>
+                            <ExternalLink className="w-3 h-3 text-indigo-400 group-hover:text-white transition-colors" />
+                        </a>
+                    </div>
+                </div>
+
             </div>
         </div>
     );
