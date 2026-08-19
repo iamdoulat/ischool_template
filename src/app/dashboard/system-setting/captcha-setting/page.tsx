@@ -98,17 +98,25 @@ export default function CaptchaSettingPage() {
     const fetchSettings = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await api.get("/system-setting/captcha-settings");
-            const data = res.data?.data;
-            if (data) {
-                if (Array.isArray(data)) {
-                    setSettings(data);
-                } else {
-                    setSettings(data.modules || []);
-                    if (data.config) {
-                        setConfig((prev) => ({ ...prev, ...data.config }));
-                    }
-                }
+            const [resModules, resConfig] = await Promise.all([
+                api.get("/system-setting/captcha-settings").catch(() => null),
+                api.get("/system-setting/captcha-settings/config").catch(() => null),
+            ]);
+
+            const rawModules = resModules?.data?.data || resModules?.data || [];
+            let modulesList: CaptchaSetting[] = [];
+            if (Array.isArray(rawModules)) {
+                modulesList = rawModules;
+            } else if (Array.isArray(rawModules.modules)) {
+                modulesList = rawModules.modules;
+            } else if (Array.isArray(rawModules.data)) {
+                modulesList = rawModules.data;
+            }
+            setSettings(modulesList);
+
+            const rawConfig = resConfig?.data?.data || resConfig?.data;
+            if (rawConfig && typeof rawConfig === "object") {
+                setConfig((prev) => ({ ...prev, ...rawConfig }));
             }
         } catch (error) {
             console.error("Failed to fetch captcha settings", error);
@@ -127,8 +135,9 @@ export default function CaptchaSettingPage() {
         try {
             setSavingConfig(true);
             const res = await api.post("/system-setting/captcha-settings/config", config);
-            if (res.data?.data) {
-                setConfig((prev) => ({ ...prev, ...res.data.data }));
+            const saved = res.data?.data || res.data;
+            if (saved && typeof saved === "object") {
+                setConfig((prev) => ({ ...prev, ...saved }));
             }
             toast("success", "Captcha provider and API keys saved successfully!");
         } catch (error) {
@@ -143,9 +152,11 @@ export default function CaptchaSettingPage() {
         try {
             setUpdatingId(id);
             const res = await api.post(`/system-setting/captcha-settings/${id}/toggle`);
-            const updated = res.data?.data;
-            if (updated) {
-                setSettings((prev) => prev.map((s) => (s.id === id ? updated : s)));
+            const updated = res.data?.data || res.data;
+            if (updated && updated.id) {
+                setSettings((prev) =>
+                    (Array.isArray(prev) ? prev : []).map((s) => (s.id === id ? updated : s))
+                );
                 toast("success", t("captcha_setting_updated") || "Setting updated successfully.");
             }
         } catch (error) {
@@ -156,13 +167,12 @@ export default function CaptchaSettingPage() {
         }
     };
 
-    const filtered = useMemo(
-        () =>
-            settings.filter((item) =>
-                item.name.toLowerCase().includes(searchTerm.toLowerCase())
-            ),
-        [settings, searchTerm]
-    );
+    const filtered = useMemo(() => {
+        const list = Array.isArray(settings) ? settings : [];
+        return list.filter((item) =>
+            (item?.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [settings, searchTerm]);
 
     const totalPages = Math.ceil(filtered.length / itemsPerPage);
     const paginated = filtered.slice(
