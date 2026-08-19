@@ -94,7 +94,7 @@ function SectionCard({
 }) {
     return (
         <Card className={cn("flex flex-col h-[340px] p-0 gap-0 border border-gray-200 shadow-sm rounded-xl overflow-hidden", className)}>
-            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+            <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 shrink-0">
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Icon className="h-4 w-4" />
@@ -457,6 +457,7 @@ export default function UserDashboardPage() {
                 <SectionCard
                     icon={ClipboardList}
                     title={t("homework")}
+                    className="h-[420px]"
                     action={
                         <Link
                             href="/user/homework"
@@ -548,6 +549,7 @@ export default function UserDashboardPage() {
                 <SectionCard
                     icon={ClipboardList}
                     title={t("daily_assignment") || "Daily Assignment"}
+                    className="h-[420px]"
                     action={
                         <Link
                             href="/user/homework/daily-assignment"
@@ -637,7 +639,7 @@ export default function UserDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {/* Teacher List */}
                 {showWidget("teacher_list") && (
-                <SectionCard icon={GraduationCap} title={t("teacher_list")} count={teachers?.length}>
+                <SectionCard icon={GraduationCap} title={t("teacher_list")} count={teachers?.length} className="h-[395px]">
                     {teachers.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {teachers.map((item: any) => (
@@ -677,7 +679,7 @@ export default function UserDashboardPage() {
 
                 {/* Visitor List */}
                 {showWidget("visitor_list") && (
-                <SectionCard icon={UserCheck} title={t("visitor_list")} count={visitors?.length}>
+                <SectionCard icon={UserCheck} title={t("visitor_list")} count={visitors?.length} className="h-[395px]">
                     {visitors.length > 0 ? (
                         <div className="divide-y divide-gray-100">
                             {visitors.map((item: any) => (
@@ -703,7 +705,7 @@ export default function UserDashboardPage() {
 
                 {/* Library Book Issue List */}
                 {showWidget("library") && (
-                <SectionCard icon={Library} title={t("library_books")} count={libraryBooks?.length} bodyClassName="overflow-auto">
+                <SectionCard icon={Library} title={t("library_books")} count={libraryBooks?.length} className="h-[395px]">
                     {libraryBooks.length > 0 ? (
                         <table className="w-full text-xs">
                             <thead className="sticky top-0 bg-gray-50/95 backdrop-blur z-10">
