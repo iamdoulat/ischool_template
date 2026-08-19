@@ -152,7 +152,7 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
             { name: "transport_routes", label: "Transport Routes", icon: Bus, href: "/user/transport-routes", submenus: [], color: "amber" },
             { name: "hostel_rooms", label: "Hostel Rooms", icon: Hotel, href: "/user/hostel-rooms", submenus: [], color: "indigo" },
             { name: "certificates", label: "Certificates", icon: Award, href: "/user/certificates", submenus: [], color: "violet" },
-            { name: "id_card", label: "ID Card", icon: CreditCard, href: "/user/id-card", submenus: [], color: "blue" },
+            { name: "id_card", label: "My ID Card", icon: CreditCard, href: "/user/id-card", submenus: [], color: "blue" },
             { name: "my_qr_pass", label: "My QR Pass", icon: QrCode, href: "/user/my-qr-pass", submenus: [], color: "orange" },
             { name: "branches", label: "Our Branches", icon: Globe, href: "/user/branches", submenus: [], color: "emerald" },
             { name: "events", label: "Events", icon: CalendarDays, href: "/user/events", submenus: [], color: "amber" },
@@ -197,9 +197,15 @@ export function UserSidebar({
     const { t } = useTranslation();
 
     const [mounted, setMounted] = useState(false);
+interface SessionItem {
+    id: number;
+    session: string;
+    is_active: boolean;
+}
+
     const [logoError, setLogoError] = useState(false);
     const [smallLogoError, setSmallLogoError] = useState(false);
-    const [sessions, setSessions] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<SessionItem[]>([]);
     const [fetchingSessions, setFetchingSessions] = useState(false);
     const [changingSessionId, setChangingSessionId] = useState<number | null>(null);
     const [permissions, setPermissions] = useState<string[]>([]);
@@ -272,7 +278,7 @@ export function UserSidebar({
 
     const activeSession = sessions.find(s => s.is_active);
 
-    const handleSessionChange = async (session: any) => {
+    const handleSessionChange = async (session: SessionItem) => {
         if (session.is_active) return;
         try {
             setChangingSessionId(session.id);
@@ -362,6 +368,14 @@ export function UserSidebar({
                                         const colors = sidebarColorMap[item.color as keyof typeof sidebarColorMap] || sidebarColorMap.blue;
                                         const isItemActive = pathname === item.href || (item.submenus && item.submenus.some(s => pathname === s.href));
 
+                                        const getItemLabel = () => {
+                                            if (item.name === "id_card" || item.name === "my_id_card") return "My ID Card";
+                                            if (item.name === "my_qr_pass") return "My QR Pass";
+                                            const translated = t(item.name);
+                                            return translated && translated !== item.name ? translated : item.label;
+                                        };
+                                        const displayLabel = getItemLabel();
+
                                         const menuItem = (
                                             <Link
                                                 key={item.name}
@@ -377,7 +391,7 @@ export function UserSidebar({
                                                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                                                     !collapsed && "text-sm font-semibold"
                                                 )}
-                                                title={collapsed ? item.label : undefined}
+                                                title={collapsed ? displayLabel : undefined}
                                             >
                                                 <div className={cn(
                                                     "p-1.5 rounded-lg transition-all duration-300",
@@ -391,7 +405,7 @@ export function UserSidebar({
                                                 {!collapsed && (
                                                     <>
                                                         <span className="flex-1 text-start">
-                                                            {t(item.name) !== item.name ? t(item.name) : item.label}
+                                                            {displayLabel}
                                                         </span>
                                                         {/* Red Badge for Notice Board */}
                                                         {item.badge && (
@@ -428,7 +442,7 @@ export function UserSidebar({
                                                         <div className="space-y-1">
                                                             <div className="px-3 py-2 border-b border-muted/20 mb-1">
                                                                 <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>
-                                                                    {t(item.name) !== item.name ? t(item.name) : item.label}
+                                                                    {displayLabel}
                                                                 </p>
                                                             </div>
                                                             <Link

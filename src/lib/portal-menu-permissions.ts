@@ -87,7 +87,7 @@ export const portalMenuPermissions: PortalMenuPermission[] = [
   { name: "transport_routes", label: "Transport Routes", permission: perm("transport_routes") },
   { name: "hostel_rooms", label: "Hostel Rooms", permission: perm("hostel_rooms") },
   { name: "certificates", label: "Certificates", permission: perm("certificates") },
-  { name: "id_card", label: "ID Card", permission: perm("id_card") },
+  { name: "id_card", label: "My ID Card", permission: perm("id_card") },
   { name: "my_qr_pass", label: "My QR Pass", permission: perm("my_qr_pass") },
   { name: "branches", label: "Our Branches", permission: perm("branches") },
   { name: "events", label: "Events", permission: perm("events") },

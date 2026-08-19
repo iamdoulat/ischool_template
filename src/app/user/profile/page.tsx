@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, Fragment } from "react";
+import { useEffect, useState, useMemo, Fragment } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { isPortalMenuVisible } from "@/lib/portal-menu-permissions";
 import {
   Loader2,
   User,
@@ -26,12 +27,10 @@ import {
   Users,
   BookOpen,
   Mail,
-  HeartPulse,
   StickyNote,
   MapPin,
   Globe,
   Languages,
-  Fingerprint,
   Star,
   GraduationCap,
   AtSign,
@@ -225,27 +224,27 @@ function FeesTab() {
         if (isMounted && d) {
           if (d.session) setSession(d.session);
           if (Array.isArray(d.fees) && d.fees.length > 0) {
-            setFees(d.fees.map((f: any) => ({
-              id: f.id,
-              name: f.name,
-              code: f.code || '',
-              dueDate: f.due_date || f.dueDate || '',
-              status: f.status || 'Unpaid',
-              amount: parseFloat(f.amount) || 0,
-              fine: parseFloat(f.fine) || 0,
-              discount: parseFloat(f.discount) || 0,
-              fineAmount: parseFloat(f.fine_amount ?? f.fineAmount ?? 0),
-              paidAmount: parseFloat(f.paid_amount ?? f.paidAmount ?? 0),
-              balance: parseFloat(f.balance) || 0,
-              payments: (f.payments || []).map((p: any) => ({
-                id: String(p.id),
-                paymentId: p.payment_id || p.paymentId || String(p.id),
-                mode: p.mode || 'Cash',
-                date: p.date || '',
-                discount: parseFloat(p.discount) || 0,
-                fine: parseFloat(p.fine) || 0,
-                paid: parseFloat(p.paid) || 0,
-                balance: parseFloat(p.balance) || 0,
+            setFees(d.fees.map((f: Record<string, unknown>) => ({
+              id: Number(f.id),
+              name: String(f.name || ''),
+              code: String(f.code || ''),
+              dueDate: String(f.due_date || f.dueDate || ''),
+              status: String(f.status || 'Unpaid'),
+              amount: parseFloat(String(f.amount || 0)) || 0,
+              fine: parseFloat(String(f.fine || 0)) || 0,
+              discount: parseFloat(String(f.discount || 0)) || 0,
+              fineAmount: parseFloat(String(f.fine_amount ?? f.fineAmount ?? 0)),
+              paidAmount: parseFloat(String(f.paid_amount ?? f.paidAmount ?? 0)),
+              balance: parseFloat(String(f.balance || 0)) || 0,
+              payments: (Array.isArray(f.payments) ? f.payments : []).map((p: Record<string, unknown>) => ({
+                id: String(p.id || ''),
+                paymentId: String(p.payment_id || p.paymentId || p.id || ''),
+                mode: String(p.mode || 'Cash'),
+                date: String(p.date || ''),
+                discount: parseFloat(String(p.discount || 0)) || 0,
+                fine: parseFloat(String(p.fine || 0)) || 0,
+                paid: parseFloat(String(p.paid || 0)) || 0,
+                balance: parseFloat(String(p.balance || 0)) || 0,
               })),
             })));
           } else {
@@ -498,25 +497,25 @@ function ExamTab() {
         const res = await api.get('/user/exam-results');
         const list = res.data?.data || res.data;
         if (isMounted && Array.isArray(list)) {
-          setExams(list.map((e: any) => ({
-            title: e.exam_name || e.title || 'Exam',
+          setExams(list.map((e: Record<string, unknown>) => ({
+            title: String(e.exam_name || e.title || 'Exam'),
             type: e.is_grading ? 'grade' : 'result',
-            subjects: (e.subjects || []).map((s: any) => ({
-              name: s.name,
-              maxMarks: parseFloat(s.max) || 100,
-              minMarks: parseFloat(s.min) || 33,
-              obtained: s.obtained === 'Absent' ? 0 : (parseFloat(s.obtained) || 0),
-              result: s.result || 'Pass',
-              grade: s.grade || '',
-              note: s.note || '',
+            subjects: (Array.isArray(e.subjects) ? e.subjects : []).map((s: Record<string, unknown>) => ({
+              name: String(s.name || ''),
+              maxMarks: parseFloat(String(s.max || 100)) || 100,
+              minMarks: parseFloat(String(s.min || 33)) || 33,
+              obtained: s.obtained === 'Absent' ? 0 : (parseFloat(String(s.obtained || 0)) || 0),
+              result: String(s.result || 'Pass'),
+              grade: String(s.grade || ''),
+              note: String(s.note || ''),
             })),
-            summary: e.summary ? {
-              percentage: parseFloat(e.summary.percentage) || 0,
-              rank: parseInt(e.summary.rank) || 1,
-              result: e.summary.result || 'Pass',
-              division: e.summary.division || 'First',
-              grandTotal: parseFloat(e.summary.grand_total) || 0,
-              totalObtained: parseFloat(e.summary.total_obtained) || 0,
+            summary: e.summary && typeof e.summary === 'object' ? {
+              percentage: parseFloat(String((e.summary as Record<string, unknown>).percentage || 0)) || 0,
+              rank: parseInt(String((e.summary as Record<string, unknown>).rank || 1), 10) || 1,
+              result: String((e.summary as Record<string, unknown>).result || 'Pass'),
+              division: String((e.summary as Record<string, unknown>).division || 'First'),
+              grandTotal: parseFloat(String((e.summary as Record<string, unknown>).grand_total || 0)) || 0,
+              totalObtained: parseFloat(String((e.summary as Record<string, unknown>).total_obtained || 0)) || 0,
             } : { percentage: 0, rank: 1, result: 'Pass', division: '-', grandTotal: 0, totalObtained: 0 },
           })));
         }
@@ -671,10 +670,37 @@ function ExamTab() {
   );
 }
 
+// ─── CBSE Exam Types ──────────────────────────────────────────────────────────
+interface CbseColumn {
+  name: string;
+  max?: number;
+}
+
+interface CbseSubject {
+  name: string;
+  scores?: (string | number)[];
+  theory?: string | number;
+  total?: string | number;
+}
+
+interface CbseSummary {
+  totalMarks?: string | number;
+  percentage?: string | number;
+  grade?: string;
+  rank?: string | number;
+}
+
+interface CbseExamRecord {
+  examName?: string;
+  columns?: CbseColumn[];
+  subjects?: CbseSubject[];
+  summary?: CbseSummary;
+}
+
 // ─── CBSE Exam Tab Component ──────────────────────────────────────────────────
 function CbseExamTab() {
   const { t } = useTranslation();
-  const [cbseExams, setCbseExams] = useState<any[]>([]);
+  const [cbseExams, setCbseExams] = useState<CbseExamRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -702,8 +728,8 @@ function CbseExamTab() {
     cbseExams.forEach(exam => {
       text += (exam.examName || "CBSE Exam") + "\n";
       const cols = exam.columns || [];
-      text += `Subject\t${cols.map((c: any) => c.name).join('\t')}\tTotal\n`;
-      (exam.subjects || []).forEach((s: any) => {
+      text += `Subject\t${cols.map((c: CbseColumn) => c.name).join('\t')}\tTotal\n`;
+      (exam.subjects || []).forEach((s: CbseSubject) => {
         text += `${s.name}\t${(s.scores || []).join('\t')}\t${s.total}\n`;
       });
       if (exam.summary) {
@@ -719,9 +745,9 @@ function CbseExamTab() {
     cbseExams.forEach(exam => {
       csv += `"${exam.examName || "CBSE Exam"}"\n`;
       const cols = exam.columns || [];
-      csv += `"Subject",${cols.map((c: any) => `"${c.name}"`).join(',')},"Total"\n`;
-      (exam.subjects || []).forEach((s: any) => {
-        csv += `"${s.name}",${(s.scores || []).map((sc: any) => `"${sc}"`).join(',')},"${s.total}"\n`;
+      csv += `"Subject",${cols.map((c: CbseColumn) => `"${c.name}"`).join(',')},"Total"\n`;
+      (exam.subjects || []).forEach((s: CbseSubject) => {
+        csv += `"${s.name}",${(s.scores || []).map((sc: string | number) => `"${sc}"`).join(',')},"${s.total}"\n`;
       });
       if (exam.summary) {
         csv += `"Total Marks: ${exam.summary.totalMarks}","Percentage: ${exam.summary.percentage}%","Grade: ${exam.summary.grade}","Rank: ${exam.summary.rank}"\n\n`;
@@ -733,10 +759,11 @@ function CbseExamTab() {
     a.href = url;
     a.download = `cbse_exam_report_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    toast.success(t("exported_to_csv"));
+    window.URL.revokeObjectURL(url);
+    toast.success(t("exported_to_excel"));
   };
 
-  const handleExportPDF = () => {
+  const handleExportPdf = () => {
     window.print();
   };
 
@@ -744,34 +771,27 @@ function CbseExamTab() {
     window.print();
   };
 
-  if (loading) {
-    return (
-      <TabPanel>
-        <div className="py-16 flex flex-col items-center justify-center text-gray-400">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-          <p className="text-sm">{t("loading")}</p>
-        </div>
-      </TabPanel>
-    );
-  }
-
   return (
     <TabPanel>
-      <div className="flex items-center justify-between">
+      {/* Top Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 border border-gray-100 px-4 py-3 rounded-xl mb-4">
         <h2 className="text-sm font-bold text-gray-800">{t("cbse_examinations")}</h2>
-        <ExportToolbar onCopy={handleCopy} onExcel={handleExportExcel} onPdf={handleExportPDF} onPrint={handlePrint} />
+        <ExportToolbar onCopy={handleCopy} onExcel={handleExportExcel} onPdf={handleExportPdf} onPrint={handlePrint} />
       </div>
 
-      {cbseExams.length === 0 ? (
+      {loading ? (
+        <div className="py-12 flex justify-center items-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : cbseExams.length === 0 ? (
         <PanelCard title={t("cbse_examinations")}>
-          <div className="py-12 text-center text-gray-400">
-            <FileText className="h-10 w-10 mx-auto mb-2 opacity-40" />
+          <div className="py-8 text-center text-gray-400">
             <p className="text-sm">{t("no_cbse_records") || "No CBSE examination records found"}</p>
           </div>
         </PanelCard>
       ) : (
         cbseExams.map((exam, i) => {
-          const cols: { name: string; max?: number }[] = exam.columns || [{ name: "Marks", max: 100 }];
+          const cols: CbseColumn[] = exam.columns || [{ name: "Marks" }];
           return (
             <PanelCard key={i} title={exam.examName || "CBSE Examination"} bodyClassName="p-0">
               {/* Desktop table */}
@@ -790,7 +810,7 @@ function CbseExamTab() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(exam.subjects || []).map((subj: any, idx: number) => (
+                    {(exam.subjects || []).map((subj: CbseSubject, idx: number) => (
                       <tr key={idx} className="border-b border-gray-100 text-[#555] hover:bg-indigo-50/30 transition-colors">
                         <td className="px-4 py-2.5 text-left border-r border-gray-100 font-medium">{subj.name}</td>
                         {cols.map((_, cIdx) => (
@@ -817,7 +837,7 @@ function CbseExamTab() {
 
               {/* Mobile cards */}
               <div className="md:hidden divide-y divide-gray-100">
-                {(exam.subjects || []).map((subj: any, idx: number) => (
+                {(exam.subjects || []).map((subj: CbseSubject, idx: number) => (
                   <div key={idx} className="p-3.5">
                     <p className="text-[13px] font-semibold text-gray-800 mb-1.5">{subj.name}</p>
                     <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-1">
@@ -1062,10 +1082,17 @@ function AttendanceTab({ studentId }: { studentId?: number }) {
   );
 }
 
+interface DocumentRecord {
+  id?: string | number;
+  title?: string;
+  fileName?: string;
+  fileUrl?: string;
+}
+
 // ─── Documents Tab Component ──────────────────────────────────────────────────
-function DocumentsTab({ documents = [] }: { documents?: any[] }) {
+function DocumentsTab({ documents = [] }: { documents?: DocumentRecord[] }) {
   const { t } = useTranslation();
-  const handleDownload = (doc: any) => {
+  const handleDownload = (doc: DocumentRecord) => {
     if (doc.fileUrl) {
       window.open(doc.fileUrl, '_blank');
     } else {
@@ -1101,7 +1128,7 @@ function DocumentsTab({ documents = [] }: { documents?: any[] }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {documents.map((doc: any, index: number) => (
+                  {documents.map((doc: DocumentRecord, index: number) => (
                     <tr key={doc.id || index} className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors text-[#555]">
                       <td className="px-4 py-3 border-r border-gray-100 text-gray-400 font-medium">{index + 1}</td>
                       <td className="px-4 py-3 border-r border-gray-100 font-medium text-gray-800">{doc.title}</td>
@@ -1128,7 +1155,7 @@ function DocumentsTab({ documents = [] }: { documents?: any[] }) {
 
             {/* Mobile cards */}
             <div className="sm:hidden divide-y divide-gray-100">
-              {documents.map((doc: any, index: number) => (
+              {documents.map((doc: DocumentRecord, index: number) => (
                 <div key={doc.id || index} className="p-3.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-gray-800">{doc.title}</p>
@@ -1157,8 +1184,15 @@ function DocumentsTab({ documents = [] }: { documents?: any[] }) {
   );
 }
 
+interface TimelineRecord {
+  id?: string | number;
+  title?: string;
+  date?: string;
+  description?: string;
+}
+
 // ─── Timeline Tab Component ───────────────────────────────────────────────────
-function TimelineTab({ timeline = [] }: { timeline?: any[] }) {
+function TimelineTab({ timeline = [] }: { timeline?: TimelineRecord[] }) {
   const { t } = useTranslation();
 
   return (
@@ -1171,7 +1205,7 @@ function TimelineTab({ timeline = [] }: { timeline?: any[] }) {
           </div>
         ) : (
           <div className="p-6 sm:p-8 pl-8 sm:pl-10">
-            {timeline.map((entry: any, index: number) => {
+            {timeline.map((entry: TimelineRecord, index: number) => {
               const isLast = index === timeline.length - 1;
               return (
                 <div key={entry.id || index} className="relative pl-12 sm:pl-14 pb-8">
@@ -1247,13 +1281,13 @@ function StudentBehaviourTab() {
         const d = res.data?.data || res.data;
         if (isMounted && d) {
           if (Array.isArray(d.incidents)) {
-            setBehaviourList(d.incidents.map((b: any) => ({
-              id: b.id,
-              title: b.title || 'Incident',
-              point: b.point || 0,
-              date: b.incident_date ? new Date(b.incident_date).toLocaleDateString('en-US') : '',
-              description: b.description || '',
-              assignBy: b.assigned_by || '',
+            setBehaviourList(d.incidents.map((b: Record<string, unknown>) => ({
+              id: Number(b.id || 0),
+              title: String(b.title || 'Incident'),
+              point: Number(b.point || 0),
+              date: b.incident_date ? new Date(String(b.incident_date)).toLocaleDateString('en-US') : '',
+              description: String(b.description || ''),
+              assignBy: String(b.assigned_by || ''),
             })));
           }
         }
@@ -1410,28 +1444,41 @@ function StudentBehaviourTab() {
 // ─── Tab types ────────────────────────────────────────────────────────────────
 type TabId = "Profile" | "Fees" | "Exam" | "CBSE Examination" | "Attendance" | "Documents" | "Timeline" | "Student Behaviour";
 
+const ALL_PROFILE_TABS: TabId[] = ["Profile", "Fees", "Exam", "CBSE Examination", "Attendance", "Documents", "Timeline", "Student Behaviour"];
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function UserProfilePage() {
   const { t } = useTranslation();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<typeof mockUserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [activeTab, setActiveTab] = useState<TabId>("Profile");
+  const [permissions, setPermissions] = useState<string[]>([]);
+  const [fetchingPermissions, setFetchingPermissions] = useState(true);
 
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        const response = await api.get('/user/profile');
-        if (response.data && response.data.success) {
-          setData(response.data.data);
+        const [response, profilePerms] = await Promise.allSettled([
+          api.get('/user/profile'),
+          api.get('/profile'),
+        ]);
+
+        if (response.status === "fulfilled" && response.value.data && response.value.data.success) {
+          setData(response.value.data.data);
         } else {
           setData(mockUserProfileData);
+        }
+
+        if (profilePerms.status === "fulfilled") {
+          setPermissions(profilePerms.value.data?.data?.permissions || []);
         }
       } catch (error) {
         console.error("Error fetching profile data:", error);
         setData(mockUserProfileData);
       } finally {
         setLoading(false);
+        setFetchingPermissions(false);
       }
     };
 
@@ -1447,6 +1494,36 @@ export default function UserProfilePage() {
       }).then(setQrDataUrl).catch(() => { });
     }
   }, [data]);
+
+  const permissionSet = useMemo(() => new Set(permissions), [permissions]);
+
+  const TABS = useMemo(() => {
+    if (fetchingPermissions) return ALL_PROFILE_TABS;
+    return ALL_PROFILE_TABS.filter((tab) => {
+      if (tab === "CBSE Examination") {
+        return isPortalMenuVisible("cbse_examination", permissionSet);
+      }
+      if (tab === "Fees") {
+        return isPortalMenuVisible("fees", permissionSet);
+      }
+      if (tab === "Exam") {
+        return isPortalMenuVisible("examinations", permissionSet);
+      }
+      if (tab === "Attendance") {
+        return isPortalMenuVisible("attendance", permissionSet);
+      }
+      if (tab === "Student Behaviour") {
+        return isPortalMenuVisible("behaviour", permissionSet);
+      }
+      return true;
+    });
+  }, [permissionSet, fetchingPermissions]);
+
+  useEffect(() => {
+    if (!fetchingPermissions && !TABS.includes(activeTab)) {
+      setActiveTab("Profile");
+    }
+  }, [TABS, activeTab, fetchingPermissions]);
 
   if (loading) {
     return (
@@ -1467,14 +1544,12 @@ export default function UserProfilePage() {
         transportDetails: { ...mock.profileTab.transportDetails, ...data.profileTab?.transportDetails },
         hostelDetails: { ...mock.profileTab.hostelDetails, ...data.profileTab?.hostelDetails },
         miscellaneousDetails: { ...mock.profileTab.miscellaneousDetails, ...data.profileTab?.miscellaneousDetails },
-        previousAcademicRecord: data.profileTab?.previousAcademicRecord ?? mock.profileTab.previousAcademicRecord,
+        previousAcademicRecord: (data.profileTab?.previousAcademicRecord as { id: number; title: string; year: string; result: string }[]) ?? mock.profileTab.previousAcademicRecord,
       },
     }
     : mock;
   const { basic, profileTab } = merged;
   const customFields: { id: number; name: string; type: string; value: string }[] = data?.customFields || [];
-
-  const TABS: TabId[] = ["Profile", "Fees", "Exam", "CBSE Examination", "Attendance", "Documents", "Timeline", "Student Behaviour"];
 
   const tabLabels: Record<TabId, string> = {
     "Profile": "profile",
@@ -1518,7 +1593,18 @@ export default function UserProfilePage() {
     </div>
   );
 
-  const GuardianRow = ({ titleKey, name, phone, occupation, address, email, relation, image }: any) => {
+  interface GuardianRowProps {
+    titleKey: string;
+    name?: string;
+    phone?: string;
+    occupation?: string;
+    address?: string;
+    email?: string;
+    relation?: string;
+    image?: string | null;
+  }
+
+  const GuardianRow = ({ titleKey, name, phone, occupation, address, email, relation, image }: GuardianRowProps) => {
     const tt = t(titleKey);
     return (
       <div className="flex border-b border-gray-100 last:border-0 py-3 relative">
@@ -1783,7 +1869,7 @@ export default function UserProfilePage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {profileTab.previousAcademicRecord.map((rec: any, idx: number) => (
+                          {(profileTab.previousAcademicRecord || []).map((rec: { schoolName?: string; class?: string; year?: string; percentage?: string | number }, idx: number) => (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 hover:bg-indigo-50/30 transition-colors">
                               <td className="px-4 py-2.5 font-medium text-gray-800">{rec.schoolName || "-"}</td>
                               <td className="px-4 py-2.5 text-gray-600">{rec.class || "-"}</td>
@@ -1800,7 +1886,7 @@ export default function UserProfilePage() {
                     </div>
                     {/* Mobile cards */}
                     <div className="sm:hidden space-y-3">
-                      {profileTab.previousAcademicRecord.map((rec: any, idx: number) => (
+                      {(profileTab.previousAcademicRecord || []).map((rec: { schoolName?: string; class?: string; year?: string; percentage?: string | number }, idx: number) => (
                         <div key={idx} className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
                           <div className="flex items-center gap-2 mb-2">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#6366F1] to-[#4f52d4] text-white">
