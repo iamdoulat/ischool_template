@@ -13,19 +13,30 @@ const statusColors: Record<string, string> = {
     "Absent": "bg-[#dc2626] text-white",
     "Late": "bg-[#facc15] text-white",
     "Half Day": "bg-[#f97316] text-white",
-    "Holiday": "bg-[#9ca3af] text-white",
-    "On Leave": "bg-[#6b7280] text-white",
+    "Holiday": "bg-blue-600 text-white",
+    "On Leave": "bg-sky-600 text-white",
 };
 
 // Gradient + text styles for the per-status summary cards.
-const statusCardStyles: Record<string, { bar: string; text: string }> = {
-    "Present": { bar: "from-green-500 to-emerald-400", text: "text-green-700" },
-    "Absent": { bar: "from-red-500 to-rose-400", text: "text-red-700" },
-    "Late": { bar: "from-yellow-400 to-amber-400", text: "text-yellow-700" },
-    "Half Day": { bar: "from-orange-500 to-amber-400", text: "text-orange-700" },
-    "Holiday": { bar: "from-gray-400 to-gray-300", text: "text-gray-600" },
-    "On Leave": { bar: "from-slate-500 to-slate-400", text: "text-slate-700" },
+const statusCardStyles: Record<string, { bar: string; text: string; bg?: string; border?: string; labelColor?: string }> = {
+    "Present": { bar: "from-green-500 to-emerald-400", text: "text-green-700", bg: "bg-white", border: "border-gray-100", labelColor: "text-gray-400" },
+    "Absent": { bar: "from-red-500 to-rose-400", text: "text-red-700", bg: "bg-white", border: "border-gray-100", labelColor: "text-gray-400" },
+    "Late": { bar: "from-yellow-400 to-amber-400", text: "text-yellow-700", bg: "bg-white", border: "border-gray-100", labelColor: "text-gray-400" },
+    "Half Day": { bar: "from-orange-500 to-amber-400", text: "text-orange-700", bg: "bg-white", border: "border-gray-100", labelColor: "text-gray-400" },
+    "Holiday": { bar: "from-blue-600 to-indigo-500", text: "text-blue-700 dark:text-blue-300", bg: "bg-blue-50/90 dark:bg-blue-950/50", border: "border-blue-200 dark:border-blue-800", labelColor: "text-blue-600 dark:text-blue-400" },
+    "On Leave": { bar: "from-sky-500 to-blue-500", text: "text-sky-700 dark:text-sky-300", bg: "bg-sky-50/90 dark:bg-sky-950/50", border: "border-sky-200 dark:border-sky-800", labelColor: "text-sky-600 dark:text-sky-400" },
 };
+
+interface AttendanceDayRecord {
+    status?: string;
+    entry_time?: string | null;
+    exit_time?: string | null;
+    holiday_title?: string | null;
+    holiday_type?: string | null;
+    is_public_holiday?: boolean;
+    reason?: string | null;
+    note?: string | null;
+}
 
 const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -38,11 +49,12 @@ export default function UserAttendancePage() {
     const now = new Date();
     const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
     const [currentYear, setCurrentYear] = useState(now.getFullYear());
-    const [attendanceData, setAttendanceData] = useState<Record<number, any>>({});
+    const [attendanceData, setAttendanceData] = useState<Record<number, AttendanceDayRecord | string>>({});
     const [monthlyPercentage, setMonthlyPercentage] = useState(0);
     const [yearlyPercentage, setYearlyPercentage] = useState(0);
     const [daysInMonth, setDaysInMonth] = useState(30);
     const [startDayOfWeek, setStartDayOfWeek] = useState(1);
+    const [weeklyHolidays, setWeeklyHolidays] = useState<number[]>([7]);
     const [loading, setLoading] = useState(true);
 
     const fetchAttendance = useCallback(async () => {
@@ -53,6 +65,10 @@ export default function UserAttendancePage() {
             });
             const data = response.data?.data || response.data || {};
             setAttendanceData(data.attendance || {});
+
+            if (Array.isArray(data.weeklyHolidays)) {
+                setWeeklyHolidays(data.weeklyHolidays);
+            }
 
             const mPct = typeof data.monthly_percentage === "number"
                 ? data.monthly_percentage
@@ -169,12 +185,12 @@ export default function UserAttendancePage() {
                     {!loading && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                             {Object.keys(statusColors).map((status) => {
-                                const style = statusCardStyles[status];
+                                const style = statusCardStyles[status] || { bar: "from-gray-400 to-gray-300", text: "text-gray-600", bg: "bg-white", border: "border-gray-100", labelColor: "text-gray-400" };
                                 return (
-                                    <div key={status} className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                                    <div key={status} className={cn("rounded-xl border shadow-sm overflow-hidden", style.border || "border-gray-100", style.bg || "bg-white")}>
                                         <div className={cn("h-1 w-full bg-gradient-to-r", style.bar)} />
                                         <div className="px-3 py-2.5">
-                                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none truncate">{status}</p>
+                                            <p className={cn("text-[10px] font-semibold uppercase tracking-wide leading-none truncate", style.labelColor || "text-gray-400")}>{status}</p>
                                             <p className={cn("mt-1 text-xl font-bold", style.text)}>{statusCounts[status] || 0}</p>
                                         </div>
                                     </div>
@@ -215,12 +231,21 @@ export default function UserAttendancePage() {
                         <div className="border border-gray-200 rounded-xl overflow-hidden shadow-2xs">
                             {/* Days Header */}
                             <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/80">
-                                {daysOfWeek.map((day, idx) => (
-                                    <div key={idx} className="text-center py-2.5 text-[10px] sm:text-[12px] text-gray-600 font-bold border-r border-gray-200 last:border-r-0 uppercase">
-                                        <span className="sm:hidden">{day.charAt(0)}</span>
-                                        <span className="hidden sm:inline">{day}</span>
-                                    </div>
-                                ))}
+                                {daysOfWeek.map((day, idx) => {
+                                    const isWeekendHeader = weeklyHolidays.includes(idx + 1);
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className={cn(
+                                                "text-center py-2.5 text-[10px] sm:text-[12px] font-bold border-r border-gray-200 last:border-r-0 uppercase",
+                                                isWeekendHeader ? "text-red-600 bg-red-50/60" : "text-gray-600"
+                                            )}
+                                        >
+                                            <span className="sm:hidden">{day.charAt(0)}</span>
+                                            <span className="hidden sm:inline">{day}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Calendar Body */}
@@ -230,6 +255,11 @@ export default function UserAttendancePage() {
                                     const status = typeof cellItem === "string" ? cellItem : cellItem?.status;
                                     const entryTime = typeof cellItem === "object" ? cellItem?.entry_time : null;
                                     const exitTime = typeof cellItem === "object" ? cellItem?.exit_time : null;
+                                    const holidayTitle = typeof cellItem === "object" ? cellItem?.holiday_title : null;
+                                    const isWeekend = typeof cellItem === "object" ? Boolean(cellItem?.is_weekend) : (day ? weeklyHolidays.includes(new Date(currentYear, currentMonth - 1, day).getDay() === 0 ? 7 : new Date(currentYear, currentMonth - 1, day).getDay()) : false);
+                                    const isHoliday = (status === "Holiday" || Boolean(holidayTitle)) && !isWeekend;
+                                    const isWeeklyHoliday = status === "Weekly Holiday" || (isWeekend && (!status || status === "Weekly Holiday" || status === "Holiday"));
+                                    const isOnLeave = status === "On Leave";
                                     const isToday = day === todayDay;
 
                                     return (
@@ -238,15 +268,30 @@ export default function UserAttendancePage() {
                                             className={cn(
                                                 "min-h-[76px] sm:min-h-[105px] border-r border-b border-gray-100 last:border-r-0 transition-colors flex flex-col justify-between p-1 sm:p-2",
                                                 idx >= cells.length - 7 ? "border-b-0" : "",
-                                                day ? "hover:bg-indigo-50/30" : "bg-gray-50/40",
-                                                isToday ? "bg-indigo-50/60 ring-1 ring-inset ring-indigo-200" : ""
+                                                isToday
+                                                    ? "bg-indigo-50/60 ring-1 ring-inset ring-indigo-200"
+                                                    : (isWeeklyHoliday || isWeekend)
+                                                        ? "bg-red-50/90 hover:bg-red-100/90 dark:bg-red-950/40 border-red-200/80"
+                                                        : isHoliday
+                                                            ? "bg-blue-50/80 hover:bg-blue-100/80 dark:bg-blue-950/40 border-blue-200/80"
+                                                            : isOnLeave
+                                                                ? "bg-sky-50/80 hover:bg-sky-100/80 dark:bg-sky-950/40 border-sky-200/80"
+                                                                : day
+                                                                    ? "hover:bg-indigo-50/30"
+                                                                    : "bg-gray-50/40"
                                             )}
                                         >
                                             {day && (
                                                 <>
                                                     <div className={cn(
                                                         "text-[11px] font-semibold flex items-center justify-end gap-1 leading-none",
-                                                        isToday ? "text-indigo-600 font-bold" : "text-gray-500"
+                                                        isToday
+                                                            ? "text-indigo-600 font-bold"
+                                                            : (isWeeklyHoliday || isWeekend)
+                                                                ? "text-red-600 font-bold"
+                                                                : isHoliday
+                                                                    ? "text-blue-600 font-bold"
+                                                                    : "text-gray-500"
                                                     )}>
                                                         {isToday && (
                                                             <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-1 py-0.5 rounded leading-none">
@@ -256,14 +301,29 @@ export default function UserAttendancePage() {
                                                         <span>{day}</span>
                                                     </div>
 
-                                                    {status && (
+                                                    {(status || holidayTitle || isWeekend) && (
                                                         <div className="mt-1 space-y-1">
-                                                            <div className={cn(
-                                                                "px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight",
-                                                                statusColors[status] || "bg-gray-500 text-white"
-                                                            )}>
-                                                                {status}
-                                                            </div>
+                                                            {(isWeeklyHoliday || (isWeekend && !entryTime)) ? (
+                                                                <div className="px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight bg-red-600 text-white">
+                                                                    {status || t("weekly_holiday") || "Weekly Holiday"}
+                                                                </div>
+                                                            ) : status ? (
+                                                                <div className={cn(
+                                                                    "px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight",
+                                                                    statusColors[status] || "bg-gray-500 text-white"
+                                                                )}>
+                                                                    {status}
+                                                                </div>
+                                                            ) : null}
+
+                                                            {holidayTitle && !isWeekend && (
+                                                                <p
+                                                                    className="text-[8px] sm:text-[9.5px] font-semibold text-blue-700 dark:text-blue-300 line-clamp-2 text-center leading-tight px-1 bg-blue-100/90 dark:bg-blue-900/40 border border-blue-200/80 dark:border-blue-800 rounded py-0.5 shadow-2xs"
+                                                                    title={holidayTitle}
+                                                                >
+                                                                    {holidayTitle}
+                                                                </p>
+                                                            )}
 
                                                             {(entryTime || exitTime) && (
                                                                 <div className="text-[8px] sm:text-[9.5px] font-medium flex flex-col items-center justify-center gap-0.5 pt-0.5 leading-tight">
