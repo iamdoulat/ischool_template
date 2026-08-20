@@ -995,7 +995,6 @@ export function renderCertificateHtml(
       align-items: flex-end;
       padding-top: 10px;
       padding-bottom: 2px;
-      border-top: 1px dashed #cbd5e1;
       margin-top: 4px;
     }
     .sig-col {
@@ -1033,7 +1032,6 @@ export function renderCertificateHtml(
       line-height: 1.3;
     }
     .letterhead-footer-bottom {
-      border-top: 1px solid #e2e8f0;
       padding: 6px 45px 8px 45px;
       background: #fafaf9;
       flex-shrink: 0;
@@ -1435,67 +1433,23 @@ export function printCertificate(html: string): void {
     setTimeout(() => win.print(), 400);
 }
 
-/**
- * Pre-convert all image src URLs in an HTML string to inline base64 data URIs.
- * Uses the /api/proxy-image server-side proxy to bypass CORS restrictions
- * for cross-origin images (school logo, student photos from API domain).
- */
-async function preConvertHtmlImages(html: string): Promise<string> {
-    // Match all img src attributes with http/https URLs
-    const srcRegex = /src="(https?:\/\/[^"]+)"/gi;
-    const matches = [...html.matchAll(srcRegex)];
-    if (matches.length === 0) return html;
-
-    const uniqueUrls = [...new Set(matches.map((m) => m[1]))];
-    const urlToBase64 = new Map<string, string>();
-
-    await Promise.all(
-        uniqueUrls.map(async (url) => {
-            try {
-                // Strategy 1: direct fetch (works for same-origin)
-                let blob: Blob | null = null;
-                try {
-                    const directRes = await fetch(url, { mode: "cors" });
-                    if (directRes.ok) blob = await directRes.blob();
-                } catch {
-                    /* CORS blocked – expected for cross-origin images */
-                }
-
-                // Strategy 2: fetch through server-side proxy (bypasses CORS)
-                if (!blob) {
-                    try {
-                        const proxyRes = await fetch(
-                            `/api/proxy-image?url=${encodeURIComponent(url)}`
-                        );
-                        if (proxyRes.ok) blob = await proxyRes.blob();
-                    } catch {
-                        /* proxy also failed */
-                    }
-                }
-
-                if (blob && blob.size > 100) {
-                    const base64 = await new Promise<string>((resolve) => {
-                        const reader = new FileReader();
-                        reader.onloadend = () =>
-                            resolve((reader.result as string) || "");
-                        reader.onerror = () => resolve("");
-                        reader.readAsDataURL(blob!);
-                    });
-                    if (base64 && base64.startsWith("data:")) {
-                        urlToBase64.set(url, base64);
-                    }
-                }
-            } catch {
-                /* skip this image entirely */
-            }
-        })
-    );
-
-    let result = html;
-    for (const [url, base64] of urlToBase64) {
-        result = result.split(`src="${url}"`).join(`src="${base64}"`);
+/** Convert a single image URL to base64 data URI via /api/proxy-image server-side proxy. */
+async function proxyImageToBase64(url: string): Promise<string> {
+    try {
+        const proxyUrl = `${window.location.origin}/api/proxy-image?url=${encodeURIComponent(url)}`;
+        const res = await fetch(proxyUrl);
+        if (!res.ok) return "";
+        const blob = await res.blob();
+        if (blob.size <= 100) return ""; // Skip tiny transparent-PNG fallback
+        return await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string) || "");
+            reader.onerror = () => resolve("");
+            reader.readAsDataURL(blob);
+        });
+    } catch {
+        return "";
     }
-    return result;
 }
 
 /** Download the rendered certificate as a PDF via jsPDF + html2canvas. */
@@ -1505,9 +1459,6 @@ export async function downloadCertificatePdf(html: string, filename = "certifica
         import("html2canvas"),
     ]);
 
-    // Pre-convert all images to inline base64 data URIs to avoid CORS in html2canvas
-    const processedHtml = await preConvertHtmlImages(html);
-
     const iframe = document.createElement("iframe");
     iframe.style.cssText = "position:fixed;top:-10000px;left:-10000px;width:1050px;height:750px;border:none;visibility:hidden;";
     document.body.appendChild(iframe);
@@ -1516,26 +1467,32 @@ export async function downloadCertificatePdf(html: string, filename = "certifica
         const doc = iframe.contentDocument || iframe.contentWindow?.document;
         if (!doc) throw new Error("Could not access iframe document");
         doc.open();
-        doc.write(processedHtml);
+        doc.write(html);
         doc.close();
 
-        // Wait for any remaining data-URI images to finish decoding in the iframe
+        // Convert each non-data image in the iframe DOM to base64 via server-side proxy
         const images = Array.from(doc.images);
-        if (images.length > 0) {
-            await Promise.all(
-                images.map(
-                    (img) =>
-                        new Promise((resolve) => {
-                            if (img.complete && img.naturalWidth > 0)
-                                return resolve(true);
-                            img.onload = () => resolve(true);
-                            img.onerror = () => resolve(false);
-                            setTimeout(() => resolve(true), 3000);
-                        })
-                )
-            );
+        for (const img of images) {
+            if (!img.src || img.src.startsWith("data:") || img.src === "about:blank") continue;
+            const base64 = await proxyImageToBase64(img.src);
+            if (base64 && base64.startsWith("data:image")) {
+                img.src = base64;
+            }
         }
-        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // Wait for all images (now base64) to finish decoding
+        await Promise.all(
+            Array.from(doc.images).map(
+                (img) =>
+                    new Promise((resolve) => {
+                        if (img.complete && img.naturalWidth > 0) return resolve(true);
+                        img.onload = () => resolve(true);
+                        img.onerror = () => resolve(false);
+                        setTimeout(() => resolve(true), 3000);
+                    })
+            )
+        );
+        await new Promise((resolve) => setTimeout(resolve, 400));
 
         const targetEl = (doc.querySelector(".letterhead-page, .cert-page, .cert-wrapper") as HTMLElement) || doc.body;
         const canvas = await html2canvas(targetEl, {
