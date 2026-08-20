@@ -311,7 +311,7 @@ interface SessionItem {
             )}>
                 <div
                     className={cn(
-                        "h-14 min-h-[56px] flex items-center justify-between md:justify-center z-10 px-4 transition-all",
+                        "h-14 min-h-[56px] flex items-center justify-between z-10 px-3.5 transition-all",
                         settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
                             ? "bg-white dark:bg-card text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 shadow-2xs"
                             : "text-white shadow-md"
@@ -322,53 +322,37 @@ interface SessionItem {
                             : (settings?.primary_color ? { backgroundColor: settings.primary_color, color: '#ffffff' } : { backgroundColor: '#6366f1', color: '#ffffff' })
                     }
                 >
-                    <div className="flex items-center gap-2">
-                        {collapsed && !mobileOpen ? (
-                            <div className={cn(
-                                "p-1.5 rounded-lg shadow-sm overflow-hidden flex items-center justify-center h-9 w-9",
-                                settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
-                                    ? "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                                    : "bg-white/20 backdrop-blur-md border border-white/10"
-                            )}>
-                                {settings?.admin_small_logo && !smallLogoError ? (
-                                    <img src={getImageUrl(settings.admin_small_logo)} alt="S" onError={() => setSmallLogoError(true)} className="h-5 w-5 object-contain" />
-                                ) : (
-                                    <GraduationCap className={cn("h-6 w-6", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "text-indigo-600 dark:text-indigo-400" : "text-white")} />
-                                )}
-                            </div>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <div className={cn(
-                                    "p-1.5 rounded-lg shadow-sm overflow-hidden flex items-center justify-center",
+                    {collapsed && !mobileOpen ? (
+                        <div className={cn(
+                            "p-1.5 rounded-lg shadow-sm overflow-hidden flex items-center justify-center h-9 w-9 mx-auto",
+                            settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
+                                ? "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                : "bg-white/20 backdrop-blur-md border border-white/10"
+                        )}>
+                            {settings?.admin_small_logo && !smallLogoError ? (
+                                <img src={getImageUrl(settings.admin_small_logo)} alt="S" onError={() => setSmallLogoError(true)} className="h-5 w-5 object-contain" />
+                            ) : (
+                                <GraduationCap className={cn("h-6 w-6", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "text-indigo-600 dark:text-indigo-400" : "text-white")} />
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center w-full px-1">
+                            {settingsLoading ? (
+                                <div className={cn("h-8 w-36 animate-pulse rounded", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "bg-gray-200 dark:bg-gray-700" : "bg-white/20")} />
+                            ) : settings?.admin_logo && !logoError ? (
+                                <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} onError={() => setLogoError(true)} className="h-10 max-h-[44px] w-full max-w-[200px] object-contain" />
+                            ) : (
+                                <span className={cn(
+                                    "font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300 truncate",
                                     settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
-                                        ? "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
-                                        : "bg-white/20 backdrop-blur-md border border-white/10"
+                                        ? "text-gray-900 dark:text-white"
+                                        : "text-white"
                                 )}>
-                                    {settings?.admin_small_logo && !smallLogoError ? (
-                                        <img src={getImageUrl(settings.admin_small_logo)} alt="S" onError={() => setSmallLogoError(true)} className="h-5 w-5 object-contain" />
-                                    ) : (
-                                        <GraduationCap className={cn("h-6 w-6", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "text-indigo-600 dark:text-indigo-400" : "text-white")} />
-                                    )}
-                                </div>
-                                <div className="flex flex-col">
-                                    {settingsLoading ? (
-                                        <div className={cn("h-5 w-24 animate-pulse rounded", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "bg-gray-200 dark:bg-gray-700" : "bg-white/20")} />
-                                    ) : settings?.admin_logo && !logoError ? (
-                                        <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} onError={() => setLogoError(true)} className="h-6 object-contain" />
-                                    ) : (
-                                        <span className={cn(
-                                            "font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300",
-                                            settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
-                                                ? "text-gray-900 dark:text-white"
-                                                : "text-white"
-                                        )}>
-                                            {settings?.school_name || "iSchool"}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                                    {settings?.school_name || "iSchool"}
+                                </span>
+                            )}
+                        </div>
+                    )}
 
                     {/* Mobile Close Button */}
                     <Button

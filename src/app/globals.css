@@ -503,13 +503,32 @@ svg.lucide,
   flex-shrink: 0;
 }
 
-/* Ensure icons and badge elements using text-primary are vivid and high contrast */
-.text-primary,
-[class*="text-primary"] {
+/* Ensure icons and badge elements using text-primary are vivid and high contrast without colliding with text-primary-foreground */
+.text-primary:not(.text-primary-foreground),
+span.text-primary,
+p.text-primary,
+svg.text-primary,
+div.text-primary {
   color: var(--primary, #6366f1);
 }
 
-.dark .text-primary,
-.dark [class*="text-primary"] {
+.dark .text-primary:not(.text-primary-foreground),
+.dark span.text-primary,
+.dark p.text-primary,
+.dark svg.text-primary,
+.dark div.text-primary {
   color: var(--primary, #818cf8);
+}
+
+/* Guarantee text-white and text-primary-foreground always render in crisp white on primary/gradient buttons */
+.text-primary-foreground,
+[class*="text-primary-foreground"],
+.text-white,
+[class*="text-white"],
+button[class*="from-"],
+button[class*="bg-gradient"],
+a[class*="from-"],
+[data-slot="button"][class*="from-"],
+[data-slot="alert-dialog-action"][class*="from-"] {
+  color: #ffffff !important;
 }

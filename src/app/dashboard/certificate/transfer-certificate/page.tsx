@@ -62,6 +62,7 @@ import { type StudentFields, renderCertificateHtml, printCertificate, downloadCe
 
 interface ClassOption { id: number; name: string; }
 interface SectionOption { id: number; name: string; }
+interface CategoryOption { id: number; category_name?: string; name?: string; }
 interface ApiStudent {
     id: number;
     admission_no?: string;
@@ -72,7 +73,9 @@ interface ApiStudent {
     mother_name?: string;
     dob?: string;
     gender?: string;
-    category?: string;
+    category?: string | number;
+    student_category?: { id?: number; category_name?: string; name?: string };
+    studentCategory?: { id?: number; category_name?: string; name?: string };
     phone?: string;
     email?: string;
     roll_no?: string;
@@ -147,7 +150,25 @@ function studentName(s: ApiStudent): string {
     return `${s.name || s.first_name || ""} ${s.last_name || ""}`.trim();
 }
 
-function toFields(s: ApiStudent, extra?: Partial<StudentFields>): StudentFields {
+function getCategoryName(s: ApiStudent, catList: CategoryOption[] = []): string {
+    if (s.student_category?.category_name) return s.student_category.category_name;
+    if (s.studentCategory?.category_name) return s.studentCategory.category_name;
+    if (s.student_category?.name) return s.student_category.name;
+    if (s.studentCategory?.name) return s.studentCategory.name;
+
+    if (s.category !== undefined && s.category !== null && s.category !== "") {
+        const found = catList.find((c) => String(c.id) === String(s.category));
+        if (found) {
+            return found.category_name || found.name || "";
+        }
+        if (typeof s.category === "string" && isNaN(Number(s.category)) && s.category.trim() !== "") {
+            return s.category;
+        }
+    }
+    return "-";
+}
+
+function toFields(s: ApiStudent, catList: CategoryOption[] = [], extra?: Partial<StudentFields>): StudentFields {
     return {
         name: studentName(s),
         admission_no: s.admission_no || "",
@@ -156,7 +177,7 @@ function toFields(s: ApiStudent, extra?: Partial<StudentFields>): StudentFields 
         section: s.section?.name || "",
         gender: s.gender || "",
         dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
-        category: s.category || "",
+        category: getCategoryName(s, catList),
         father_name: s.father_name || "",
         mother_name: s.mother_name || "",
         religion: s.religion || "",
@@ -175,6 +196,7 @@ export default function TransferCertificatePage() {
     const tt = useTranslateToast();
     const [classes, setClasses] = useState<ClassOption[]>([]);
     const [sections, setSections] = useState<SectionOption[]>([]);
+    const [categories, setCategories] = useState<CategoryOption[]>([]);
     const [classId, setClassId] = useState("");
     const [sectionId, setSectionId] = useState("");
 
@@ -199,8 +221,12 @@ export default function TransferCertificatePage() {
     useEffect(() => {
         (async () => {
             try {
-                const res = await api.get("/academics/classes?no_paginate=true");
-                setClasses(res.data.data || res.data || []);
+                const [classesRes, categoriesRes] = await Promise.all([
+                    api.get("/academics/classes?no_paginate=true").catch(() => ({ data: { data: [] } })),
+                    api.get("/student-categories").catch(() => ({ data: { data: [] } })),
+                ]);
+                setClasses(classesRes.data?.data?.data || classesRes.data?.data || classesRes.data || []);
+                setCategories(categoriesRes.data?.data?.data || categoriesRes.data?.data || categoriesRes.data || []);
             } catch { /* silent */ }
         })();
     }, []);
@@ -210,7 +236,7 @@ export default function TransferCertificatePage() {
         (async () => {
             try {
                 const res = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
-                setSections(res.data.data || res.data || []);
+                setSections(res.data?.data?.data || res.data?.data || res.data || []);
             } catch { setSections([]); }
         })();
     }, [classId]);
@@ -262,7 +288,7 @@ export default function TransferCertificatePage() {
             const tc: IssuedTC = res.data.data;
             toast({ title: t("tc_issued"), description: `${t("tc_number")}: ${tc.tc_number}` });
             const fields: StudentFields = {
-                ...toFields(student),
+                ...toFields(student, categories),
                 tc_number: tc.tc_number,
                 reason: reason.trim() || "",
             };
@@ -276,7 +302,7 @@ export default function TransferCertificatePage() {
     };
 
     const printTc = (s: ApiStudent) => {
-        const fields = toFields(s);
+        const fields = toFields(s, categories);
         printCertificate(renderCertificateHtml(TC_TEMPLATE, fields));
     };
 
@@ -299,12 +325,12 @@ export default function TransferCertificatePage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}`).join("\n"));
+        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}\t${getCategoryName(s, categories)}`).join("\n"));
         tt.success("data_copied_to_clipboard");
     };
     const handleExportCSV = () => {
         const rows = [[t("admission_no"), t("name"), t("dob"), t("gender"), t("category"), t("mobile")],
-            ...filtered.map((s) => [s.admission_no || "", studentName(s), s.dob || "", s.gender || "", s.category || "", s.phone || ""])];
+            ...filtered.map((s) => [s.admission_no || "", studentName(s), s.dob || "", s.gender || "", getCategoryName(s, categories), s.phone || ""])];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -417,7 +443,7 @@ export default function TransferCertificatePage() {
                                         <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.gender || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.category || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{getCategoryName(s, categories)}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
                                         <TableCell className="py-3 text-center">
                                             <Checkbox checked={reissueIds.includes(s.id)} onCheckedChange={() => toggleReissue(s.id)} className="h-3.5 w-3.5 border-gray-300" />

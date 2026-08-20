@@ -73,6 +73,7 @@ import {
 import api from "@/lib/api";
 import { useLanguage } from "@/components/providers/language-provider";
 import { cn } from "@/lib/utils";
+import { getShortcutGradientStyle } from "@/lib/shortcut-colors";
 
 const ICON_MAP: Record<string, LucideIcon> = {
     Wallet,
@@ -309,10 +310,10 @@ export function HeaderShortcutsPopover() {
                                             onClick={() => handleShortcutClick(item.path)}
                                             className="group relative flex flex-col items-center justify-center p-3 rounded-2xl border border-muted/50 bg-background/80 hover:bg-primary/10 hover:border-primary/40 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-1 active:scale-95 text-center min-h-[95px]"
                                         >
-                                            <div className={cn(
-                                                "w-11 h-11 rounded-2xl bg-gradient-to-br text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-200",
-                                                gradientColor
-                                            )}>
+                                            <div
+                                                style={getShortcutGradientStyle(item.color)}
+                                                className="w-11 h-11 rounded-2xl text-white flex items-center justify-center shadow-md drop-shadow-xs group-hover:scale-110 transition-transform duration-200"
+                                            >
                                                 <IconComponent className="h-5.5 w-5.5" />
                                             </div>
                                             <span className="text-xs font-bold text-foreground mt-2.5 leading-tight truncate w-full group-hover:text-primary transition-colors">

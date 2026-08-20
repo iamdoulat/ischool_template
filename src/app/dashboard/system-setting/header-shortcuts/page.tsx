@@ -79,6 +79,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
+import { getShortcutGradientStyle } from "@/lib/shortcut-colors";
 
 const ICON_MAP: Record<string, LucideIcon> = {
     Wallet,
@@ -307,16 +308,15 @@ export default function HeaderShortcutsPage() {
                         <div className="flex items-center gap-3 py-2 min-w-max">
                             {activeShortcuts.map((item) => {
                                 const IconComp = ICON_MAP[item.icon] || LayoutGrid;
-                                const gradientColor = item.color || "from-primary to-indigo-600";
                                 return (
                                     <div
                                         key={item.id}
                                         className="flex flex-col items-center p-3 rounded-2xl bg-white border border-indigo-100 shadow-sm min-w-[85px] max-w-[110px] text-center"
                                     >
-                                        <div className={cn(
-                                            "w-10 h-10 rounded-xl bg-gradient-to-br text-white flex items-center justify-center shadow-md",
-                                            gradientColor
-                                        )}>
+                                        <div
+                                            style={getShortcutGradientStyle(item.color)}
+                                            className="w-10 h-10 rounded-xl text-white flex items-center justify-center shadow-md drop-shadow-xs shrink-0"
+                                        >
                                             <IconComp className="h-5 w-5" />
                                         </div>
                                         <span className="text-[11px] font-bold text-gray-700 mt-2 truncate w-full">
@@ -363,9 +363,9 @@ export default function HeaderShortcutsPage() {
                                         type="button"
                                         onClick={() => setSelectedCategory(cat)}
                                         className={cn(
-                                            "px-3 py-1 rounded-full text-[11px] font-semibold transition-all cursor-pointer",
+                                            "px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer",
                                             selectedCategory === cat
-                                                ? "bg-[#6366f1] text-white shadow-sm"
+                                                ? "bg-indigo-600 text-white shadow-xs"
                                                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                         )}
                                     >
@@ -385,7 +385,6 @@ export default function HeaderShortcutsPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[680px] overflow-y-auto custom-scrollbar p-1">
                                     {filteredItems.map((item) => {
                                         const IconComp = ICON_MAP[item.icon] || LayoutGrid;
-                                        const gradientColor = item.color || "from-primary to-indigo-600";
                                         return (
                                             <div
                                                 key={item.id}
@@ -398,10 +397,10 @@ export default function HeaderShortcutsPage() {
                                                 )}
                                             >
                                                 <div className="flex items-center gap-3 min-w-0">
-                                                    <div className={cn(
-                                                        "w-10 h-10 rounded-xl bg-gradient-to-br text-white flex items-center justify-center shadow-sm shrink-0 group-hover:scale-105 transition-transform",
-                                                        gradientColor
-                                                    )}>
+                                                    <div
+                                                        style={getShortcutGradientStyle(item.color)}
+                                                        className="w-10 h-10 rounded-xl text-white flex items-center justify-center shadow-sm shrink-0 group-hover:scale-105 transition-transform drop-shadow-xs"
+                                                    >
                                                         <IconComp className="h-5 w-5" />
                                                     </div>
                                                     <div className="min-w-0">
@@ -460,10 +459,10 @@ export default function HeaderShortcutsPage() {
                                             <span className="text-[10px] font-bold text-gray-400 w-4 text-center">
                                                 {index + 1}
                                             </span>
-                                            <div className={cn(
-                                                "w-7 h-7 rounded-lg bg-gradient-to-br text-white flex items-center justify-center shrink-0",
-                                                item.color || "from-primary to-indigo-600"
-                                            )}>
+                                            <div
+                                                style={getShortcutGradientStyle(item.color)}
+                                                className="w-7 h-7 rounded-lg text-white flex items-center justify-center shrink-0 drop-shadow-xs"
+                                            >
                                                 <IconComp className="h-3.5 w-3.5" />
                                             </div>
                                             <span className="font-semibold text-gray-700 truncate">
