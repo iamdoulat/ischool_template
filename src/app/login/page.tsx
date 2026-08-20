@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall, Sparkles, BarChart3, Zap, ExternalLink } from "lucide-react";
+import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall, Sparkles, BarChart3, Zap, ExternalLink, RefreshCw } from "lucide-react";
 import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 
@@ -23,44 +23,65 @@ export default function LoginPage() {
     const [mounted, setMounted] = useState(false);
     const getImageUrl = useImageUrl();
 
-    // Captcha (driven by system-setting → captcha-setting, "User login" / "Login" aliases)
-    const [captchaEnabled, setCaptchaEnabled] = useState(false);
+    // Captcha (driven by system-setting → captcha-setting, "user_login" & "admin_login" aliases)
+    const [captchaModules, setCaptchaModules] = useState<Record<string, boolean>>({
+        user_login: true,
+        admin_login: true,
+    });
     const [captcha, setCaptcha] = useState({ a: 0, b: 0 });
     const [captchaAnswer, setCaptchaAnswer] = useState("");
 
     const regenerateCaptcha = () => {
-        // Deterministic-free small operands; identity is not security-sensitive here.
-        const a = 1 + Math.floor((Date.now() % 9));
-        const b = 1 + Math.floor((Date.now() / 7) % 9);
+        const a = Math.floor(Math.random() * 8) + 2; // 2 to 9
+        const b = Math.floor(Math.random() * 8) + 1; // 1 to 8
         setCaptcha({ a, b });
         setCaptchaAnswer("");
     };
 
+    const isCaptchaRequired = activeTab === "admin"
+        ? Boolean(captchaModules.admin_login ?? captchaModules.user_login ?? captchaModules.login ?? false)
+        : Boolean(captchaModules.user_login ?? captchaModules.login ?? false);
+
     useEffect(() => {
         setMounted(true);
+        regenerateCaptcha();
+
         api.get("/system-setting/general-setting").then(r => {
             const data = r.data?.data || r.data || {};
             setSettings(data);
         }).catch(() => { });
 
         api.get("/system-setting/captcha-settings/public").then(r => {
-            const map = r.data?.data || {};
-            const enabled = !!(map.user_login || map.login);
-            setCaptchaEnabled(enabled);
-            if (enabled) regenerateCaptcha();
+            const raw = r.data?.data || r.data || {};
+            const modules = raw.modules || raw;
+            const modulesMap: Record<string, boolean> = {};
+            if (typeof modules === "object" && modules !== null) {
+                if (Array.isArray(modules)) {
+                    modules.forEach((item: { alias?: string; is_active?: boolean | number }) => {
+                        if (item?.alias) modulesMap[item.alias] = Boolean(item.is_active);
+                    });
+                } else {
+                    Object.entries(modules).forEach(([k, v]) => {
+                        modulesMap[k] = Boolean(v);
+                    });
+                }
+            }
+            setCaptchaModules(modulesMap);
         }).catch(() => { });
     }, []);
 
     const handleTabChange = (val: string) => {
         setActiveTab(val);
         setError("");
+        setCaptchaAnswer("");
+        regenerateCaptcha();
     };
 
     const handleLogin = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         setError("");
 
-        if (captchaEnabled && Number(captchaAnswer) !== captcha.a + captcha.b) {
+        if (isCaptchaRequired && Number(captchaAnswer) !== captcha.a + captcha.b) {
             setError("Incorrect captcha answer. Please try again.");
             regenerateCaptcha();
             return;
@@ -293,24 +314,38 @@ export default function LoginPage() {
                                             </div>
                                         </div>
 
-                                        {captchaEnabled && (
-                                            <div className="space-y-1.5">
-                                                <Label className="text-slate-300 text-[11px] font-medium">Captcha Verification</Label>
+                                        {mounted && isCaptchaRequired && (
+                                            <div className="space-y-1.5 pt-0.5">
+                                                <div className="flex items-center justify-between">
+                                                    <Label className="text-slate-300 text-[11px] font-medium flex items-center gap-1.5">
+                                                        <Shield className="w-3.5 h-3.5 text-indigo-400" />
+                                                        Captcha Verification
+                                                    </Label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={regenerateCaptcha}
+                                                        className="text-[10px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1 hover:underline transition-colors cursor-pointer"
+                                                        title="Refresh Captcha"
+                                                    >
+                                                        <RefreshCw className="w-3 h-3" />
+                                                        Refresh
+                                                    </button>
+                                                </div>
                                                 <div className="flex items-center gap-2">
                                                     <div
-                                                        className="select-none px-3 h-10 flex items-center justify-center bg-white text-slate-800 font-bold text-base rounded-md tracking-widest cursor-pointer"
+                                                        className="select-none px-3.5 h-10 flex items-center justify-center bg-slate-900/90 border border-indigo-500/30 text-indigo-300 font-mono font-bold text-base rounded-md tracking-wider shadow-inner cursor-pointer hover:bg-slate-900 hover:border-indigo-400 transition-colors"
                                                         onClick={regenerateCaptcha}
-                                                        title="Click to refresh"
+                                                        title="Click to refresh captcha"
                                                     >
                                                         {captcha.a} + {captcha.b} = ?
                                                     </div>
                                                     <Input
                                                         type="number"
-                                                        placeholder="Answer"
+                                                        placeholder="Enter answer"
                                                         required
                                                         value={captchaAnswer}
                                                         onChange={(e) => setCaptchaAnswer(e.target.value)}
-                                                        className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-10 text-sm rounded-md flex-1"
+                                                        className="bg-white border-white/10 text-slate-800 focus:ring-indigo-500 h-10 text-sm rounded-md flex-1 font-medium"
                                                     />
                                                 </div>
                                             </div>

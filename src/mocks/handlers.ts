@@ -2,6 +2,25 @@
 import { http, HttpResponse } from 'msw'
 import { mockDashboardData } from '@/lib/mock-data'
 
+let mockCaptchaSettings = [
+  { id: 1, name: "User Login", alias: "user_login", is_active: true },
+  { id: 2, name: "Admin Login", alias: "admin_login", is_active: true },
+  { id: 3, name: "Online Admission", alias: "online_admission", is_active: true },
+  { id: 4, name: "Student Admission", alias: "student_admission", is_active: true },
+  { id: 5, name: "Complain", alias: "complain", is_active: false },
+  { id: 6, name: "Forgot Password", alias: "forgot_password", is_active: false },
+];
+
+let mockCaptchaConfig = {
+  captcha_type: "math",
+  recaptcha_version: "v2",
+  recaptcha_site_key: "",
+  recaptcha_secret_key: "",
+  turnstile_site_key: "",
+  turnstile_secret_key: "",
+  is_active: true,
+};
+
 export const handlers = [
   // Dashboard endpoint
   http.get('*/api/v1/dashboard', () => {
@@ -191,6 +210,65 @@ export const handlers = [
     return HttpResponse.json({
       success: true,
       message: 'Fields updated successfully'
+    })
+  }),
+
+  // Captcha Settings (Admin)
+  http.get('*/api/v1/system-setting/captcha-settings', () => {
+    return HttpResponse.json({
+      success: true,
+      data: mockCaptchaSettings
+    })
+  }),
+
+  // Captcha Config (Admin)
+  http.get('*/api/v1/system-setting/captcha-settings/config', () => {
+    return HttpResponse.json({
+      success: true,
+      data: mockCaptchaConfig
+    })
+  }),
+
+  // Save Captcha Config
+  http.post('*/api/v1/system-setting/captcha-settings/config', async ({ request }) => {
+    const body = await request.json().catch(() => ({}));
+    mockCaptchaConfig = { ...mockCaptchaConfig, ...body };
+    return HttpResponse.json({
+      success: true,
+      message: 'Captcha configuration saved successfully',
+      data: mockCaptchaConfig
+    })
+  }),
+
+  // Toggle Captcha Setting
+  http.post('*/api/v1/system-setting/captcha-settings/:id/toggle', ({ params }) => {
+    const id = Number(params.id);
+    const item = mockCaptchaSettings.find(s => s.id === id);
+    if (item) {
+      item.is_active = !item.is_active;
+    }
+    return HttpResponse.json({
+      success: true,
+      message: 'Captcha setting updated successfully',
+      data: item
+    })
+  }),
+
+  // Captcha Public Map (for login and public forms)
+  http.get('*/api/v1/system-setting/captcha-settings/public', () => {
+    const modulesMap: Record<string, boolean> = {};
+    mockCaptchaSettings.forEach(s => {
+      modulesMap[s.alias] = s.is_active;
+    });
+    return HttpResponse.json({
+      success: true,
+      data: {
+        modules: modulesMap,
+        captcha_type: mockCaptchaConfig.captcha_type,
+        recaptcha_site_key: mockCaptchaConfig.recaptcha_site_key,
+        recaptcha_version: mockCaptchaConfig.recaptcha_version,
+        turnstile_site_key: mockCaptchaConfig.turnstile_site_key,
+      }
     })
   }),
 
