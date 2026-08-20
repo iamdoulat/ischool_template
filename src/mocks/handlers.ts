@@ -21,6 +21,58 @@ let mockCaptchaConfig = {
   is_active: true,
 };
 
+const mockGeneralSettings = {
+  school_name: "iSchool Management System",
+  school_slogan: "Excellence in Education",
+  school_description: "Comprehensive school management system for modern educational institutions",
+  school_code: "ISCHOOL",
+  address: "123 Education Street, Learning City, LC 12345",
+  phone: "+880 185 104 6320",
+  email: "admin@ischool.com",
+  session: "2026-27",
+  session_start_month: "4",
+  date_format: "dd/mm/YYYY",
+  timezone: "UTC",
+  start_day_of_week: "monday",
+  time_format: "12",
+  currency_format: "USD",
+  base_url: "http://localhost:3000",
+  file_upload_path: "uploads/",
+  print_logo: "/logo-print.png",
+  admin_logo: "/logo-admin.png",
+  admin_small_logo: "/logo-admin-small.png",
+  app_logo: "/logo-app.png",
+  login_page_background_admin: "/bg-admin.jpg",
+  login_page_background_user: "/bg-user.jpg",
+  theme_mode: "light",
+  skins: "default",
+  side_menu: "default",
+  primary_color: "#3b82f6",
+  school_name_title_color: "#6366f1",
+  box_content: "default",
+  mobile_api_url: "http://localhost:3000/api",
+  mobile_primary_color: "#3b82f6",
+  mobile_secondary_color: "#64748b",
+  student_login: true,
+  parent_login: true,
+  student_login_admission_no: true,
+  student_login_mobile_no: true,
+  student_login_email: true,
+  parent_login_mobile_no: true,
+  parent_login_email: true,
+  allow_student_to_add_timeline: true,
+  attendance_type: "day_wise",
+  biometric_attendance: false,
+  devices: "",
+  low_attendance_limit: "75",
+  staff_attendance_settings: [
+    { type: "Present", from: "0", upto: "100", total: "100" }
+  ],
+  student_attendance_settings: [
+    { type: "Present", from: "0", upto: "100", total: "100" }
+  ]
+};
+
 export const handlers = [
   // Dashboard endpoint
   http.get('*/api/v1/dashboard', () => {
@@ -64,7 +116,7 @@ export const handlers = [
     let body: any = {};
     try {
       body = await request.json();
-    } catch (_) {}
+    } catch (_) { }
     const email = body.email_or_username || 'superadmin@ischool.com';
     const isSuperAdmin = email.includes('superadmin');
     const isStudent = email.includes('STD') || email.includes('student');
@@ -87,58 +139,6 @@ export const handlers = [
     })
   }),
 
-const mockGeneralSettings = {
-  school_name: "iSchool Management System",
-  school_slogan: "Excellence in Education",
-  school_description: "Comprehensive school management system for modern educational institutions",
-  school_code: "ISCHOOL",
-  address: "123 Education Street, Learning City, LC 12345",
-  phone: "+1 234 567 890",
-  email: "admin@ischool.com",
-  session: "2026",
-  session_start_month: "4",
-  date_format: "d/m/Y",
-  timezone: "UTC",
-  start_day_of_week: "monday",
-  time_format: "12",
-  currency_format: "USD",
-  base_url: "http://localhost:3000",
-  file_upload_path: "uploads/",
-  print_logo: "/logo-print.png",
-  admin_logo: "/logo-admin.png",
-  admin_small_logo: "/logo-admin-small.png",
-  app_logo: "/logo-app.png",
-  login_page_background_admin: "/bg-admin.jpg",
-  login_page_background_user: "/bg-user.jpg",
-  theme_mode: "light",
-  skins: "default",
-  side_menu: "default",
-  primary_color: "#3b82f6",
-  school_name_title_color: "#6366f1",
-  box_content: "default",
-  mobile_api_url: "http://localhost:3000/api",
-  mobile_primary_color: "#3b82f6",
-  mobile_secondary_color: "#64748b",
-  student_login: true,
-  parent_login: true,
-  student_login_admission_no: true,
-  student_login_mobile_no: true,
-  student_login_email: true,
-  parent_login_mobile_no: true,
-  parent_login_email: true,
-  allow_student_to_add_timeline: true,
-  attendance_type: "day_wise",
-  biometric_attendance: false,
-  devices: "",
-  low_attendance_limit: "75",
-  staff_attendance_settings: [
-    { type: "Present", from: "0", upto: "100", total: "100" }
-  ],
-  student_attendance_settings: [
-    { type: "Present", from: "0", upto: "100", total: "100" }
-  ]
-};
-
   // General settings
   http.get('*/api/v1/system-setting/general-setting', () => {
     return HttpResponse.json({
@@ -152,7 +152,7 @@ const mockGeneralSettings = {
     try {
       const body = await request.json() as Record<string, any>;
       Object.assign(mockGeneralSettings, body);
-    } catch (_) {}
+    } catch (_) { }
     return HttpResponse.json({
       status: "Success",
       success: true,
@@ -564,44 +564,58 @@ const mockGeneralSettings = {
           {
             name: "English (210)", code: "210", percentage: 37,
             lessons: [
-              { name: "1 First Day at School", percentage: 100, topics: [
-                { name: "1.1 School Life", status: "Complete", date: "04/10/2025" },
-                { name: "1.2 School Day's", status: "Complete", date: "04/12/2025" },
-                { name: "1.3 Chapter-2", status: "Complete", date: "12/26/2025" },
-              ]},
-              { name: "2 The Wind and the Sun", percentage: 100, topics: [
-                { name: "2.1 The Wind", status: "Complete", date: "04/15/2025" },
-              ]},
-              { name: "3 Storm in the Garden", percentage: 100, topics: [
-                { name: "3.1 My Garden", status: "Complete", date: "04/25/2025" },
-                { name: "3.2 Chapter 2", status: "Complete", date: "11/20/2025" },
-              ]},
-              { name: "4 The Grasshopper and the Ant", percentage: 67, topics: [
-                { name: "4.1 The Ant", status: "Complete", date: "08/20/2025" },
-                { name: "4.2 Chapter 4", status: "Complete", date: "10/25/2025" },
-                { name: "4.3 Chapter-5", status: "Incomplete" },
-              ]},
+              {
+                name: "1 First Day at School", percentage: 100, topics: [
+                  { name: "1.1 School Life", status: "Complete", date: "04/10/2025" },
+                  { name: "1.2 School Day's", status: "Complete", date: "04/12/2025" },
+                  { name: "1.3 Chapter-2", status: "Complete", date: "12/26/2025" },
+                ]
+              },
+              {
+                name: "2 The Wind and the Sun", percentage: 100, topics: [
+                  { name: "2.1 The Wind", status: "Complete", date: "04/15/2025" },
+                ]
+              },
+              {
+                name: "3 Storm in the Garden", percentage: 100, topics: [
+                  { name: "3.1 My Garden", status: "Complete", date: "04/25/2025" },
+                  { name: "3.2 Chapter 2", status: "Complete", date: "11/20/2025" },
+                ]
+              },
+              {
+                name: "4 The Grasshopper and the Ant", percentage: 67, topics: [
+                  { name: "4.1 The Ant", status: "Complete", date: "08/20/2025" },
+                  { name: "4.2 Chapter 4", status: "Complete", date: "10/25/2025" },
+                  { name: "4.3 Chapter-5", status: "Incomplete" },
+                ]
+              },
             ],
           },
           {
             name: "Hindi (230)", code: "230", percentage: 100,
             lessons: [
-              { name: "1 पाठ 1", percentage: 100, topics: [
-                { name: "1.1 विषय", status: "Complete", date: "04/11/2025" },
-              ]},
+              {
+                name: "1 पाठ 1", percentage: 100, topics: [
+                  { name: "1.1 विषय", status: "Complete", date: "04/11/2025" },
+                ]
+              },
             ],
           },
           {
             name: "Mathematics (110)", code: "110", percentage: 75,
             lessons: [
-              { name: "1 Numbers", percentage: 100, topics: [
-                { name: "1.1 Counting", status: "Complete", date: "04/10/2025" },
-                { name: "1.2 Addition", status: "Complete", date: "04/15/2025" },
-              ]},
-              { name: "2 Geometry", percentage: 50, topics: [
-                { name: "2.1 Shapes", status: "Complete", date: "05/01/2025" },
-                { name: "2.2 Angles", status: "Incomplete" },
-              ]},
+              {
+                name: "1 Numbers", percentage: 100, topics: [
+                  { name: "1.1 Counting", status: "Complete", date: "04/10/2025" },
+                  { name: "1.2 Addition", status: "Complete", date: "04/15/2025" },
+                ]
+              },
+              {
+                name: "2 Geometry", percentage: 50, topics: [
+                  { name: "2.1 Shapes", status: "Complete", date: "05/01/2025" },
+                  { name: "2.2 Angles", status: "Incomplete" },
+                ]
+              },
             ],
           },
         ],
@@ -616,11 +630,13 @@ const mockGeneralSettings = {
           {
             name: "English (220)", code: "220", percentage: 60,
             lessons: [
-              { name: "1 Grammar Basics", percentage: 60, topics: [
-                { name: "1.1 Nouns", status: "Complete", date: "04/12/2025" },
-                { name: "1.2 Verbs", status: "Complete", date: "04/20/2025" },
-                { name: "1.3 Adjectives", status: "Incomplete" },
-              ]},
+              {
+                name: "1 Grammar Basics", percentage: 60, topics: [
+                  { name: "1.1 Nouns", status: "Complete", date: "04/12/2025" },
+                  { name: "1.2 Verbs", status: "Complete", date: "04/20/2025" },
+                  { name: "1.3 Adjectives", status: "Incomplete" },
+                ]
+              },
             ],
           },
         ],
@@ -683,28 +699,28 @@ const mockGeneralSettings = {
     return HttpResponse.json({
       success: true,
       data: [
-        { id: 1,  name: 'Date Of Birth',               tab: 'cv_fields',                  is_active: true  },
-        { id: 2,  name: 'Gender',                       tab: 'cv_fields',                  is_active: true  },
-        { id: 3,  name: 'Category',                     tab: 'cv_fields',                  is_active: true  },
-        { id: 4,  name: 'Religion',                     tab: 'cv_fields',                  is_active: true  },
-        { id: 5,  name: 'Caste',                        tab: 'cv_fields',                  is_active: true  },
-        { id: 6,  name: 'Blood Group',                  tab: 'cv_fields',                  is_active: true  },
-        { id: 7,  name: 'Height',                       tab: 'cv_fields',                  is_active: false },
-        { id: 8,  name: 'Weight',                       tab: 'cv_fields',                  is_active: false },
-        { id: 9,  name: 'National Identification No',  tab: 'cv_fields',                  is_active: false },
-        { id: 10, name: 'Local Identification No',     tab: 'cv_fields',                  is_active: false },
-        { id: 11, name: 'Father Name',                  tab: 'cv_other_fields',            is_active: true  },
-        { id: 12, name: 'Mother Name',                  tab: 'cv_other_fields',            is_active: true  },
-        { id: 13, name: 'Father Occupation',            tab: 'cv_other_fields',            is_active: true  },
-        { id: 14, name: 'Mother Occupation',            tab: 'cv_other_fields',            is_active: true  },
-        { id: 15, name: 'Father Phone',                 tab: 'cv_other_fields',            is_active: true  },
-        { id: 16, name: 'Mother Phone',                 tab: 'cv_other_fields',            is_active: true  },
-        { id: 17, name: 'Guardian Name',                tab: 'cv_other_fields',            is_active: true  },
-        { id: 18, name: 'Guardian Relation',            tab: 'cv_other_fields',            is_active: false },
-        { id: 19, name: 'Guardian Phone',               tab: 'cv_other_fields',            is_active: true  },
-        { id: 20, name: 'Guardian Email',               tab: 'cv_other_fields',            is_active: false },
-        { id: 21, name: 'Student Login',                tab: 'student_panel_cv_setting',   is_active: true  },
-        { id: 22, name: 'Download CV',                  tab: 'student_panel_cv_setting',   is_active: true  },
+        { id: 1, name: 'Date Of Birth', tab: 'cv_fields', is_active: true },
+        { id: 2, name: 'Gender', tab: 'cv_fields', is_active: true },
+        { id: 3, name: 'Category', tab: 'cv_fields', is_active: true },
+        { id: 4, name: 'Religion', tab: 'cv_fields', is_active: true },
+        { id: 5, name: 'Caste', tab: 'cv_fields', is_active: true },
+        { id: 6, name: 'Blood Group', tab: 'cv_fields', is_active: true },
+        { id: 7, name: 'Height', tab: 'cv_fields', is_active: false },
+        { id: 8, name: 'Weight', tab: 'cv_fields', is_active: false },
+        { id: 9, name: 'National Identification No', tab: 'cv_fields', is_active: false },
+        { id: 10, name: 'Local Identification No', tab: 'cv_fields', is_active: false },
+        { id: 11, name: 'Father Name', tab: 'cv_other_fields', is_active: true },
+        { id: 12, name: 'Mother Name', tab: 'cv_other_fields', is_active: true },
+        { id: 13, name: 'Father Occupation', tab: 'cv_other_fields', is_active: true },
+        { id: 14, name: 'Mother Occupation', tab: 'cv_other_fields', is_active: true },
+        { id: 15, name: 'Father Phone', tab: 'cv_other_fields', is_active: true },
+        { id: 16, name: 'Mother Phone', tab: 'cv_other_fields', is_active: true },
+        { id: 17, name: 'Guardian Name', tab: 'cv_other_fields', is_active: true },
+        { id: 18, name: 'Guardian Relation', tab: 'cv_other_fields', is_active: false },
+        { id: 19, name: 'Guardian Phone', tab: 'cv_other_fields', is_active: true },
+        { id: 20, name: 'Guardian Email', tab: 'cv_other_fields', is_active: false },
+        { id: 21, name: 'Student Login', tab: 'student_panel_cv_setting', is_active: true },
+        { id: 22, name: 'Download CV', tab: 'student_panel_cv_setting', is_active: true },
       ],
     });
   }),
