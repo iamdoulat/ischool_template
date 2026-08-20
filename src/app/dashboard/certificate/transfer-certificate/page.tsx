@@ -105,7 +105,7 @@ interface IssuedTC {
     meta?: StudentFields;
 }
 
-const TABLE_COLS = 8;
+const TABLE_COLS = 9;
 
 // Structured Transfer Certificate template matching official school standards
 const TC_TEMPLATE = {
@@ -235,6 +235,7 @@ export default function TransferCertificatePage() {
     const [templateId, setTemplateId] = useState("0");
 
     const [students, setStudents] = useState<ApiStudent[]>([]);
+    const [studentTcMap, setStudentTcMap] = useState<Record<number, string>>({});
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
@@ -282,7 +283,7 @@ export default function TransferCertificatePage() {
 
                 setSettings({
                     ...gData,
-                    school_name: gData.school_name || "OAKRIDGE SCHOOL",
+                    school_name: gData.school_name || "ISCHOOL",
                     admin_logo: gData.admin_logo || "",
                     phone: gData.phone || "",
                     email: gData.email || "",
@@ -319,11 +320,26 @@ export default function TransferCertificatePage() {
         setLoading(true);
         setSearched(true);
         try {
-            const res = await api.get("/students", {
-                params: { school_class_id: classId, section_id: sectionId || undefined, limit: 500 },
-            });
-            const data = res.data?.data?.data || res.data?.data || res.data || [];
+            const [studentsRes, tcRes] = await Promise.all([
+                api.get("/students", {
+                    params: { school_class_id: classId, section_id: sectionId || undefined, limit: 500 },
+                }),
+                api.get("/certificate/transfer-certificates", {
+                    params: { school_class_id: classId, section_id: sectionId || undefined, per_page: 500 },
+                }).catch(() => ({ data: { data: [] } })),
+            ]);
+            const data = studentsRes.data?.data?.data || studentsRes.data?.data || studentsRes.data || [];
             setStudents(Array.isArray(data) ? data : []);
+
+            const tcData = tcRes.data?.data?.data || tcRes.data?.data || tcRes.data || [];
+            const tcList = Array.isArray(tcData) ? tcData : [];
+            const mapping: Record<number, string> = {};
+            tcList.forEach((tc: any) => {
+                if (tc.student_id && !mapping[tc.student_id]) {
+                    mapping[tc.student_id] = tc.tc_number;
+                }
+            });
+            setStudentTcMap(mapping);
             setReissueIds([]);
         } catch {
             tt.error("failed_to_fetch_students");
@@ -334,43 +350,46 @@ export default function TransferCertificatePage() {
 
     const filtered = students.filter((s) =>
         studentName(s).toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.admission_no || "").includes(searchTerm)
+        (s.admission_no || "").includes(searchTerm) ||
+        (studentTcMap[s.id] || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const toggleReissue = (id: number) =>
         setReissueIds((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
 
-    const openIssueTc = (s: ApiStudent) => {
-        setReasonDialogId(s.id);
-        setReason("");
-    };
-
-    const issueTc = async () => {
-        const student = students.find((s) => s.id === reasonDialogId);
-        if (!student) return;
-        setIssuingId(reasonDialogId);
-        setReasonDialogId(null);
+    const processDownloadTc = async (student: ApiStudent, isReissue: boolean, customReason: string) => {
+        setIssuingId(student.id);
         try {
-            const isReissue = reissueIds.includes(student.id);
             const res = await api.post("/certificate/transfer-certificates", {
                 student_id: student.id,
-                reason: reason.trim() || null,
+                reason: customReason.trim() || undefined,
                 is_reissue: isReissue,
             });
             const tc: IssuedTC = res.data?.data || res.data;
+            const cleanTcNum = (tc?.tc_number || "certificate").replace(/[^a-zA-Z0-9-_]/g, "_");
+
+            if (tc?.tc_number) {
+                setStudentTcMap((prev) => ({ ...prev, [student.id]: tc.tc_number }));
+            }
+
             toast({
-                title: tc?.is_reissue ? (t("tc_reissued") || "TC Reissued") : (t("tc_issued") || "TC Issued"),
+                title: isReissue
+                    ? (t("tc_reissued") || "TC Reissued")
+                    : (t("tc_downloaded") || "TC Downloaded"),
                 description: `${t("tc_number") || "TC Number"}: ${tc?.tc_number || ""}`,
             });
+
             const fields: StudentFields = {
                 ...toFields(student, categories, classes, {}, settings),
                 tc_number: tc?.tc_number,
-                reason: reason.trim() || tc?.meta?.reason || "",
+                reason: customReason.trim() || (tc as any)?.reason || tc?.meta?.reason || "",
             };
             const html = renderCertificateHtml(getSelectedTemplate(), fields, settings);
-            const cleanTcNum = (tc?.tc_number || "certificate").replace(/[^a-zA-Z0-9-_]/g, "_");
             await downloadCertificatePdf(html, `TC_${cleanTcNum}.pdf`);
-            setReissueIds((prev) => prev.filter((id) => id !== student.id));
+
+            if (isReissue) {
+                setReissueIds((prev) => prev.filter((id) => id !== student.id));
+            }
         } catch (err) {
             console.error("Failed to issue/download TC:", err);
             tt.error("failed_to_issue_transfer_certificate");
@@ -379,9 +398,54 @@ export default function TransferCertificatePage() {
         }
     };
 
-    const printTc = (s: ApiStudent) => {
-        const fields = toFields(s, categories, classes, {}, settings);
-        printCertificate(renderCertificateHtml(getSelectedTemplate(), fields, settings));
+    const handleDownloadClick = async (s: ApiStudent) => {
+        const isReissue = reissueIds.includes(s.id);
+        if (isReissue) {
+            // Reissue is ticked -> Prompt reason dialog
+            setReasonDialogId(s.id);
+            setReason("");
+        } else {
+            // Reissue is unticked -> Directly download existing generated TC without prompt or regeneration
+            await processDownloadTc(s, false, "");
+        }
+    };
+
+    const issueTc = async () => {
+        const student = students.find((s) => s.id === reasonDialogId);
+        if (!student) return;
+        const enteredReason = reason;
+        setReasonDialogId(null);
+        await processDownloadTc(student, true, enteredReason);
+    };
+
+    const printTc = async (s: ApiStudent) => {
+        const isReissue = reissueIds.includes(s.id);
+        setIssuingId(s.id);
+        try {
+            const res = await api.post("/certificate/transfer-certificates", {
+                student_id: s.id,
+                is_reissue: isReissue,
+            });
+            const tc: IssuedTC = res.data?.data || res.data;
+            if (tc?.tc_number) {
+                setStudentTcMap((prev) => ({ ...prev, [s.id]: tc.tc_number }));
+            }
+            const fields: StudentFields = {
+                ...toFields(s, categories, classes, {}, settings),
+                tc_number: tc?.tc_number,
+                reason: (tc as any)?.reason || tc?.meta?.reason || "",
+            };
+            const html = renderCertificateHtml(getSelectedTemplate(), fields, settings);
+            printCertificate(html);
+            if (isReissue) {
+                setReissueIds((prev) => prev.filter((id) => id !== s.id));
+            }
+        } catch {
+            const fields = toFields(s, categories, classes, {}, settings);
+            printCertificate(renderCertificateHtml(getSelectedTemplate(), fields, settings));
+        } finally {
+            setIssuingId(null);
+        }
     };
 
     const handleVerify = async () => {
@@ -403,12 +467,12 @@ export default function TransferCertificatePage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}\t${getCategoryName(s, categories)}`).join("\n"));
+        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no || ""}\t${studentName(s)}\t${studentTcMap[s.id] || ""}\t${getCategoryName(s, categories)}`).join("\n"));
         tt.success("data_copied_to_clipboard");
     };
     const handleExportCSV = () => {
-        const rows = [[t("admission_no"), t("name"), t("dob"), t("gender"), t("category"), t("mobile")],
-            ...filtered.map((s) => [s.admission_no || "", studentName(s), s.dob || "", s.gender || "", getCategoryName(s, categories), s.phone || ""])];
+        const rows = [[t("admission_no"), t("name"), t("certificate_no") || "Certificate No", t("dob"), t("gender"), t("category"), t("mobile")],
+        ...filtered.map((s) => [s.admission_no || "", studentName(s), studentTcMap[s.id] || "", s.dob || "", s.gender || "", getCategoryName(s, categories), s.phone || ""])];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -421,7 +485,7 @@ export default function TransferCertificatePage() {
         { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
         { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
         { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Columns, onClick: () => { }, title: "Columns" },
     ];
 
     return (
@@ -514,7 +578,15 @@ export default function TransferCertificatePage() {
                         <Table className="min-w-[1100px]">
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    {[t("admission_no"), t("student_name"), t("dob"), t("gender"), t("category"), t("mobile_number")].map((h) => (
+                                    {[
+                                        t("admission_no"),
+                                        t("student_name"),
+                                        t("certificate_no") || "Certificate No",
+                                        t("dob"),
+                                        t("gender"),
+                                        t("category"),
+                                        t("mobile_number"),
+                                    ].map((h) => (
                                         <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     ))}
                                     <TableHead className="font-semibold text-gray-600 text-center">{t("reissue")}</TableHead>
@@ -532,6 +604,15 @@ export default function TransferCertificatePage() {
                                     <TableRow key={s.id} className={cn("text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap", issuingId === s.id && "opacity-60 pointer-events-none")}>
                                         <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
                                         <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>
+                                        <TableCell className="py-3">
+                                            {studentTcMap[s.id] ? (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    {studentTcMap[s.id]}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 font-normal italic text-[11px]">-</span>
+                                            )}
+                                        </TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.gender || "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{getCategoryName(s, categories)}</TableCell>
@@ -551,9 +632,9 @@ export default function TransferCertificatePage() {
                                                 </Button>
                                                 <Button
                                                     size="icon"
-                                                    onClick={() => openIssueTc(s)}
+                                                    onClick={() => handleDownloadClick(s)}
                                                     disabled={issuingId === s.id}
-                                                    title={t("issue_and_download_tc")}
+                                                    title={t("download_tc") || "Download TC"}
                                                     className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                 >
                                                     {issuingId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}

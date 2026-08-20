@@ -801,49 +801,58 @@ export function renderCertificateHtml(
       display: block;
     }
     .default-letterhead-header {
-      display: flex;
+      display: grid;
+      grid-template-columns: 180px 1fr 180px;
       align-items: center;
-      justify-content: space-between;
-      padding: 12px 45px 10px 45px;
-      gap: 16px;
+      padding: 10px 40px;
+      gap: 12px;
       background: linear-gradient(to bottom, #f8fafc, #ffffff);
     }
+    .header-logo-col {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+    .header-spacer-col {
+      width: 180px;
+    }
     .school-info-center {
-      flex: 1;
       text-align: center;
     }
     .letterhead-school-title {
-      font-size: 25px;
+      font-size: 24px;
       font-weight: 800;
       color: #0f766e;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
       font-family: 'Arial Narrow', Arial, sans-serif;
+      line-height: 1.15;
     }
     .letterhead-meta {
-      font-size: 11.5px;
+      font-size: 11px;
       color: #475569;
-      margin-top: 2px;
-      line-height: 1.3;
+      margin-top: 3px;
+      line-height: 1.35;
     }
     /* Body Certificate Content */
     .letterhead-body {
       flex: 1;
-      padding: 10px 45px 14px 45px;
+      padding: 12px 45px 12px 45px;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       overflow: hidden;
     }
     .title-row-container {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: 180px 1fr 180px;
+      align-items: start;
       margin-bottom: 6px;
       position: relative;
     }
     .cert-title-center {
-      flex: 1;
       text-align: center;
+      padding-top: 2px;
     }
     .cert-main-title {
       font-size: 26px;
@@ -861,7 +870,7 @@ export function renderCertificateHtml(
       justify-content: center;
       gap: 8px;
       margin: 4px auto 0 auto;
-      width: 280px;
+      width: 260px;
     }
     .cert-title-underline .u-line {
       flex: 1;
@@ -893,8 +902,9 @@ export function renderCertificateHtml(
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      align-self: flex-start;
-      margin-top: 4px;
+      justify-self: start;
+      align-self: start;
+      margin-top: 2px;
     }
     .cert-no-label {
       font-weight: 800;
@@ -907,8 +917,8 @@ export function renderCertificateHtml(
       font-size: 13.5px;
     }
     .photo-box {
-      width: 82px;
-      height: 100px;
+      width: 78px;
+      height: 94px;
       border: 1.5px solid #334155;
       border-radius: 4px;
       overflow: hidden;
@@ -917,49 +927,60 @@ export function renderCertificateHtml(
       align-items: center;
       justify-content: center;
       background: #f8fafc;
-      flex-shrink: 0;
+      justify-self: end;
+      align-self: start;
     }
     .photo-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
-    /* Open Custom Body Text in Arial Narrow with Larger Font */
+    /* Main middle-aligned body content */
+    .letterhead-main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      margin: 2px 0;
+    }
     .letterhead-text-body {
       font-family: 'Arial Narrow', 'Nimbus Sans L', Arial, sans-serif;
-      font-size: 16.5px;
-      line-height: 1.55;
+      font-size: 15.5px;
+      line-height: 1.6;
       letter-spacing: 0.15px;
       color: #1e293b;
       text-align: justify;
-      margin: 6px 0;
+      text-justify: inter-word;
+      margin: 0;
       padding: 0;
     }
     .letterhead-text-body strong, .letterhead-text-body b, .cert-var {
       font-weight: 800 !important;
       color: #000000 !important;
     }
-    /* Certification remarks box positioned under body text */
+    /* Certification remarks box */
     .statement-container {
-      margin-top: 8px;
-      margin-bottom: 6px;
-      padding: 8px 14px;
+      margin-top: 4px;
+      margin-bottom: 2px;
+      padding: 6px 12px;
       background: #f8fafc;
+      border: 1px solid #e2e8f0;
       border-left: 3.5px solid #0f766e;
       border-radius: 4px;
     }
     .statement-label {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 800;
       color: #0f766e;
       text-transform: uppercase;
       letter-spacing: 0.4px;
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
     .statement-content {
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 800 !important;
-      line-height: 1.45;
+      line-height: 1.4;
       color: #000000 !important;
       font-family: 'Arial Narrow', 'Nimbus Sans L', Arial, sans-serif;
     }
@@ -972,9 +993,10 @@ export function renderCertificateHtml(
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      margin-top: auto;
-      padding-top: 14px;
+      padding-top: 10px;
       padding-bottom: 2px;
+      border-top: 1px dashed #cbd5e1;
+      margin-top: 4px;
     }
     .sig-col {
       display: flex;
@@ -988,7 +1010,7 @@ export function renderCertificateHtml(
       flex-direction: column;
       align-items: flex-start;
       width: 220px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
       color: #334155;
     }
@@ -1003,7 +1025,7 @@ export function renderCertificateHtml(
       margin-bottom: 5px;
     }
     .sig-col-title {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       color: #0f172a;
       text-transform: uppercase;
@@ -1030,7 +1052,7 @@ export function renderCertificateHtml(
       ${headerImg
         ? `<img src="${headerImg}" class="print-header-img" alt="Header" />`
         : `<div class="default-letterhead-header">
-             <div style="flex-shrink:0;">${logoHtml}</div>
+             <div class="header-logo-col">${logoHtml}</div>
              <div class="school-info-center">
                <div class="letterhead-school-title">${schoolName}</div>
                <div class="letterhead-meta">
@@ -1039,7 +1061,7 @@ export function renderCertificateHtml(
                  ${settings?.email ? `Email: ${settings.email}` : ""}
                </div>
              </div>
-             <div style="width:40px;"></div>
+             <div class="header-spacer-col"></div>
            </div>`
       }
     </div>
@@ -1066,19 +1088,22 @@ export function renderCertificateHtml(
         </div>
       </div>
 
-      <!-- Open Custom Body Text in Arial Narrow with Bolded Dynamic Variables -->
-      <div class="letterhead-text-body">
-        ${formattedLetterheadBody}
-      </div>
-
-      <!-- Remarks / Purpose / Certification Box placed directly under Body Text -->
-      ${(template.remarks || student.reason || student.remarks) ? `
-      <div class="statement-container">
-        <div class="statement-label">REMARKS / PURPOSE / CERTIFICATION :</div>
-        <div class="statement-content">
-          ${letterheadRemarks.replace(/\n/g, "<br/>")}
+      <!-- Middle-aligned body container -->
+      <div class="letterhead-main-content">
+        <!-- Open Custom Body Text in Arial Narrow with Bolded Dynamic Variables -->
+        <div class="letterhead-text-body">
+          ${formattedLetterheadBody}
         </div>
-      </div>` : ""}
+
+        <!-- Remarks / Purpose / Certification Box placed directly under Body Text -->
+        ${(template.remarks || student.reason || student.remarks) ? `
+        <div class="statement-container">
+          <div class="statement-label">REMARKS / PURPOSE / CERTIFICATION :</div>
+          <div class="statement-content">
+            ${letterheadRemarks.replace(/\n/g, "<br/>")}
+          </div>
+        </div>` : ""}
+      </div>
 
       <!-- Signatures Row anchored to the bottom -->
       <div class="signature-row-bottom">
@@ -1428,19 +1453,42 @@ export async function downloadCertificatePdf(html: string, filename = "certifica
         doc.write(html);
         doc.close();
 
-        // Wait for all images and styles to load
+        // Convert images to base64 data URIs or handle error gracefully to prevent CORS/html2canvas failures
         const images = Array.from(doc.images);
         await Promise.all(
-            images.map(
-                (img) =>
-                    new Promise((resolve) => {
-                        if (img.complete) return resolve(true);
-                        img.onload = () => resolve(true);
-                        img.onerror = () => resolve(false);
-                    })
-            )
+            images.map(async (img) => {
+                if (!img.src) return;
+                try {
+                    if (!img.src.startsWith("data:")) {
+                        const res = await fetch(img.src, { mode: "cors" }).catch(() => null);
+                        if (res && res.ok) {
+                            const blob = await res.blob();
+                            const dataUrl = await new Promise<string>((resolve) => {
+                                const reader = new FileReader();
+                                reader.onloadend = () => resolve((reader.result as string) || "");
+                                reader.onerror = () => resolve("");
+                                reader.readAsDataURL(blob);
+                            });
+                            if (dataUrl) {
+                                img.src = dataUrl;
+                            }
+                        }
+                    }
+                } catch {
+                    // Ignore conversion exceptions
+                }
+                return new Promise((resolve) => {
+                    if (img.complete && img.naturalWidth > 0) return resolve(true);
+                    img.onload = () => resolve(true);
+                    img.onerror = () => {
+                        img.style.visibility = "hidden";
+                        resolve(false);
+                    };
+                    setTimeout(() => resolve(true), 1500);
+                });
+            })
         );
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 200));
 
         const targetEl = (doc.querySelector(".letterhead-page, .cert-page, .cert-wrapper") as HTMLElement) || doc.body;
         const canvas = await html2canvas(targetEl, {
@@ -1448,6 +1496,7 @@ export async function downloadCertificatePdf(html: string, filename = "certifica
             useCORS: true,
             allowTaint: true,
             backgroundColor: "#ffffff",
+            logging: false,
         });
 
         const imgData = canvas.toDataURL("image/png");

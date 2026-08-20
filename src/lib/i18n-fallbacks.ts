@@ -249,6 +249,8 @@ export const i18nFallbacks: Record<string, string> = {
   roll_number: "Roll Number",
   admission_no: "Admission No",
   admission_number: "Admission Number",
+  showing_x_students: "Showing {count} students",
+  showing_x_to_y_of_z: "Showing {from} to {to} of {total} entries",
   father_name: "Father Name",
   mother_name: "Mother Name",
   guardian_name: "Guardian Name",

@@ -17,7 +17,7 @@ export function getImageUrl(
   );
 
   const defaultDomain = isLocalHost
-    ? ""
+    ? (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}:8000` : "http://localhost:8000")
     : (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "");
 
   let domain = (
@@ -28,7 +28,7 @@ export function getImageUrl(
     .replace(/\/+$/, "")
     .replace(/\/api\/v1\/?$/, "");
 
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+  if (typeof window !== "undefined" && window.location.protocol === "https:" && !isLocalHost) {
     domain = domain.replace(/^http:\/\//i, "https://");
   }
 
