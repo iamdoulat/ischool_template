@@ -779,23 +779,40 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                     {(() => {
                         const localMobFz = mounted && typeof window !== 'undefined' ? localStorage.getItem("header_mobile_font_size") : null;
                         const localDeskFz = mounted && typeof window !== 'undefined' ? localStorage.getItem("header_desktop_font_size") : null;
+                        const localTitleColor = mounted && typeof window !== 'undefined' ? localStorage.getItem("school_name_title_color") : null;
 
                         const mobVal = settings?.header_mobile_font_size || localMobFz;
                         const deskVal = settings?.header_desktop_font_size || localDeskFz;
+                        const titleColor = settings?.school_name_title_color || localTitleColor || "#6366f1";
+                        const isGradient = titleColor.includes('gradient');
 
                         const mobileFz = mobVal ? (String(mobVal).endsWith('px') ? String(mobVal) : `${mobVal}px`) : undefined;
                         const desktopFz = deskVal ? (String(deskVal).endsWith('px') ? String(deskVal) : `${deskVal}px`) : undefined;
+
+                        const titleStyle: React.CSSProperties = isGradient
+                            ? {
+                                '--mobile-header-fz': `var(--preview-header-mobile-fz, ${mobileFz || '14px'})`,
+                                '--desktop-header-fz': `var(--preview-header-desktop-fz, ${desktopFz || '22px'})`,
+                                backgroundImage: `var(--preview-header-title-gradient, ${titleColor})`,
+                                WebkitBackgroundClip: 'text',
+                                backgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                color: 'transparent',
+                            }
+                            : {
+                                '--mobile-header-fz': `var(--preview-header-mobile-fz, ${mobileFz || '14px'})`,
+                                '--desktop-header-fz': `var(--preview-header-desktop-fz, ${desktopFz || '22px'})`,
+                                color: `var(--preview-header-title-color, ${titleColor})`,
+                                WebkitTextFillColor: `var(--preview-header-title-color, ${titleColor})`,
+                            };
 
                         return (
                             <h1
                                 title={settings?.school_name}
                                 suppressHydrationWarning
-                                style={{
-                                    '--mobile-header-fz': `var(--preview-header-mobile-fz, ${mobileFz || '14px'})`,
-                                    '--desktop-header-fz': `var(--preview-header-desktop-fz, ${desktopFz || '22px'})`,
-                                } as React.CSSProperties}
+                                style={titleStyle}
                                 className={cn(
-                                    "font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary via-indigo-600 to-rose-500 animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap truncate leading-tight [font-size:var(--mobile-header-fz)] md:[font-size:var(--desktop-header-fz)]"
+                                    "font-black tracking-tight animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap truncate leading-tight [font-size:var(--mobile-header-fz)] md:[font-size:var(--desktop-header-fz)]"
                                 )}
                             >
                                 {loading ? (
@@ -806,7 +823,23 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                             </h1>
                         );
                     })()}
-                    <div className="h-0.5 w-12 bg-gradient-to-r from-primary to-transparent rounded-full mt-[-2px] hidden md:block opacity-70" />
+                    {(() => {
+                        const localTitleColor = mounted && typeof window !== 'undefined' ? localStorage.getItem("school_name_title_color") : null;
+                        const titleColor = settings?.school_name_title_color || localTitleColor || "#6366f1";
+                        const isGradient = titleColor.includes('gradient');
+                        const underlineBg = isGradient
+                            ? `var(--preview-header-title-gradient, ${titleColor})`
+                            : `linear-gradient(to right, var(--preview-header-title-color, ${titleColor}), transparent)`;
+
+                        return (
+                            <div
+                                className="h-0.5 w-12 rounded-full mt-[-2px] hidden md:block opacity-70"
+                                style={{
+                                    background: underlineBg
+                                }}
+                            />
+                        );
+                    })()}
                 </div>
             </div>
 

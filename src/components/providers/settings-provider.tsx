@@ -34,6 +34,7 @@ interface GeneralSettings {
     skins: string;
     side_menu: string;
     primary_color: string;
+    school_name_title_color?: string;
     box_content: string;
     mobile_api_url: string;
     mobile_primary_color: string;
@@ -57,6 +58,7 @@ interface GeneralSettings {
     footer_contact_info_label?: string;
     header_desktop_font_size?: string;
     header_mobile_font_size?: string;
+    school_title_color?: string;
     pwa_icon_512?: string;
     pwa_icon_192?: string;
     pwa_icon_maskable?: string;
@@ -112,6 +114,7 @@ function createDefaultSettings(): GeneralSettings {
         skins: "default",
         side_menu: "default",
         primary_color: "#3b82f6",
+        school_name_title_color: "#6366f1",
         box_content: "default",
         mobile_api_url: fallbackBaseUrl,
         mobile_primary_color: "#3b82f6",

@@ -87,69 +87,77 @@ export const handlers = [
     })
   }),
 
+const mockGeneralSettings = {
+  school_name: "iSchool Management System",
+  school_slogan: "Excellence in Education",
+  school_description: "Comprehensive school management system for modern educational institutions",
+  school_code: "ISCHOOL",
+  address: "123 Education Street, Learning City, LC 12345",
+  phone: "+1 234 567 890",
+  email: "admin@ischool.com",
+  session: "2026",
+  session_start_month: "4",
+  date_format: "d/m/Y",
+  timezone: "UTC",
+  start_day_of_week: "monday",
+  time_format: "12",
+  currency_format: "USD",
+  base_url: "http://localhost:3000",
+  file_upload_path: "uploads/",
+  print_logo: "/logo-print.png",
+  admin_logo: "/logo-admin.png",
+  admin_small_logo: "/logo-admin-small.png",
+  app_logo: "/logo-app.png",
+  login_page_background_admin: "/bg-admin.jpg",
+  login_page_background_user: "/bg-user.jpg",
+  theme_mode: "light",
+  skins: "default",
+  side_menu: "default",
+  primary_color: "#3b82f6",
+  school_name_title_color: "#6366f1",
+  box_content: "default",
+  mobile_api_url: "http://localhost:3000/api",
+  mobile_primary_color: "#3b82f6",
+  mobile_secondary_color: "#64748b",
+  student_login: true,
+  parent_login: true,
+  student_login_admission_no: true,
+  student_login_mobile_no: true,
+  student_login_email: true,
+  parent_login_mobile_no: true,
+  parent_login_email: true,
+  allow_student_to_add_timeline: true,
+  attendance_type: "day_wise",
+  biometric_attendance: false,
+  devices: "",
+  low_attendance_limit: "75",
+  staff_attendance_settings: [
+    { type: "Present", from: "0", upto: "100", total: "100" }
+  ],
+  student_attendance_settings: [
+    { type: "Present", from: "0", upto: "100", total: "100" }
+  ]
+};
+
   // General settings
   http.get('*/api/v1/system-setting/general-setting', () => {
     return HttpResponse.json({
       status: "Success",
-      data: {
-        school_name: "iSchool Management System",
-        school_slogan: "Excellence in Education",
-        school_description: "Comprehensive school management system for modern educational institutions",
-        school_code: "ISCHOOL",
-        address: "123 Education Street, Learning City, LC 12345",
-        phone: "+1 234 567 890",
-        email: "admin@ischool.com",
-        session: "2026",
-        session_start_month: "4",
-        date_format: "d/m/Y",
-        timezone: "UTC",
-        start_day_of_week: "monday",
-        time_format: "12",
-        currency_format: "USD",
-        base_url: "http://localhost:3000",
-        file_upload_path: "uploads/",
-        print_logo: "/logo-print.png",
-        admin_logo: "/logo-admin.png",
-        admin_small_logo: "/logo-admin-small.png",
-        app_logo: "/logo-app.png",
-        login_page_background_admin: "/bg-admin.jpg",
-        login_page_background_user: "/bg-user.jpg",
-        theme_mode: "light",
-        skins: "default",
-        side_menu: "default",
-        primary_color: "#3b82f6",
-        box_content: "default",
-        mobile_api_url: "http://localhost:3000/api",
-        mobile_primary_color: "#3b82f6",
-        mobile_secondary_color: "#64748b",
-        student_login: true,
-        parent_login: true,
-        student_login_admission_no: true,
-        student_login_mobile_no: true,
-        student_login_email: true,
-        parent_login_mobile_no: true,
-        parent_login_email: true,
-        allow_student_to_add_timeline: true,
-        attendance_type: "day_wise",
-        biometric_attendance: false,
-        devices: "",
-        low_attendance_limit: "75",
-        staff_attendance_settings: [
-          { type: "Present", from: "0", upto: "100", total: "100" }
-        ],
-        student_attendance_settings: [
-          { type: "Present", from: "0", upto: "100", total: "100" }
-        ]
-      }
+      data: mockGeneralSettings
     })
   }),
 
   // Save General settings
   http.post('*/api/v1/system-setting/general-setting', async ({ request }) => {
+    try {
+      const body = await request.json() as Record<string, any>;
+      Object.assign(mockGeneralSettings, body);
+    } catch (_) {}
     return HttpResponse.json({
       status: "Success",
       success: true,
-      message: "General settings updated successfully"
+      message: "General settings updated successfully",
+      data: mockGeneralSettings
     })
   }),
 

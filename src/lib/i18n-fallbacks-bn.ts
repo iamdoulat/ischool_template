@@ -671,6 +671,8 @@ export const i18nFallbacksBn: Record<string, string> = {
   box_content_compact_wide: "Box Content (Compact/Wide)",
   skins_shadow_bordered: "Skins (Shadow/Bordered)",
   primary_color: "primary color",
+  school_name_title_color: "স্কুল নামের শিরোনামের রঙ",
+  school_name_title_color_desc: "উপরের নেভিগেশন হেডারে প্রদর্শিত স্কুল নামের জন্য আলাদা কাস্টম রঙ নির্ধারণ করুন।",
   mobile_app: "মোবাইল app",
   user_mobile_app: "ব্যবহারকারী mobile app",
   register_your_android_app: "register your android app",

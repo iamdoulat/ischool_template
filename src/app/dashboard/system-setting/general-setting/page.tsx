@@ -45,7 +45,12 @@ import {
     CheckCircle2,
     AlertTriangle,
     Save,
-    MessageSquare
+    MessageSquare,
+    Check,
+    Users,
+    GraduationCap,
+    UserCheck,
+    ShieldCheck
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import axios from "axios";
@@ -242,6 +247,7 @@ export default function GeneralSettingPage() {
         skins: "shadow",
         side_menu: "expanded",
         primary_color: "#4f46e5",
+        school_name_title_color: "#6366f1",
         box_content: "wide",
         mobile_api_url: "",
         mobile_primary_color: "#424242",
@@ -495,9 +501,13 @@ export default function GeneralSettingPage() {
         setFormData(prev => ({ ...prev, [field]: value }));
 
         // Real-time auto preview for theme, font size, and PWA fields
-        const realTimeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'box_content', 'header_desktop_font_size', 'header_mobile_font_size', 'pwa_app_short_name', 'pwa_app_description'];
+        const realTimeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'school_name_title_color', 'box_content', 'header_desktop_font_size', 'header_mobile_font_size', 'pwa_app_short_name', 'pwa_app_description'];
         if (realTimeFields.includes(field)) {
             updateSettingsLocal({ [field]: value });
+            if (field === 'school_name_title_color' && typeof window !== 'undefined') {
+                document.documentElement.style.setProperty('--preview-header-title-color', value || '');
+                localStorage.setItem('school_name_title_color', String(value));
+            }
             if (field === 'header_desktop_font_size' && typeof window !== 'undefined') {
                 document.documentElement.style.setProperty('--preview-header-desktop-fz', value ? `${value}px` : '');
             }
@@ -1311,6 +1321,159 @@ export default function GeneralSettingPage() {
                                 </div>
                             </div>
 
+                            {/* School Name Title Color */}
+                            <div className="space-y-5 pt-3 border-t border-gray-100">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <Palette className="h-4 w-4 text-indigo-600" />
+                                            <label className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                                {t("school_name_title_color") || "School Name Title Color"}
+                                            </label>
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 mt-0.5">
+                                            {t("school_name_title_color_desc") || "Set a dedicated solid color or vibrant multi-color gradient for the school name in the top navigation header."}
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50/80 border border-gray-200/80 shadow-2xs self-start sm:self-auto">
+                                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Preview:</span>
+                                        <span 
+                                            className="text-xs font-black truncate max-w-[200px]"
+                                            style={
+                                                (formData.school_name_title_color || '#6366f1').includes('gradient')
+                                                    ? {
+                                                        backgroundImage: formData.school_name_title_color,
+                                                        WebkitBackgroundClip: 'text',
+                                                        backgroundClip: 'text',
+                                                        WebkitTextFillColor: 'transparent',
+                                                        color: 'transparent'
+                                                    }
+                                                    : { color: formData.school_name_title_color || '#6366f1' }
+                                            }
+                                        >
+                                            {formData.school_name || "Smart School"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Multi-Color Gradient Plates */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">
+                                            ✨ Multi-Color Gradient Palettes
+                                        </span>
+                                        <span className="text-[10px] text-gray-400 font-medium">12 designer gradients</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+                                        {[
+                                            { name: "Royal Violet", gradient: "linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)" },
+                                            { name: "Sunset Fire", gradient: "linear-gradient(135deg, #FF512F 0%, #F09819 50%, #DD2476 100%)" },
+                                            { name: "Ocean Cyan", gradient: "linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)" },
+                                            { name: "Emerald Mint", gradient: "linear-gradient(135deg, #0ba360 0%, #3cba92 100%)" },
+                                            { name: "Cosmic Fusion", gradient: "linear-gradient(135deg, #8A2387 0%, #E94057 50%, #F27121 100%)" },
+                                            { name: "Golden Sunrise", gradient: "linear-gradient(135deg, #f6d365 0%, #fda085 100%)" },
+                                            { name: "Cyberpunk Neon", gradient: "linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 52%, #2BFF88 100%)" },
+                                            { name: "Deep Nebula", gradient: "linear-gradient(135deg, #4A00E0 0%, #8E2DE2 100%)" },
+                                            { name: "Aurora Sky", gradient: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)" },
+                                            { name: "Flaming Amber", gradient: "linear-gradient(135deg, #FF9800 0%, #FF5722 50%, #E91E63 100%)" },
+                                            { name: "Midnight Bloom", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
+                                            { name: "Rose & Coral", gradient: "linear-gradient(135deg, #F857A6 0%, #FF5858 100%)" },
+                                        ].map(({ name, gradient }) => {
+                                            const isSelected = formData.school_name_title_color === gradient;
+                                            return (
+                                                <button
+                                                    key={name}
+                                                    type="button"
+                                                    title={name}
+                                                    onClick={() => handleChange('school_name_title_color', gradient)}
+                                                    className={cn(
+                                                        "h-10 px-2 rounded-xl transition-all border-2 ring-offset-1 hover:scale-102 active:scale-98 shadow-xs flex items-center justify-between gap-1.5 cursor-pointer relative overflow-hidden group",
+                                                        isSelected
+                                                            ? "border-indigo-600 ring-2 ring-indigo-500 shadow-md scale-102"
+                                                            : "border-gray-200/80 hover:border-gray-300"
+                                                    )}
+                                                    style={{ background: gradient }}
+                                                >
+                                                    <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] truncate">
+                                                        {name}
+                                                    </span>
+                                                    {isSelected ? (
+                                                        <div className="h-4 w-4 rounded-full bg-white/90 shadow-sm flex items-center justify-center shrink-0">
+                                                            <Check className="h-2.5 w-2.5 text-indigo-700 font-black" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="h-3.5 w-3.5 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Solid Color Palettes & Custom Picker */}
+                                <div className="space-y-2 pt-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">
+                                            🎨 Solid Color Palettes & Custom Picker
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        {[
+                                            { color: '#6366f1', label: 'Indigo' },
+                                            { color: '#2563eb', label: 'Blue' },
+                                            { color: '#0284c7', label: 'Sky' },
+                                            { color: '#059669', label: 'Emerald' },
+                                            { color: '#d97706', label: 'Amber' },
+                                            { color: '#dc2626', label: 'Red' },
+                                            { color: '#9333ea', label: 'Purple' },
+                                            { color: '#e11d48', label: 'Rose' },
+                                            { color: '#0f172a', label: 'Slate' },
+                                        ].map(({ color, label }) => {
+                                            const isSelected = formData.school_name_title_color?.toLowerCase() === color.toLowerCase();
+                                            return (
+                                                <button
+                                                    key={color}
+                                                    type="button"
+                                                    title={label}
+                                                    onClick={() => handleChange('school_name_title_color', color)}
+                                                    className={cn(
+                                                        "w-9 h-9 rounded-xl transition-all border-2 ring-offset-2 hover:scale-105 active:scale-95 shadow-xs flex items-center justify-center cursor-pointer",
+                                                        isSelected
+                                                            ? "border-gray-500 ring-2 ring-indigo-500 scale-105"
+                                                            : "border-transparent"
+                                                    )}
+                                                    style={{ backgroundColor: color }}
+                                                >
+                                                    {isSelected && (
+                                                        <Check className="h-4 w-4 text-white drop-shadow-sm" />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                        <div className="relative group flex items-center gap-2">
+                                            <div className="relative">
+                                                <input
+                                                    type="color"
+                                                    value={!formData.school_name_title_color?.includes('gradient') ? (formData.school_name_title_color || '#6366f1') : '#6366f1'}
+                                                    onChange={(e) => handleChange('school_name_title_color', e.target.value)}
+                                                    className="absolute inset-0 opacity-0 cursor-pointer w-9 h-9 z-10"
+                                                />
+                                                <div className="w-9 h-9 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center group-hover:border-indigo-400 transition-colors shadow-xs">
+                                                    <div className="w-4 h-4 rounded-full border border-gray-300 shadow-inner" style={{ background: 'conic-gradient(red, yellow, green, cyan, blue, magenta, red)' }} />
+                                                </div>
+                                            </div>
+                                            <Input
+                                                type="text"
+                                                value={formData.school_name_title_color || '#6366f1'}
+                                                onChange={(e) => handleChange('school_name_title_color', e.target.value)}
+                                                placeholder="#6366f1 or gradient"
+                                                className="h-8 w-36 text-[11px] font-mono bg-white border-gray-200"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Box Content */}
                             <div className="space-y-4">
                                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("box_content_compact_wide")}</label>
@@ -1423,120 +1586,240 @@ export default function GeneralSettingPage() {
 
             case "Student / Guardian Panel":
                 return (
-                    <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("student_guardian_panel")}</h2>
+                    <div className="space-y-6 animate-in fade-in duration-300">
+                        {/* Section Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-indigo-600" />
+                                    <h2 className="text-sm font-bold text-gray-800 tracking-tight">
+                                        {t("student_guardian_panel") || "Student / Guardian Panel"}
+                                    </h2>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    {t("student_guardian_panel_desc") || "Configure student and parent portal login options, multi-identifier credentials, and timeline access."}
+                                </p>
+                            </div>
+                            <Button
+                                onClick={() => handleSave()}
+                                disabled={saving}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none self-start sm:self-auto cursor-pointer"
+                            >
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                                        {t("saving") || "Saving..."}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="h-3.5 w-3.5 mr-1.5" />
+                                        {t("save") || "Save Settings"}
+                                    </>
+                                )}
+                            </Button>
                         </div>
 
-                        <div className="space-y-8 max-w-4xl">
-                            {/* User Login Option */}
-                            <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] items-center gap-4">
-                                <Label className="text-xs font-medium text-gray-600">{t("user_login_option")}</Label>
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
+                        <div className="grid grid-cols-1 gap-5 max-w-4xl">
+                            {/* Card 1: Portal Access Options */}
+                            <div className="p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                    <UserCheck className="h-4 w-4 text-indigo-600" />
+                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                        {t("user_login_option") || "Portal Login Access"}
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Enable or disable login portal access for Students and Parents/Guardians.
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                                    <div className={cn(
+                                        "flex items-center justify-between p-3.5 rounded-lg border transition-all",
+                                        formData.student_login 
+                                            ? "bg-indigo-50/40 border-indigo-200/80" 
+                                            : "bg-gray-50/60 border-gray-200"
+                                    )}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold",
+                                                formData.student_login ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
+                                            )}>
+                                                <GraduationCap className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="student_login" className="text-xs font-bold text-gray-800 cursor-pointer">
+                                                    {t("student_login") || "Student Login"}
+                                                </label>
+                                                <p className="text-[11px] text-gray-500">Allow students to log into student dashboard</p>
+                                            </div>
+                                        </div>
+                                        <Switch
                                             id="student_login"
                                             checked={!!formData.student_login}
                                             onCheckedChange={(checked) => handleChange('student_login', checked)}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                            className="data-[state=checked]:bg-indigo-600 scale-90 cursor-pointer"
                                         />
-                                        <label htmlFor="student_login" className="text-xs text-gray-600 font-medium cursor-pointer">{t("student_login")}</label>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
+
+                                    <div className={cn(
+                                        "flex items-center justify-between p-3.5 rounded-lg border transition-all",
+                                        formData.parent_login 
+                                            ? "bg-indigo-50/40 border-indigo-200/80" 
+                                            : "bg-gray-50/60 border-gray-200"
+                                    )}>
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn(
+                                                "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold",
+                                                formData.parent_login ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
+                                            )}>
+                                                <Users className="h-4 w-4" />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="parent_login" className="text-xs font-bold text-gray-800 cursor-pointer">
+                                                    {t("parent_login") || "Parent Login"}
+                                                </label>
+                                                <p className="text-[11px] text-gray-500">Allow parents/guardians to access parent dashboard</p>
+                                            </div>
+                                        </div>
+                                        <Switch
                                             id="parent_login"
                                             checked={!!formData.parent_login}
                                             onCheckedChange={(checked) => handleChange('parent_login', checked)}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                            className="data-[state=checked]:bg-indigo-600 scale-90 cursor-pointer"
                                         />
-                                        <label htmlFor="parent_login" className="text-xs text-gray-600 font-medium cursor-pointer">{t("parent_login")}</label>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Additional Username Option For Student Login */}
-                            <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] items-center gap-4">
-                                <Label className="text-xs font-medium text-gray-600">{t("additional_username_option_for_student_login")}</Label>
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-2">
+                            {/* Card 2: Student Login Credentials */}
+                            <div className={cn(
+                                "p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-3 transition-opacity",
+                                !formData.student_login && "opacity-50 pointer-events-none"
+                            )}>
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                    <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                        {t("additional_username_option_for_student_login") || "Additional Username Options For Student Login"}
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Students can always log in with their standard Username. Select additional credentials students can use as their login identifier:
+                                </p>
+                                <div className="flex flex-wrap items-center gap-6 pt-1">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="student_login_admission_no"
                                             checked={!!formData.student_login_admission_no}
                                             onCheckedChange={(checked) => handleChange('student_login_admission_no', checked)}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                            className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="student_login_admission_no" className="text-xs text-gray-600 font-medium cursor-pointer">{t("admission_no")}</label>
+                                        <label htmlFor="student_login_admission_no" className="text-xs text-gray-700 font-semibold cursor-pointer">
+                                            {t("admission_no") || "Admission Number"}
+                                        </label>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="student_login_mobile_no"
                                             checked={!!formData.student_login_mobile_no}
                                             onCheckedChange={(checked) => handleChange('student_login_mobile_no', checked)}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                            className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="student_login_mobile_no" className="text-xs text-gray-600 font-medium cursor-pointer">{t("mobile_number")}</label>
+                                        <label htmlFor="student_login_mobile_no" className="text-xs text-gray-700 font-semibold cursor-pointer">
+                                            {t("mobile_number") || "Registered Mobile Number"}
+                                        </label>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="student_login_email"
                                             checked={!!formData.student_login_email}
                                             onCheckedChange={(checked) => handleChange('student_login_email', checked)}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                            className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="student_login_email" className="text-xs text-gray-600 font-medium cursor-pointer">{t("email")}</label>
+                                        <label htmlFor="student_login_email" className="text-xs text-gray-700 font-semibold cursor-pointer">
+                                            {t("email") || "Registered Email Address"}
+                                        </label>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Additional Username Option For Parent Login */}
-                            <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] items-center gap-4">
-                                <Label className="text-xs font-medium text-gray-600">{t("additional_username_option_for_parent_login")}</Label>
-                                <div className="flex items-center gap-6">
-                                    <div className="flex items-center gap-2">
+                            {/* Card 3: Parent Login Credentials */}
+                            <div className={cn(
+                                "p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-3 transition-opacity",
+                                !formData.parent_login && "opacity-50 pointer-events-none"
+                            )}>
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                    <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                        {t("additional_username_option_for_parent_login") || "Additional Username Options For Parent Login"}
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    Parents can always log in with their standard Parent Username. Select additional credentials parents can use as their login identifier:
+                                </p>
+                                <div className="flex flex-wrap items-center gap-6 pt-1">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="parent_login_mobile_no"
                                             checked={!!formData.parent_login_mobile_no}
                                             onCheckedChange={(checked) => handleChange('parent_login_mobile_no', checked)}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                            className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="parent_login_mobile_no" className="text-xs text-gray-600 font-medium cursor-pointer">{t("mobile_number")}</label>
+                                        <label htmlFor="parent_login_mobile_no" className="text-xs text-gray-700 font-semibold cursor-pointer">
+                                            {t("mobile_number") || "Guardian Mobile Number"}
+                                        </label>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="parent_login_email"
                                             checked={!!formData.parent_login_email}
                                             onCheckedChange={(checked) => handleChange('parent_login_email', checked)}
-                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                            className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="parent_login_email" className="text-xs text-gray-600 font-medium cursor-pointer">{t("email")}</label>
+                                        <label htmlFor="parent_login_email" className="text-xs text-gray-700 font-semibold cursor-pointer">
+                                            {t("email") || "Guardian Email Address"}
+                                        </label>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Allow Student To Add Timeline */}
-                            <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] items-center gap-4">
-                                <Label className="text-xs font-medium text-gray-600">{t("allow_student_to_add_timeline")}</Label>
-                                <Switch
-                                    checked={!!formData.allow_student_to_add_timeline}
-                                    onCheckedChange={(checked) => handleChange('allow_student_to_add_timeline', checked)}
-                                    className="data-[state=checked]:bg-indigo-500 scale-90"
-                                />
+                            {/* Card 4: Student Timeline Permissions */}
+                            <div className="p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4 text-indigo-600" />
+                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                            {t("allow_student_to_add_timeline") || "Allow Student To Add Timeline"}
+                                        </h3>
+                                    </div>
+                                    <Switch
+                                        id="allow_student_to_add_timeline"
+                                        checked={!!formData.allow_student_to_add_timeline}
+                                        onCheckedChange={(checked) => handleChange('allow_student_to_add_timeline', checked)}
+                                        className="data-[state=checked]:bg-indigo-600 scale-90 cursor-pointer"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    When enabled, students are permitted to create timeline milestone entries and activity records directly from their student portal profile.
+                                </p>
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-4 border-t border-gray-50">
+                        {/* Bottom Action Bar */}
+                        <div className="flex justify-end pt-4 border-t border-gray-100 max-w-4xl">
                             <Button
-                                onClick={handleSave}
+                                onClick={() => handleSave()}
                                 disabled={saving}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none cursor-pointer"
                             >
                                 {saving ? (
                                     <>
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        {t("loading")}
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                                        {t("saving") || "Saving..."}
                                     </>
                                 ) : (
-                                    t("save")
+                                    <>
+                                        <Save className="h-3.5 w-3.5 mr-1.5" />
+                                        {t("save") || "Save Settings"}
+                                    </>
                                 )}
                             </Button>
                         </div>

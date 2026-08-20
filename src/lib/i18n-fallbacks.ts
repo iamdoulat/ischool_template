@@ -676,6 +676,8 @@ export const i18nFallbacks: Record<string, string> = {
   box_content_compact_wide: "Box Content (Compact/Wide)",
   skins_shadow_bordered: "Skins (Shadow/Bordered)",
   primary_color: "Primary Color",
+  school_name_title_color: "School Name Title Color",
+  school_name_title_color_desc: "Set a dedicated custom color for the school name title in the top navigation header.",
   mobile_app: "Mobile App",
   user_mobile_app: "User Mobile App",
   register_your_android_app: "Register your Android app",

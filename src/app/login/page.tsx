@@ -70,10 +70,30 @@ export default function LoginPage() {
         }).catch(() => { });
     }, []);
 
+    const isUserLoginAllowed = mounted ? (Boolean(settings?.student_login ?? true) || Boolean(settings?.parent_login ?? true)) : true;
+
+    useEffect(() => {
+        if (mounted && !isUserLoginAllowed && activeTab === "user") {
+            setActiveTab("admin");
+        }
+    }, [mounted, isUserLoginAllowed, activeTab]);
+
+    const getIdentifierPlaceholder = () => {
+        if (activeTab === 'admin') {
+            return "Email / Username";
+        }
+        const options = ["Username"];
+        if (settings?.student_login_admission_no ?? true) options.push("Admission No");
+        if (settings?.student_login_mobile_no || settings?.parent_login_mobile_no) options.push("Mobile");
+        if (settings?.student_login_email || settings?.parent_login_email) options.push("Email");
+        return options.join(" / ");
+    };
+
     const handleTabChange = (val: string) => {
         setActiveTab(val);
         setError("");
-        setCaptchaAnswer("");
+        setPassword("");
+        setEmailOrUsername("");
         regenerateCaptcha();
     };
 
@@ -251,20 +271,26 @@ export default function LoginPage() {
                         <Card className="border-white/10 bg-slate-800/60 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
                             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                                 <CardHeader className="space-y-2 p-3.5 sm:p-4 pb-2">
-                                    <TabsList className="grid grid-cols-2 bg-slate-900/60 p-0.5 rounded-xl border border-white/5 h-9">
-                                        <TabsTrigger
-                                            value="user"
-                                            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold text-xs transition-all"
-                                        >
-                                            User Login
-                                        </TabsTrigger>
-                                        <TabsTrigger
-                                            value="admin"
-                                            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold text-xs transition-all"
-                                        >
-                                            Admin Login
-                                        </TabsTrigger>
-                                    </TabsList>
+                                    {isUserLoginAllowed ? (
+                                        <TabsList className="grid grid-cols-2 bg-slate-900/60 p-0.5 rounded-xl border border-white/5 h-9">
+                                            <TabsTrigger
+                                                value="user"
+                                                className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold text-xs transition-all"
+                                            >
+                                                User Login
+                                            </TabsTrigger>
+                                            <TabsTrigger
+                                                value="admin"
+                                                className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-slate-300 font-semibold text-xs transition-all"
+                                            >
+                                                Admin Login
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    ) : (
+                                        <div className="bg-slate-900/60 p-1.5 rounded-xl border border-white/5 text-center text-xs font-semibold text-indigo-300">
+                                            Admin Portal Login
+                                        </div>
+                                    )}
 
                                     <div>
                                         <CardTitle className="text-xl sm:text-2xl text-white font-bold">
@@ -286,7 +312,7 @@ export default function LoginPage() {
                                                     id="email"
                                                     type="text"
                                                     autoComplete="username"
-                                                    placeholder="Email / Username"
+                                                    placeholder={getIdentifierPlaceholder()}
                                                     required
                                                     value={emailOrUsername}
                                                     onChange={(e) => setEmailOrUsername(e.target.value)}
