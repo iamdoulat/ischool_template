@@ -445,3 +445,33 @@
     display: none !important;
   }
 }
+
+/* Universal and element-specific text selection styling across entire application */
+*::selection,
+::selection {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+*::-moz-selection,
+::-moz-selection {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+/* Explicit input, textarea, select and contenteditable selection styling */
+input::selection,
+textarea::selection,
+select::selection,
+[contenteditable="true"]::selection {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
+
+input::-moz-selection,
+textarea::-moz-selection,
+select::-moz-selection,
+[contenteditable="true"]::-moz-selection {
+  background: #6366f1 !important;
+  color: #ffffff !important;
+}
