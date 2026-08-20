@@ -6,7 +6,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "@/components/ui/accordion";
-
+import { useImageUrl } from "@/lib/image-url";
 
 import { useTranslation } from "@/hooks/use-translation";
 
@@ -18,6 +18,7 @@ const defaultAccordions: { id: number; title: string; content: string }[] = [
 
 export function AboutSection({ about }: { about?: { section_title?: string; section_subtitle?: string; title?: string; description?: string; image_url?: string; accordions?: { id: number; title: string; content: string }[] } }) {
     const { t } = useTranslation();
+    const getImageUrl = useImageUrl();
     const accordions = (about?.accordions && about.accordions.length > 0) ? about.accordions : defaultAccordions;
 
     const displaySectionTitle = about?.section_title
@@ -51,7 +52,7 @@ export function AboutSection({ about }: { about?: { section_title?: string; sect
                         <div className="absolute inset-0 bg-[#C71585] rounded-3xl transform translate-x-4 translate-y-4 md:translate-x-6 md:translate-y-6 -z-10" />
                         <div className="relative rounded-3xl overflow-hidden shadow-2xl">
                             <img
-                                src={about?.image_url || "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1000&auto=format&fit=crop"}
+                                src={getImageUrl(about?.image_url || "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1000&auto=format&fit=crop")}
                                 alt="About"
                                 loading="lazy"
                                 decoding="async"

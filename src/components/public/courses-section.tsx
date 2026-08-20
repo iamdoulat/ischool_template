@@ -8,6 +8,7 @@ import { ArrowRight, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 import { useTranslation } from "@/hooks/use-translation";
+import { useImageUrl } from "@/lib/image-url";
 
 interface CourseItem {
     title: string;
@@ -41,6 +42,7 @@ const defaultCourses: CourseItem[] = [
 
 export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubtitle }: { courses?: CourseItem[]; sectionTitle?: string; sectionSubtitle?: string }) {
     const { t } = useTranslation();
+    const getImageUrl = useImageUrl();
     const [detailCourse, setDetailCourse] = useState<CourseItem | null>(null);
 
     const courses = (propCourses && propCourses.length > 0 ? propCourses : defaultCourses).map((c, i) => ({
@@ -73,7 +75,7 @@ export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubt
                                 <div className="relative h-64">
                                     <div className="w-full h-full overflow-hidden rounded-t-xl">
                                         <img
-                                            src={course.image}
+                                            src={getImageUrl(course.image)}
                                             alt={course.title}
                                             loading="lazy"
                                             decoding="async"
@@ -124,7 +126,7 @@ export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubt
                 <DialogContent className="sm:max-w-[600px] p-0 rounded-lg border-none shadow-2xl">
                     <div className="relative h-56 bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-900 overflow-hidden">
                         {detailCourse?.image && (
-                            <img src={detailCourse.image} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
+                            <img src={getImageUrl(detailCourse.image)} alt="" className="absolute inset-0 w-full h-full object-cover opacity-40" />
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                         <button onClick={() => setDetailCourse(null)} className="absolute top-4 right-4 text-white/80 hover:text-white transition-colors z-10">

@@ -1,7 +1,13 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useImageUrl } from "@/lib/image-url";
+
+interface StaffItem {
+    name: string;
+    role: string;
+    image_url?: string;
+    image?: string;
+}
 
 const defaultStaff = [
     {
@@ -26,11 +32,12 @@ const defaultStaff = [
     }
 ];
 
-export function StaffSection({ staff: propStaff, sectionTitle, sectionSubtitle }: { staff?: { name: string; role: string; image_url?: string }[]; sectionTitle?: string; sectionSubtitle?: string }) {
+export function StaffSection({ staff: propStaff, sectionTitle, sectionSubtitle }: { staff?: StaffItem[]; sectionTitle?: string; sectionSubtitle?: string }) {
+    const getImageUrl = useImageUrl();
     const staff = (propStaff && propStaff.length > 0 ? propStaff : defaultStaff).map((s, i) => ({
         name: s.name,
         role: s.role,
-        image: (s as any).image_url || (s as any).image || defaultStaff[i]?.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=300&auto=format&fit=crop"
+        image: s.image_url || s.image || defaultStaff[i]?.image || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=300&auto=format&fit=crop"
     }));
 
     return (
@@ -53,7 +60,7 @@ export function StaffSection({ staff: propStaff, sectionTitle, sectionSubtitle }
                         <div key={`staff-${idx}`} className="flex flex-col items-center space-y-4 group">
                             <div className="relative w-48 h-48 md:w-56 md:h-56 rounded-full overflow-hidden border-4 border-white shadow-xl transition-transform duration-500 group-hover:scale-105 group-hover:shadow-2xl group-hover:border-primary/20">
                                 <img
-                                    src={member.image}
+                                    src={getImageUrl(member.image)}
                                     alt={member.name}
                                     loading="lazy"
                                     decoding="async"
