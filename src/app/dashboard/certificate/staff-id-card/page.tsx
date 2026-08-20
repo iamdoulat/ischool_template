@@ -102,7 +102,7 @@ const emptyForm = {
     background_image: "", logo: "", signature: "",
     show_staff_name: true, show_staff_id: true, show_designation: true, show_department: true,
     show_father_name: false, show_mother_name: false, show_joining_date: true,
-    show_address: false, show_phone: false, show_dob: false, show_qr: false,
+    show_address: false, show_phone: false, show_dob: false, show_qr: true,
 };
 
 const TABLE_COLS = 4;

@@ -81,7 +81,7 @@ const PLACEHOLDERS = [
     "[admission_no]", "[roll_no]", "[class]", "[section]", "[gender]",
     "[admission_date]", "[category]", "[caste]", "[father_name]", "[mother_name]",
     "[religion]", "[email]", "[phone]", "[present_date]", "[medical_history]",
-    "[session]", "[school_name]",
+    "[session]", "[school_name]", "[certificate_no]",
 ];
 
 const SAMPLE_STUDENT = {

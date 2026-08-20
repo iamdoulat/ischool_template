@@ -411,7 +411,7 @@ export function renderCertificateHtml(
     student: StudentFields,
     settings?: SchoolSettings
 ): string {
-    const sub = (t?: string | null) => substitutePlaceholders(t ?? "", student);
+    const sub = (t?: string | null, wrapBold = false) => substitutePlaceholders(t ?? "", student, wrapBold);
     const layout = template.layout_type || "standard_school";
 
     const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -426,6 +426,19 @@ export function renderCertificateHtml(
     const footerCenter = sub(template.footer_center) || "";
     const footerRight = sub(template.footer_right) || "Principal";
     const presentDate = student.present_date || new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+    // Certificate Number & QR Code definition
+    const certNoFormatted = formatCertificateNumber(template, student, settings);
+    const certNoClean = certNoFormatted.replace(/^C\/N:\s*/i, "");
+
+    const certQrPayload = JSON.stringify({
+        cert_no: certNoClean,
+        student_name: recipientName,
+        admission_no: student.admission_no || "",
+        school: schoolName,
+        issue_date: presentDate,
+    });
+    const certQrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(certQrPayload)}&margin=0`;
 
     const logoHtml = schoolLogoUrl
         ? `<img src="${schoolLogoUrl}" alt="${schoolName}" class="school-logo-img" style="max-height:55px;max-width:180px;object-fit:contain;margin-bottom:2px;" />`
@@ -487,8 +500,11 @@ export function renderCertificateHtml(
       position: relative; z-index: 3; height: 100%;
       display: flex; flex-direction: column; justify-content: space-between; text-align: center;
     }
+    .header-top-row {
+      display: flex; justify-content: space-between; align-items: center; padding: 0 10px;
+    }
     .header-logo-block {
-      display: flex; flex-direction: column; align-items: center; margin-top: 10px;
+      display: flex; flex-direction: column; align-items: center;
     }
     .school-name-text {
       font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 800;
@@ -496,15 +512,15 @@ export function renderCertificateHtml(
     }
     .cert-title {
       font-family: 'Cinzel', serif; font-size: 32px; font-weight: 800;
-      letter-spacing: 2px; color: #926d27; text-transform: uppercase; margin-top: 18px;
+      letter-spacing: 2px; color: #926d27; text-transform: uppercase; margin-top: 14px;
     }
     .cert-subtitle {
       font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700;
-      letter-spacing: 3px; color: #4b382a; text-transform: uppercase; margin-top: 14px;
+      letter-spacing: 3px; color: #4b382a; text-transform: uppercase; margin-top: 12px;
     }
     .recipient-name {
       font-family: 'Cinzel', serif; font-size: 42px; font-weight: 800;
-      letter-spacing: 3px; color: #9e7529; text-transform: uppercase; margin: 12px 0 16px 0;
+      letter-spacing: 3px; color: #9e7529; text-transform: uppercase; margin: 10px 0 14px 0;
       text-shadow: 1px 1px 0 rgba(212,175,55,0.2);
     }
     .body-message {
@@ -547,9 +563,19 @@ export function renderCertificateHtml(
     <div class="inner-border"></div>
     <div class="inner-border-2"></div>
     <div class="cert-content">
-      <div class="header-logo-block">
-        ${logoHtml}
-        <div class="school-name-text">${schoolName}</div>
+      <div class="header-top-row">
+        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(253,251,247,0.95);border:1px solid #d4af37;padding:3px 7px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,0.06);text-align:left;">
+          <img src="${certQrCodeUrl}" alt="QR" style="width:28px;height:28px;object-fit:contain;display:block;border-radius:2px;background:#fff;" />
+          <div style="display:flex;flex-direction:column;line-height:1.15;">
+            <span style="font-size:7.5px;font-weight:700;color:#801522;text-transform:uppercase;letter-spacing:0.5px;">Certificate No:</span>
+            <span style="font-size:10.5px;font-weight:800;color:#1a1a1a;letter-spacing:0.3px;">${certNoClean}</span>
+          </div>
+        </div>
+        <div class="header-logo-block">
+          ${logoHtml}
+          <div class="school-name-text">${schoolName}</div>
+        </div>
+        <div style="width:130px;"></div>
       </div>
       <div>
         <div class="cert-title">${titleText}</div>
@@ -598,17 +624,18 @@ export function renderCertificateHtml(
     .cert-content {
       position: relative; z-index: 3; height: 100%; display: flex; flex-direction: column; justify-content: space-between; text-align: center; padding: 10px 40px;
     }
-    .header-logo-block { display: flex; flex-direction: column; align-items: center; margin-top: 15px; }
+    .header-top-row { display: flex; justify-content: space-between; align-items: center; }
+    .header-logo-block { display: flex; flex-direction: column; align-items: center; }
     .school-name-text { font-size: 13px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #19205a; margin-top: 4px; }
     .cert-title {
-      font-family: 'Fredoka', 'Montserrat', sans-serif; font-size: 38px; font-weight: 800; letter-spacing: 2px; color: #19205a; text-transform: uppercase; margin-top: 15px;
+      font-family: 'Fredoka', 'Montserrat', sans-serif; font-size: 38px; font-weight: 800; letter-spacing: 2px; color: #19205a; text-transform: uppercase; margin-top: 12px;
     }
-    .cert-subtitle { font-size: 13px; font-weight: 600; color: #4b5563; margin-top: 12px; }
+    .cert-subtitle { font-size: 13px; font-weight: 600; color: #4b5563; margin-top: 10px; }
     .recipient-name {
-      font-family: 'Fredoka', 'Montserrat', sans-serif; font-size: 40px; font-weight: 800; letter-spacing: 2px; color: #19205a; text-transform: uppercase; margin: 12px 0 14px 0;
+      font-family: 'Fredoka', 'Montserrat', sans-serif; font-size: 40px; font-weight: 800; letter-spacing: 2px; color: #19205a; text-transform: uppercase; margin: 10px 0 12px 0;
     }
     .body-message { font-size: 13px; font-weight: 500; line-height: 1.7; color: #1f2937; max-width: 620px; margin: 0 auto; }
-    .date-display { font-size: 12px; font-weight: 600; color: #4b5563; margin-top: 12px; }
+    .date-display { font-size: 12px; font-weight: 600; color: #4b5563; margin-top: 10px; }
     .cert-footer-row { display: flex; justify-content: space-between; align-items: flex-end; position: relative; margin-bottom: 10px; }
     .sig-block { display: flex; flex-direction: column; align-items: center; width: 220px; text-align: center; margin: 0 auto; }
     .sig-line { width: 180px; height: 2px; background: #19205a; margin-bottom: 6px; }
@@ -625,9 +652,19 @@ export function renderCertificateHtml(
       <path d="M 60,40 Q 150,15 250,40 T 500,30 T 750,40 T 940,40 Q 970,150 950,350 T 950,640 Q 850,670 750,650 T 500,660 T 250,650 T 60,650 Q 30,500 50,350 T 50,60 Z" fill="#ffffff"/>
     </svg>
     <div class="cert-content">
-      <div class="header-logo-block">
-        ${logoHtml}
-        <div class="school-name-text">${schoolName}</div>
+      <div class="header-top-row">
+        <div style="display:inline-flex;align-items:center;gap:6px;background:#ffffff;border:1.5px solid #facc15;padding:3px 8px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.06);text-align:left;">
+          <img src="${certQrCodeUrl}" alt="QR" style="width:28px;height:28px;object-fit:contain;display:block;border-radius:2px;background:#fff;" />
+          <div style="display:flex;flex-direction:column;line-height:1.15;">
+            <span style="font-size:7.5px;font-weight:800;color:#58138b;text-transform:uppercase;letter-spacing:0.5px;">Certificate No:</span>
+            <span style="font-size:10.5px;font-weight:800;color:#19205a;letter-spacing:0.3px;">${certNoClean}</span>
+          </div>
+        </div>
+        <div class="header-logo-block">
+          ${logoHtml}
+          <div class="school-name-text">${schoolName}</div>
+        </div>
+        <div style="width:130px;"></div>
       </div>
       <div>
         <div class="cert-title">${titleText}</div>
@@ -676,7 +713,7 @@ export function renderCertificateHtml(
       background: #ffffff; height: 100%; width: 100%; border: 12px solid #ffffff;
       display: flex; flex-direction: column; justify-content: space-between; position: relative;
     }
-    .top-burgundy-banner { background: #422020; color: #ffffff; text-align: center; padding: 24px 20px 20px 20px; }
+    .top-burgundy-banner { background: #422020; color: #ffffff; text-align: center; padding: 24px 20px 20px 20px; position: relative; }
     .banner-school-name { font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #f3e8e8; margin-bottom: 6px; }
     .banner-title { font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 800; letter-spacing: 1px; color: #ffffff; }
     .body-content-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px 60px; }
@@ -695,6 +732,13 @@ export function renderCertificateHtml(
   <div class="cert-page">
     <div class="cert-inner-card">
       <div class="top-burgundy-banner">
+        <div style="position:absolute;top:16px;left:20px;display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);padding:3px 7px;border-radius:4px;text-align:left;">
+          <img src="${certQrCodeUrl}" alt="QR" style="width:26px;height:26px;object-fit:contain;display:block;border-radius:2px;background:#fff;" />
+          <div style="display:flex;flex-direction:column;line-height:1.15;">
+            <span style="font-size:7.5px;font-weight:700;color:#f3e8e8;text-transform:uppercase;letter-spacing:0.5px;">Certificate No:</span>
+            <span style="font-size:10.5px;font-weight:800;color:#ffffff;letter-spacing:0.3px;">${certNoClean}</span>
+          </div>
+        </div>
         <div class="banner-school-name">${schoolName}</div>
         <div class="banner-title">${titleText}</div>
       </div>
@@ -847,7 +891,7 @@ export function renderCertificateHtml(
     }
     .title-row-container {
       display: grid;
-      grid-template-columns: 180px 1fr 180px;
+      grid-template-columns: 210px 1fr 180px;
       align-items: start;
       margin-bottom: 6px;
       position: relative;
@@ -892,18 +936,18 @@ export function renderCertificateHtml(
     /* Certificate Number Badge */
     .cert-no-box {
       font-family: 'Arial Narrow', 'Nimbus Sans L', Arial, sans-serif;
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 700;
       color: #0f172a;
       letter-spacing: 0.3px;
       background: #f8fafc;
       border: 1px solid #cbd5e1;
       border-left: 3.5px solid #0f766e;
-      padding: 4px 10px;
+      padding: 4px 8px;
       border-radius: 4px;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 7px;
       justify-self: start;
       align-self: start;
       margin-top: 2px;
@@ -911,12 +955,15 @@ export function renderCertificateHtml(
     .cert-no-label {
       font-weight: 800;
       color: #0f766e;
-      font-size: 12.5px;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
     }
     .cert-no-val {
       font-weight: 800;
       color: #0f172a;
-      font-size: 13.5px;
+      font-size: 12.5px;
+      letter-spacing: 0.3px;
     }
     .photo-box {
       width: 78px;
@@ -1069,8 +1116,11 @@ export function renderCertificateHtml(
     <div class="letterhead-body">
       <div class="title-row-container">
         <div class="cert-no-box">
-          <span class="cert-no-label">C/N:</span>
-          <span class="cert-no-val">${(formatCertificateNumber(template, student, settings)).replace(/^C\/N:\s*/i, "")}</span>
+          <img src="${certQrCodeUrl}" alt="QR" style="width:30px;height:30px;object-fit:contain;display:block;border-radius:2px;background:#fff;" />
+          <div style="display:flex;flex-direction:column;line-height:1.15;">
+            <span class="cert-no-label">Certificate No:</span>
+            <span class="cert-no-val">${certNoClean}</span>
+          </div>
         </div>
         <div class="cert-title-center">
           <h1 class="cert-main-title">${titleText}</h1>
@@ -1334,7 +1384,16 @@ export function renderCertificateHtml(
 <body>
   <div class="cert-wrapper">
     <div class="cert-header">
-      <div class="header-col-left">${sub(template.header_left) || `Date: ${presentDate}`}</div>
+      <div class="header-col-left">
+        <div>${sub(template.header_left) || `Date: ${presentDate}`}</div>
+        <div style="display:inline-flex;align-items:center;gap:6px;background:#f8fafc;border:1px solid #cbd5e1;border-left:3px solid #4f46e5;padding:3px 7px;border-radius:4px;margin-top:5px;text-align:left;">
+          <img src="${certQrCodeUrl}" alt="QR" style="width:26px;height:26px;object-fit:contain;display:block;border-radius:2px;background:#fff;" />
+          <div style="display:flex;flex-direction:column;line-height:1.15;">
+            <span style="font-size:7.5px;font-weight:700;color:#4f46e5;text-transform:uppercase;letter-spacing:0.4px;">Certificate No:</span>
+            <span style="font-size:10.5px;font-weight:800;color:#0f172a;letter-spacing:0.3px;">${certNoClean}</span>
+          </div>
+        </div>
+      </div>
       <div class="header-col-center">
         ${logoHtml}
         <div class="school-name">${schoolName}</div>
@@ -1646,7 +1705,7 @@ export const PREBUILT_STUDENT_ID_CARDS: PrebuiltIdCardPreset[] = [
         show_dob: true,
         show_blood_group: true,
         show_house: true,
-        show_qr: false,
+        show_qr: true,
         description: "Energetic emerald & teal horizontal card with clean badges, rounded photo frame, and authorized sign section.",
         preview_bg: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)",
         badge_color: "bg-teal-700 text-white",
@@ -1761,7 +1820,7 @@ export const PREBUILT_STAFF_ID_CARDS: PrebuiltIdCardPreset[] = [
         show_address: true,
         show_phone: true,
         show_dob: true,
-        show_qr: false,
+        show_qr: true,
         description: "Vibrant emerald educator badge with clean grid info, employee joining date, and emergency contact details.",
         preview_bg: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)",
         badge_color: "bg-teal-700 text-white",
@@ -1865,13 +1924,10 @@ export function renderIdCardHtml(
         : `<div style="text-align:right;"><div style="width:55px;border-bottom:1px dashed #cbd5e1;margin-bottom:2px;"></div><div style="font-size:8px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Auth Sign</div></div>`;
 
     const identifierVal = type === "staff" ? (person.staff_id || "STAFF") : (person.admission_no || "STUDENT");
-
-    const qrHtml = card.show_qr
-        ? `<div style="display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #e2e8f0;padding:2px 5px;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,0.04);">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${headerColor}" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18h3v3h-3zM19 19h2v2h-2z"/></svg>
-            <span style="font-size:8px;font-weight:800;color:#334155;letter-spacing:0.4px;">${identifierVal}</span>
-          </div>`
-        : "";
+    // Format matching /dashboard/qr-code-attendance/qr-code-generation page
+    const rawQrCode = person.qr_code || (type === "staff" ? (person.staff_id || person.name || "STAFF") : (person.admission_no || person.name || "STUDENT"));
+    const qrPayload = JSON.stringify({ qr_code: rawQrCode });
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrPayload)}&margin=1`;
 
     if (vertical) {
         return `<!DOCTYPE html>
@@ -1921,7 +1977,15 @@ export function renderIdCardHtml(
       </table>
     </div>
     <div class="footer">
-      ${qrHtml ? qrHtml : "<div></div>"}
+      ${card.show_qr ? `
+        <div style="display:flex;align-items:center;gap:6px;background:#fff;border:1px solid #cbd5e1;padding:3px 6px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <img src="${qrCodeUrl}" alt="QR" style="width:38px;height:38px;object-fit:contain;display:block;" />
+          <div style="display:flex;flex-direction:column;text-align:left;line-height:1.2;">
+            <span style="font-size:7px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">VERIFIED ID</span>
+            <span style="font-size:9px;font-weight:800;color:#0f172a;">${identifierVal}</span>
+          </div>
+        </div>
+      ` : "<div></div>"}
       ${signHtml}
     </div>
   </div>
@@ -1977,7 +2041,15 @@ export function renderIdCardHtml(
       </div>
     </div>
     <div class="footer">
-      ${qrHtml ? qrHtml : "<div></div>"}
+      ${card.show_qr ? `
+        <div style="display:flex;align-items:center;gap:5px;background:#fff;border:1px solid #cbd5e1;padding:2px 5px;border-radius:5px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <img src="${qrCodeUrl}" alt="QR" style="width:34px;height:34px;object-fit:contain;display:block;" />
+          <div style="display:flex;flex-direction:column;text-align:left;line-height:1.1;">
+            <span style="font-size:7px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">SCAN CODE</span>
+            <span style="font-size:8px;font-weight:800;color:#1e293b;">${identifierVal}</span>
+          </div>
+        </div>
+      ` : "<div></div>"}
       ${signHtml}
     </div>
   </div>

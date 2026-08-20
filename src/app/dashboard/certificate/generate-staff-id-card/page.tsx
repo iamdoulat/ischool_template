@@ -42,6 +42,9 @@ import { getImageUrl } from "@/lib/image-url";
 
 interface ApiStaff {
     id: number;
+    user_id?: number;
+    qr_code?: string;
+    user?: { id?: number; qr_code?: string };
     staff_id?: string;
     name?: string;
     role?: string;
@@ -77,8 +80,9 @@ function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: n
     );
 }
 
-function toPerson(s: ApiStaff): IdCardPerson {
+function toPerson(s: ApiStaff, qrMap: Record<string, string> = {}): IdCardPerson {
     const avatarRaw = s.avatar || (s as any).image || (s as any).photo || null;
+    const resolvedQr = s.qr_code || s.user?.qr_code || (s.staff_id ? qrMap[String(s.staff_id)] : null) || (s.id ? qrMap[String(s.id)] : null) || s.staff_id || null;
     return {
         name: s.name || "",
         staff_id: s.staff_id || "",
@@ -93,6 +97,7 @@ function toPerson(s: ApiStaff): IdCardPerson {
         phone: s.phone || "",
         address: s.current_address || "",
         photo: avatarRaw ? getImageUrl(avatarRaw) : null,
+        qr_code: resolvedQr,
     };
 }
 
@@ -107,6 +112,7 @@ export default function GenerateStaffIDCardPage() {
     const [templateId, setTemplateId] = useState("");
 
     const [staff, setStaff] = useState<ApiStaff[]>([]);
+    const [qrMap, setQrMap] = useState<Record<string, string>>({});
     const [selected, setSelected] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
@@ -138,8 +144,24 @@ export default function GenerateStaffIDCardPage() {
         setLoading(true);
         setSearched(true);
         try {
-            const res = await api.get("/hr/staff-directory", { params: { role: selectedRole, no_paginate: true } });
+            const [res, qrRes] = await Promise.all([
+                api.get("/hr/staff-directory", { params: { role: selectedRole, no_paginate: true } }),
+                api.get("/smart-attendance/users").catch(() => ({ data: { data: [] } })),
+            ]);
             const data = res.data?.data || res.data || [];
+            const qrList = qrRes.data?.data || qrRes.data || [];
+            const map: Record<string, string> = {};
+            if (Array.isArray(qrList)) {
+                qrList.forEach((u: any) => {
+                    if (u.qr_code) {
+                        if (u.staff_id) map[String(u.staff_id)] = u.qr_code;
+                        if (u.id) map[String(u.id)] = u.qr_code;
+                        if (u.email) map[String(u.email)] = u.qr_code;
+                        if (u.name) map[String(u.name)] = u.qr_code;
+                    }
+                });
+            }
+            setQrMap(map);
             setStaff(Array.isArray(data) ? data : []);
             setSelected([]);
         } catch {
@@ -165,7 +187,7 @@ export default function GenerateStaffIDCardPage() {
             toast({ title: t("no_staff_selected"), description: t("select_at_least_one_staff"), variant: "destructive" });
             return;
         }
-        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s), "staff")).join(""));
+        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s, qrMap), "staff")).join(""));
     };
 
     const handlePrintSingle = (s: ApiStaff) => {
@@ -174,7 +196,7 @@ export default function GenerateStaffIDCardPage() {
             toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
             return;
         }
-        const html = renderIdCardHtml(template, toPerson(s), "staff");
+        const html = renderIdCardHtml(template, toPerson(s, qrMap), "staff");
         printIdCards(html);
     };
 
@@ -186,7 +208,7 @@ export default function GenerateStaffIDCardPage() {
         }
         setDownloadingId(s.id);
         try {
-            const html = renderIdCardHtml(template, toPerson(s), "staff");
+            const html = renderIdCardHtml(template, toPerson(s, qrMap), "staff");
             const safeName = (s.name || `staff_${s.id}`).replace(/[^a-zA-Z0-9-_]/g, "_");
             await downloadIdCardPdf(html, `Staff_ID_Card_${safeName}.pdf`);
             toast({ title: t("success"), description: t("id_card_downloaded") || "ID card downloaded successfully" });

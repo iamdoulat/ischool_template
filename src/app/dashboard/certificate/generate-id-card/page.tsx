@@ -45,6 +45,9 @@ interface SectionOption { id: number; name: string; }
 interface CategoryOption { id: number; category_name?: string; name?: string; }
 interface ApiStudent {
     id: number;
+    user_id?: number;
+    qr_code?: string;
+    user?: { id?: number; qr_code?: string };
     admission_no?: string;
     name?: string;
     first_name?: string;
@@ -114,8 +117,9 @@ function getCategoryName(s: ApiStudent, catList: CategoryOption[] = []): string 
     return "-";
 }
 
-function toPerson(s: ApiStudent): IdCardPerson {
+function toPerson(s: ApiStudent, qrMap: Record<string, string> = {}): IdCardPerson {
     const avatarRaw = s.avatar || (s as any).image || (s as any).photo || (s as any).student_photo || null;
+    const resolvedQr = s.qr_code || s.user?.qr_code || (s.admission_no ? qrMap[String(s.admission_no)] : null) || (s.id ? qrMap[String(s.id)] : null) || s.admission_no || null;
     return {
         name: studentName(s),
         admission_no: s.admission_no || "",
@@ -130,6 +134,7 @@ function toPerson(s: ApiStudent): IdCardPerson {
         phone: s.phone || "",
         address: s.current_address || "",
         photo: avatarRaw ? getImageUrl(avatarRaw) : null,
+        qr_code: resolvedQr,
     };
 }
 
@@ -147,6 +152,7 @@ export default function GenerateIDCardPage() {
     const [templateId, setTemplateId] = useState("");
 
     const [students, setStudents] = useState<ApiStudent[]>([]);
+    const [qrMap, setQrMap] = useState<Record<string, string>>({});
     const [selected, setSelected] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
@@ -191,8 +197,24 @@ export default function GenerateIDCardPage() {
         setLoading(true);
         setSearched(true);
         try {
-            const res = await api.get("/students", { params: { school_class_id: classId, section_id: sectionId || undefined, limit: 500 } });
-            const data = res.data?.data?.data || res.data?.data || res.data || [];
+            const [studentsRes, qrRes] = await Promise.all([
+                api.get("/students", { params: { school_class_id: classId, section_id: sectionId || undefined, limit: 500 } }),
+                api.get("/smart-attendance/users?role=student").catch(() => ({ data: { data: [] } })),
+            ]);
+            const data = studentsRes.data?.data?.data || studentsRes.data?.data || studentsRes.data || [];
+            const qrList = qrRes.data?.data || qrRes.data || [];
+            const map: Record<string, string> = {};
+            if (Array.isArray(qrList)) {
+                qrList.forEach((u: any) => {
+                    if (u.qr_code) {
+                        if (u.admission_no) map[String(u.admission_no)] = u.qr_code;
+                        if (u.id) map[String(u.id)] = u.qr_code;
+                        if (u.email) map[String(u.email)] = u.qr_code;
+                        if (u.name) map[String(u.name)] = u.qr_code;
+                    }
+                });
+            }
+            setQrMap(map);
             setStudents(Array.isArray(data) ? data : []);
             setSelected([]);
         } catch {
@@ -221,7 +243,7 @@ export default function GenerateIDCardPage() {
             toast({ title: t("no_students_selected"), description: t("select_at_least_one_student"), variant: "destructive" });
             return;
         }
-        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s), "student")).join(""));
+        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s, qrMap), "student")).join(""));
     };
 
     const handlePrintSingle = (s: ApiStudent) => {
@@ -230,7 +252,7 @@ export default function GenerateIDCardPage() {
             toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
             return;
         }
-        const html = renderIdCardHtml(template, toPerson(s), "student");
+        const html = renderIdCardHtml(template, toPerson(s, qrMap), "student");
         printIdCards(html);
     };
 
@@ -242,7 +264,7 @@ export default function GenerateIDCardPage() {
         }
         setDownloadingId(s.id);
         try {
-            const html = renderIdCardHtml(template, toPerson(s), "student");
+            const html = renderIdCardHtml(template, toPerson(s, qrMap), "student");
             const safeName = (s.name || s.first_name || `student_${s.id}`).replace(/[^a-zA-Z0-9-_]/g, "_");
             await downloadIdCardPdf(html, `Student_ID_Card_${safeName}.pdf`);
             toast({ title: t("success"), description: t("id_card_downloaded") || "ID card downloaded successfully" });

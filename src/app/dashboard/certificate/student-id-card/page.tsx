@@ -109,7 +109,7 @@ const emptyForm = {
     background_image: "", logo: "", signature: "",
     show_admission_no: true, show_student_name: true, show_class: true, show_roll_no: false,
     show_father_name: true, show_mother_name: false, show_address: false, show_phone: false,
-    show_dob: false, show_blood_group: false, show_house: false, show_qr: false,
+    show_dob: false, show_blood_group: false, show_house: false, show_qr: true,
 };
 
 const TABLE_COLS = 4;
