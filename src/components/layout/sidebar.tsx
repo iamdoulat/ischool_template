@@ -344,8 +344,7 @@ const menuItems = [
                 href: "#",
                 color: "amber",
                 submenus: [
-                    { name: "transfer_certificate", label: "Student Certificate", href: "/dashboard/certificate/transfer-certificate" },
-                    { name: "student_certificate", label: "Certificate Templates", href: "/dashboard/certificate/student-certificate" },
+                    { name: "student_certificate", href: "/dashboard/certificate/student-certificate" },
                     { name: "generate_certificate", href: "/dashboard/certificate/generate-certificate" },
                     { name: "student_id_card", href: "/dashboard/certificate/student-id-card" },
                     { name: "generate_id_card", href: "/dashboard/certificate/generate-id-card" },

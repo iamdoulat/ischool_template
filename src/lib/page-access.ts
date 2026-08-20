@@ -165,7 +165,6 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
   "/dashboard/hostel/hostel": { moduleKey: "hostel", submenuName: "hostel" },
 
   // Certificate
-  "/dashboard/certificate/transfer-certificate": { moduleKey: "certificate", submenuName: "transfer_certificate" },
   "/dashboard/certificate/student-certificate": { moduleKey: "certificate", submenuName: "student_certificate" },
   "/dashboard/certificate/generate-certificate": { moduleKey: "certificate", submenuName: "generate_certificate" },
   "/dashboard/certificate/student-id-card": { moduleKey: "certificate", submenuName: "student_id_card" },
