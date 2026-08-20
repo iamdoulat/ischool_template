@@ -24,14 +24,20 @@ export default async function Icon() {
             const settings = json.data || json;
             const raw = settings.favicon || settings.app_favicon || settings.admin_small_logo || settings.app_logo;
             if (raw) {
-                faviconUrl = getImageUrl(raw, settings.base_url);
+                const domain = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000")
+                    .replace(/\/+$/, "")
+                    .replace(/\/api\/v1\/?$/, "");
+                faviconUrl = getImageUrl(raw, settings.base_url || domain);
+                if (faviconUrl && !faviconUrl.startsWith("http://") && !faviconUrl.startsWith("https://")) {
+                    faviconUrl = `${domain}${faviconUrl.startsWith("/") ? "" : "/"}${faviconUrl}`;
+                }
             }
         }
     } catch (error) {
         console.error("Error fetching icon in icon.tsx:", error);
     }
 
-    if (faviconUrl) {
+    if (faviconUrl && (faviconUrl.startsWith("http://") || faviconUrl.startsWith("https://"))) {
         try {
             const imgRes = await fetch(faviconUrl);
             if (imgRes.ok) {

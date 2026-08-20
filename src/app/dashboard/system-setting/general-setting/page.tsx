@@ -504,9 +504,16 @@ export default function GeneralSettingPage() {
         const realTimeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'school_name_title_color', 'box_content', 'header_desktop_font_size', 'header_mobile_font_size', 'pwa_app_short_name', 'pwa_app_description'];
         if (realTimeFields.includes(field)) {
             updateSettingsLocal({ [field]: value });
+            if (field === 'primary_color' && typeof window !== 'undefined') {
+                localStorage.setItem('ischool_primary_color', String(value));
+                document.documentElement.style.setProperty('--sidebar-header-bg', String(value));
+                // Auto-persist primary color to backend so sidebar updates instantly
+                handleSave({ ...formData, [field]: value });
+            }
             if (field === 'school_name_title_color' && typeof window !== 'undefined') {
                 document.documentElement.style.setProperty('--preview-header-title-color', value || '');
                 localStorage.setItem('school_name_title_color', String(value));
+                handleSave({ ...formData, [field]: value });
             }
             if (field === 'header_desktop_font_size' && typeof window !== 'undefined') {
                 document.documentElement.style.setProperty('--preview-header-desktop-fz', value ? `${value}px` : '');
@@ -628,6 +635,25 @@ export default function GeneralSettingPage() {
     const handleLogoSuccess = (field: string, newUrl: string) => {
         if (typeof window !== 'undefined') {
             localStorage.setItem(`ischool_${field}`, newUrl);
+            if (field === "favicon" || field === "app_logo" || field === "admin_small_logo") {
+                const fullUrl = getImageUrl(newUrl) || newUrl;
+                const cacheBusted = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                
+                const syncLink = (rel: string) => {
+                    let link = document.querySelector<HTMLLinkElement>(`link[rel='${rel}']`);
+                    if (link) {
+                        link.href = cacheBusted;
+                    } else {
+                        link = document.createElement("link");
+                        link.rel = rel;
+                        link.href = cacheBusted;
+                        document.head.appendChild(link);
+                    }
+                };
+
+                syncLink("icon");
+                syncLink("shortcut icon");
+            }
         }
         setFormData(prev => {
             const updated = { ...prev, [field]: newUrl };
@@ -1285,36 +1311,53 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* Primary Color */}
-                            <div className="space-y-4">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("primary_color")}</label>
-                                <div className="flex flex-wrap gap-4">
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t("primary_color")}</label>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">Controls the top-left sidebar header background color and brand theme.</p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-3">
                                     {[
-                                        '#4f46e5', // Indigo (Default)
-                                        '#3b82f6', // blue
-                                        '#f59e0b', // amber
-                                        '#10b981', // emerald
-                                        '#ef4444', // red
-                                    ].map((color) => (
-                                        <button
-                                            key={color}
-                                            onClick={() => handleChange('primary_color', color)}
-                                            className={cn(
-                                                "w-10 h-10 rounded-lg transition-all border-2 ring-offset-2",
-                                                formData.primary_color === color
-                                                    ? "border-gray-400 ring-2 ring-primary"
-                                                    : "border-transparent"
-                                            )}
-                                            style={{ backgroundColor: color }}
-                                        />
-                                    ))}
+                                        { color: '#ffffff', name: 'White' },
+                                        { color: '#4f46e5', name: 'Indigo' },
+                                        { color: '#3b82f6', name: 'Blue' },
+                                        { color: '#f59e0b', name: 'Amber' },
+                                        { color: '#10b981', name: 'Emerald' },
+                                        { color: '#ef4444', name: 'Red' },
+                                    ].map(({ color, name }) => {
+                                        const isSelected = formData.primary_color?.toLowerCase() === color.toLowerCase();
+                                        return (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                title={name}
+                                                onClick={() => handleChange('primary_color', color)}
+                                                className={cn(
+                                                    "w-10 h-10 rounded-xl transition-all border-2 ring-offset-1 flex items-center justify-center cursor-pointer shadow-xs",
+                                                    color === '#ffffff' ? "border-gray-300 hover:border-gray-400 bg-white" : "border-transparent",
+                                                    isSelected
+                                                        ? (color === '#ffffff'
+                                                            ? "border-indigo-600 ring-2 ring-indigo-500 shadow-md scale-105"
+                                                            : "border-gray-900 ring-2 ring-indigo-500 shadow-md scale-105")
+                                                        : "hover:scale-102"
+                                                )}
+                                                style={{ backgroundColor: color }}
+                                            >
+                                                {isSelected && (
+                                                    <Check className={cn("h-4 w-4 stroke-[3]", color === '#ffffff' ? "text-gray-800" : "text-white")} />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                     <div className="relative group">
                                         <input
                                             type="color"
-                                            value={formData.primary_color}
+                                            value={formData.primary_color || '#4f46e5'}
                                             onChange={(e) => handleChange('primary_color', e.target.value)}
-                                            className="absolute inset-0 opacity-0 cursor-pointer w-10 h-10"
+                                            className="absolute inset-0 opacity-0 cursor-pointer w-10 h-10 z-10"
+                                            title="Custom Color"
                                         />
-                                        <div className="w-10 h-10 rounded-lg bg-white border-2 border-gray-100 flex items-center justify-center group-hover:border-gray-200">
+                                        <div className="w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center group-hover:border-gray-300 shadow-xs">
                                             <div className="w-4 h-4 rounded-full border border-gray-300" style={{ background: 'conic-gradient(red, yellow, green, cyan, blue, magenta, red)' }} />
                                         </div>
                                     </div>

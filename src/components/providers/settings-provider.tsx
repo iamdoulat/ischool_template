@@ -209,12 +209,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable'
                 ];
 
-                imageFields.forEach(imgField => {
-                    const val = normalizedData[imgField];
-                    if (val && typeof val === 'string' && val.trim() !== '') {
-                        normalizedData[imgField] = getImageUrl(val, normalizedData.base_url || fallbackBaseUrl);
+                // Allow #ffffff for sidebar header background, while ensuring --primary CSS variable remains high contrast
+                const rawPrimary = normalizedData.primary_color;
+                let userPrimary = '#6366f1';
+                let cssPrimaryVar = '#6366f1';
+
+                if (rawPrimary && typeof rawPrimary === 'string') {
+                    let trimmed = rawPrimary.trim();
+                    if (trimmed.startsWith('linear-gradient') || trimmed.startsWith('radial-gradient') || trimmed.includes('gradient(')) {
+                        const hex = trimmed.match(/#(?:[0-9a-fA-F]{3}){1,2}\b/);
+                        trimmed = hex ? hex[0] : '#6366f1';
                     }
-                });
+                    const lower = trimmed.toLowerCase();
+                    if (lower === '#fff' || lower === '#ffffff' || lower === 'white') {
+                        userPrimary = '#ffffff';
+                        cssPrimaryVar = '#6366f1';
+                    } else {
+                        userPrimary = trimmed;
+                        cssPrimaryVar = trimmed;
+                    }
+                }
+                normalizedData.primary_color = userPrimary;
+                if (typeof window !== 'undefined') {
+                    document.documentElement.style.setProperty('--primary', cssPrimaryVar);
+                }
 
                 const currentSettings = normalizedData as GeneralSettings;
                 setSettings(currentSettings);

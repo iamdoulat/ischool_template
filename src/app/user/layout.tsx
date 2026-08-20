@@ -51,9 +51,17 @@ function UserLayoutContent({
                 setTheme(settings.theme_mode.toLowerCase());
             }
 
-            // Sync Primary Color
+            // Sync Primary Color (ensuring it is always a valid solid color, not gradient or white)
             if (settings.primary_color) {
-                document.documentElement.style.setProperty('--primary', settings.primary_color);
+                let validColor = settings.primary_color.trim();
+                if (validColor.startsWith('linear-gradient') || validColor.startsWith('radial-gradient')) {
+                    const hexMatch = validColor.match(/#(?:[0-9a-fA-F]{3}){1,2}\b/);
+                    validColor = hexMatch ? hexMatch[0] : '#6366f1';
+                }
+                if (validColor.toLowerCase() === '#fff' || validColor.toLowerCase() === '#ffffff' || validColor.toLowerCase() === 'white') {
+                    validColor = '#6366f1';
+                }
+                document.documentElement.style.setProperty('--primary', validColor);
             }
 
             // Initialize Sidebar State from settings

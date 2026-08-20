@@ -748,8 +748,8 @@ export default function StudentEditPage() {
                                         <UserCircle className="h-full w-full text-muted-foreground/20 p-2" />
                                     )}
                                 </div>
-                                <label className="absolute bottom-[-10px] right-[-10px] h-10 w-10 bg-primary text-white rounded-lg flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-all">
-                                    <Upload className="h-4 w-4" />
+                                <label className="absolute bottom-[-10px] right-[-10px] h-10 w-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-all">
+                                    <Upload className="h-4 w-4 text-white" />
                                     <input type="file" className="sr-only" onChange={(e) => handleChange("avatar", e.target.files?.[0] || null)} accept="image/*" />
                                 </label>
                             </div>

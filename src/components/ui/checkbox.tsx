@@ -32,9 +32,9 @@ const Checkbox = React.forwardRef<
                 ref={resolvedRef}
                 checked={isChecked}
                 className={cn(
-                    "peer h-4 w-4 shrink-0 rounded-sm border border-primary bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none checked:bg-primary checked:text-primary-foreground transition-all cursor-pointer",
+                    "peer h-4 w-4 shrink-0 rounded-sm border border-gray-300 dark:border-gray-600 bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none checked:border-primary checked:bg-primary checked:text-primary-foreground transition-all cursor-pointer",
                     className,
-                    checked === "indeterminate" && "bg-primary/30 border-primary/60"
+                    checked === "indeterminate" && "bg-primary/30 border-primary"
                 )}
                 onChange={(e) => {
                     props.onChange?.(e)

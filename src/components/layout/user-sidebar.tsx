@@ -309,32 +309,59 @@ interface SessionItem {
                 collapsed ? "md:w-20" : "md:w-[230px] w-[230px]",
                 mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
             )}>
-                <div className="h-14 min-h-[56px] flex items-center justify-between md:justify-center bg-gradient-to-r from-primary to-primary/80 text-white shadow-md z-10 px-4">
+                <div
+                    className={cn(
+                        "h-14 min-h-[56px] flex items-center justify-between md:justify-center z-10 px-4 transition-all",
+                        settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
+                            ? "bg-white dark:bg-card text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-800 shadow-2xs"
+                            : "text-white shadow-md"
+                    )}
+                    style={
+                        settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
+                            ? { backgroundColor: '#ffffff', color: '#111827' }
+                            : (settings?.primary_color ? { backgroundColor: settings.primary_color, color: '#ffffff' } : { backgroundColor: '#6366f1', color: '#ffffff' })
+                    }
+                >
                     <div className="flex items-center gap-2">
                         {collapsed && !mobileOpen ? (
-                            <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center h-9 w-9">
+                            <div className={cn(
+                                "p-1.5 rounded-lg shadow-sm overflow-hidden flex items-center justify-center h-9 w-9",
+                                settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
+                                    ? "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                    : "bg-white/20 backdrop-blur-md border border-white/10"
+                            )}>
                                 {settings?.admin_small_logo && !smallLogoError ? (
                                     <img src={getImageUrl(settings.admin_small_logo)} alt="S" onError={() => setSmallLogoError(true)} className="h-5 w-5 object-contain" />
                                 ) : (
-                                    <GraduationCap className="h-6 w-6 text-white" />
+                                    <GraduationCap className={cn("h-6 w-6", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "text-indigo-600 dark:text-indigo-400" : "text-white")} />
                                 )}
                             </div>
                         ) : (
                             <div className="flex items-center gap-2">
-                                <div className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg border border-white/10 shadow-sm overflow-hidden flex items-center justify-center">
+                                <div className={cn(
+                                    "p-1.5 rounded-lg shadow-sm overflow-hidden flex items-center justify-center",
+                                    settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
+                                        ? "bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                        : "bg-white/20 backdrop-blur-md border border-white/10"
+                                )}>
                                     {settings?.admin_small_logo && !smallLogoError ? (
                                         <img src={getImageUrl(settings.admin_small_logo)} alt="S" onError={() => setSmallLogoError(true)} className="h-5 w-5 object-contain" />
                                     ) : (
-                                        <GraduationCap className="h-6 w-6 text-white" />
+                                        <GraduationCap className={cn("h-6 w-6", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "text-indigo-600 dark:text-indigo-400" : "text-white")} />
                                     )}
                                 </div>
                                 <div className="flex flex-col">
                                     {settingsLoading ? (
-                                        <div className="h-5 w-24 bg-white/20 animate-pulse rounded" />
+                                        <div className={cn("h-5 w-24 animate-pulse rounded", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "bg-gray-200 dark:bg-gray-700" : "bg-white/20")} />
                                     ) : settings?.admin_logo && !logoError ? (
                                         <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} onError={() => setLogoError(true)} className="h-6 object-contain" />
                                     ) : (
-                                        <span className="font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300">
+                                        <span className={cn(
+                                            "font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300",
+                                            settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
+                                                ? "text-gray-900 dark:text-white"
+                                                : "text-white"
+                                        )}>
                                             {settings?.school_name || "iSchool"}
                                         </span>
                                     )}
@@ -347,7 +374,12 @@ interface SessionItem {
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="md:hidden text-white hover:bg-white/20 transition-all rounded-lg"
+                        className={cn(
+                            "md:hidden transition-all rounded-lg",
+                            settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
+                                ? "text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                                : "text-white hover:bg-white/20"
+                        )}
                         onClick={onClose}
                     >
                         <X className="h-5 w-5" />

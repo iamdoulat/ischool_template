@@ -475,3 +475,41 @@ select::-moz-selection,
   background: #6366f1 !important;
   color: #ffffff !important;
 }
+
+/* Universal Form Field Label & Title focus-within styling across entire app */
+.group:focus-within > label,
+.group:focus-within > .form-label,
+.group:focus-within label,
+.group:focus-within .group-focus-within\:text-primary,
+[class*="group-focus-within:text-primary"] {
+  color: #4f46e5 !important;
+}
+
+.dark .group:focus-within > label,
+.dark .group:focus-within > .form-label,
+.dark .group:focus-within label,
+.dark .group:focus-within .group-focus-within\:text-primary,
+.dark [class*="group-focus-within:text-primary"] {
+  color: #818cf8 !important;
+}
+
+/* Universal SVG & Lucide Icon visibility & rendering rules */
+svg.lucide,
+.lucide,
+[data-slot="icon"],
+[class*="lucide-"] {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Ensure icons and badge elements using text-primary are vivid and high contrast */
+.text-primary,
+[class*="text-primary"] {
+  color: var(--primary, #6366f1);
+}
+
+.dark .text-primary,
+.dark [class*="text-primary"] {
+  color: var(--primary, #818cf8);
+}

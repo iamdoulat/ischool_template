@@ -51,26 +51,25 @@ export function PWAInit() {
     const rawAppIcon = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.app_logo || "/logo-app.png";
     
     const resolvedFaviconUrl = getImageUrl(rawFavicon) || "/logo-admin-small.png";
+    const faviconHref = `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
     const appIcon = getImageUrl(rawAppIcon) || "/logo-app.png";
 
-    // 1. Sync Browser Main Favicon link tag
-    const faviconHref = resolvedFaviconUrl ? `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}` : resolvedFaviconUrl;
+    // 1. Safely sync Browser Main Favicon and Apple Touch Icon link tags without removing nodes
+    const syncLinkTag = (rel: string, href: string) => {
+      let link = document.querySelector<HTMLLinkElement>(`link[rel='${rel}']`);
+      if (link) {
+        link.href = href;
+      } else {
+        link = document.createElement("link");
+        link.rel = rel;
+        link.href = href;
+        document.head.appendChild(link);
+      }
+    };
 
-    let faviconLink = document.querySelector<HTMLLinkElement>("link[rel='icon']:not([sizes])");
-    if (!faviconLink) {
-      faviconLink = document.createElement("link");
-      faviconLink.rel = "icon";
-      document.head.appendChild(faviconLink);
-    }
-    faviconLink.href = faviconHref;
-
-    let shortcutIconLink = document.querySelector<HTMLLinkElement>("link[rel='shortcut icon']");
-    if (!shortcutIconLink) {
-      shortcutIconLink = document.createElement("link");
-      shortcutIconLink.rel = "shortcut icon";
-      document.head.appendChild(shortcutIconLink);
-    }
-    shortcutIconLink.href = faviconHref;
+    syncLinkTag("icon", faviconHref);
+    syncLinkTag("shortcut icon", faviconHref);
+    syncLinkTag("apple-touch-icon", appIcon || faviconHref);
 
     // 2. Sync iOS Safari Apple App meta & touch icon tags
     let appleCapableTag = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-capable']");
@@ -96,14 +95,6 @@ export function PWAInit() {
       document.head.appendChild(appleTitleTag);
     }
     appleTitleTag.content = appShortName;
-
-    let appleIconTag = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
-    if (!appleIconTag) {
-      appleIconTag = document.createElement("link");
-      appleIconTag.rel = "apple-touch-icon";
-      document.head.appendChild(appleIconTag);
-    }
-    appleIconTag.href = appIcon;
 
     // 3. Sync Windows PC PWA & Start Menu Tile meta tags
     let msAppTitle = document.querySelector<HTMLMetaElement>("meta[name='application-name']");
