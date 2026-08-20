@@ -28,6 +28,7 @@ import {
     ArrowUpDown,
     CreditCard,
     Loader2,
+    Download,
 } from "lucide-react";
 import {
     Select,
@@ -36,10 +37,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards } from "@/lib/certificate";
+import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards, downloadIdCardPdf } from "@/lib/certificate";
+import { getImageUrl } from "@/lib/image-url";
 
 interface ClassOption { id: number; name: string; }
 interface SectionOption { id: number; name: string; }
+interface CategoryOption { id: number; category_name?: string; name?: string; }
 interface ApiStudent {
     id: number;
     admission_no?: string;
@@ -50,7 +53,10 @@ interface ApiStudent {
     mother_name?: string;
     dob?: string;
     gender?: string;
-    category?: string;
+    category?: string | number;
+    student_category_id?: number;
+    student_category?: { id?: number; category_name?: string; name?: string };
+    studentCategory?: { id?: number; category_name?: string; name?: string };
     phone?: string;
     roll_no?: string;
     blood_group?: string;
@@ -61,7 +67,7 @@ interface ApiStudent {
     section?: { name?: string };
 }
 
-const TABLE_COLS = 9;
+const TABLE_COLS = 10;
 
 function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
     return (
@@ -83,7 +89,33 @@ function studentName(s: ApiStudent): string {
     return `${s.name || s.first_name || ""} ${s.last_name || ""}`.trim();
 }
 
+function getCategoryName(s: ApiStudent, catList: CategoryOption[] = []): string {
+    if (s.studentCategory?.category_name || s.studentCategory?.name) {
+        return s.studentCategory.category_name || s.studentCategory.name || "-";
+    }
+    if (s.student_category?.category_name || s.student_category?.name) {
+        return s.student_category.category_name || s.student_category.name || "-";
+    }
+    if (s.category) {
+        const found = catList.find((c) => String(c.id) === String(s.category));
+        if (found) {
+            return found.category_name || found.name || "";
+        }
+        if (typeof s.category === "string" && isNaN(Number(s.category)) && s.category.trim() !== "") {
+            return s.category;
+        }
+    }
+    if (s.student_category_id) {
+        const found = catList.find((c) => String(c.id) === String(s.student_category_id));
+        if (found) {
+            return found.category_name || found.name || "";
+        }
+    }
+    return "-";
+}
+
 function toPerson(s: ApiStudent): IdCardPerson {
+    const avatarRaw = s.avatar || (s as any).image || (s as any).photo || (s as any).student_photo || null;
     return {
         name: studentName(s),
         admission_no: s.admission_no || "",
@@ -97,7 +129,7 @@ function toPerson(s: ApiStudent): IdCardPerson {
         house: s.house || "",
         phone: s.phone || "",
         address: s.current_address || "",
-        photo: s.avatar ? `/storage/${s.avatar}` : null,
+        photo: avatarRaw ? getImageUrl(avatarRaw) : null,
     };
 }
 
@@ -107,6 +139,7 @@ export default function GenerateIDCardPage() {
     const tt = useTranslateToast();
     const [classes, setClasses] = useState<ClassOption[]>([]);
     const [sections, setSections] = useState<SectionOption[]>([]);
+    const [categories, setCategories] = useState<CategoryOption[]>([]);
     const [templates, setTemplates] = useState<IdCardTemplate[]>([]);
 
     const [classId, setClassId] = useState("");
@@ -118,17 +151,21 @@ export default function GenerateIDCardPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
+    const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
     useEffect(() => {
         (async () => {
             try {
-                const [classesRes, tplRes] = await Promise.all([
+                const [classesRes, tplRes, catRes] = await Promise.all([
                     api.get("/academics/classes?no_paginate=true"),
                     api.get("/certificate/student-id-cards", { params: { per_page: 100 } }),
+                    api.get("/student-categories").catch(() => api.get("/student/student-categories?no_paginate=true")).catch(() => ({ data: { data: [] } })),
                 ]);
                 setClasses(classesRes.data.data || classesRes.data || []);
                 const tplData = tplRes.data?.data ?? tplRes.data ?? [];
                 setTemplates(Array.isArray(tplData) ? tplData : []);
+                const catData = catRes.data?.data?.data || catRes.data?.data || catRes.data || [];
+                setCategories(Array.isArray(catData) ? catData : []);
             } catch {
                 tt.error("failed_to_load_criteria_data");
             }
@@ -187,13 +224,43 @@ export default function GenerateIDCardPage() {
         printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s), "student")).join(""));
     };
 
+    const handlePrintSingle = (s: ApiStudent) => {
+        const template = templates.find((tp) => String(tp.id) === templateId);
+        if (!template) {
+            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            return;
+        }
+        const html = renderIdCardHtml(template, toPerson(s), "student");
+        printIdCards(html);
+    };
+
+    const handleDownloadSingle = async (s: ApiStudent) => {
+        const template = templates.find((tp) => String(tp.id) === templateId);
+        if (!template) {
+            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            return;
+        }
+        setDownloadingId(s.id);
+        try {
+            const html = renderIdCardHtml(template, toPerson(s), "student");
+            const safeName = (s.name || s.first_name || `student_${s.id}`).replace(/[^a-zA-Z0-9-_]/g, "_");
+            await downloadIdCardPdf(html, `Student_ID_Card_${safeName}.pdf`);
+            toast({ title: t("success"), description: t("id_card_downloaded") || "ID card downloaded successfully" });
+        } catch (err) {
+            console.error("Failed to download ID card:", err);
+            tt.error("failed_to_download_id_card");
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
     const handleCopy = () => {
-        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}`).join("\n"));
+        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}\t${getCategoryName(s, categories)}`).join("\n"));
         tt.success("data_copied_to_clipboard");
     };
     const handleExportCSV = () => {
         const rows = [[t("admission_no"), t("name"), t("class"), t("father_name"), t("dob"), t("gender"), t("category"), t("mobile")],
-            ...filtered.map((s) => [s.admission_no || "", studentName(s), s.schoolClass?.name || "", s.father_name || "", s.dob || "", s.gender || "", s.category || "", s.phone || ""])];
+            ...filtered.map((s) => [s.admission_no || "", studentName(s), s.schoolClass?.name || "", s.father_name || "", s.dob || "", s.gender || "", getCategoryName(s, categories), s.phone || ""])];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -288,6 +355,7 @@ export default function GenerateIDCardPage() {
                                     {[t("admission_no"), t("student_name"), t("class"), t("father_name"), t("dob"), t("gender"), t("category"), t("mobile_number")].map((h) => (
                                         <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     ))}
+                                    <TableHead className="text-right font-semibold text-gray-600">{t("action") || "Action"}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -306,14 +374,42 @@ export default function GenerateIDCardPage() {
                                         <TableCell className="py-3 text-gray-500">{s.father_name || "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.gender || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.category || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{getCategoryName(s, categories)}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
+                                        <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <Button
+                                                    size="icon"
+                                                    onClick={() => handlePrintSingle(s)}
+                                                    disabled={downloadingId === s.id}
+                                                    title={t("print") || "Print ID Card"}
+                                                    className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                >
+                                                    <Printer className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    onClick={() => handleDownloadSingle(s)}
+                                                    disabled={downloadingId === s.id}
+                                                    title={t("download_pdf") || "Download PDF"}
+                                                    className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                >
+                                                    {downloadingId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                                </Button>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium pt-2">{t("showing_x_students", { count: filtered.length })}</div>
+                    <div className="text-xs text-gray-500 font-medium pt-2">
+                        {searched && (
+                            filtered.length !== students.length && students.length > 0
+                                ? `Showing ${filtered.length} of ${students.length} ${students.length === 1 ? "student" : "students"}`
+                                : t("showing_x_students", { count: filtered.length }) || `Showing ${filtered.length} students`
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </div>

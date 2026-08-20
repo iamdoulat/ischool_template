@@ -60,6 +60,8 @@ export interface StudentFields {
 export interface SchoolSettings {
     school_name?: string;
     admin_logo?: string;
+    print_logo?: string;
+    app_logo?: string;
     phone?: string;
     email?: string;
     address?: string;
@@ -414,7 +416,7 @@ export function renderCertificateHtml(
 
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     const schoolName = settings?.school_name || student.school_name || sub(template.header_left) || "OAKRIDGE SCHOOL";
-    const rawLogo = settings?.print_logo || settings?.admin_logo || (settings as any)?.app_logo || student.school_logo;
+    const rawLogo = settings?.print_logo || settings?.admin_logo || settings?.app_logo || student.school_logo;
     const schoolLogoUrl = rawLogo ? getImageUrl(rawLogo) : null;
     const sessionText = settings?.current_session || student.session || "2026 - 2027";
     const recipientName = student.name || "JOHN DOE";
@@ -1494,7 +1496,7 @@ export async function downloadCertificatePdf(html: string, filename = "certifica
         );
         await new Promise((resolve) => setTimeout(resolve, 400));
 
-        const targetEl = (doc.querySelector(".letterhead-page, .cert-page, .cert-wrapper") as HTMLElement) || doc.body;
+        const targetEl = (doc.querySelector(".letterhead-page, .cert-page, .cert-wrapper, .card") as HTMLElement) || doc.body;
         const canvas = await html2canvas(targetEl, {
             scale: 2,
             useCORS: false,
@@ -1572,17 +1574,255 @@ export interface IdCardPerson {
     dob?: string;
 }
 
+export interface PrebuiltIdCardPreset extends Omit<IdCardTemplate, "id"> {
+    id: number;
+    description: string;
+    preview_bg: string;
+    badge_color: string;
+}
+
+export const PREBUILT_STUDENT_ID_CARDS: PrebuiltIdCardPreset[] = [
+    {
+        id: -101,
+        title: "Modern Minimalist Indigo (Horizontal)",
+        school_name: "SPRINGDALE INTERNATIONAL SCHOOL",
+        school_address: "123 Academic Blvd, Oxford District",
+        header_color: "#4F46E5",
+        design_type: "Horizontal",
+        show_admission_no: true,
+        show_student_name: true,
+        show_class: true,
+        show_roll_no: true,
+        show_father_name: true,
+        show_mother_name: false,
+        show_address: true,
+        show_phone: true,
+        show_dob: true,
+        show_blood_group: true,
+        show_house: true,
+        show_qr: true,
+        description: "Horizontal layout with sleek indigo header, structured grid, photo card frame, and QR verification badge.",
+        preview_bg: "linear-gradient(135deg, #4338ca 0%, #6366f1 100%)",
+        badge_color: "bg-indigo-600 text-white",
+    },
+    {
+        id: -102,
+        title: "Executive Slate & Gold (Vertical)",
+        school_name: "OAKRIDGE ACADEMY & HIGH SCHOOL",
+        school_address: "450 Heritage Way, New York",
+        header_color: "#0F172A",
+        design_type: "Vertical",
+        show_admission_no: true,
+        show_student_name: true,
+        show_class: true,
+        show_roll_no: true,
+        show_father_name: true,
+        show_mother_name: false,
+        show_address: false,
+        show_phone: true,
+        show_dob: true,
+        show_blood_group: true,
+        show_house: true,
+        show_qr: true,
+        description: "Vertical lanyard badge with dark slate header, gold trim, centered student portrait, and quick-scan QR code.",
+        preview_bg: "linear-gradient(135deg, #0f172a 0%, #334155 100%)",
+        badge_color: "bg-slate-900 text-amber-400",
+    },
+    {
+        id: -103,
+        title: "Vibrant Campus Emerald (Horizontal)",
+        school_name: "GREENWOOD PUBLIC SCHOOL",
+        school_address: "88 Eco Park Road, Cambridge",
+        header_color: "#0D9488",
+        design_type: "Horizontal",
+        show_admission_no: true,
+        show_student_name: true,
+        show_class: true,
+        show_roll_no: true,
+        show_father_name: true,
+        show_mother_name: false,
+        show_address: true,
+        show_phone: true,
+        show_dob: true,
+        show_blood_group: true,
+        show_house: true,
+        show_qr: false,
+        description: "Energetic emerald & teal horizontal card with clean badges, rounded photo frame, and authorized sign section.",
+        preview_bg: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)",
+        badge_color: "bg-teal-700 text-white",
+    },
+    {
+        id: -104,
+        title: "Academic Heritage Crimson (Vertical)",
+        school_name: "ST. XAVIER COLLEGIATE SCHOOL",
+        school_address: "32 Cathedral Road, St. Jude Square",
+        header_color: "#881337",
+        design_type: "Vertical",
+        show_admission_no: true,
+        show_student_name: true,
+        show_class: true,
+        show_roll_no: true,
+        show_father_name: true,
+        show_mother_name: false,
+        show_address: false,
+        show_phone: true,
+        show_dob: true,
+        show_blood_group: true,
+        show_house: false,
+        show_qr: true,
+        description: "Prestigious vertical ID with royal crimson header, serif branding, prominent admission pill, and emergency contact.",
+        preview_bg: "linear-gradient(135deg, #881337 0%, #be123c 100%)",
+        badge_color: "bg-rose-900 text-white",
+    },
+    {
+        id: -105,
+        title: "Tech Sapphire Digital ID (Horizontal)",
+        school_name: "HORIZON STEM & ROBOTICS ACADEMY",
+        school_address: "10 Innovation Way, Silicon Park",
+        header_color: "#0284C7",
+        design_type: "Horizontal",
+        show_admission_no: true,
+        show_student_name: true,
+        show_class: true,
+        show_roll_no: true,
+        show_father_name: true,
+        show_mother_name: true,
+        show_address: false,
+        show_phone: true,
+        show_dob: true,
+        show_blood_group: true,
+        show_house: true,
+        show_qr: true,
+        description: "Modern sapphire blue badge with dual-column fields, high-visibility student card tags, and digital barcode/QR frame.",
+        preview_bg: "linear-gradient(135deg, #0369a1 0%, #38bdf8 100%)",
+        badge_color: "bg-sky-600 text-white",
+    },
+];
+
+export const PREBUILT_STAFF_ID_CARDS: PrebuiltIdCardPreset[] = [
+    {
+        id: -201,
+        title: "Faculty Indigo Professional (Horizontal)",
+        school_name: "SPRINGDALE INTERNATIONAL SCHOOL",
+        school_address: "123 Academic Blvd, Oxford District",
+        header_color: "#4F46E5",
+        design_type: "Horizontal",
+        show_staff_name: true,
+        show_staff_id: true,
+        show_designation: true,
+        show_department: true,
+        show_father_name: false,
+        show_mother_name: false,
+        show_joining_date: true,
+        show_address: false,
+        show_phone: true,
+        show_dob: false,
+        show_qr: true,
+        description: "Clean horizontal faculty ID badge with indigo corporate header, department pill badge, and authorized sign.",
+        preview_bg: "linear-gradient(135deg, #4338ca 0%, #6366f1 100%)",
+        badge_color: "bg-indigo-600 text-white",
+    },
+    {
+        id: -202,
+        title: "Executive Staff Slate & Gold (Vertical)",
+        school_name: "OAKRIDGE ACADEMY & HIGH SCHOOL",
+        school_address: "450 Heritage Way, New York",
+        header_color: "#0F172A",
+        design_type: "Vertical",
+        show_staff_name: true,
+        show_staff_id: true,
+        show_designation: true,
+        show_department: true,
+        show_father_name: false,
+        show_mother_name: false,
+        show_joining_date: true,
+        show_address: false,
+        show_phone: true,
+        show_dob: false,
+        show_qr: true,
+        description: "Vertical executive lanyard badge with dark slate header, gold trim, centered portrait, and digital staff verification.",
+        preview_bg: "linear-gradient(135deg, #0f172a 0%, #334155 100%)",
+        badge_color: "bg-slate-900 text-amber-400",
+    },
+    {
+        id: -203,
+        title: "Campus Educator Emerald (Horizontal)",
+        school_name: "GREENWOOD PUBLIC SCHOOL",
+        school_address: "88 Eco Park Road, Cambridge",
+        header_color: "#0D9488",
+        design_type: "Horizontal",
+        show_staff_name: true,
+        show_staff_id: true,
+        show_designation: true,
+        show_department: true,
+        show_father_name: true,
+        show_mother_name: false,
+        show_joining_date: true,
+        show_address: true,
+        show_phone: true,
+        show_dob: true,
+        show_qr: false,
+        description: "Vibrant emerald educator badge with clean grid info, employee joining date, and emergency contact details.",
+        preview_bg: "linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)",
+        badge_color: "bg-teal-700 text-white",
+    },
+    {
+        id: -204,
+        title: "University Senior Faculty Crimson (Vertical)",
+        school_name: "ST. XAVIER COLLEGIATE SCHOOL",
+        school_address: "32 Cathedral Road, St. Jude Square",
+        header_color: "#881337",
+        design_type: "Vertical",
+        show_staff_name: true,
+        show_staff_id: true,
+        show_designation: true,
+        show_department: true,
+        show_father_name: false,
+        show_mother_name: false,
+        show_joining_date: true,
+        show_address: false,
+        show_phone: true,
+        show_dob: false,
+        show_qr: true,
+        description: "Official institutional crimson vertical badge with department header, employee code pill, and principal seal.",
+        preview_bg: "linear-gradient(135deg, #881337 0%, #be123c 100%)",
+        badge_color: "bg-rose-900 text-white",
+    },
+    {
+        id: -205,
+        title: "Tech Staff Sapphire High-Tech (Horizontal)",
+        school_name: "HORIZON STEM & ROBOTICS ACADEMY",
+        school_address: "10 Innovation Way, Silicon Park",
+        header_color: "#0284C7",
+        design_type: "Horizontal",
+        show_staff_name: true,
+        show_staff_id: true,
+        show_designation: true,
+        show_department: true,
+        show_father_name: false,
+        show_mother_name: false,
+        show_joining_date: true,
+        show_address: false,
+        show_phone: true,
+        show_dob: false,
+        show_qr: true,
+        description: "Modern sapphire digital staff badge with high-contrast designation banner, staff QR badge, and dual-column data.",
+        preview_bg: "linear-gradient(135deg, #0369a1 0%, #38bdf8 100%)",
+        badge_color: "bg-sky-600 text-white",
+    },
+];
+
 export function renderIdCardHtml(
     card: IdCardTemplate,
     person: IdCardPerson,
     type: "student" | "staff" = "student",
 ): string {
-    const headerColor = card.header_color || "#6366F1";
+    const headerColor = card.header_color || "#4F46E5";
     const vertical = (card.design_type || "").toLowerCase() === "vertical";
     const width = vertical ? 280 : 420;
 
     const studentRows: [boolean | undefined, string, string | undefined][] = [
-        [card.show_admission_no, "Admission No", person.admission_no],
+        [card.show_admission_no, "Adm No", person.admission_no],
         [card.show_class, "Class", person.section ? `${person.class || ""} (${person.section})` : person.class],
         [card.show_roll_no, "Roll No", person.roll_no],
         [card.show_father_name, "Father", person.father_name],
@@ -1590,7 +1830,7 @@ export function renderIdCardHtml(
         [card.show_dob, "DOB", person.dob],
         [card.show_blood_group, "Blood Group", person.blood_group],
         [card.show_house, "House", person.house],
-        [card.show_phone, "Phone", person.phone],
+        [card.show_phone, "Emergency", person.phone],
         [card.show_address, "Address", person.address],
     ];
 
@@ -1600,49 +1840,119 @@ export function renderIdCardHtml(
         [card.show_department, "Department", person.department],
         [card.show_father_name, "Father", person.father_name],
         [card.show_mother_name, "Mother", person.mother_name],
-        [card.show_joining_date, "Joining Date", person.joining_date],
+        [card.show_joining_date, "Join Date", person.joining_date],
         [card.show_dob, "DOB", person.dob],
-        [card.show_phone, "Phone", person.phone],
+        [card.show_phone, "Emergency", person.phone],
         [card.show_address, "Address", person.address],
     ];
 
     const rows = (type === "staff" ? staffRows : studentRows).filter(([show, , val]) => show && val);
 
     const bg = card.background_image
-        ? `background: url('${card.background_image}') center/cover no-repeat;`
-        : "background: #fff;";
+        ? `background: url('${getImageUrl(card.background_image)}') center/cover no-repeat;`
+        : "background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);";
 
     const logoHtml = card.logo
-        ? `<img src="${card.logo}" alt="logo" style="height:36px;object-fit:contain;" />`
-        : `<div style="font-weight:bold;font-size:14px;color:#fff;">${card.school_name || "SCHOOL"}</div>`;
+        ? `<img src="${getImageUrl(card.logo)}" alt="logo" style="height:30px;max-width:55px;object-fit:contain;" />`
+        : `<div style="width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:11px;color:#fff;border:1px solid rgba(255,255,255,0.3);">&#127891;</div>`;
 
     const photoHtml = person.photo
-        ? `<img src="${person.photo}" alt="photo" style="width:70px;height:85px;object-fit:cover;border-radius:4px;border:1px solid #ccc;" />`
-        : `<div style="width:70px;height:85px;background:#e5e7eb;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:10px;">NO PHOTO</div>`;
+        ? `<img src="${getImageUrl(person.photo)}" alt="photo" style="width:72px;height:86px;object-fit:cover;border-radius:6px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.15);" />`
+        : `<div style="width:72px;height:86px;background:#e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:10px;font-weight:bold;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.15);">NO PHOTO</div>`;
 
     const signHtml = card.signature
-        ? `<div style="text-align:right;"><img src="${card.signature}" alt="sign" style="height:28px;object-fit:contain;" /><div style="font-size:9px;color:#6b7280;">Authorized Sign</div></div>`
+        ? `<div style="text-align:right;"><img src="${getImageUrl(card.signature)}" alt="sign" style="height:22px;max-width:65px;object-fit:contain;" /><div style="font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Auth Sign</div></div>`
+        : `<div style="text-align:right;"><div style="width:55px;border-bottom:1px dashed #cbd5e1;margin-bottom:2px;"></div><div style="font-size:8px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">Auth Sign</div></div>`;
+
+    const identifierVal = type === "staff" ? (person.staff_id || "STAFF") : (person.admission_no || "STUDENT");
+
+    const qrHtml = card.show_qr
+        ? `<div style="display:flex;align-items:center;gap:4px;background:#fff;border:1px solid #e2e8f0;padding:2px 5px;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${headerColor}" stroke-width="2"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 14h3v3h-3zM14 18h3v3h-3zM19 19h2v2h-2z"/></svg>
+            <span style="font-size:8px;font-weight:800;color:#334155;letter-spacing:0.4px;">${identifierVal}</span>
+          </div>`
         : "";
 
+    if (vertical) {
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; padding: 20px; display: flex; justify-content: center; }
+    .card { width: 280px; min-height: 440px; ${bg} border: 1px solid #cbd5e1; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; flex-direction: column; position: relative; }
+    .top-notch { height: 5px; width: 40px; background: rgba(0,0,0,0.18); border-radius: 4px; margin: 6px auto 0; }
+    .header { background: linear-gradient(135deg, ${headerColor} 0%, color-mix(in srgb, ${headerColor} 75%, #000) 100%); color: #fff; padding: 10px 14px 18px; text-align: center; position: relative; border-bottom: 3px solid rgba(255,255,255,0.25); }
+    .header-logo { display: flex; justify-content: center; margin-bottom: 4px; }
+    .school-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+    .school-sub { font-size: 8px; opacity: 0.85; margin-top: 2px; line-height: 1.2; }
+    .photo-wrap { margin-top: -24px; display: flex; justify-content: center; position: relative; z-index: 5; }
+    .name-banner { text-align: center; margin-top: 6px; padding: 0 10px; }
+    .person-name { font-size: 13px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.3px; line-height: 1.2; }
+    .role-badge { display: inline-block; background: ${headerColor}; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 8px; border-radius: 10px; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .body { padding: 10px 14px; flex: 1; }
+    .details-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .details-table tr { border-bottom: 1px solid #f1f5f9; }
+    .details-table td { padding: 3px 0; vertical-align: top; }
+    .label { width: 75px; color: #64748b; font-weight: 600; font-size: 9px; text-transform: uppercase; }
+    .val { color: #0f172a; font-weight: 700; text-align: right; }
+    .footer { padding: 8px 14px 10px; background: rgba(255,255,255,0.85); border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="top-notch"></div>
+      <div class="header-logo" style="margin-top:4px;">${logoHtml}</div>
+      <div class="school-title">${card.school_name || "INSTITUTION NAME"}</div>
+      ${card.school_address ? `<div class="school-sub">${card.school_address}</div>` : ""}
+    </div>
+    <div class="photo-wrap">
+      ${photoHtml}
+    </div>
+    <div class="name-banner">
+      <div class="person-name">${person.name || "N/A"}</div>
+      <span class="role-badge">${type === "staff" ? (person.designation || "Staff Member") : (person.class ? `Class ${person.class}` : "Student")}</span>
+    </div>
+    <div class="body">
+      <table class="details-table">
+        ${rows.map(([, lbl, val]) => `<tr><td class="label">${lbl}</td><td class="val">${val}</td></tr>`).join("")}
+      </table>
+    </div>
+    <div class="footer">
+      ${qrHtml ? qrHtml : "<div></div>"}
+      ${signHtml}
+    </div>
+  </div>
+</body>
+</html>`;
+    }
+
+    // Horizontal Layout
     return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 20px; font-family: sans-serif; }
-    .card { width: ${width}px; ${bg} border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .header { background: ${headerColor}; color: #fff; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
-    .header-text { flex: 1; text-align: center; }
-    .school-title { font-size: 13px; font-weight: bold; }
-    .school-sub { font-size: 9px; opacity: 0.85; margin-top: 2px; }
-    .body { padding: 12px 14px; display: flex; gap: 12px; }
-    .name-banner { font-size: 13px; font-weight: bold; color: #111827; margin-bottom: 6px; }
-    .details { flex: 1; font-size: 11px; }
-    .row { display: flex; margin-bottom: 3px; }
-    .label { width: 90px; color: #6b7280; font-size: 10px; }
-    .val { flex: 1; font-weight: 500; color: #111827; }
-    .footer { padding: 0 14px 10px; display: flex; justify-content: space-between; align-items: flex-end; }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { margin: 0; padding: 20px; display: flex; justify-content: center; }
+    .card { width: ${width}px; min-height: 250px; ${bg} border: 1px solid #cbd5e1; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; flex-direction: column; }
+    .header { background: linear-gradient(135deg, ${headerColor} 0%, color-mix(in srgb, ${headerColor} 75%, #000) 100%); color: #fff; padding: 8px 14px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid rgba(255,255,255,0.25); }
+    .header-text { flex: 1; min-width: 0; text-align: left; }
+    .school-title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2; }
+    .school-sub { font-size: 8px; opacity: 0.85; margin-top: 1px; line-height: 1.2; }
+    .body { padding: 10px 14px; display: flex; gap: 14px; flex: 1; align-items: flex-start; }
+    .photo-col { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+    .id-pill { background: #f1f5f9; border: 1px solid #cbd5e1; font-size: 8px; font-weight: 800; color: #334155; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    .details-col { flex: 1; min-width: 0; }
+    .name-banner { font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 6px; text-transform: uppercase; border-bottom: 1.5px solid ${headerColor}; padding-bottom: 3px; }
+    .details-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .details-table tr { border-bottom: 1px solid #f1f5f9; }
+    .details-table td { padding: 2.5px 0; vertical-align: top; }
+    .label { width: 75px; color: #64748b; font-weight: 600; font-size: 9px; text-transform: uppercase; }
+    .val { color: #0f172a; font-weight: 700; text-align: left; }
+    .footer { padding: 6px 14px; background: rgba(255,255,255,0.85); border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
   </style>
 </head>
 <body>
@@ -1650,22 +1960,39 @@ export function renderIdCardHtml(
     <div class="header">
       ${logoHtml}
       <div class="header-text">
-        <div class="school-title">${card.school_name || "SCHOOL NAME"}</div>
+        <div class="school-title">${card.school_name || "INSTITUTION NAME"}</div>
         ${card.school_address ? `<div class="school-sub">${card.school_address}</div>` : ""}
       </div>
     </div>
     <div class="body">
-      ${photoHtml}
-      <div class="details">
+      <div class="photo-col">
+        ${photoHtml}
+        <span class="id-pill">${identifierVal}</span>
+      </div>
+      <div class="details-col">
         <div class="name-banner">${person.name || "N/A"}</div>
-        ${rows.map(([, lbl, val]) => `<div class="row"><span class="label">${lbl}:</span><span class="val">${val}</span></div>`).join("")}
+        <table class="details-table">
+          ${rows.map(([, lbl, val]) => `<tr><td class="label">${lbl}:</td><td class="val">${val}</td></tr>`).join("")}
+        </table>
       </div>
     </div>
     <div class="footer">
-      <div></div>
+      ${qrHtml ? qrHtml : "<div></div>"}
       ${signHtml}
     </div>
   </div>
 </body>
 </html>`;
 }
+
+/** Open a print dialog for the rendered ID cards HTML. */
+export function printIdCards(html: string): void {
+    printCertificate(html);
+}
+
+/** Download the rendered ID card as a PDF via jsPDF + html2canvas. */
+export async function downloadIdCardPdf(html: string, filename = "id_card.pdf"): Promise<void> {
+    return downloadCertificatePdf(html, filename);
+}
+
+

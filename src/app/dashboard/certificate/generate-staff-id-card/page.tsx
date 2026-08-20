@@ -28,6 +28,7 @@ import {
     ArrowUpDown,
     UserSquare2,
     Loader2,
+    Download,
 } from "lucide-react";
 import {
     Select,
@@ -36,7 +37,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards } from "@/lib/certificate";
+import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards, downloadIdCardPdf } from "@/lib/certificate";
+import { getImageUrl } from "@/lib/image-url";
 
 interface ApiStaff {
     id: number;
@@ -57,7 +59,7 @@ interface ApiStaff {
 
 interface Role { name: string; }
 
-const TABLE_COLS = 11;
+const TABLE_COLS = 12;
 
 function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
     return (
@@ -76,6 +78,7 @@ function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: n
 }
 
 function toPerson(s: ApiStaff): IdCardPerson {
+    const avatarRaw = s.avatar || (s as any).image || (s as any).photo || null;
     return {
         name: s.name || "",
         staff_id: s.staff_id || "",
@@ -89,7 +92,7 @@ function toPerson(s: ApiStaff): IdCardPerson {
         dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
         phone: s.phone || "",
         address: s.current_address || "",
-        photo: s.avatar ? `/storage/${s.avatar}` : null,
+        photo: avatarRaw ? getImageUrl(avatarRaw) : null,
     };
 }
 
@@ -108,6 +111,7 @@ export default function GenerateStaffIDCardPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
+    const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -162,6 +166,36 @@ export default function GenerateStaffIDCardPage() {
             return;
         }
         printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s), "staff")).join(""));
+    };
+
+    const handlePrintSingle = (s: ApiStaff) => {
+        const template = templates.find((tp) => String(tp.id) === templateId);
+        if (!template) {
+            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            return;
+        }
+        const html = renderIdCardHtml(template, toPerson(s), "staff");
+        printIdCards(html);
+    };
+
+    const handleDownloadSingle = async (s: ApiStaff) => {
+        const template = templates.find((tp) => String(tp.id) === templateId);
+        if (!template) {
+            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            return;
+        }
+        setDownloadingId(s.id);
+        try {
+            const html = renderIdCardHtml(template, toPerson(s), "staff");
+            const safeName = (s.name || `staff_${s.id}`).replace(/[^a-zA-Z0-9-_]/g, "_");
+            await downloadIdCardPdf(html, `Staff_ID_Card_${safeName}.pdf`);
+            toast({ title: t("success"), description: t("id_card_downloaded") || "ID card downloaded successfully" });
+        } catch (err) {
+            console.error("Failed to download staff ID card:", err);
+            tt.error("failed_to_download_id_card");
+        } finally {
+            setDownloadingId(null);
+        }
     };
 
     const handleCopy = () => {
@@ -262,6 +296,7 @@ export default function GenerateStaffIDCardPage() {
                                     {[t("staff_id"), t("staff_name"), t("role"), t("designation"), t("department"), t("father_name"), t("mother_name"), t("joining_date"), t("phone"), t("dob")].map((h) => (
                                         <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     ))}
+                                    <TableHead className="text-right font-semibold text-gray-600">{t("action") || "Action"}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -284,12 +319,40 @@ export default function GenerateStaffIDCardPage() {
                                         <TableCell className="py-3 text-gray-500">{s.date_of_joining ? new Date(s.date_of_joining).toLocaleDateString("en-US") : "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
+                                        <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <Button
+                                                    size="icon"
+                                                    onClick={() => handlePrintSingle(s)}
+                                                    disabled={downloadingId === s.id}
+                                                    title={t("print") || "Print ID Card"}
+                                                    className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                >
+                                                    <Printer className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    onClick={() => handleDownloadSingle(s)}
+                                                    disabled={downloadingId === s.id}
+                                                    title={t("download_pdf") || "Download PDF"}
+                                                    className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                >
+                                                    {downloadingId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                                </Button>
+                                            </div>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
                         </Table>
                     </div>
-                    <div className="text-xs text-gray-500 font-medium pt-2">{t("showing_x_staff", { count: filtered.length })}</div>
+                    <div className="text-xs text-gray-500 font-medium pt-2">
+                        {searched && (
+                            filtered.length !== staff.length && staff.length > 0
+                                ? `Showing ${filtered.length} of ${staff.length} staff`
+                                : t("showing_x_staff", { count: filtered.length }) || `Showing ${filtered.length} staff`
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </div>

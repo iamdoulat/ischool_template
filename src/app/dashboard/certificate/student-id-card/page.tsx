@@ -46,6 +46,8 @@ import {
     CreditCard,
     Loader2,
     X,
+    Sparkles,
+    Check,
 } from "lucide-react";
 import {
     Select,
@@ -54,8 +56,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { type IdCardTemplate, renderIdCardHtml, printIdCards } from "@/lib/certificate";
+import {
+    type IdCardTemplate,
+    type PrebuiltIdCardPreset,
+    PREBUILT_STUDENT_ID_CARDS,
+    renderIdCardHtml,
+    printIdCards,
+} from "@/lib/certificate";
 
 interface PaginationData {
     current_page: number;
@@ -241,6 +250,47 @@ export default function StudentIDCardPage() {
         link.click();
     };
 
+    const galleryScrollRef = useRef<HTMLDivElement>(null);
+    const scrollGallery = (direction: "left" | "right") => {
+        if (!galleryScrollRef.current) return;
+        const scrollAmount = 300;
+        galleryScrollRef.current.scrollBy({
+            left: direction === "left" ? -scrollAmount : scrollAmount,
+            behavior: "smooth",
+        });
+    };
+
+    const applyPrebuilt = (preset: PrebuiltIdCardPreset) => {
+        setEditingId(null);
+        setForm({
+            title: preset.title,
+            school_name: preset.school_name || "",
+            school_address: preset.school_address || "",
+            header_color: preset.header_color || "#4F46E5",
+            design_type: preset.design_type || "Horizontal",
+            background_image: preset.background_image || "",
+            logo: preset.logo || "",
+            signature: preset.signature || "",
+            show_admission_no: !!preset.show_admission_no,
+            show_student_name: !!preset.show_student_name,
+            show_class: !!preset.show_class,
+            show_roll_no: !!preset.show_roll_no,
+            show_father_name: !!preset.show_father_name,
+            show_mother_name: !!preset.show_mother_name,
+            show_address: !!preset.show_address,
+            show_phone: !!preset.show_phone,
+            show_dob: !!preset.show_dob,
+            show_blood_group: !!preset.show_blood_group,
+            show_house: !!preset.show_house,
+            show_qr: !!preset.show_qr,
+        });
+        toast({
+            title: t("template_loaded") || "Template Loaded",
+            description: `"${preset.title}" design loaded. You can customize fields and click Save.`,
+        });
+        window.scrollTo({ top: 380, behavior: "smooth" });
+    };
+
     const toolbarActions = [
         { Icon: Copy, onClick: handleCopy, title: "Copy" },
         { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
@@ -251,6 +301,115 @@ export default function StudentIDCardPage() {
 
     return (
         <div className="space-y-6">
+            {/* ──────────────────────── Pre-built ID Card Templates Gallery ──────────────────────── */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Sparkles className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
+                                <span>Pre-built Student ID Card Design Templates</span>
+                                <Badge className="bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-2">
+                                    5 Pro Styles
+                                </Badge>
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                1-Click ready-to-use professional ID cards. Click &ldquo;Use Design&rdquo; to customize, redesign, and save into your reusable templates.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Horizontal Scroll Navigation Arrows */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => scrollGallery("left")}
+                            className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
+                            title="Scroll left"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => scrollGallery("right")}
+                            className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
+                            title="Scroll right"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <div
+                        ref={galleryScrollRef}
+                        className="flex items-stretch gap-4 overflow-x-auto custom-scrollbar pb-3 pt-1 scroll-smooth snap-x snap-mandatory"
+                    >
+                        {PREBUILT_STUDENT_ID_CARDS.map((preset) => (
+                            <div
+                                key={preset.id}
+                                className="group relative flex-none w-[calc(25%-12px)] min-w-[250px] flex flex-col justify-between rounded-2xl bg-white border border-gray-200/80 p-4 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 hover:-translate-y-0.5 snap-start"
+                            >
+                                <div className="space-y-3">
+                                    {/* Preview Banner Header */}
+                                    <div
+                                        style={{ background: preset.preview_bg }}
+                                        className="h-28 rounded-xl relative overflow-hidden flex flex-col items-center justify-center text-white p-3 shadow-inner text-center"
+                                    >
+                                        <div className="absolute inset-0 bg-black/10 backdrop-blur-[0.5px]" />
+                                        <div className="relative z-10 space-y-1">
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-amber-200 block">
+                                                {preset.design_type} Style
+                                            </span>
+                                            <h4 className="font-extrabold text-sm tracking-tight text-white drop-shadow-sm leading-snug">
+                                                {preset.title.split("(")[0]}
+                                            </h4>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-bold text-xs text-gray-900 line-clamp-1">{preset.title}</h4>
+                                        <p className="text-[11px] text-gray-500 line-clamp-2 mt-1 leading-relaxed">
+                                            {preset.description}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Actions</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="outline"
+                                            onClick={() => handlePreview({ id: 0, ...preset })}
+                                            title={t("preview") || "Preview ID Card"}
+                                            className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs active:scale-95 transition-all"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            onClick={() => applyPrebuilt(preset)}
+                                            title="Use Design / Apply Template"
+                                            className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm active:scale-95 transition-all"
+                                        >
+                                            <Check className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Left: Form */}
                 <div className="w-full lg:w-[450px] shrink-0">
