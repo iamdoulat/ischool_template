@@ -435,49 +435,47 @@ export default function StudentCertificatePage() {
     return (
         <div className="space-y-6">
             {/* ──────────────────────── Pre-built Certificate Templates Gallery ──────────────────────── */}
-            <Card className="border-[0.5px] border-indigo-100 shadow-[0_4px_24px_rgb(0,0,0,0.06)] bg-gradient-to-r from-amber-50/40 via-purple-50/30 to-indigo-50/40 overflow-hidden">
-                <CardHeader className="py-4 px-6 border-b border-indigo-100/60 bg-white/60 backdrop-blur-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
-                                <Sparkles className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <CardTitle className="text-base font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                                    Pre-built Certificate Design Templates
-                                    <Badge className="bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-2">
-                                        Pro Styles
-                                    </Badge>
-                                </CardTitle>
-                                <p className="text-xs text-gray-600 mt-0.5">
-                                    1-Click ready-to-use high-resolution certificates. Automatically branded with your school logo, name, and General Purpose print settings.
-                                </p>
-                            </div>
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Sparkles className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
+                                <span>Pre-built Certificate Design Templates</span>
+                                <Badge className="bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-2">
+                                    Pro Styles
+                                </Badge>
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                1-Click ready-to-use high-resolution certificates. Automatically branded with your school logo, name, and General Purpose print settings.
+                            </p>
                         </div>
+                    </div>
 
-                        {/* Horizontal Scroll Navigation Arrows */}
-                        <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => scrollGallery("left")}
-                                className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
-                                title="Scroll left"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => scrollGallery("right")}
-                                className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
-                                title="Scroll right"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
+                    {/* Horizontal Scroll Navigation Arrows */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => scrollGallery("left")}
+                            className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
+                            title="Scroll left"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => scrollGallery("right")}
+                            className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
+                            title="Scroll right"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
