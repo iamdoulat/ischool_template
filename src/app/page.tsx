@@ -169,15 +169,16 @@ export default function Home() {
                     ) : (
                       <div className="divide-y divide-slate-100">
                         {notices.map((notice, i) => {
-                          const d = new Date(notice.notice_date || Date.now());
+                          const parsedDate = notice.notice_date ? new Date(notice.notice_date) : new Date();
+                          const d = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
                           const day = format(d, 'dd');
                           const month = format(d, 'MMM');
                           const formattedDate = format(d, 'dd MMM yyyy');
                           return (
                             <div key={notice.id || i} className="p-6 hover:bg-slate-50 transition-colors group cursor-pointer flex gap-6 items-center" onClick={() => setViewNotice(notice)}>
-                              <div className="shrink-0 flex flex-col items-center justify-center bg-white border-2 border-primary/20 text-primary rounded-xl h-20 w-20 font-bold shadow-sm group-hover:bg-primary group-hover:text-white transition-colors duration-300">
-                                <span className="text-2xl leading-none">{day}</span>
-                                <span className="text-xs uppercase font-bold mt-1">{month}</span>
+                              <div className="shrink-0 flex flex-col items-center justify-center bg-white border-2 border-primary/20 text-indigo-600 rounded-xl h-20 w-20 font-bold shadow-sm group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                                <span className="text-2xl font-black leading-none">{day}</span>
+                                <span className="text-xs uppercase font-bold mt-1 tracking-wider">{month}</span>
                               </div>
                               <div className="space-y-2 flex-1">
                                 <h4 className="font-bold text-lg text-slate-800 group-hover:text-primary transition-colors">

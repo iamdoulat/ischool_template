@@ -520,15 +520,16 @@ div.text-primary {
   color: var(--primary, #818cf8);
 }
 
-/* Guarantee text-white and text-primary-foreground always render in crisp white on primary/gradient buttons */
+/* Guarantee text-white and text-primary-foreground render in crisp white */
 .text-primary-foreground,
-[class*="text-primary-foreground"],
-.text-white,
-[class*="text-white"],
+.text-white {
+  color: #ffffff !important;
+}
+
 button[class*="from-"],
 button[class*="bg-gradient"],
 a[class*="from-"],
 [data-slot="button"][class*="from-"],
 [data-slot="alert-dialog-action"][class*="from-"] {
-  color: #ffffff !important;
+  color: #ffffff;
 }
