@@ -19,7 +19,11 @@ import {
     Trash2,
     Loader2,
     X,
-    GraduationCap
+    GraduationCap,
+    PanelLeftClose,
+    PanelLeftOpen,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { CurrencySwitcher } from "./currency-switcher";
 import { BranchSwitcher } from "./branch-switcher";
@@ -487,7 +491,7 @@ function HeaderStudentSearch({ user }: { user?: any }) {
     );
 }
 
-export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
+export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar: () => void; sidebarCollapsed?: boolean }) {
     const { theme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState<any>(null);
@@ -762,18 +766,30 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
     };
 
     return (
-        <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl px-3 sm:px-6 md:px-8 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-30 transition-all duration-300 w-full">
+        <header className="h-14 min-h-[56px] border-b bg-card/80 backdrop-blur-xl pl-3 md:pl-4 pr-3 sm:pr-6 md:pr-8 flex items-center justify-between gap-2 sm:gap-4 sticky top-0 z-30 transition-all duration-300 w-full">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1 max-w-full">
                 <div className="relative group shrink-0">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-primary/40 to-indigo-500/40 rounded-xl blur opacity-25 group-hover:opacity-100 transition duration-300 animate-pulse" />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="relative text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl bg-muted/50 border border-muted/50 shadow-sm backdrop-blur-sm"
+                    <button
+                        type="button"
                         onClick={onToggleSidebar}
+                        title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                        className="relative h-9 w-9 text-gray-700 dark:text-gray-200 hover:text-indigo-600 dark:hover:text-indigo-400 bg-white dark:bg-card border border-gray-200/90 dark:border-gray-800 shadow-2xs hover:shadow-xs rounded-xl hover:bg-gray-50/90 dark:hover:bg-gray-800 transition-all duration-200 flex items-center justify-center cursor-pointer active:scale-95 group/btn"
+                        aria-label="Toggle Sidebar"
                     >
-                        <Menu className="h-5 w-5" />
-                    </Button>
+                        {/* Desktop View: Sleek Panel Toggle with dynamic left/right arrow indicator */}
+                        <div className="hidden md:flex items-center justify-center transition-transform duration-200 group-hover/btn:scale-105">
+                            {sidebarCollapsed ? (
+                                <ChevronRight className="h-4.5 w-4.5 stroke-[2.5] text-gray-600 dark:text-gray-300 group-hover/btn:text-indigo-600 dark:group-hover/btn:text-indigo-400" />
+                            ) : (
+                                <ChevronLeft className="h-4.5 w-4.5 stroke-[2.5] text-gray-600 dark:text-gray-300 group-hover/btn:text-indigo-600 dark:group-hover/btn:text-indigo-400" />
+                            )}
+                        </div>
+
+                        {/* Mobile View: Clean mobile drawer toggle */}
+                        <div className="flex md:hidden items-center justify-center">
+                            <Menu className="h-4.5 w-4.5 stroke-[2.2] text-gray-600 dark:text-gray-300 group-hover/btn:text-indigo-600 dark:group-hover/btn:text-indigo-400" />
+                        </div>
+                    </button>
                 </div>
                 <div className="flex flex-col text-left min-w-0 flex-1">
                     {(() => {
@@ -821,23 +837,6 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
                                     settings?.school_name || (typeof t === "function" ? t("smart_school") : "Smart School")
                                 )}
                             </h1>
-                        );
-                    })()}
-                    {(() => {
-                        const localTitleColor = mounted && typeof window !== 'undefined' ? localStorage.getItem("school_name_title_color") : null;
-                        const titleColor = settings?.school_name_title_color || localTitleColor || "#6366f1";
-                        const isGradient = titleColor.includes('gradient');
-                        const underlineBg = isGradient
-                            ? `var(--preview-header-title-gradient, ${titleColor})`
-                            : `linear-gradient(to right, var(--preview-header-title-color, ${titleColor}), transparent)`;
-
-                        return (
-                            <div
-                                className="h-0.5 w-12 rounded-full mt-[-2px] hidden md:block opacity-70"
-                                style={{
-                                    background: underlineBg
-                                }}
-                            />
                         );
                     })()}
                 </div>

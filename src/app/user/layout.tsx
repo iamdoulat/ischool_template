@@ -103,7 +103,7 @@ function UserLayoutContent({
                 onClose={() => setIsMobileOpen(false)}
             />
             <div className="flex flex-col flex-1 h-screen min-h-0 overflow-hidden shadow-2xl relative">
-                <Header onToggleSidebar={toggleSidebar} />
+                <Header onToggleSidebar={toggleSidebar} sidebarCollapsed={sidebarCollapsed} />
                 <main className={cn(
                     "flex-1 overflow-y-auto overflow-x-hidden px-4 md:px-8 pt-4 md:pt-6 lg:pt-8 pb-24 md:pb-8 w-full max-w-full min-w-0",
                     settings?.box_content === 'compact' ? "max-w-[1400px] mx-auto w-full" : "w-full"
