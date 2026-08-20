@@ -17,7 +17,7 @@ export function getImageUrl(
   );
 
   const defaultDomain = isLocalHost
-    ? `${window.location.protocol}//${window.location.hostname}:8000`
+    ? ""
     : (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "");
 
   let domain = (
@@ -32,18 +32,18 @@ export function getImageUrl(
     domain = domain.replace(/^http:\/\//i, "https://");
   }
 
-  // Handle absolute URLs
+  // Handle absolute URLs (including localhost:8000 stored in database)
   if (cleanPath.startsWith("http://") || cleanPath.startsWith("https://")) {
     const storageIdx = cleanPath.lastIndexOf("/storage/");
     const uploadsIdx = cleanPath.lastIndexOf("/uploads/");
 
     if (storageIdx !== -1) {
       const rel = cleanPath.substring(storageIdx + 9).replace(/^\/+/, '');
-      return `${domain}/storage/${rel}`;
+      return domain ? `${domain}/storage/${rel}` : `/storage/${rel}`;
     }
     if (uploadsIdx !== -1) {
       const rel = cleanPath.substring(uploadsIdx + 9).replace(/^\/+/, '');
-      return `${domain}/uploads/${rel}`;
+      return domain ? `${domain}/uploads/${rel}` : `/uploads/${rel}`;
     }
 
     // External absolute URL (S3, CDN, etc.) - upgrade http to https if window is https
@@ -65,11 +65,11 @@ export function getImageUrl(
 
   if (cleanPath.startsWith('uploads/') || cleanPath.startsWith('/uploads/')) {
     const rel = cleanPath.replace(/^\/?uploads\//i, '');
-    return `${domain}/uploads/${rel}`;
+    return domain ? `${domain}/uploads/${rel}` : `/uploads/${rel}`;
   }
 
   cleanPath = cleanPath.replace(/^\/+/, '');
-  return `${domain}/storage/${cleanPath}`;
+  return domain ? `${domain}/storage/${cleanPath}` : `/storage/${cleanPath}`;
 }
 
 import { useSettings } from "@/components/providers/settings-provider";

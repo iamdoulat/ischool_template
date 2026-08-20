@@ -39,12 +39,16 @@ import {
 import {
     type CertificateTemplate,
     type StudentFields,
+    type SchoolSettings,
+    PREBUILT_CERTIFICATES,
     renderCertificateHtml,
     printCertificate,
 } from "@/lib/certificate";
+import { getImageUrl } from "@/lib/image-url";
 
 interface ClassOption { id: number; name: string; }
 interface SectionOption { id: number; name: string; }
+interface CategoryOption { id: number; category_name?: string; name?: string; }
 interface ApiStudent {
     id: number;
     admission_no?: string;
@@ -55,7 +59,10 @@ interface ApiStudent {
     mother_name?: string;
     dob?: string;
     gender?: string;
-    category?: string;
+    category?: string | number;
+    student_category_id?: number;
+    student_category?: { id?: number; category_name?: string; name?: string };
+    studentCategory?: { id?: number; category_name?: string; name?: string };
     phone?: string;
     email?: string;
     roll_no?: string;
@@ -63,7 +70,12 @@ interface ApiStudent {
     current_address?: string;
     admission_date?: string;
     avatar?: string;
+    image?: string;
+    photo?: string;
+    student_photo?: string;
+    school_class_id?: number;
     schoolClass?: { name?: string };
+    section_id?: number;
     section?: { name?: string };
 }
 
@@ -89,16 +101,56 @@ function studentName(s: ApiStudent): string {
     return `${s.name || s.first_name || ""} ${s.last_name || ""}`.trim();
 }
 
-function toFields(s: ApiStudent): StudentFields {
+function getCategoryName(s: ApiStudent, catList: CategoryOption[] = []): string {
+    if (s.studentCategory?.category_name || s.studentCategory?.name) {
+        return s.studentCategory.category_name || s.studentCategory.name || "-";
+    }
+    if (s.student_category?.category_name || s.student_category?.name) {
+        return s.student_category.category_name || s.student_category.name || "-";
+    }
+    if (s.category) {
+        const found = catList.find((c) => String(c.id) === String(s.category));
+        if (found) {
+            return found.category_name || found.name || "";
+        }
+        if (typeof s.category === "string" && isNaN(Number(s.category)) && s.category.trim() !== "") {
+            return s.category;
+        }
+    }
+    return "-";
+}
+
+function getStudentClassName(s: ApiStudent, classList: ClassOption[] = [], fallbackClassId = ""): string {
+    return s.schoolClass?.name
+        || (s as any).school_class?.name
+        || (s as any).class_name
+        || classList.find((c) => String(c.id) === String(s.school_class_id || fallbackClassId))?.name
+        || "";
+}
+
+function toFields(
+    s: ApiStudent,
+    catList: CategoryOption[] = [],
+    classList: ClassOption[] = [],
+    fallbackClassId = "",
+    schoolSettings?: SchoolSettings
+): StudentFields {
+    const className = getStudentClassName(s, classList, fallbackClassId);
+    const sectionName = s.section?.name || (s as any).section_name || "";
+    const avatarRaw = s.avatar || s.image || s.photo || s.student_photo || (s as any).avatar_url || null;
+    const avatarUrl = avatarRaw ? getImageUrl(avatarRaw) : null;
+
     return {
+        id: s.id,
         name: studentName(s),
         admission_no: s.admission_no || "",
         roll_no: s.roll_no || "",
-        class: s.schoolClass?.name || "",
-        section: s.section?.name || "",
+        class: className,
+        grade: className,
+        section: sectionName,
         gender: s.gender || "",
         dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
-        category: s.category || "",
+        category: getCategoryName(s, catList),
         father_name: s.father_name || "",
         mother_name: s.mother_name || "",
         religion: s.religion || "",
@@ -106,7 +158,10 @@ function toFields(s: ApiStudent): StudentFields {
         phone: s.phone || "",
         present_address: s.current_address || "",
         admission_date: s.admission_date ? new Date(s.admission_date).toLocaleDateString("en-US") : "",
-        image: s.avatar ? `/storage/${s.avatar}` : null,
+        image: avatarUrl,
+        school_name: schoolSettings?.school_name,
+        school_logo: schoolSettings?.admin_logo || schoolSettings?.print_logo,
+        session: schoolSettings?.current_session,
     };
 }
 
@@ -116,7 +171,9 @@ export default function GenerateCertificatePage() {
     const tt = useTranslateToast();
     const [classes, setClasses] = useState<ClassOption[]>([]);
     const [sections, setSections] = useState<SectionOption[]>([]);
+    const [categories, setCategories] = useState<CategoryOption[]>([]);
     const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
+    const [settings, setSettings] = useState<SchoolSettings>({});
 
     const [classId, setClassId] = useState("");
     const [sectionId, setSectionId] = useState("");
@@ -131,13 +188,36 @@ export default function GenerateCertificatePage() {
     useEffect(() => {
         (async () => {
             try {
-                const [classesRes, tplRes] = await Promise.all([
-                    api.get("/academics/classes?no_paginate=true"),
-                    api.get("/certificate/student-certificates", { params: { per_page: 100 } }),
+                const [classesRes, categoriesRes, tplRes, setRes, printRes] = await Promise.all([
+                    api.get("/academics/classes?no_paginate=true").catch(() => ({ data: { data: [] } })),
+                    api.get("/student-categories").catch(() => ({ data: { data: [] } })),
+                    api.get("/certificate/student-certificates", { params: { per_page: 100 } }).catch(() => ({ data: { data: [] } })),
+                    api.get("/system-setting/general-setting").catch(() => ({ data: { data: {} } })),
+                    api.get("/system-setting/print-settings").catch(() => ({ data: { data: [] } })),
                 ]);
-                setClasses(classesRes.data.data || classesRes.data || []);
-                const tplData = tplRes.data?.data ?? tplRes.data ?? [];
-                setTemplates(Array.isArray(tplData) ? tplData : []);
+                setClasses(classesRes.data?.data?.data || classesRes.data?.data || classesRes.data || []);
+                setCategories(categoriesRes.data?.data?.data || categoriesRes.data?.data || categoriesRes.data || []);
+                const tplData = tplRes.data?.data?.data || tplRes.data?.data || tplRes.data || [];
+                const loadedList = Array.isArray(tplData) && tplData.length > 0 ? tplData : PREBUILT_CERTIFICATES;
+                setTemplates(loadedList);
+                const sData = setRes.data?.data || setRes.data || {};
+                const pData = printRes.data?.data || printRes.data || [];
+                const generalPurposeTab = Array.isArray(pData)
+                    ? pData.find((p: any) => p.type === "General Purpose")
+                    : null;
+
+                setSettings({
+                    ...sData,
+                    school_name: sData.school_name || "OAKRIDGE SCHOOL",
+                    admin_logo: sData.admin_logo || "",
+                    phone: sData.phone || "",
+                    email: sData.email || "",
+                    address: sData.address || "",
+                    current_session: sData.current_session || "2026 - 2027",
+                    general_purpose_header_image: generalPurposeTab?.header_image_url || generalPurposeTab?.header_image || null,
+                    general_purpose_footer_content: generalPurposeTab?.footer_content || null,
+                    general_purpose_paper_size: generalPurposeTab?.paper_size || "A4",
+                });
             } catch {
                 tt.error("failed_to_load_criteria_data");
             }
@@ -150,7 +230,7 @@ export default function GenerateCertificatePage() {
         (async () => {
             try {
                 const res = await api.get(`/academics/sections?school_class_id=${classId}&no_paginate=true`);
-                setSections(res.data.data || res.data || []);
+                setSections(res.data?.data?.data || res.data?.data || res.data || []);
             } catch {
                 setSections([]);
             }
@@ -199,7 +279,7 @@ export default function GenerateCertificatePage() {
             return;
         }
         const pages = chosen
-            .map((s) => `<div style="page-break-after:always;">${renderCertificateHtml(template, toFields(s))}</div>`)
+            .map((s) => `<div style="page-break-after:always;">${renderCertificateHtml(template, toFields(s, categories, classes, classId, settings), settings)}</div>`)
             .join("");
         printCertificate(pages);
     };
@@ -210,7 +290,21 @@ export default function GenerateCertificatePage() {
     };
     const handleExportCSV = () => {
         const rows = [[t("admission_no"), t("name"), t("class"), t("father_name"), t("dob"), t("gender"), t("category"), t("mobile")],
-            ...filtered.map((s) => [s.admission_no || "", studentName(s), s.schoolClass?.name || "", s.father_name || "", s.dob || "", s.gender || "", s.category || "", s.phone || ""])];
+            ...filtered.map((s) => {
+                const clsName = getStudentClassName(s, classes, classId);
+                const secName = s.section?.name || (s as any).section_name || "";
+                const classDisplay = clsName ? (secName ? `${clsName} (${secName})` : clsName) : (secName ? `(${secName})` : "");
+                return [
+                    s.admission_no || "",
+                    studentName(s),
+                    classDisplay,
+                    s.father_name || "",
+                    s.dob || "",
+                    s.gender || "",
+                    getCategoryName(s, categories),
+                    s.phone || ""
+                ];
+            })];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -322,19 +416,26 @@ export default function GenerateCertificatePage() {
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("select_criteria_and_search_to_list")}</TableCell></TableRow>
                                 ) : filtered.length === 0 ? (
                                     <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_students_found")}</TableCell></TableRow>
-                                ) : filtered.map((s) => (
-                                    <TableRow key={s.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                        <TableCell className="py-3"><Checkbox checked={selected.includes(s.id)} onCheckedChange={() => toggleOne(s.id)} className="h-3.5 w-3.5" /></TableCell>
-                                        <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
-                                        <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.schoolClass?.name || "-"}{s.section?.name ? ` (${s.section.name})` : ""}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.father_name || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.gender || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.category || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
-                                    </TableRow>
-                                ))}
+                                ) : filtered.map((s) => {
+                                    const clsName = getStudentClassName(s, classes, classId);
+                                    const secName = s.section?.name || (s as any).section_name || "";
+                                    const classDisplay = clsName ? (secName ? `${clsName} (${secName})` : clsName) : (secName ? `(${secName})` : "-");
+                                    const catName = getCategoryName(s, categories);
+
+                                    return (
+                                        <TableRow key={s.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
+                                            <TableCell className="py-3"><Checkbox checked={selected.includes(s.id)} onCheckedChange={() => toggleOne(s.id)} className="h-3.5 w-3.5" /></TableCell>
+                                            <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
+                                            <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>
+                                            <TableCell className="py-3 text-gray-700 font-medium">{classDisplay}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{s.father_name || "-"}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{s.gender || "-"}</TableCell>
+                                            <TableCell className="py-3 text-gray-700 font-medium">{catName}</TableCell>
+                                            <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

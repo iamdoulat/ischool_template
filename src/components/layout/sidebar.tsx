@@ -344,8 +344,8 @@ const menuItems = [
                 href: "#",
                 color: "amber",
                 submenus: [
-                    { name: "transfer_certificate", href: "/dashboard/certificate/transfer-certificate" },
-                    { name: "student_certificate", href: "/dashboard/certificate/student-certificate" },
+                    { name: "transfer_certificate", label: "Student Certificate", href: "/dashboard/certificate/transfer-certificate" },
+                    { name: "student_certificate", label: "Certificate Templates", href: "/dashboard/certificate/student-certificate" },
                     { name: "generate_certificate", href: "/dashboard/certificate/generate-certificate" },
                     { name: "student_id_card", href: "/dashboard/certificate/student-id-card" },
                     { name: "generate_id_card", href: "/dashboard/certificate/generate-id-card" },
@@ -955,7 +955,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                                                                             )}
                                                                         >
-                                                                            {submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}
+                                                                            {(submenu as any).label || (submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)))}
                                                                         </Link>
                                                                     ))}
                                                                 </div>
@@ -1013,7 +1013,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
                                                                             )}
                                                                         >
-                                                                            <span className="flex-1">{submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))}</span>
+                                                                            <span className="flex-1">{(submenu as any).label || (submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)))}</span>
                                                                             {isSubActive && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
                                                                             )}

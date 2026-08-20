@@ -58,7 +58,16 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { type StudentFields, renderCertificateHtml, printCertificate, downloadCertificatePdf } from "@/lib/certificate";
+import {
+    type CertificateTemplate,
+    type StudentFields,
+    type SchoolSettings,
+    PREBUILT_CERTIFICATES,
+    renderCertificateHtml,
+    printCertificate,
+    downloadCertificatePdf,
+} from "@/lib/certificate";
+import { getImageUrl } from "@/lib/image-url";
 
 interface ClassOption { id: number; name: string; }
 interface SectionOption { id: number; name: string; }
@@ -98,35 +107,29 @@ interface IssuedTC {
 
 const TABLE_COLS = 8;
 
-// Minimal TC template for rendering
+// Structured Transfer Certificate template matching official school standards
 const TC_TEMPLATE = {
     id: 0,
     name: "Transfer Certificate",
     header_left: "",
-    header_center: "TRANSFER CERTIFICATE",
+    header_center: "Transfer Certificate",
     header_right: "",
-    body_text: `This is to certify that [name], S/D/O [father_name], bearing Admission No. [admission_no],
-was a student of this school in Class [class] ([section]).
+    body_text: `This is to certify that [name], S/D/O [father_name] and [mother_name], bearing Admission No. [admission_no] and Roll No. [roll_no], was a student of this school in Class [class] ([section]) during the academic session [session].
 
-Date of Birth: [dob]
-Gender: [gender]
-Category: [category]
-Date of Admission: [admission_date]
-TC Number: [tc_number]
-Issue Date: [present_date]
+According to school records, the student's Date of Birth is [dob]. The student's academic progress, participation, and moral conduct have been found satisfactory during their period of study at this institution.
 
-[reason]
-
-The student is hereby issued this Transfer Certificate upon leaving the institution.`,
+All school fees and dues have been fully cleared up to date. The student is hereby granted this Transfer Certificate upon leaving the institution.`,
+    remarks: "Reason for Transfer: [reason]",
     footer_left: "Class Teacher",
-    footer_center: "",
-    footer_right: "Principal",
-    header_height: "80",
-    footer_height: "60",
+    footer_center: "Verified By",
+    footer_right: "Head of Institution\nwith Office Seal",
+    header_height: "120",
+    footer_height: "80",
     body_height: "auto",
-    body_width: "860",
-    enable_student_photo: false,
+    body_width: "1000",
+    enable_student_photo: true,
     background_image: null,
+    layout_type: "school_letterhead",
     is_active: true,
 };
 
@@ -168,13 +171,39 @@ function getCategoryName(s: ApiStudent, catList: CategoryOption[] = []): string 
     return "-";
 }
 
-function toFields(s: ApiStudent, catList: CategoryOption[] = [], extra?: Partial<StudentFields>): StudentFields {
+function toFields(
+    s: ApiStudent,
+    catList: CategoryOption[] = [],
+    classList: ClassOption[] = [],
+    extra?: Partial<StudentFields>,
+    schoolSettings?: SchoolSettings
+): StudentFields {
+    const className = s.schoolClass?.name
+        || (s as any).school_class?.name
+        || (s as any).class_name
+        || (classList.find(c => String(c.id) === String((s as any).school_class_id || (s as any).class_id))?.name)
+        || "";
+    const sectionName = s.section?.name
+        || (s as any).section_name
+        || (s as any).section
+        || "";
+    const avatarRaw = s.avatar
+        || (s as any).image
+        || (s as any).student_image
+        || (s as any).photo
+        || (s as any).student_photo
+        || (s as any).avatar_url
+        || null;
+    const avatarUrl = avatarRaw ? getImageUrl(avatarRaw) : null;
+
     return {
+        id: s.id,
         name: studentName(s),
         admission_no: s.admission_no || "",
         roll_no: s.roll_no || "",
-        class: s.schoolClass?.name || "",
-        section: s.section?.name || "",
+        class: className,
+        grade: className,
+        section: sectionName,
         gender: s.gender || "",
         dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
         category: getCategoryName(s, catList),
@@ -183,9 +212,12 @@ function toFields(s: ApiStudent, catList: CategoryOption[] = [], extra?: Partial
         religion: s.religion || "",
         email: s.email || "",
         phone: s.phone || "",
-        present_address: s.current_address || "",
+        present_address: s.current_address || (s as any).permanent_address || "",
         admission_date: s.admission_date ? new Date(s.admission_date).toLocaleDateString("en-US") : "",
-        image: s.avatar ? `/storage/${s.avatar}` : null,
+        image: avatarUrl,
+        school_name: schoolSettings?.school_name,
+        school_logo: schoolSettings?.admin_logo || schoolSettings?.print_logo,
+        session: schoolSettings?.current_session,
         ...extra,
     };
 }
@@ -197,8 +229,10 @@ export default function TransferCertificatePage() {
     const [classes, setClasses] = useState<ClassOption[]>([]);
     const [sections, setSections] = useState<SectionOption[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>([]);
+    const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
     const [classId, setClassId] = useState("");
     const [sectionId, setSectionId] = useState("");
+    const [templateId, setTemplateId] = useState("0");
 
     const [students, setStudents] = useState<ApiStudent[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -218,18 +252,54 @@ export default function TransferCertificatePage() {
     const [reasonDialogId, setReasonDialogId] = useState<number | null>(null);
     const [reason, setReason] = useState("");
 
+    const [settings, setSettings] = useState<SchoolSettings>({});
+
     useEffect(() => {
         (async () => {
             try {
-                const [classesRes, categoriesRes] = await Promise.all([
+                const [classesRes, categoriesRes, tplRes, setRes, printRes] = await Promise.all([
                     api.get("/academics/classes?no_paginate=true").catch(() => ({ data: { data: [] } })),
                     api.get("/student-categories").catch(() => ({ data: { data: [] } })),
+                    api.get("/certificate/student-certificates", { params: { per_page: 100 } }).catch(() => ({ data: { data: [] } })),
+                    api.get("/system-setting/general-setting").catch(() => ({ data: { data: {} } })),
+                    api.get("/system-setting/print-settings").catch(() => ({ data: { data: [] } })),
                 ]);
                 setClasses(classesRes.data?.data?.data || classesRes.data?.data || classesRes.data || []);
                 setCategories(categoriesRes.data?.data?.data || categoriesRes.data?.data || categoriesRes.data || []);
+
+                const tplData = tplRes.data?.data?.data || tplRes.data?.data || tplRes.data || [];
+                const loadedList: CertificateTemplate[] = Array.isArray(tplData) && tplData.length > 0 ? tplData : PREBUILT_CERTIFICATES;
+                setTemplates(loadedList);
+                if (loadedList.length > 0) {
+                    setTemplateId(String(loadedList[0].id));
+                }
+
+                const gData = setRes.data?.data || setRes.data || {};
+                const pData = printRes.data?.data || printRes.data || [];
+                const generalPurposeTab = Array.isArray(pData)
+                    ? pData.find((p: any) => p.type === "General Purpose")
+                    : null;
+
+                setSettings({
+                    ...gData,
+                    school_name: gData.school_name || "OAKRIDGE SCHOOL",
+                    admin_logo: gData.admin_logo || "",
+                    phone: gData.phone || "",
+                    email: gData.email || "",
+                    address: gData.address || "",
+                    current_session: gData.current_session || "2026 - 2027",
+                    general_purpose_header_image: generalPurposeTab?.header_image_url || generalPurposeTab?.header_image || null,
+                    general_purpose_footer_content: generalPurposeTab?.footer_content || null,
+                    general_purpose_paper_size: generalPurposeTab?.paper_size || "A4",
+                });
             } catch { /* silent */ }
         })();
     }, []);
+
+    const getSelectedTemplate = (): CertificateTemplate => {
+        const found = templates.find((t) => String(t.id) === String(templateId));
+        return found || TC_TEMPLATE;
+    };
 
     useEffect(() => {
         if (!classId) { setSections([]); setSectionId(""); return; }
@@ -281,20 +351,28 @@ export default function TransferCertificatePage() {
         setIssuingId(reasonDialogId);
         setReasonDialogId(null);
         try {
+            const isReissue = reissueIds.includes(student.id);
             const res = await api.post("/certificate/transfer-certificates", {
                 student_id: student.id,
                 reason: reason.trim() || null,
+                is_reissue: isReissue,
             });
-            const tc: IssuedTC = res.data.data;
-            toast({ title: t("tc_issued"), description: `${t("tc_number")}: ${tc.tc_number}` });
+            const tc: IssuedTC = res.data?.data || res.data;
+            toast({
+                title: tc?.is_reissue ? (t("tc_reissued") || "TC Reissued") : (t("tc_issued") || "TC Issued"),
+                description: `${t("tc_number") || "TC Number"}: ${tc?.tc_number || ""}`,
+            });
             const fields: StudentFields = {
-                ...toFields(student, categories),
-                tc_number: tc.tc_number,
-                reason: reason.trim() || "",
+                ...toFields(student, categories, classes, {}, settings),
+                tc_number: tc?.tc_number,
+                reason: reason.trim() || tc?.meta?.reason || "",
             };
-            const html = renderCertificateHtml(TC_TEMPLATE, fields);
-            await downloadCertificatePdf(html, `TC-${tc.tc_number}.pdf`);
-        } catch {
+            const html = renderCertificateHtml(getSelectedTemplate(), fields, settings);
+            const cleanTcNum = (tc?.tc_number || "certificate").replace(/[^a-zA-Z0-9-_]/g, "_");
+            await downloadCertificatePdf(html, `TC_${cleanTcNum}.pdf`);
+            setReissueIds((prev) => prev.filter((id) => id !== student.id));
+        } catch (err) {
+            console.error("Failed to issue/download TC:", err);
             tt.error("failed_to_issue_transfer_certificate");
         } finally {
             setIssuingId(null);
@@ -302,8 +380,8 @@ export default function TransferCertificatePage() {
     };
 
     const printTc = (s: ApiStudent) => {
-        const fields = toFields(s, categories);
-        printCertificate(renderCertificateHtml(TC_TEMPLATE, fields));
+        const fields = toFields(s, categories, classes, {}, settings);
+        printCertificate(renderCertificateHtml(getSelectedTemplate(), fields, settings));
     };
 
     const handleVerify = async () => {
@@ -334,7 +412,7 @@ export default function TransferCertificatePage() {
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "transfer_certificate_students.csv";
+        link.download = "student_certificate_list.csv";
         link.click();
     };
 
@@ -356,19 +434,19 @@ export default function TransferCertificatePage() {
                             <FileBadge className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("transfer_certificate")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("issue_tc_description")}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_certificate")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("student_certificate_description")}</p>
                         </div>
                     </div>
                     <Button
                         onClick={() => { setVerifyOpen(true); setVerifyInput(""); setVerifyResult(null); }}
                         className="h-9 px-4 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
                     >
-                        <ShieldCheck className="h-4 w-4" /> {t("verify_tc")}
+                        <ShieldCheck className="h-4 w-4" /> {t("verify_certificate")}
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("class")} <span className="text-red-500">*</span></Label>
                             <Select value={classId} onValueChange={setClassId}>
@@ -384,6 +462,19 @@ export default function TransferCertificatePage() {
                                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("all_sections")} /></SelectTrigger>
                                 <SelectContent>
                                     {sections.map((s) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("certificate")} <span className="text-red-500">*</span></Label>
+                            <Select value={templateId} onValueChange={setTemplateId}>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_certificate")} /></SelectTrigger>
+                                <SelectContent>
+                                    {templates.map((t) => (
+                                        <SelectItem key={String(t.id)} value={String(t.id)}>
+                                            {t.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

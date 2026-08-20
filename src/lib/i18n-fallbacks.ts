@@ -1,6 +1,11 @@
 // Built-in English fallbacks for the i18n system.
 
 export const i18nFallbacks: Record<string, string> = {
+  transfer_certificate: "Student Certificate",
+  student_certificate: "Certificate Templates",
+  certificate_templates: "Certificate Templates",
+  student_certificate_description: "Generate, issue, and manage student certificates",
+  verify_certificate: "Verify Certificate",
   header_shortcuts: "Header Shortcuts",
   internal_chat: "Internal Chat",
   add_x: "Add {label}",

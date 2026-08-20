@@ -385,6 +385,16 @@ export default function GeneralSettingPage() {
         expense_invoice_digit: 4,
         expense_invoice_start_from: "",
 
+        // Certificate Auto Generation
+        auto_student_certificate_no: true,
+        student_certificate_prefix: "CERT-",
+        student_certificate_digit: 4,
+        student_certificate_start_from: "1",
+        auto_transfer_certificate_no: true,
+        transfer_certificate_prefix: "TC-",
+        transfer_certificate_digit: 4,
+        transfer_certificate_start_from: "1",
+
         // Fees
         fees_offline_bank_payment_in_student_panel: false,
         fees_offline_bank_payment_instruction: "",
@@ -2602,6 +2612,106 @@ export default function GeneralSettingPage() {
                                         <Input
                                             value={formData.expense_invoice_start_from}
                                             onChange={(e) => handleChange('expense_invoice_start_from', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Student Certificate Auto Generation */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("student_certificate_no_auto_generation") || "Student Certificate No Auto Generation"}</h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex items-center justify-between max-w-sm">
+                                    <Label className="text-xs font-medium text-gray-600">{t("auto_student_certificate_no") || "Auto Generate Certificate No"}</Label>
+                                    <Switch
+                                        checked={formData.auto_student_certificate_no}
+                                        onCheckedChange={(checked) => handleChange('auto_student_certificate_no', checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">{t("student_certificate_prefix") || "Certificate No Prefix"} <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.student_certificate_prefix}
+                                            onChange={(e) => handleChange('student_certificate_prefix', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-xs"
+                                            placeholder="CERT-"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">{t("student_certificate_digit") || "Certificate No Digit"} <span className="text-red-500">*</span></Label>
+                                        <Select
+                                            value={String(formData.student_certificate_digit || 4)}
+                                            onValueChange={(value) => handleChange('student_certificate_digit', parseInt(value))}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="4">4</SelectItem>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="6">6</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">{t("student_certificate_start_from") || "Certificate Start From"} <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.student_certificate_start_from}
+                                            onChange={(e) => handleChange('student_certificate_start_from', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Transfer Certificate Auto Generation */}
+                        <div className="space-y-4 pt-4 border-t border-gray-50">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("transfer_certificate_no_auto_generation") || "Transfer Certificate No Auto Generation"}</h3>
+                            <div className="grid grid-cols-1 gap-6">
+                                <div className="flex items-center justify-between max-w-sm">
+                                    <Label className="text-xs font-medium text-gray-600">{t("auto_transfer_certificate_no") || "Auto Generate TC No"}</Label>
+                                    <Switch
+                                        checked={formData.auto_transfer_certificate_no}
+                                        onCheckedChange={(checked) => handleChange('auto_transfer_certificate_no', checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    />
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">{t("transfer_certificate_prefix") || "TC No Prefix"} <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.transfer_certificate_prefix}
+                                            onChange={(e) => handleChange('transfer_certificate_prefix', e.target.value)}
+                                            className="h-8 border-gray-200 shadow-none rounded text-xs"
+                                            placeholder="TC-"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">{t("transfer_certificate_digit") || "TC No Digit"} <span className="text-red-500">*</span></Label>
+                                        <Select
+                                            value={String(formData.transfer_certificate_digit || 4)}
+                                            onValueChange={(value) => handleChange('transfer_certificate_digit', parseInt(value))}
+                                        >
+                                            <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
+                                                <SelectValue placeholder="Select" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="4">4</SelectItem>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="6">6</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-medium text-gray-600">{t("transfer_certificate_start_from") || "TC Start From"} <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            value={formData.transfer_certificate_start_from}
+                                            onChange={(e) => handleChange('transfer_certificate_start_from', e.target.value)}
                                             className="h-8 border-gray-200 shadow-none rounded text-xs"
                                         />
                                     </div>
