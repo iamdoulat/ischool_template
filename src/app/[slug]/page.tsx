@@ -26,8 +26,8 @@ export default function DynamicPage() {
         const fetchPage = async () => {
             try {
                 const res = await api.get(`front-cms/pages/show-by-slug/${slug}`);
-                if (res.data?.status === "Success") {
-                    setPage(res.data.data);
+                if (res.data?.status === "Success" || res.data?.data) {
+                    setPage(res.data.data || res.data);
                 } else {
                     setError("Page not found");
                 }
@@ -45,9 +45,9 @@ export default function DynamicPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex flex-col">
+            <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950">
                 <PublicHeader />
-                <div className="flex-1 flex items-center justify-center">
+                <div className="flex-1 flex items-center justify-center py-32">
                     <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
                 </div>
                 <PublicFooter />
@@ -60,26 +60,26 @@ export default function DynamicPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950">
             <PublicHeader />
             <main className="flex-1">
-                {/* Hero Section */}
-                <div className="bg-slate-900 text-white py-20 relative overflow-hidden">
+                {/* Hero Banner Section */}
+                <div className="bg-slate-900 text-white py-16 sm:py-20 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center" />
-                    <div className="container mx-auto px-6 sm:px-8 md:px-12 relative z-10">
-                        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight uppercase">
+                    <div className="container mx-auto px-6 sm:px-8 md:px-12 relative z-10 text-center">
+                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight uppercase">
                             {page.title}
                         </h1>
                     </div>
                 </div>
 
                 {/* Content Section */}
-                <div className="container mx-auto px-6 sm:px-8 md:px-12 py-16">
+                <div className="container mx-auto px-4 sm:px-6 md:px-12 py-12 sm:py-16">
                     {(() => {
-                        if (!page.content) {
+                        if (!page.content || page.content.trim().length === 0) {
                             return (
-                                <div className="text-center py-20 text-gray-400">
-                                    <p>No content available for this page.</p>
+                                <div className="text-center py-20 text-slate-400">
+                                    <p className="text-base font-medium">No content available for this page.</p>
                                 </div>
                             );
                         }
@@ -100,22 +100,13 @@ export default function DynamicPage() {
                             tokens.push({ type: 'html', value: page.content.slice(lastIndex) });
                         }
 
-                        if (tokens.length === 0) {
-                            return (
-                                <div
-                                    className="prose prose-indigo prose-lg max-w-none prose-headings:uppercase prose-headings:tracking-tight prose-headings:font-bold prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-table:max-w-full prose-pre:overflow-x-auto prose-p:break-words max-w-full overflow-x-hidden"
-                                    dangerouslySetInnerHTML={{ __html: page.content }}
-                                />
-                            );
-                        }
-
                         return (
-                            <div className="space-y-8">
+                            <div className="space-y-8 w-full">
                                 {tokens.map((token, i) => (
-                                    <div key={i}>
+                                    <div key={i} className="w-full">
                                         {token.type === 'html' && token.value && (
                                             <div
-                                                className="prose prose-indigo prose-lg max-w-none prose-headings:uppercase prose-headings:tracking-tight prose-headings:font-bold prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-table:max-w-full prose-pre:overflow-x-auto prose-p:break-words max-w-full overflow-x-hidden"
+                                                className="dynamic-cms-html max-w-full overflow-x-hidden"
                                                 dangerouslySetInnerHTML={{ __html: token.value }}
                                             />
                                         )}
