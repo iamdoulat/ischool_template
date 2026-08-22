@@ -118,6 +118,7 @@ export default function StudentDetailsPage() {
     const [viewMode, setViewMode] = useState<"list" | "details">("list");
     const [loading, setLoading] = useState(false);
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
+    const [hasSearched, setHasSearched] = useState(false);
 
     const [classes, setClasses] = useState<{ id: number; name: string; sections?: { id: number; name: string }[] }[]>([]);
     const [categories, setCategories] = useState<{ id: number; category_name?: string; name?: string }[]>([]);
@@ -187,21 +188,31 @@ export default function StudentDetailsPage() {
         const urlGender = searchParams.get("gender") || "";
         const urlCategory = searchParams.get("category") || "";
 
-        setFilters(prev => ({
-            ...prev,
-            search: urlSearch,
-            school_class_id: urlClass,
-            section_id: urlSection,
-            status: urlStatus,
-            gender: urlGender,
-            category: urlCategory,
-        }));
+        if (urlSearch || urlClass || urlSection || urlStatus || urlGender || urlCategory) {
+            setFilters(prev => ({
+                ...prev,
+                search: urlSearch,
+                school_class_id: urlClass,
+                section_id: urlSection,
+                status: urlStatus,
+                gender: urlGender,
+                category: urlCategory,
+            }));
+            setHasSearched(true);
+        }
     }, [searchParams]);
 
-    // Auto-load students once prerequisites finish loading
+    // Load students ONLY if active filter parameters are present in URL
     useEffect(() => {
-        if (!fetchingPrereqs) handleSearch(1);
-    }, [fetchingPrereqs, filters.school_class_id, filters.section_id, filters.status, filters.gender, filters.category, searchParams]);
+        if (!fetchingPrereqs) {
+            const urlSearch = searchParams.get("search") || "";
+            const urlClass = searchParams.get("school_class_id") || "";
+            const urlSection = searchParams.get("section_id") || "";
+            if (urlClass || urlSearch || urlSection) {
+                handleSearch(1);
+            }
+        }
+    }, [fetchingPrereqs]);
 
     const fetchPrerequisites = async () => {
         try {
@@ -246,9 +257,12 @@ export default function StudentDetailsPage() {
             school_class_id: "",
             section_id: "",
             search: "",
-            status: ""
+            status: "",
+            gender: "",
+            category: "",
         });
         setStudents([]);
+        setHasSearched(false);
     };
 
     const handleDownloadPdf = async (student: Student) => {
@@ -388,6 +402,7 @@ export default function StudentDetailsPage() {
     };
 
     const handleSearch = async (page = 1) => {
+        setHasSearched(true);
         setLoading(true);
         try {
             const params: Record<string, any> = { limit: 50, page };
@@ -588,7 +603,11 @@ export default function StudentDetailsPage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_details")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{pagination.total} {pagination.total === 1 ? t("student_found") : t("students_found")}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {!hasSearched
+                                ? (t("search_by_class_and_section") || "Search by Class & Section to view records")
+                                : `${pagination.total} ${pagination.total === 1 ? t("student_found") : t("students_found")}`}
+                        </p>
                     </div>
                 </CardHeader>
 
@@ -624,7 +643,30 @@ export default function StudentDetailsPage() {
                 </div>
 
                 <div className="p-0 min-h-[400px]">
-                    {loading ? (
+                    {!hasSearched ? (
+                        /* Initial Prompt Before Search */
+                        <div className="py-24 flex flex-col items-center justify-center text-center space-y-4 px-4">
+                            <div className="p-5 bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 shadow-sm">
+                                <FolderSearch className="h-12 w-12 text-[#6366F1]" />
+                            </div>
+                            <div className="space-y-1.5 max-w-md">
+                                <h3 className="font-bold text-lg text-slate-800 dark:text-gray-100">
+                                    {t("search_by_class_and_section") || "Search by Class & Section"}
+                                </h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                                    {t("please_select_class_section_and_search") || "Please select a Class and Section from the filter options above and click 'Search' to view student information."}
+                                </p>
+                            </div>
+                            <Button
+                                variant="gradient"
+                                className="h-10 px-8 text-xs font-semibold shadow-sm mt-2"
+                                onClick={() => handleSearch(1)}
+                            >
+                                <Search className="h-4 w-4 mr-1.5" />
+                                {t("search_now") || "Search Now"}
+                            </Button>
+                        </div>
+                    ) : loading ? (
                         viewMode === "list" ? (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
