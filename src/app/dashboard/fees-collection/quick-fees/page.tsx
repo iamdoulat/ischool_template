@@ -244,58 +244,58 @@ export default function QuickFeesPage() {
                         <p className="text-[11px] text-gray-500 mt-1">Search and collect student fees</p>
                     </div>
                 </CardHeader>
-                <CardContent className="p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <CardContent className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                         {/* Class */}
-                        <div className="space-y-2.5 group">
+                        <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 transition-colors group-focus-within:text-primary">
                                 Class
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedClass}
                                     onChange={(e) => { setSelectedClass(e.target.value); setSelectedStudentId(""); }}
                                 >
                                     <option value="">Select Class</option>
                                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
                             </div>
                         </div>
 
                         {/* Section */}
-                        <div className="space-y-2.5 group">
+                        <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 transition-colors group-focus-within:text-primary">
                                 Section
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedSection}
                                     onChange={(e) => { setSelectedSection(e.target.value); setSelectedStudentId(""); }}
                                 >
                                     <option value="">Select Section</option>
                                     {filteredSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
                             </div>
                         </div>
 
                         {/* Student */}
-                        <div className="space-y-2.5 group">
+                        <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 transition-colors group-focus-within:text-primary">
                                 Student
                             </label>
                             <div className="relative">
                                 <select
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
+                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all font-medium"
                                     value={selectedStudentId}
                                     onChange={(e) => setSelectedStudentId(e.target.value)}
                                     disabled={fetchingStudents || !selectedClass}
                                 >
                                     <option value="">
-                                        {!selectedClass ? "Select Class First" : (fetchingStudents ? "Loading..." : (students.length === 0 ? "No Students Found" : `Select Student (${students.length})`))}
+                                        {!selectedClass ? "Select Class First" : (fetchingStudents ? "Loading..." : (students.length === 0 ? "No Students" : `Select Student (${students.length})`))}
                                     </option>
                                     {students.map(s => (
                                         <option key={s.id} value={s.id}>
@@ -303,26 +303,29 @@ export default function QuickFeesPage() {
                                         </option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
                             </div>
                         </div>
 
-                        <div className="md:col-span-3 flex justify-end gap-3 flex-wrap">
+                        <div>
                             <Button
                                 variant="outline"
-                                className="h-11 px-6 rounded-lg font-bold border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 flex items-center gap-2 transition-all"
+                                className="h-11 w-full rounded-lg font-bold border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 flex items-center justify-center gap-2 transition-all text-xs"
                                 onClick={() => router.push(selectedStudentId ? `/dashboard/fees-collection/generate-invoice?student_id=${selectedStudentId}` : '/dashboard/fees-collection/generate-invoice')}
                             >
-                                <FileText className="h-4 w-4" />
+                                <FileText className="h-4 w-4 shrink-0" />
                                 Generate Invoice
                             </Button>
+                        </div>
+
+                        <div>
                             <Button
                                 variant="gradient"
-                                className="h-11 px-10 rounded-lg font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2"
+                                className="h-11 w-full rounded-lg font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 text-xs"
                                 onClick={handleSearch}
                                 disabled={loading}
                             >
-                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <Search className="h-4 w-4 shrink-0" />}
                                 Search Fees
                             </Button>
                         </div>
