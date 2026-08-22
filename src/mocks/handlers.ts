@@ -70,7 +70,8 @@ const mockGeneralSettings = {
   ],
   student_attendance_settings: [
     { type: "Present", from: "0", upto: "100", total: "100" }
-  ]
+  ],
+  contact_form_receiver_email: "admin@ischool.com"
 };
 
 export const handlers = [
@@ -159,6 +160,151 @@ export const handlers = [
       message: "General settings updated successfully",
       data: mockGeneralSettings
     })
+  }),
+
+  // Front CMS Page by Slug
+  http.get('*/api/v1/front-cms/pages/show-by-slug/:slug', ({ params }) => {
+    const slug = params.slug;
+    return HttpResponse.json({
+      status: "Success",
+      data: {
+        id: 1,
+        title: String(slug).replace(/-/g, ' ').toUpperCase(),
+        url: slug,
+        content: ""
+      }
+    });
+  }),
+
+  // Front CMS Contact Form Submit
+  http.post('*/api/v1/front-cms/contact-form/submit', async ({ request }) => {
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch (_) { }
+
+    return HttpResponse.json({
+      status: "Success",
+      success: true,
+      message: "Your message has been sent successfully."
+    });
+  }),
+
+  // Examination Public List
+  http.get('*/api/v1/examination/public/exam-list', () => {
+    return HttpResponse.json({
+      status: "Success",
+      exam_groups: [
+        {
+          id: 1,
+          name: "Annual Examination Group",
+          exams: [
+            { id: 1, name: "Final Term Examination 2026", session: "2026-27", is_result_published: true },
+            { id: 2, name: "Mid Term Assessment 2026", session: "2026-27", is_result_published: false }
+          ]
+        }
+      ]
+    });
+  }),
+
+  // Examination Public Search
+  http.post('*/api/v1/examination/public/search*', async ({ request }) => {
+    let body: any = {};
+    try {
+      body = await request.json();
+    } catch (_) { }
+
+    const rollNo = (body.roll_no || body.admission_no || "").trim();
+    const examId = Number(body.exam_id);
+
+    // If exam 2 is selected (Unpublished mock exam)
+    if (examId === 2) {
+      return HttpResponse.json({
+        found: false,
+        published: false,
+        message: "Result Not published Yet."
+      });
+    }
+
+    if (!rollNo) {
+      return HttpResponse.json({
+        found: false,
+        published: true,
+        message: "Please enter your Roll Number."
+      });
+    }
+
+    return HttpResponse.json({
+      found: true,
+      published: true,
+      exam: {
+        id: 1,
+        name: "Final Term Examination 2026",
+        group: "Annual Examination Group",
+        session: "2026-27"
+      },
+      student: {
+        id: 101,
+        admission_no: "ADM-" + (rollNo || "202601"),
+        roll_no: rollNo || "101",
+        name: "Rahim",
+        last_name: "Ahmed",
+        class_name: "Class 5",
+        section_name: "A"
+      },
+      exam_results: [
+        { subject_name: "English", marks: 88, theory_marks: 68, practical_marks: 20, is_absent: false },
+        { subject_name: "Mathematics", marks: 94, theory_marks: 74, practical_marks: 20, is_absent: false },
+        { subject_name: "General Science", marks: 85, theory_marks: 65, practical_marks: 20, is_absent: false },
+        { subject_name: "Social Studies", marks: 78, theory_marks: 58, practical_marks: 20, is_absent: false },
+        { subject_name: "Bangla", marks: 91, theory_marks: 71, practical_marks: 20, is_absent: false }
+      ]
+    });
+  }),
+
+  // Notices endpoint
+  http.get('*/api/v1/communicate/notices', () => {
+    return HttpResponse.json({
+      status: "Success",
+      data: [
+        {
+          id: 1,
+          title: "Annual Sports Day & Athletics Meet 2026",
+          message: "<p>We are delighted to announce that our <strong>Annual Sports Day</strong> will be held on <strong>March 15, 2026</strong>. All students are requested to be present in their respective House Uniforms by 8:00 AM sharp at the main sports complex. Parents and guardians are cordially invited to join and cheer for our young athletes.</p>",
+          notice_date: "2026-03-01",
+          publish_date: "2026-03-01",
+          message_to: "Student, Guardian, Staff",
+          is_published: true
+        },
+        {
+          id: 2,
+          title: "Final Examination Schedule & Admit Card Distribution",
+          message: "<p>The final term examinations will commence from <strong>April 5, 2026</strong>. Admit cards can be collected from the class teachers starting next Monday. Please ensure all library books and administrative dues are settled prior to collection.</p>",
+          notice_date: "2026-02-28",
+          publish_date: "2026-02-28",
+          message_to: "Student, Guardian",
+          is_published: true
+        },
+        {
+          id: 3,
+          title: "Parent-Teacher Conference (PTC) for Term 1",
+          message: "<p>The Parent-Teacher Meeting will be conducted on <strong>Saturday, March 22</strong> between 9:00 AM and 1:00 PM. Parents can discuss academic progress and extracurricular development with the respective subject educators.</p>",
+          notice_date: "2026-02-20",
+          publish_date: "2026-02-20",
+          message_to: "Guardian",
+          is_published: true
+        },
+        {
+          id: 4,
+          title: "Inter-School STEM & Robotics Exhibition",
+          message: "<p>Students from Classes 6 to 12 are invited to register their science models and robotics projects for the upcoming regional STEM championship. Registrations close on March 10 at the science lab coordinator desk.</p>",
+          notice_date: "2026-02-15",
+          publish_date: "2026-02-15",
+          message_to: "Student, Staff",
+          is_published: true
+        }
+      ]
+    });
   }),
 
   // Online Admission settings
