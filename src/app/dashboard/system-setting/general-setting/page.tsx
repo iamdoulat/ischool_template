@@ -1193,6 +1193,27 @@ export default function GeneralSettingPage() {
                                     t={t}
                                 />
                             </div>
+
+                            {/* Save Button for PWA & Logos */}
+                            <div className="flex justify-end pt-4">
+                                <Button
+                                    onClick={() => handleSave()}
+                                    disabled={saving}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 font-bold text-xs uppercase px-8 h-9 rounded-full shadow-md transition-all flex items-center gap-2"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            Saving Settings...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="h-3.5 w-3.5" />
+                                            Save PWA & Logo Settings
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 );
