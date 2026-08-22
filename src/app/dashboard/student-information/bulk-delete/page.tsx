@@ -269,7 +269,7 @@ export default function BulkDeletePage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                         <div className="space-y-2 group">
                             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
                                 {t("class")}
@@ -308,19 +308,25 @@ export default function BulkDeletePage() {
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
                             </div>
                         </div>
-                    </div>
 
-                    <div className="flex justify-end mt-6">
-                        <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => {
-                            if (!selectedClass || !selectedSection) {
-                                tt.error("please_select_class_and_section_first");
-                                return;
-                            }
-                            setCurrentPage(1);
-                            fetchStudents(1, searchTerm);
-                        }} disabled={loading}>
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} {t("search")}
-                        </Button>
+                        <div>
+                            <Button
+                                variant="gradient"
+                                className="h-11 px-8 rounded-lg w-full md:w-auto"
+                                onClick={() => {
+                                    if (!selectedClass || !selectedSection) {
+                                        tt.error("please_select_class_and_section_first");
+                                        return;
+                                    }
+                                    setCurrentPage(1);
+                                    fetchStudents(1, searchTerm);
+                                }}
+                                disabled={loading}
+                            >
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Search className="h-4 w-4 mr-1.5" />}
+                                {t("search")}
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
