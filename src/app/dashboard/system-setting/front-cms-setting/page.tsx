@@ -346,18 +346,34 @@ export default function FrontCmsSettingPage() {
             </div>
 
             <Tabs defaultValue="system" className="w-full">
-                <TabsList className="bg-white border text-gray-500 h-11 p-1 gap-1 rounded-lg shadow-sm border-gray-100">
-                    <TabsTrigger value="system" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
-                        <Globe size={14} className="stroke-[2.5px]" /> {t("system")}
+                <TabsList className="bg-white border text-gray-500 h-11 p-1 gap-1.5 rounded-lg shadow-sm border-gray-100 flex-wrap">
+                    <TabsTrigger
+                        value="system"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                    >
+                        <Globe size={15} className="stroke-[2.5px]" />
+                        <span>System</span>
                     </TabsTrigger>
-                    <TabsTrigger value="social" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
-                        <Share2 size={14} className="stroke-[2.5px]" /> {t("social_links")}
+                    <TabsTrigger
+                        value="social"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                    >
+                        <Share2 size={15} className="stroke-[2.5px]" />
+                        <span>Social Links</span>
                     </TabsTrigger>
-                    <TabsTrigger value="hero" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
-                        <ImageIcon size={14} className="stroke-[2.5px]" /> {t("hero")}
+                    <TabsTrigger
+                        value="hero"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                    >
+                        <ImageIcon size={15} className="stroke-[2.5px]" />
+                        <span>Hero</span>
                     </TabsTrigger>
-                    <TabsTrigger value="sections" className="text-[11px] font-bold uppercase gap-2 px-6 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-400 data-[state=active]:to-indigo-500 data-[state=active]:text-white rounded-lg transition-all duration-300">
-                        <LayoutPanelLeft size={14} className="stroke-[2.5px]" /> {t("sections")}
+                    <TabsTrigger
+                        value="sections"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                    >
+                        <LayoutPanelLeft size={15} className="stroke-[2.5px]" />
+                        <span>Sections</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -555,22 +571,21 @@ export default function FrontCmsSettingPage() {
 
                 {/* SOCIAL LINKS TAB */}
                 <TabsContent value="social" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-10 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6">
-                            {Object.keys(settings.social_media).map((platform) => (
-                                <div key={platform} className="grid grid-cols-1 md:grid-cols-12 items-center gap-4 group">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 capitalize">{platform.replace('_', ' ')}</Label>
-                                    <div className="md:col-span-8 relative">
-                                        <div className="absolute left-3 top-2.5 h-4 w-4 text-indigo-400 group-hover:scale-110 transition-transform">
-                                            <Globe size={16} />
-                                        </div>
-                                        <Input
-                                            value={settings.social_media[platform]}
-                                            onChange={(e) => updateSocialField(platform, e.target.value)}
-                                            className="h-9 pl-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded-lg bg-gray-50/50 hover:bg-white transition-colors"
-                                            placeholder={`Enter ${platform} URL`}
-                                        />
-                                    </div>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6">
+                        <div className="border-b border-gray-50 pb-4">
+                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Social Media Links</h2>
+                            <p className="text-[11px] text-gray-400">Configure institutional social media profile links displayed on public pages</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {Object.keys(settings.social_media || {}).map((platform) => (
+                                <div key={platform} className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">{platform.replace(/_/g, ' ')}</Label>
+                                    <Input
+                                        value={settings.social_media[platform] || ""}
+                                        onChange={(e) => updateSocialField(platform, e.target.value)}
+                                        className="h-9 text-[11px] rounded-lg bg-gray-50/30"
+                                        placeholder={`https://${platform}.com/...`}
+                                    />
                                 </div>
                             ))}
                         </div>
@@ -579,13 +594,13 @@ export default function FrontCmsSettingPage() {
 
                 {/* HERO TAB */}
                 <TabsContent value="hero" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-8">
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6">
                         <div className="flex items-center justify-between border-b border-gray-50 pb-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
                                     <ImageIcon size={18} className="stroke-[2.5px]" />
                                 </div>
-                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">{t("hero_section_configuration")}</h2>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Hero Banner & Main Title</h2>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.hero_enabled !== false ? t("enabled") : t("disabled")}</span>
@@ -670,7 +685,7 @@ export default function FrontCmsSettingPage() {
                                 <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
                                     <Info size={18} className="stroke-[2.5px]" />
                                 </div>
-                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">{t("welcome_about_us_section")}</h2>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">About Us Section Settings</h2>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.about_enabled !== false ? t("enabled") : t("disabled")}</span>
@@ -684,26 +699,22 @@ export default function FrontCmsSettingPage() {
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                             <div className="md:col-span-8 space-y-5">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("section_heading_h1")}</Label>
-                                    <Input value={settings.about_us.section_title || ""} onChange={(e) => updateNestedField("about_us", "section_title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="About Us" />
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Badge / Small Heading</Label>
+                                    <Input value={settings.about_us?.section_title || ""} onChange={(e) => updateNestedField("about_us", "section_title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="Welcome to Our School" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("section_subtitle")}</Label>
-                                    <Input value={settings.about_us.section_subtitle || ""} onChange={(e) => updateNestedField("about_us", "section_subtitle", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="Section subtitle..." />
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Main Headline Title</Label>
+                                    <Input value={settings.about_us?.title || ""} onChange={(e) => updateNestedField("about_us", "title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="Empowering Minds, Inspiring Character, Shaping the Future." />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("right_side_headline_title")}</Label>
-                                    <Input value={settings.about_us.title} onChange={(e) => updateNestedField("about_us", "title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" />
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Description Narrative</Label>
+                                    <Textarea value={settings.about_us?.description || ""} onChange={(e) => updateNestedField("about_us", "description", e.target.value)} className="min-h-[140px] text-[11px] leading-relaxed rounded-lg bg-gray-50/30" placeholder="Main description content..." />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("right_side_content")}</Label>
-                                    <Textarea value={settings.about_us.description} onChange={(e) => updateNestedField("about_us", "description", e.target.value)} className="min-h-[140px] text-[11px] leading-relaxed rounded-lg bg-gray-50/30" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("left_image_url")}</Label>
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Left Side Main Image URL</Label>
                                     <div className="flex gap-3">
-                                        <Input value={settings.about_us.image_url || ""} onChange={(e) => updateNestedField("about_us", "image_url", e.target.value)} className="h-10 text-[11px] rounded-lg bg-gray-50/30 flex-1" placeholder="https://..." />
-                                        {settings.about_us.image_url && (
+                                        <Input value={settings.about_us?.image_url || ""} onChange={(e) => updateNestedField("about_us", "image_url", e.target.value)} className="h-10 text-[11px] rounded-lg bg-gray-50/30 flex-1" placeholder="https://..." />
+                                        {settings.about_us?.image_url && (
                                             <div className="h-10 w-20 rounded-lg overflow-hidden border border-gray-200 shrink-0">
                                                 <img src={settings.about_us.image_url} className="h-full w-full object-cover" alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                                             </div>
@@ -711,34 +722,67 @@ export default function FrontCmsSettingPage() {
                                     </div>
                                 </div>
 
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Experience Years Badge</Label>
+                                        <Input value={settings.about_us?.experience_years || ""} onChange={(e) => updateNestedField("about_us", "experience_years", e.target.value)} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="25+" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Experience Label</Label>
+                                        <Input value={settings.about_us?.experience_label || ""} onChange={(e) => updateNestedField("about_us", "experience_label", e.target.value)} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Years Of Educational Excellence" />
+                                    </div>
+                                </div>
+
+                                {/* Mission, Vision, Core Values */}
+                                <div className="pt-4 border-t border-gray-100 space-y-4">
+                                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Mission, Vision & Values</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Mission Title & Text</Label>
+                                            <Input value={settings.about_us?.mission_title || ""} onChange={(e) => updateNestedField("about_us", "mission_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder="Our Mission" />
+                                            <Textarea value={settings.about_us?.mission_description || ""} onChange={(e) => updateNestedField("about_us", "mission_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Mission details..." />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Vision Title & Text</Label>
+                                            <Input value={settings.about_us?.vision_title || ""} onChange={(e) => updateNestedField("about_us", "vision_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder="Our Vision" />
+                                            <Textarea value={settings.about_us?.vision_description || ""} onChange={(e) => updateNestedField("about_us", "vision_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Vision details..." />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Core Values Title & Text</Label>
+                                            <Input value={settings.about_us?.values_title || ""} onChange={(e) => updateNestedField("about_us", "values_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder="Our Core Values" />
+                                            <Textarea value={settings.about_us?.values_description || ""} onChange={(e) => updateNestedField("about_us", "values_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Values details..." />
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Accordion Items */}
-                                <div className="space-y-3 pt-2">
+                                <div className="space-y-3 pt-4 border-t border-gray-100">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("accordion_items")}</Label>
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Educational Pillars (Accordion Items)</Label>
                                         <Button onClick={() => {
-                                            const accordions = [...(settings.about_us.accordions || [])];
+                                            const accordions = [...(settings.about_us?.accordions || [])];
                                             accordions.push({ id: Date.now(), title: "", content: "" });
                                             updateNestedField("about_us", "accordions", accordions);
                                         }} className="bg-gradient-to-r from-orange-400 to-indigo-500 text-white h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1">
                                             <Plus size={12} /> {t("add_item")}
                                         </Button>
                                     </div>
-                                    {(settings.about_us.accordions || []).map((acc: any, idx: number) => (
+                                    {(settings.about_us?.accordions || []).map((acc: any, idx: number) => (
                                         <div key={acc.id} className="p-4 border border-gray-100 rounded-lg bg-gray-50/20 space-y-3 relative group">
                                             <Button size="icon" onClick={() => {
-                                                const accordions = [...(settings.about_us.accordions || [])].filter((a: any) => a.id !== acc.id);
+                                                const accordions = [...(settings.about_us?.accordions || [])].filter((a: any) => a.id !== acc.id);
                                                 updateNestedField("about_us", "accordions", accordions);
                                             }} className="absolute top-3 right-3 h-7 w-7 bg-red-500 text-white rounded-[8px] shadow-md opacity-0 group-hover:opacity-100 transition-all border-0">
                                                 <Trash2 size={14} />
                                             </Button>
                                             <div className="space-y-2 pr-8">
                                                 <Input value={acc.title} onChange={(e) => {
-                                                    const accordions = [...(settings.about_us.accordions || [])];
+                                                    const accordions = [...(settings.about_us?.accordions || [])];
                                                     accordions[idx].title = e.target.value;
                                                     updateNestedField("about_us", "accordions", accordions);
                                                 }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Accordion title..." />
                                                 <Textarea value={acc.content} onChange={(e) => {
-                                                    const accordions = [...(settings.about_us.accordions || [])];
+                                                    const accordions = [...(settings.about_us?.accordions || [])];
                                                     accordions[idx].content = e.target.value;
                                                     updateNestedField("about_us", "accordions", accordions);
                                                 }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" placeholder="Accordion content..." />
@@ -802,21 +846,20 @@ export default function FrontCmsSettingPage() {
                                             {course.image ? <img src={course.image} className="h-full w-full object-cover" alt="" /> : <div className="h-full w-full flex items-center justify-center text-gray-300 text-[10px] font-bold uppercase">{t("no_img")}</div>}
                                         </div>
                                         <div className="flex-1 space-y-3">
-                                    <div className="flex gap-3">
-                                        <div className="flex-1">
-                                            <Input placeholder={t("course_name")} value={course.title} onChange={(e) => { const n = [...settings.main_courses]; n[idx].title = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] font-bold bg-white border-gray-100 rounded-lg" />
-                                        </div>
-                                        <div className="w-28">
-                                            <Input placeholder={t("category")} value={course.category || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].category = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
-                                        </div>
-                                        <div className="w-24">
-                                            <Input placeholder={t("price")} value={course.price || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].price = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
-                                        </div>
-                                        <div className="w-32">
-                                            <Input placeholder={t("apply_link")} value={course.link || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].link = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
-                                        </div>
-                                    </div>
-                                    <Textarea placeholder={t("description")} value={course.description} onChange={(e) => { const n = [...settings.main_courses]; n[idx].description = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" />
+                                            <div className="flex gap-3">
+                                                <div className="flex-1">
+                                                    <Input placeholder={t("course_name")} value={course.title} onChange={(e) => { const n = [...settings.main_courses]; n[idx].title = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] font-bold bg-white border-gray-100 rounded-lg" />
+                                                </div>
+                                                <div className="w-28">
+                                                    <Input placeholder={t("category")} value={course.category || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].category = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
+                                                </div>
+                                                <div className="w-24">
+                                                    <Input placeholder={t("price")} value={course.price || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].price = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
+                                                </div>                                                <div className="w-32">
+                                                    <Input placeholder={t("apply_link")} value={course.link || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].link = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
+                                                </div>
+                                            </div>
+                                            <Textarea placeholder={t("description")} value={course.description} onChange={(e) => { const n = [...settings.main_courses]; n[idx].description = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" />
                                         </div>
                                     </div>
                                 </div>
