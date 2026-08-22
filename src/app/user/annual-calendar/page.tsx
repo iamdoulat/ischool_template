@@ -17,6 +17,8 @@ import {
     LayoutGrid,
     List,
     Clock,
+    UserCheck,
+    Clock3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +37,11 @@ interface CalendarEntry {
     holiday_type?: { name: string };
     holiday_type_name?: string;
     is_front_site?: boolean;
+    is_leave?: boolean;
+    leave_status?: "Pending" | "Approved" | "Disapproved" | string;
+    leave_type?: string;
+    half_day?: string;
+    admin_remark?: string;
 }
 
 interface EventDetail {
@@ -43,6 +50,11 @@ interface EventDetail {
     startDate: string;
     endDate: string;
     description?: string;
+    isLeave?: boolean;
+    leaveStatus?: string;
+    leaveType?: string;
+    halfDay?: string;
+    adminRemark?: string;
 }
 
 const monthNames = [
@@ -50,43 +62,73 @@ const monthNames = [
     "July", "August", "September", "October", "November", "December"
 ];
 
-// Color definitions for various event/holiday categories
+// Color definitions for various event/holiday/leave categories
 const CATEGORY_STYLES: Record<string, { badge: string; pill: string; cellBg: string; text: string }> = {
+    "on leave": {
+        badge: "bg-sky-600 text-white shadow-xs font-bold",
+        pill: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800",
+        cellBg: "bg-sky-50/80 hover:bg-sky-100/80 dark:bg-sky-950/40 border-sky-200/80",
+        text: "text-sky-700 dark:text-sky-300",
+    },
+    on_leave: {
+        badge: "bg-sky-600 text-white shadow-xs font-bold",
+        pill: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800",
+        cellBg: "bg-sky-50/80 hover:bg-sky-100/80 dark:bg-sky-950/40 border-sky-200/80",
+        text: "text-sky-700 dark:text-sky-300",
+    },
+    leave: {
+        badge: "bg-sky-600 text-white shadow-xs font-bold",
+        pill: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800",
+        cellBg: "bg-sky-50/80 hover:bg-sky-100/80 dark:bg-sky-950/40 border-sky-200/80",
+        text: "text-sky-700 dark:text-sky-300",
+    },
+    pending: {
+        badge: "bg-amber-500 text-white shadow-xs font-bold",
+        pill: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
+        cellBg: "bg-amber-50/80 hover:bg-amber-100/80 dark:bg-amber-950/40 border-amber-200/80",
+        text: "text-amber-700 dark:text-amber-300",
+    },
+    "leave (pending)": {
+        badge: "bg-amber-500 text-white shadow-xs font-bold",
+        pill: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800",
+        cellBg: "bg-amber-50/80 hover:bg-amber-100/80 dark:bg-amber-950/40 border-amber-200/80",
+        text: "text-amber-700 dark:text-amber-300",
+    },
     holiday: {
         badge: "bg-blue-600 text-white",
         pill: "bg-blue-100/90 text-blue-700 border-blue-200/80 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800",
         cellBg: "bg-blue-50/80 hover:bg-blue-100/80 dark:bg-blue-950/40 border-blue-200/80",
-        text: "text-blue-700",
+        text: "text-blue-700 dark:text-blue-300",
     },
     vacation: {
         badge: "bg-emerald-600 text-white",
         pill: "bg-emerald-100/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800",
         cellBg: "bg-emerald-50/80 hover:bg-emerald-100/80 dark:bg-emerald-950/40 border-emerald-200/80",
-        text: "text-emerald-700",
+        text: "text-emerald-700 dark:text-emerald-300",
     },
     "school events": {
         badge: "bg-indigo-600 text-white",
         pill: "bg-indigo-100/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800",
         cellBg: "bg-indigo-50/80 hover:bg-indigo-100/80 dark:bg-indigo-950/40 border-indigo-200/80",
-        text: "text-indigo-700",
+        text: "text-indigo-700 dark:text-indigo-300",
     },
     event: {
         badge: "bg-indigo-600 text-white",
         pill: "bg-indigo-100/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800",
         cellBg: "bg-indigo-50/80 hover:bg-indigo-100/80 dark:bg-indigo-950/40 border-indigo-200/80",
-        text: "text-indigo-700",
+        text: "text-indigo-700 dark:text-indigo-300",
     },
     activity: {
         badge: "bg-amber-600 text-white",
         pill: "bg-amber-100/90 text-amber-800 border-amber-200/80 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
         cellBg: "bg-amber-50/80 hover:bg-amber-100/80 dark:bg-amber-950/40 border-amber-200/80",
-        text: "text-amber-700",
+        text: "text-amber-700 dark:text-amber-300",
     },
     weekly: {
         badge: "bg-red-600 text-white",
         pill: "bg-red-100/90 text-red-700 border-red-200/80 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
         cellBg: "bg-red-50/90 hover:bg-red-100/90 dark:bg-red-950/40 border-red-200/80",
-        text: "text-red-700",
+        text: "text-red-700 dark:text-red-300",
     },
 };
 
@@ -113,18 +155,64 @@ export default function UserAnnualCalendarPage() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [calendarRes, settingsRes] = await Promise.allSettled([
+            const [calendarRes, settingsRes, leavesRes] = await Promise.allSettled([
                 api.get("/annual-calendar/annual-calendars", {
                     params: { no_paginate: true },
                 }),
                 api.get("/system-setting/general-setting"),
+                api.get("/user/apply-leave", {
+                    params: { per_page: 200 },
+                }),
             ]);
 
+            const allEntriesList: CalendarEntry[] = [];
+
+            // 1. Annual Calendar Events
             if (calendarRes.status === "fulfilled") {
                 const payload = calendarRes.value.data?.data ?? calendarRes.value.data ?? [];
-                setEntries(Array.isArray(payload) ? payload : []);
+                if (Array.isArray(payload)) {
+                    allEntriesList.push(...payload);
+                }
             }
 
+            // 2. Student Leave Requests (Pending & Approved)
+            if (leavesRes.status === "fulfilled") {
+                const resData = leavesRes.value.data?.data ?? leavesRes.value.data ?? [];
+                const leavesArr = Array.isArray(resData) ? resData : (resData.data || []);
+                for (const l of leavesArr) {
+                    if (!l.fromDate) continue;
+                    const fromDate = l.fromDate;
+                    const toDate = l.toDate || fromDate;
+                    const status = l.status || "Pending";
+                    const isPending = status.toLowerCase() === "pending";
+                    const isApproved = status.toLowerCase() === "approved";
+
+                    if (isPending || isApproved) {
+                        const typeLabel = isApproved ? "On Leave" : "Pending";
+                        const descriptionText = l.reason
+                            ? `${l.leaveType || "Leave"}: ${l.reason}`
+                            : `${l.leaveType || "Leave"} (${isApproved ? "Approved Leave" : "Pending Leave"})`;
+
+                        allEntriesList.push({
+                            id: `leave-${l.id}`,
+                            start_date: fromDate,
+                            end_date: toDate,
+                            description: descriptionText,
+                            holiday_type: { name: typeLabel },
+                            holiday_type_name: typeLabel,
+                            is_leave: true,
+                            leave_status: status,
+                            leave_type: l.leaveType,
+                            half_day: l.halfDay,
+                            admin_remark: l.adminRemark,
+                        });
+                    }
+                }
+            }
+
+            setEntries(allEntriesList);
+
+            // 3. System General Settings for Weekly Holidays
             if (settingsRes.status === "fulfilled") {
                 const setting = settingsRes.value.data?.data ?? settingsRes.value.data ?? {};
                 const startDay = strtolower(setting?.start_day_of_week ?? "");
@@ -186,8 +274,6 @@ export default function UserAnnualCalendarPage() {
         return day > 0 && day <= daysInMonth ? day : null;
     });
 
-
-
     // Map events to day numbers of the current month
     const monthEventMap = useMemo(() => {
         const map: Record<number, CalendarEntry[]> = {};
@@ -227,13 +313,26 @@ export default function UserAnnualCalendarPage() {
         let vacations = 0;
         let schoolEvents = 0;
         let activities = 0;
+        let onLeave = 0;
+        let pendingLeaves = 0;
 
         for (const e of entries) {
             const tName = (e.holiday_type?.name || e.holiday_type_name || "").toLowerCase();
-            if (tName.includes("vacation")) vacations++;
-            else if (tName.includes("event")) schoolEvents++;
-            else if (tName.includes("activity")) activities++;
-            else holidays++;
+            if (e.is_leave) {
+                if (e.leave_status?.toLowerCase() === "approved" || tName.includes("on leave")) {
+                    onLeave++;
+                } else {
+                    pendingLeaves++;
+                }
+            } else if (tName.includes("vacation")) {
+                vacations++;
+            } else if (tName.includes("event")) {
+                schoolEvents++;
+            } else if (tName.includes("activity")) {
+                activities++;
+            } else {
+                holidays++;
+            }
         }
 
         // Count weekly holidays in current month
@@ -251,6 +350,8 @@ export default function UserAnnualCalendarPage() {
             vacations,
             schoolEvents,
             activities,
+            onLeave,
+            pendingLeaves,
             weeklyHolidays: monthWeeklyHolidays,
             totalEvents: entries.length,
             monthEventsCount: currentMonthEntries.length,
@@ -258,6 +359,24 @@ export default function UserAnnualCalendarPage() {
     }, [entries, currentMonthEntries, daysInMonth, currentYear, currentMonth, weeklyHolidays]);
 
     const summaryCards = [
+        {
+            label: t("on_leave") || "On Leave",
+            count: stats.onLeave,
+            bar: "from-sky-500 to-blue-500",
+            text: "text-sky-700 dark:text-sky-300",
+            bg: "bg-sky-50/90 dark:bg-sky-950/50",
+            border: "border-sky-200 dark:border-sky-800",
+            labelColor: "text-sky-600 dark:text-sky-400",
+        },
+        {
+            label: t("pending_leaves") || "Pending Leave",
+            count: stats.pendingLeaves,
+            bar: "from-amber-400 to-orange-500",
+            text: "text-amber-700 dark:text-amber-300",
+            bg: "bg-amber-50/90 dark:bg-amber-950/50",
+            border: "border-amber-200 dark:border-amber-800",
+            labelColor: "text-amber-600 dark:text-amber-400",
+        },
         {
             label: t("public_holidays") || "Holidays",
             count: stats.holidays,
@@ -286,15 +405,6 @@ export default function UserAnnualCalendarPage() {
             labelColor: "text-indigo-600 dark:text-indigo-400",
         },
         {
-            label: t("activities") || "Activities",
-            count: stats.activities,
-            bar: "from-amber-500 to-orange-500",
-            text: "text-amber-700 dark:text-amber-300",
-            bg: "bg-amber-50/90 dark:bg-amber-950/50",
-            border: "border-amber-200 dark:border-amber-800",
-            labelColor: "text-amber-600 dark:text-amber-400",
-        },
-        {
             label: t("weekly_holidays") || "Weekly Holidays",
             count: stats.weeklyHolidays,
             bar: "from-red-500 to-rose-500",
@@ -302,15 +412,6 @@ export default function UserAnnualCalendarPage() {
             bg: "bg-red-50/90 dark:bg-red-950/50",
             border: "border-red-200 dark:border-red-800",
             labelColor: "text-red-600 dark:text-red-400",
-        },
-        {
-            label: t("total_events") || "Total Events",
-            count: stats.totalEvents,
-            bar: "from-gray-700 to-gray-900",
-            text: "text-gray-800 dark:text-gray-200",
-            bg: "bg-gray-50/90 dark:bg-zinc-800/60",
-            border: "border-gray-200 dark:border-zinc-700",
-            labelColor: "text-gray-500 dark:text-gray-400",
         },
     ];
 
@@ -340,7 +441,7 @@ export default function UserAnnualCalendarPage() {
                                 {t("annual_calendar") || "Annual Calendar"}
                             </h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {t("holidays_events_and_vacation_schedule") || "Holidays Events And Vacation Schedule"}
+                                {t("holidays_events_and_vacation_schedule") || "Holidays Events, Leaves And Vacation Schedule"}
                             </p>
                         </div>
                     </div>
@@ -362,7 +463,7 @@ export default function UserAnnualCalendarPage() {
                                 <button
                                     onClick={() => setViewMode("calendar")}
                                     className={cn(
-                                        "flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all",
+                                        "flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer",
                                         viewMode === "calendar"
                                             ? "bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                                             : "text-gray-500 hover:text-gray-800"
@@ -374,7 +475,7 @@ export default function UserAnnualCalendarPage() {
                                 <button
                                     onClick={() => setViewMode("list")}
                                     className={cn(
-                                        "flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all",
+                                        "flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer",
                                         viewMode === "list"
                                             ? "bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                                             : "text-gray-500 hover:text-gray-800"
@@ -422,41 +523,43 @@ export default function UserAnnualCalendarPage() {
                             onClick={goToToday}
                             variant="outline"
                             size="sm"
-                            className="text-xs font-semibold rounded-[10px] hidden sm:flex items-center gap-1"
+                            className="text-xs font-semibold rounded-[10px] hidden sm:flex items-center gap-1 border-gray-200"
                         >
-                            <Clock className="h-3.5 w-3.5" />
+                            <Clock className="h-3.5 w-3.5 text-indigo-500" />
                             {t("today") || "Today"}
                         </Button>
 
                         <div className="flex items-center justify-center gap-4 mx-auto sm:mx-0">
                             <Button
                                 onClick={goToPrevMonth}
-                                size="icon-sm"
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-sm transition-all rounded-[10px] active:scale-95"
+                                size="icon"
+                                className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-sm transition-all rounded-[10px] active:scale-95 cursor-pointer"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
-                            <div className="font-bold text-[15px] text-gray-800 min-w-[150px] text-center">
+                            <div className="font-bold text-[15px] text-gray-800 min-w-[160px] text-center">
                                 {monthNames[currentMonth - 1]} {currentYear}
                             </div>
                             <Button
                                 onClick={goToNextMonth}
-                                size="icon-sm"
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-sm transition-all rounded-[10px] active:scale-95"
+                                size="icon"
+                                className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-sm transition-all rounded-[10px] active:scale-95 cursor-pointer"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
                         </div>
 
                         <div className="text-xs text-gray-500 font-medium hidden sm:block">
-                            {currentMonthEntries.length} {t("events_in_month") || "Events in this month"}
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                {currentMonthEntries.length} {t("events_in_month") || "Events in this month"}
+                            </span>
                         </div>
                     </div>
 
                     {loading ? (
                         <div className="text-center py-16 text-gray-400 text-sm">
                             <div className="flex items-center justify-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
                                 {t("loading")}
                             </div>
                         </div>
@@ -498,7 +601,7 @@ export default function UserAnnualCalendarPage() {
                                         <div
                                             key={idx}
                                             className={cn(
-                                                "min-h-[82px] sm:min-h-[112px] border-r border-b border-gray-100 last:border-r-0 transition-colors flex flex-col justify-between p-1 sm:p-2",
+                                                "min-h-[84px] sm:min-h-[114px] border-r border-b border-gray-100 last:border-r-0 transition-colors flex flex-col justify-between p-1 sm:p-2",
                                                 idx >= cells.length - 7 ? "border-b-0" : "",
                                                 isToday
                                                     ? "bg-indigo-50/60 ring-1 ring-inset ring-indigo-200"
@@ -524,14 +627,14 @@ export default function UserAnnualCalendarPage() {
                                                                     : "text-gray-500"
                                                     )}>
                                                         {isToday && (
-                                                            <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-1 py-0.5 rounded leading-none">
+                                                            <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-1 py-0.5 rounded leading-none shadow-2xs">
                                                                 {t("today") || "TODAY"}
                                                             </span>
                                                         )}
                                                         <span>{day}</span>
                                                     </div>
 
-                                                    {/* Event & Holiday Badges */}
+                                                    {/* Event & Holiday & Leave Badges */}
                                                     <div className="mt-1 space-y-1">
                                                         {isWeekend && dayEvents.length === 0 && (
                                                             <div className="px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight bg-red-600 text-white">
@@ -552,11 +655,16 @@ export default function UserAnnualCalendarPage() {
                                                                         startDate: ev.start_date,
                                                                         endDate: ev.end_date,
                                                                         description: ev.description,
+                                                                        isLeave: ev.is_leave,
+                                                                        leaveStatus: ev.leave_status,
+                                                                        leaveType: ev.leave_type,
+                                                                        halfDay: ev.half_day,
+                                                                        adminRemark: ev.admin_remark,
                                                                     })}
-                                                                    className="w-full text-left focus:outline-hidden"
+                                                                    className="w-full text-left focus:outline-hidden cursor-pointer group"
                                                                 >
                                                                     <div className={cn(
-                                                                        "px-1.5 py-0.5 text-[8px] sm:text-[9.5px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight truncate mb-0.5",
+                                                                        "px-1.5 py-0.5 text-[8px] sm:text-[9.5px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight truncate mb-0.5 group-hover:opacity-90",
                                                                         evStyle.badge
                                                                     )}>
                                                                         {evType}
@@ -564,7 +672,7 @@ export default function UserAnnualCalendarPage() {
                                                                     {ev.description && (
                                                                         <p
                                                                             className={cn(
-                                                                                "text-[8px] sm:text-[9px] font-semibold line-clamp-2 text-center leading-tight px-1 rounded py-0.5 shadow-2xs border",
+                                                                                "text-[8px] sm:text-[9px] font-semibold line-clamp-2 text-center leading-tight px-1 rounded py-0.5 shadow-2xs border group-hover:brightness-95",
                                                                                 evStyle.pill
                                                                             )}
                                                                             title={ev.description}
@@ -595,7 +703,7 @@ export default function UserAnnualCalendarPage() {
                             {currentMonthEntries.length === 0 ? (
                                 <div className="text-center py-16 text-gray-400">
                                     <CalendarDays className="h-10 w-10 mx-auto opacity-30 mb-2" />
-                                    <p className="text-sm font-semibold">{t("no_events_this_month") || "No events or holidays scheduled for this month"}</p>
+                                    <p className="text-sm font-semibold">{t("no_events_this_month") || "No events, holidays, or leaves scheduled for this month"}</p>
                                 </div>
                             ) : (
                                 <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
@@ -616,6 +724,11 @@ export default function UserAnnualCalendarPage() {
                                                     startDate: item.start_date,
                                                     endDate: item.end_date,
                                                     description: item.description,
+                                                    isLeave: item.is_leave,
+                                                    leaveStatus: item.leave_status,
+                                                    leaveType: item.leave_type,
+                                                    halfDay: item.half_day,
+                                                    adminRemark: item.admin_remark,
                                                 })}
                                                 className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50/70 cursor-pointer transition-colors"
                                             >
@@ -633,6 +746,14 @@ export default function UserAnnualCalendarPage() {
                                                             <Calendar className="h-3 w-3 text-indigo-500" />
                                                             {formatDate(item.start_date)}{multiDay ? ` – ${formatDate(item.end_date)}` : ""}
                                                         </span>
+                                                        {item.is_leave && item.leave_status && (
+                                                            <span className={cn(
+                                                                "px-2 py-0.2 rounded text-[10px] font-bold",
+                                                                item.leave_status.toLowerCase() === "approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                                                            )}>
+                                                                Status: {item.leave_status}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
 
@@ -656,7 +777,7 @@ export default function UserAnnualCalendarPage() {
                         <div className="mt-4 pt-4 border-t border-gray-100">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-1.5">
                                 <Info className="h-4 w-4 text-indigo-500" />
-                                {monthNames[currentMonth - 1]} {currentYear} — {t("scheduled_events") || "Scheduled Events & Holidays"}
+                                {monthNames[currentMonth - 1]} {currentYear} — {t("scheduled_events") || "Scheduled Events, Holidays & Leaves"}
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {currentMonthEntries.map((ev, idx) => {
@@ -673,6 +794,11 @@ export default function UserAnnualCalendarPage() {
                                                 startDate: ev.start_date,
                                                 endDate: ev.end_date,
                                                 description: ev.description,
+                                                isLeave: ev.is_leave,
+                                                leaveStatus: ev.leave_status,
+                                                leaveType: ev.leave_type,
+                                                halfDay: ev.half_day,
+                                                adminRemark: ev.admin_remark,
                                             })}
                                             className="p-3 rounded-xl border border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm cursor-pointer transition-all flex flex-col justify-between space-y-2"
                                         >
@@ -684,9 +810,19 @@ export default function UserAnnualCalendarPage() {
                                                     {evType}
                                                 </span>
                                             </div>
-                                            <div className="text-[10px] text-gray-400 font-medium flex items-center gap-1">
-                                                <Calendar className="h-3 w-3 text-gray-400" />
-                                                <span>{formatDate(ev.start_date)}{multiDay ? ` – ${formatDate(ev.end_date)}` : ""}</span>
+                                            <div className="text-[10px] text-gray-400 font-medium flex items-center justify-between">
+                                                <span className="flex items-center gap-1">
+                                                    <Calendar className="h-3 w-3 text-gray-400" />
+                                                    {formatDate(ev.start_date)}{multiDay ? ` – ${formatDate(ev.end_date)}` : ""}
+                                                </span>
+                                                {ev.is_leave && (
+                                                    <span className={cn(
+                                                        "text-[9px] font-bold px-1.5 py-0.5 rounded",
+                                                        ev.leave_status?.toLowerCase() === "approved" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                                    )}>
+                                                        {ev.leave_status}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -697,32 +833,72 @@ export default function UserAnnualCalendarPage() {
                 </div>
             </div>
 
-            {/* ── Event Detail Modal ── */}
+            {/* ── Event / Leave Detail Modal ── */}
             <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => !open && setSelectedEvent(null)}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
+                <DialogContent className="sm:max-w-[440px] p-0 gap-0 overflow-hidden bg-white dark:bg-zinc-900">
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-800 dark:to-zinc-850 border-b border-gray-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2 mb-1">
                             <span className={cn("px-2.5 py-0.5 text-[10px] font-bold rounded-full border", selectedEvent ? getCategoryStyle(selectedEvent.type).pill : "")}>
                                 {selectedEvent?.type}
                             </span>
+                            {selectedEvent?.isLeave && (
+                                <span className={cn(
+                                    "px-2 py-0.5 text-[9px] font-bold rounded",
+                                    selectedEvent.leaveStatus?.toLowerCase() === "approved"
+                                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                        : "bg-amber-100 text-amber-800 border border-amber-200"
+                                )}>
+                                    Status: {selectedEvent.leaveStatus}
+                                </span>
+                            )}
                         </div>
-                        <DialogTitle className="text-base font-bold text-gray-900 leading-tight">
+                        <DialogTitle className="text-base font-bold text-gray-900 dark:text-gray-100 leading-tight">
                             {selectedEvent?.title}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-gray-500 pt-1">
-                            <span className="flex items-center gap-1 font-medium text-gray-600">
+                            <span className="flex items-center gap-1 font-medium text-gray-600 dark:text-gray-300">
                                 <Calendar className="h-3.5 w-3.5 text-indigo-500" />
                                 {selectedEvent?.startDate ? formatDate(selectedEvent.startDate) : ""}
                                 {selectedEvent?.endDate && selectedEvent.endDate !== selectedEvent.startDate ? ` – ${formatDate(selectedEvent.endDate)}` : ""}
                             </span>
                         </DialogDescription>
                     </DialogHeader>
-                    {selectedEvent?.description && (
-                        <div className="mt-2 p-3 bg-gray-50 dark:bg-zinc-800/60 rounded-lg text-xs text-gray-700 dark:text-zinc-200 border border-gray-100 dark:border-zinc-700">
-                            <p className="font-semibold text-gray-500 dark:text-zinc-400 text-[10px] uppercase mb-1">Description</p>
-                            <p>{selectedEvent.description}</p>
+                    <div className="p-5 space-y-3">
+                        {selectedEvent?.description && (
+                            <div className="p-3 bg-gray-50 dark:bg-zinc-800/60 rounded-lg text-xs text-gray-700 dark:text-zinc-200 border border-gray-100 dark:border-zinc-700">
+                                <p className="font-semibold text-gray-500 dark:text-zinc-400 text-[10px] uppercase mb-1">
+                                    {selectedEvent.isLeave ? "Leave Reason & Details" : "Description"}
+                                </p>
+                                <p className="leading-relaxed">{selectedEvent.description}</p>
+                            </div>
+                        )}
+
+                        {selectedEvent?.isLeave && selectedEvent.halfDay && (
+                            <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                <Clock3 className="h-3.5 w-3.5 text-indigo-500" />
+                                <span className="font-medium">Half Day Option:</span>
+                                <span className="font-semibold text-gray-800">{selectedEvent.halfDay}</span>
+                            </div>
+                        )}
+
+                        {selectedEvent?.isLeave && selectedEvent.adminRemark && (
+                            <div className="p-3 bg-amber-50/60 rounded-lg text-xs text-amber-900 border border-amber-100">
+                                <p className="font-bold text-[10px] uppercase text-amber-700 mb-0.5">Admin Remark</p>
+                                <p>{selectedEvent.adminRemark}</p>
+                            </div>
+                        )}
+
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedEvent(null)}
+                                className="h-8 text-xs text-gray-600"
+                            >
+                                {t("close") || "Close"}
+                            </Button>
                         </div>
-                    )}
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

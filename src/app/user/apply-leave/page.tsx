@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     Dialog,
     DialogContent,
@@ -102,7 +103,7 @@ export default function UserApplyLeavePage() {
         leave_type_id: "",
         leave_from: "",
         leave_to: "",
-        half_day: "",
+        half_day: "Full Day",
         reason: "",
     });
     const [submitting, setSubmitting] = useState(false);
@@ -159,7 +160,7 @@ export default function UserApplyLeavePage() {
     };
 
     const openApplyDialog = () => {
-        setFormData({ leave_type_id: "", leave_from: "", leave_to: "", half_day: "", reason: "" });
+        setFormData({ leave_type_id: "", leave_from: "", leave_to: "", half_day: "Full Day", reason: "" });
         setDialogOpen(true);
     };
 
@@ -174,7 +175,7 @@ export default function UserApplyLeavePage() {
                 leave_type_id: parseInt(formData.leave_type_id),
                 leave_from: formData.leave_from,
                 leave_to: formData.leave_to,
-                half_day: formData.half_day || undefined,
+                half_day: (formData.half_day === "Full Day" || !formData.half_day) ? undefined : formData.half_day,
                 reason: formData.reason,
             });
             toast.success(t("leave_request_submitted_successfully"));
@@ -646,20 +647,19 @@ export default function UserApplyLeavePage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label className="text-xs font-medium text-gray-600">{t("from_date")} <span className="text-red-500">*</span></Label>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={formData.leave_from}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, leave_from: e.target.value }))}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, leave_from: val }))}
+                                    placeholder="dd/mm/yyyy"
                                     className="h-9 text-xs border-gray-200 rounded-[10px]"
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-xs font-medium text-gray-600">{t("to_date")} <span className="text-red-500">*</span></Label>
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={formData.leave_to}
-                                    min={formData.leave_from || undefined}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, leave_to: e.target.value }))}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, leave_to: val }))}
+                                    placeholder="dd/mm/yyyy"
                                     className="h-9 text-xs border-gray-200 rounded-[10px]"
                                 />
                             </div>
@@ -667,16 +667,16 @@ export default function UserApplyLeavePage() {
                         <div className="space-y-2">
                             <Label className="text-xs font-medium text-gray-600">{t("half_day")}</Label>
                             <Select
-                                value={formData.half_day || "none"}
-                                onValueChange={(val) => setFormData(prev => ({ ...prev, half_day: val === "none" ? "" : val }))}
+                                value={formData.half_day || "Full Day"}
+                                onValueChange={(val) => setFormData(prev => ({ ...prev, half_day: val }))}
                             >
                                 <SelectTrigger className="h-9 text-xs border-gray-200 rounded-[10px]">
-                                    <SelectValue placeholder={t("none_full_day")} />
+                                    <SelectValue placeholder="Full Day" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">{t("none_full_day")}</SelectItem>
-                                    <SelectItem value="First Half">{t("first_half")}</SelectItem>
-                                    <SelectItem value="Second Half">{t("second_half")}</SelectItem>
+                                    <SelectItem value="Full Day">{t("full_day") || "Full Day"}</SelectItem>
+                                    <SelectItem value="First Half">{t("first_half") || "First Half"}</SelectItem>
+                                    <SelectItem value="Second Half">{t("second_half") || "Second Half"}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
