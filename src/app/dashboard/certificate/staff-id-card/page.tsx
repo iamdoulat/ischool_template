@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -85,9 +85,9 @@ const TOGGLE_FIELDS = [
 type ToggleKey = (typeof TOGGLE_FIELDS)[number]["key"];
 
 const ASSETS = [
-    { label: "Background Image", key: "background_image" },
-    { label: "Logo", key: "logo" },
-    { label: "Signature", key: "signature" },
+    { label: "Background Image", key: "background_image", title: "Background Image", hint: "Optional background pattern or image" },
+    { label: "School Logo", key: "logo", title: "School Logo", hint: "Upload school emblem or crest (PNG/JPEG)" },
+    { label: "Principal / Authorized Signature", key: "signature", title: "Principal / Authorized Signature", hint: "Upload Principal / Authorized signature image (PNG with transparent bg)" },
 ] as const;
 type AssetKey = (typeof ASSETS)[number]["key"];
 
@@ -304,7 +304,7 @@ export default function StaffIDCardPage() {
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
                                 <span>Pre-built Staff ID Card Design Templates</span>
                                 <Badge className="bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-2">
-                                    5 Pro Styles
+                                    {PREBUILT_STAFF_ID_CARDS.length} Pro Styles
                                 </Badge>
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
@@ -353,8 +353,9 @@ export default function StaffIDCardPage() {
                                         style={{ background: preset.preview_bg }}
                                         className="h-28 rounded-xl relative overflow-hidden flex flex-col items-center justify-center text-white p-3 shadow-inner text-center"
                                     >
+                                        <div className="absolute top-2.5 w-9 h-1.5 rounded-full bg-black/40 border border-white/20 shadow-inner z-20" />
                                         <div className="absolute inset-0 bg-black/10 backdrop-blur-[0.5px]" />
-                                        <div className="relative z-10 space-y-1">
+                                        <div className="relative z-10 space-y-1 mt-2">
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-200 block">
                                                 {preset.design_type} Style
                                             </span>
@@ -379,7 +380,7 @@ export default function StaffIDCardPage() {
                                             type="button"
                                             size="icon"
                                             variant="outline"
-                                            onClick={() => handlePreview({ id: 0, ...preset })}
+                                            onClick={() => handlePreview({ ...preset, id: 0 })}
                                             title={t("preview") || "Preview ID Card"}
                                             className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs active:scale-95 transition-all"
                                         >
@@ -419,15 +420,37 @@ export default function StaffIDCardPage() {
                         <CardContent className="space-y-4">
                             {ASSETS.map((asset) => (
                                 <div key={asset.key} className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t(asset.key === "background_image" ? "background_image" : asset.key === "logo" ? "logo" : "signature")}</Label>
-                                    <label className="border-2 border-dashed border-gray-200 rounded-md p-3 flex items-center justify-center gap-2 cursor-pointer hover:border-indigo-200 transition-colors bg-gray-50/30">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{asset.title}</Label>
+                                        {form[asset.key] && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm((f) => ({ ...f, [asset.key]: "" }))}
+                                                className="text-[10px] text-red-500 hover:text-red-700 font-semibold flex items-center gap-0.5"
+                                            >
+                                                <X className="h-3 w-3" /> Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                    <label className="border-2 border-dashed border-gray-200 rounded-md p-3 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/20 transition-all bg-gray-50/40 min-h-[64px]">
                                         <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleUpload(asset.key, e.target.files[0])} />
                                         {uploadingKey === asset.key ? (
-                                            <Loader2 className="h-4 w-4 text-indigo-500 animate-spin" />
+                                            <div className="flex items-center gap-2 text-xs text-indigo-600 font-medium">
+                                                <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+                                            </div>
                                         ) : form[asset.key] ? (
-                                            <img src={form[asset.key]} alt={asset.label} className="h-10 object-contain rounded" />
+                                            <div className="flex items-center gap-3 w-full justify-center">
+                                                <img src={form[asset.key]} alt={asset.label} className="h-10 max-w-[140px] object-contain rounded bg-white p-1 border border-gray-200 shadow-xs" />
+                                                <span className="text-[10px] text-indigo-600 font-semibold">Click to change</span>
+                                            </div>
                                         ) : (
-                                            <><Upload className="h-3.5 w-3.5 text-gray-400" /><span className="text-[10px] text-gray-400">{t("drag_drop_or_click")}</span></>
+                                            <>
+                                                <div className="flex items-center gap-1.5 text-gray-600">
+                                                    <Upload className="h-3.5 w-3.5 text-gray-400" />
+                                                    <span className="text-[11px] font-semibold">Upload {asset.label}</span>
+                                                </div>
+                                                <span className="text-[9.5px] text-gray-400">{asset.hint}</span>
+                                            </>
                                         )}
                                     </label>
                                 </div>

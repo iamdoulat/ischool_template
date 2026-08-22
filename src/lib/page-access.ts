@@ -371,7 +371,12 @@ const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
   transport: { vehicles: ["Vehicle"] },
   hostel: { hostel_room: ["Hostel Rooms"] },
   certificate: {
-    transfer_certificate: ["Download Transfer Certificate"],
+    student_certificate: ["Student Certificate"],
+    generate_certificate: ["Generate Certificate"],
+    student_id_card: ["Student ID Card"],
+    generate_id_card: ["Generate ID Card"],
+    staff_id_card: ["Staff ID Card"],
+    generate_staff_id_card: ["Generate Staff ID Card"],
   },
   multi_branch: {
     report: ["Daily Collection Report"],

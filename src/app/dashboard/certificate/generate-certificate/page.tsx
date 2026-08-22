@@ -206,7 +206,7 @@ function toFields(
     const avatarUrl = avatarRaw ? getImageUrl(avatarRaw) : null;
 
     return {
-        id: s.id,
+        id: String(s.id),
         name: studentName(s),
         admission_no: s.admission_no || "",
         roll_no: s.roll_no || "",

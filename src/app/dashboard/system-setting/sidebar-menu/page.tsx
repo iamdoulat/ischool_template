@@ -123,6 +123,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     ],
     communicate: [
         { name: "notice_board", label: "Notice Board" },
+        { name: "internal_chat", label: "Internal Chat" },
         { name: "send_email", label: "Send Email" },
         { name: "send_sms", label: "Send SMS" },
         { name: "send_wa", label: "Send WA" },
@@ -147,7 +148,6 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     ],
     online_course: [
         { name: "online_course", label: "Online Course" },
-        { name: "question_bank", label: "Question Bank" },
         { name: "offline_payment", label: "Offline Payment" },
         { name: "online_course_report", label: "Online Course Report" },
         { name: "setting", label: "Setting" },
@@ -181,11 +181,10 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "hostel", label: "Hostel" },
     ],
     certificate: [
-        { name: "transfer_certificate", label: "Transfer Certificate" },
-        { name: "student_certificate", label: "Student Certificate" },
-        { name: "generate_certificate", label: "Generate Certificate" },
+        { name: "student_certificate", label: "Student Certificates" },
+        { name: "generate_certificate", label: "Generate Certificates" },
         { name: "student_id_card", label: "Student ID Card" },
-        { name: "generate_id_card", label: "Generate ID Card" },
+        { name: "generate_id_card", label: "Generate Student ID Card" },
         { name: "staff_id_card", label: "Staff ID Card" },
         { name: "generate_staff_id_card", label: "Generate Staff ID Card" },
     ],
@@ -492,7 +491,7 @@ export default function SidebarMenuPage() {
                 <div className="flex items-center gap-2">
                     <GripVertical className={`h-3 w-3 ${dotText} opacity-40 cursor-grab active:cursor-grabbing`} />
                     <div className={`w-1.5 h-1.5 rounded-full ${palette.dot} shrink-0`} />
-                    <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{sub.label}</span>
+                    <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{t(sub.name) || sub.label}</span>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all duration-200">
                     <button
@@ -533,7 +532,7 @@ export default function SidebarMenuPage() {
                             </span>
                         )}
                         {!hasSubmenus && <span className="w-4 shrink-0" />}
-                        <span className="text-[13px] font-semibold text-gray-700 truncate">{item.label}</span>
+                        <span className="text-[13px] font-semibold text-gray-700 truncate">{t(item.name) || item.label}</span>
                     </div>
                     <div
                         className="h-7 w-7 flex items-center justify-center rounded-full transition-all duration-200 shrink-0 text-gray-500 hover:bg-white hover:shadow-md hover:scale-110 cursor-pointer"
@@ -645,7 +644,7 @@ export default function SidebarMenuPage() {
                                                                                 </span>
                                                                             )}
                                                                             {item.submenus.length === 0 && <span className="w-4 shrink-0" />}
-                                                                            <span className="text-[13px] font-semibold text-emerald-700 truncate">{item.label}</span>
+                                                                            <span className="text-[13px] font-semibold text-emerald-700 truncate">{t(item.name) || item.label}</span>
                                                                         </div>
                                                                         <div
                                                                             className="h-7 w-7 flex items-center justify-center rounded-full transition-all duration-300 shrink-0 text-gray-400 hover:text-red-500 hover:bg-red-50 hover:shadow-md hover:scale-110 cursor-pointer"
@@ -683,7 +682,7 @@ export default function SidebarMenuPage() {
                                                                                                                     <GripVertical className="h-3 w-3 text-emerald-400 opacity-40" />
                                                                                                                 </div>
                                                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                                                                                                <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{sub.label}</span>
+                                                                                                                <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{t(sub.name) || sub.label}</span>
                                                                                                             </div>
                                                                                                             <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all duration-200">
                                                                                                                 <button

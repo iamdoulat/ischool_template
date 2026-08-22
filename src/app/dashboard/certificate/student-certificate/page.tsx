@@ -122,6 +122,9 @@ const emptyForm = {
     body_width: "900",
     enable_student_photo: false,
     background_image: "",
+    header_font_color: "#0f766e",
+    title_color: "#0f172a",
+    body_font_color: "#1e293b",
     layout_type: "royal_gold",
 };
 
@@ -274,6 +277,9 @@ export default function StudentCertificatePage() {
             body_width: preset.body_width ?? "900",
             enable_student_photo: !!preset.enable_student_photo,
             background_image: "",
+            header_font_color: preset.header_font_color ?? "#0f766e",
+            title_color: preset.title_color ?? "#0f172a",
+            body_font_color: preset.body_font_color ?? "#1e293b",
             layout_type: preset.layout_type ?? "royal_gold",
         });
         setEditingId(null);
@@ -329,6 +335,9 @@ export default function StudentCertificatePage() {
             body_width: t.body_width ?? "900",
             enable_student_photo: !!t.enable_student_photo,
             background_image: t.background_image ?? "",
+            header_font_color: t.header_font_color ?? "#0f766e",
+            title_color: t.title_color ?? "#0f172a",
+            body_font_color: t.body_font_color ?? "#1e293b",
             layout_type: t.layout_type ?? "royal_gold",
         });
         window.scrollTo({ top: 380, behavior: "smooth" });
@@ -378,9 +387,9 @@ export default function StudentCertificatePage() {
 
     const handlePreviewCurrentForm = () => {
         const templateObj: CertificateTemplate = {
+            ...form,
             id: editingId || 0,
             name: form.name || "Preview Certificate",
-            ...form,
         };
         const student = {
             ...SAMPLE_STUDENT,
@@ -524,7 +533,7 @@ export default function StudentCertificatePage() {
                                             type="button"
                                             size="icon"
                                             variant="outline"
-                                            onClick={() => handlePreviewTemplate({ id: 0, ...preset })}
+                                            onClick={() => handlePreviewTemplate(preset)}
                                             title={t("preview") || "Preview Certificate"}
                                             className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs active:scale-95 transition-all"
                                         >
@@ -575,7 +584,7 @@ export default function StudentCertificatePage() {
                                     {t("certificate_name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
-                                    value={form.name}
+                                    value={form.name ?? ""}
                                     placeholder="e.g. Certificate of Appreciation"
                                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                                     className="h-9 text-xs"
@@ -589,7 +598,7 @@ export default function StudentCertificatePage() {
                                     Certificate UI Style Layout <span className="text-red-500">*</span>
                                 </Label>
                                 <Select
-                                    value={form.layout_type}
+                                    value={form.layout_type ?? "royal_gold"}
                                     onValueChange={(val) => setForm({ ...form, layout_type: val })}
                                 >
                                     <SelectTrigger className="h-9 text-xs">
@@ -614,13 +623,94 @@ export default function StudentCertificatePage() {
                                 <div key={key} className="space-y-1.5">
                                     <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</Label>
                                     <Input
-                                        value={form[key]}
+                                        value={form[key] ?? ""}
                                         placeholder={placeholder}
                                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                                         className="h-9 text-xs"
                                     />
                                 </div>
                             ))}
+
+                            {/* ── Font & Color Controls ── */}
+                            <div className="space-y-3 p-3.5 rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-orange-50/30 shadow-xs">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Palette className="h-3.5 w-3.5 text-indigo-600" />
+                                        Header & Title Font Color Controls
+                                    </Label>
+                                    <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">Live Preview</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* School Name / Header Font Color */}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+                                            School Name / Header Color
+                                        </Label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={form.header_font_color || "#0f766e"}
+                                                onChange={(e) => setForm({ ...form, header_font_color: e.target.value })}
+                                                className="h-8 w-8 rounded cursor-pointer border border-gray-200 p-0.5 shrink-0"
+                                            />
+                                            <Input
+                                                value={form.header_font_color ?? ""}
+                                                onChange={(e) => setForm({ ...form, header_font_color: e.target.value })}
+                                                placeholder="#0f766e"
+                                                className="h-8 text-xs flex-1 font-mono uppercase bg-white"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Certificate Title Color */}
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+                                            Certificate Title Color
+                                        </Label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="color"
+                                                value={form.title_color || "#0f172a"}
+                                                onChange={(e) => setForm({ ...form, title_color: e.target.value })}
+                                                className="h-8 w-8 rounded cursor-pointer border border-gray-200 p-0.5 shrink-0"
+                                            />
+                                            <Input
+                                                value={form.title_color ?? ""}
+                                                onChange={(e) => setForm({ ...form, title_color: e.target.value })}
+                                                placeholder="#0f172a"
+                                                className="h-8 text-xs flex-1 font-mono uppercase bg-white"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Preset Swatches */}
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-100/80">
+                                    <span className="text-[9px] text-gray-400 font-medium">Quick Header Swatches:</span>
+                                    {[
+                                        { label: "Teal", color: "#0f766e" },
+                                        { label: "Indigo", color: "#6366f1" },
+                                        { label: "Emerald", color: "#059669" },
+                                        { label: "Gold", color: "#b88e44" },
+                                        { label: "Navy", color: "#1e293b" },
+                                        { label: "Maroon", color: "#7a131b" },
+                                        { label: "Black", color: "#000000" },
+                                    ].map((swatch) => (
+                                        <button
+                                            key={swatch.color}
+                                            type="button"
+                                            onClick={() => setForm((f) => ({ ...f, header_font_color: swatch.color }))}
+                                            title={`Set Header to ${swatch.label} (${swatch.color})`}
+                                            className={cn(
+                                                "h-4 w-4 rounded-full border border-white shadow-xs cursor-pointer hover:scale-125 transition-transform",
+                                                form.header_font_color === swatch.color && "ring-2 ring-offset-1 ring-indigo-500"
+                                            )}
+                                            style={{ backgroundColor: swatch.color }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
 
                             {/* Body Text (Open Custom Text) */}
                             <div className="space-y-1.5">
@@ -632,7 +722,7 @@ export default function StudentCertificatePage() {
                                 </div>
                                 <Textarea
                                     ref={bodyRef}
-                                    value={form.body_text}
+                                    value={form.body_text ?? ""}
                                     onChange={(e) => setForm({ ...form, body_text: e.target.value })}
                                     className="min-h-[90px] text-xs resize-none"
                                     placeholder="Enter open certificate recognition text or paragraph..."
@@ -661,7 +751,7 @@ export default function StudentCertificatePage() {
                                 </div>
                                 <Textarea
                                     ref={remarksRef}
-                                    value={form.remarks}
+                                    value={form.remarks ?? ""}
                                     onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                                     className="min-h-[85px] text-xs resize-none"
                                     placeholder="e.g. Certified that the student has been a bona fide student with commendable moral character and regular attendance..."
@@ -689,7 +779,7 @@ export default function StudentCertificatePage() {
                                 <div key={key} className="space-y-1.5">
                                     <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</Label>
                                     <Input
-                                        value={form[key]}
+                                        value={form[key] ?? ""}
                                         placeholder={placeholder}
                                         onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                                         className="h-9 text-xs"
@@ -710,7 +800,7 @@ export default function StudentCertificatePage() {
                                         <div key={key} className="space-y-1">
                                             <Label className="text-[10px] text-gray-400">{label}</Label>
                                             <Input
-                                                value={form[key]}
+                                                value={form[key] ?? ""}
                                                 onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                                                 className="h-9 text-xs"
                                                 placeholder={ph}

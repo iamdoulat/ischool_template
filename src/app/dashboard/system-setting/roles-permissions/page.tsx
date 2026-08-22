@@ -166,6 +166,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     ],
     communicate: [
         { name: "notice_board", label: "Notice Board" },
+        { name: "internal_chat", label: "Internal Chat" },
         { name: "send_email", label: "Send Email" },
         { name: "send_sms", label: "Send SMS" },
         { name: "send_wa", label: "Send WA" },
@@ -190,7 +191,6 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     ],
     online_course: [
         { name: "online_course", label: "Online Course" },
-        { name: "question_bank", label: "Question Bank" },
         { name: "offline_payment", label: "Offline Payment" },
         { name: "online_course_report", label: "Online Course Report" },
         { name: "setting", label: "Setting" },
@@ -224,11 +224,10 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "hostel", label: "Hostel" },
     ],
     certificate: [
-        { name: "transfer_certificate", label: "Transfer Certificate" },
-        { name: "student_certificate", label: "Student Certificate" },
-        { name: "generate_certificate", label: "Generate Certificate" },
+        { name: "student_certificate", label: "Student Certificates" },
+        { name: "generate_certificate", label: "Generate Certificates" },
         { name: "student_id_card", label: "Student ID Card" },
-        { name: "generate_id_card", label: "Generate ID Card" },
+        { name: "generate_id_card", label: "Generate Student ID Card" },
         { name: "staff_id_card", label: "Staff ID Card" },
         { name: "generate_staff_id_card", label: "Generate Staff ID Card" },
     ],
@@ -481,7 +480,12 @@ const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
         hostel_room: ["Hostel Rooms"],
     },
     certificate: {
-        transfer_certificate: ["Download Transfer Certificate"],
+        student_certificate: ["Student Certificate"],
+        generate_certificate: ["Generate Certificate"],
+        student_id_card: ["Student ID Card"],
+        generate_id_card: ["Generate ID Card"],
+        staff_id_card: ["Staff ID Card"],
+        generate_staff_id_card: ["Generate Staff ID Card"],
     },
     multi_branch: {
         report: ["Daily Collection Report"],

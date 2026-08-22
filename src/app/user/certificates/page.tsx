@@ -17,6 +17,7 @@ import {
 import {
     type CertificateTemplate,
     type StudentFields,
+    type SchoolSettings,
     renderCertificateHtml,
     printCertificate,
     downloadCertificatePdf,
@@ -26,6 +27,7 @@ import { useTranslation } from "@/hooks/use-translation";
 interface ApiResponse {
     certificates: CertificateTemplate[];
     student: StudentFields;
+    settings?: SchoolSettings;
 }
 
 function SkeletonCard() {
@@ -69,14 +71,14 @@ export default function UserCertificatesPage() {
 
     const handlePrint = (template: CertificateTemplate) => {
         if (!data?.student) return;
-        printCertificate(renderCertificateHtml(template, data.student));
+        printCertificate(renderCertificateHtml(template, data.student, data.settings));
     };
 
     const handleDownload = async (template: CertificateTemplate) => {
         if (!data?.student) return;
         setDownloadingId(template.id);
         try {
-            const html = renderCertificateHtml(template, data.student);
+            const html = renderCertificateHtml(template, data.student, data.settings);
             await downloadCertificatePdf(html, `${template.name.replace(/\s+/g, "-")}.pdf`);
         } catch {
             toast({ title: t("error"), description: t("failed_to_generate_pdf"), variant: "destructive" });
@@ -87,7 +89,7 @@ export default function UserCertificatesPage() {
 
     const handlePreview = (template: CertificateTemplate) => {
         if (!data?.student) return;
-        const html = renderCertificateHtml(template, data.student);
+        const html = renderCertificateHtml(template, data.student, data.settings);
         const win = window.open("", "_blank", "width=900,height=700");
         if (win) { win.document.write(html); win.document.close(); }
     };

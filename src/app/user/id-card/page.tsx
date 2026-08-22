@@ -172,10 +172,12 @@ export default function UserIdCardPage() {
                 </Card>
             ) : null}
 
-            {/* Cards grid */}
+            {/* ID Card Display */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[...Array(2)].map((_, i) => <SkeletonCard key={i} />)}
+                <div className="flex justify-center">
+                    <div className="w-full max-w-lg">
+                        <SkeletonCard />
+                    </div>
                 </div>
             ) : !data?.cards?.length ? (
                 <Card className="shadow-sm border-0">
@@ -186,48 +188,57 @@ export default function UserIdCardPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {data.cards.map((card) => (
-                        <div key={card.id} className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                            <div className="px-4 py-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] flex items-center gap-2">
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                    <CreditCard className="h-4 w-4" />
-                                </span>
-                                <h3 className="text-sm font-bold text-slate-800 truncate">{card.title}</h3>
-                            </div>
+                (() => {
+                    const card = data.cards[0];
+                    return (
+                        <div className="flex flex-col items-center justify-center">
+                            <div className="w-full max-w-xl rounded-2xl border border-gray-200/80 bg-white shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                                <div className="px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] flex items-center justify-between border-b border-gray-100">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                            <CreditCard className="h-4 w-4" />
+                                        </span>
+                                        <div className="min-w-0">
+                                            <h3 className="text-sm font-bold text-slate-800 truncate">{card.title}</h3>
+                                            <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">Official Student ID</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <Button
+                                            onClick={() => handlePrint(card)}
+                                            size="sm"
+                                            className={cn(
+                                                "h-8 px-3.5 text-xs font-bold rounded-lg gap-1.5 transition-all active:scale-95",
+                                                "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-xs"
+                                            )}
+                                        >
+                                            <Printer className="h-3.5 w-3.5" /> {t("print")}
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleDownload(card)}
+                                            disabled={downloadingId === card.id}
+                                            size="sm"
+                                            className="h-8 px-4 text-xs font-bold rounded-lg gap-1.5 transition-all active:scale-95 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs"
+                                        >
+                                            {downloadingId === card.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                            Download PDF
+                                        </Button>
+                                    </div>
+                                </div>
 
-                            {/* Live ID card preview */}
-                            <div className="p-3 bg-gray-50 flex justify-center overflow-x-auto">
-                                {person && (
-                                    <div
-                                        className="origin-top scale-90"
-                                        dangerouslySetInnerHTML={{ __html: renderIdCardHtml(card, person, "student") }}
-                                    />
-                                )}
-                            </div>
-
-                            <div className="px-4 pb-4 pt-3 flex items-center gap-2">
-                                <Button
-                                    onClick={() => handlePrint(card)}
-                                    className={cn(
-                                        "flex-1 h-8 text-[11px] font-bold rounded-lg gap-1.5 transition-all active:scale-95",
-                                        "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 shadow-none"
+                                {/* Live ID card preview */}
+                                <div className="p-6 bg-slate-50/70 flex justify-center items-center overflow-x-auto min-h-[480px]">
+                                    {person && (
+                                        <div
+                                            className="origin-top"
+                                            dangerouslySetInnerHTML={{ __html: renderIdCardHtml(card, person, "student") }}
+                                        />
                                     )}
-                                >
-                                    <Printer className="h-3.5 w-3.5" /> {t("print")}
-                                </Button>
-                                <Button
-                                    onClick={() => handleDownload(card)}
-                                    disabled={downloadingId === card.id}
-                                    className="flex-1 h-8 text-[11px] font-bold rounded-lg gap-1.5 transition-all active:scale-95 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm"
-                                >
-                                    {downloadingId === card.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                                    PDF
-                                </Button>
+                                </div>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    );
+                })()
             )}
         </div>
     );
