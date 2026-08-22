@@ -247,9 +247,9 @@ export default function BulkDeletePage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-destructive/10 rounded-lg">
-                        <Trash2 className="h-6 w-6 text-destructive" />
-                    </div>
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Trash2 className="h-6 w-6" />
+                    </span>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("bulk_delete")}</h1>
                         <p className="text-sm text-muted-foreground font-medium">{t("search_and_remove_multiple_students")}</p>

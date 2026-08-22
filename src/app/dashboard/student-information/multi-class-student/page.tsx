@@ -242,9 +242,9 @@ export default function MultiClassStudentPage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                        <UserCircle className="h-6 w-6 text-primary" />
-                    </div>
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <UserCircle className="h-6 w-6" />
+                    </span>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight text-slate-800">{t("multi_class_student")}</h1>
                         <p className="text-sm text-muted-foreground font-medium">{t("manage_students_enrolled_in_additional_classes")}</p>

@@ -571,9 +571,9 @@ export default function StudentAdmissionPage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-3 bg-primary/10 rounded-lg">
-                        <UserPlus className="h-6 w-6 text-primary" />
-                    </div>
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <UserPlus className="h-6 w-6" />
+                    </span>
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">{t("student_admission")}</h1>
                         <p className="text-sm text-muted-foreground">{t("fill_in_the_details_to_admit_a_new_student")}</p>
