@@ -22,7 +22,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -205,14 +205,13 @@ export default function BulkDeletePage() {
 
     const exportToExcel = () => {
         if (students.length === 0) return;
-        const data = students.map(s => ({
+        const data = students.map((s) => ({
             [t("admission_no")]: s.admission_no,
             [t("student_name")]: `${s.name} ${s.last_name}`,
-            [t("class")]: s.school_class?.name || "",
-            [t("section")]: s.section?.name || "",
-            [t("date_of_birth")]: s.dob,
+            [t("class")]: `${s.school_class?.name || ""} (${s.section?.name || ""})`,
+            [t("date_of_birth")]: s.dob ? formatDate(s.dob) : "-",
             [t("gender")]: s.gender,
-            [t("category")]: s.category,
+            [t("category")]: s.student_category?.category_name || s.category || "",
             [t("mobile_number")]: s.phone
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
@@ -232,9 +231,9 @@ export default function BulkDeletePage() {
                 `${s.name} ${s.last_name}`,
                 s.school_class?.name || "",
                 s.section?.name || "",
-                s.dob,
+                s.dob ? formatDate(s.dob) : "-",
                 s.gender,
-                s.category,
+                s.student_category?.category_name || s.category || "",
                 s.phone
             ]),
         });
@@ -433,11 +432,11 @@ export default function BulkDeletePage() {
                                                     )}
                                                 </div>
                                             </Td>
-                                            <Td className="font-semibold text-primary">{student.admission_no}</Td>
-                                                <Td className="font-medium text-destructive">{student.name} {student.last_name}</Td>
-                                                <Td>{student.school_class?.name}({student.section?.name})</Td>
-                                                <Td>{student.dob}</Td>
-                                                <Td>{student.gender}</Td>
+                                                <Td className="font-bold text-foreground/90 whitespace-nowrap">{student.admission_no || "-"}</Td>
+                                                <Td className="font-medium text-foreground">{student.name} {student.last_name}</Td>
+                                                <Td className="whitespace-nowrap">{student.school_class?.name} ({student.section?.name})</Td>
+                                                <Td className="whitespace-nowrap text-foreground/80">{student.dob ? formatDate(student.dob) : "-"}</Td>
+                                                <Td>{student.gender || "-"}</Td>
                                             <Td>
                                                 <span className="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider border border-indigo-100">
                                                     {student.student_category?.category_name || student.category || t("general")}
