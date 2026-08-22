@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, notFound } from "next/navigation";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
 import { ContactFormSection } from "@/components/public/contact-form";
 import { NoticeBoardSection } from "@/components/public/notice-board-section";
 import { ExamResultSection } from "@/components/public/exam-result-section";
+import { AboutUsSection } from "@/components/public/about-section";
 import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
 
@@ -14,6 +15,36 @@ interface PageData {
     id: number;
     title: string;
     content: string;
+}
+
+/**
+ * Executes embedded <script> tags when raw HTML is injected into the DOM
+ */
+function RawHtmlRenderer({ html }: { html: string }) {
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!containerRef.current) return;
+
+        // Find all script tags within the injected HTML
+        const scripts = containerRef.current.querySelectorAll("script");
+        scripts.forEach((oldScript) => {
+            const newScript = document.createElement("script");
+            Array.from(oldScript.attributes).forEach((attr) => {
+                newScript.setAttribute(attr.name, attr.value);
+            });
+            newScript.textContent = oldScript.textContent;
+            oldScript.parentNode?.replaceChild(newScript, oldScript);
+        });
+    }, [html]);
+
+    return (
+        <div
+            ref={containerRef}
+            className="raw-html-content w-full max-w-full overflow-x-auto"
+            dangerouslySetInnerHTML={{ __html: html }}
+        />
+    );
 }
 
 export default function DynamicPage() {
@@ -76,7 +107,8 @@ export default function DynamicPage() {
                 {/* Content Section */}
                 <div className="container mx-auto px-4 sm:px-6 md:px-12 py-12 sm:py-16">
                     {(() => {
-                        if (!page.content || page.content.trim().length === 0) {
+                        const rawContent = page.content ? page.content.trim() : "";
+                        if (!rawContent) {
                             return (
                                 <div className="text-center py-20 text-slate-400">
                                     <p className="text-base font-medium">No content available for this page.</p>
@@ -84,20 +116,30 @@ export default function DynamicPage() {
                             );
                         }
 
-                        const shortcodeRegex = /\[(contact_form|notice_board|exam_result)\]/g;
+                        // Check if content contains any system shortcode
+                        const shortcodeRegex = /\[(contact_form|notice_board|exam_result|about_us|about)\]/g;
+                        const hasShortcodes = shortcodeRegex.test(rawContent);
+
+                        // If admin replaced shortcode with raw HTML code, render the full raw HTML
+                        if (!hasShortcodes) {
+                            return <RawHtmlRenderer html={rawContent} />;
+                        }
+
+                        // Otherwise parse shortcodes & mixed HTML chunks
+                        shortcodeRegex.lastIndex = 0;
                         const tokens: { type: 'html' | 'shortcode'; value: string }[] = [];
                         let lastIndex = 0;
-                        let match;
+                        let match: RegExpExecArray | null;
 
-                        while ((match = shortcodeRegex.exec(page.content)) !== null) {
+                        while ((match = shortcodeRegex.exec(rawContent)) !== null) {
                             if (match.index > lastIndex) {
-                                tokens.push({ type: 'html', value: page.content.slice(lastIndex, match.index) });
+                                tokens.push({ type: 'html', value: rawContent.slice(lastIndex, match.index) });
                             }
                             tokens.push({ type: 'shortcode', value: match[1] });
                             lastIndex = match.index + match[0].length;
                         }
-                        if (lastIndex < page.content.length) {
-                            tokens.push({ type: 'html', value: page.content.slice(lastIndex) });
+                        if (lastIndex < rawContent.length) {
+                            tokens.push({ type: 'html', value: rawContent.slice(lastIndex) });
                         }
 
                         return (
@@ -105,10 +147,10 @@ export default function DynamicPage() {
                                 {tokens.map((token, i) => (
                                     <div key={i} className="w-full">
                                         {token.type === 'html' && token.value && (
-                                            <div
-                                                className="dynamic-cms-html max-w-full overflow-x-hidden"
-                                                dangerouslySetInnerHTML={{ __html: token.value }}
-                                            />
+                                            <RawHtmlRenderer html={token.value} />
+                                        )}
+                                        {(token.type === 'shortcode' && (token.value === 'about_us' || token.value === 'about')) && (
+                                            <AboutUsSection />
                                         )}
                                         {token.type === 'shortcode' && token.value === 'contact_form' && (
                                             <ContactFormSection />
