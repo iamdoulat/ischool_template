@@ -11,24 +11,24 @@ interface StaffItem {
 
 const defaultStaff = [
     {
-        name: "Stella Roffin",
-        role: "Drawing Teacher",
-        image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=300&auto=format&fit=crop"
+        name: "Dr. Rafiqul Islam",
+        role: "Principal & Academic Director",
+        image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop"
     },
     {
-        name: "Princy Flora",
-        role: "English Tutor",
-        image: "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?q=80&w=300&auto=format&fit=crop"
+        name: "Syeda Farhana Rahman",
+        role: "Head of Sciences & Senior Lecturer",
+        image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=400&auto=format&fit=crop"
     },
     {
-        name: "Jesica Matt",
-        role: "Art Teacher",
-        image: "https://images.unsplash.com/photo-1544168190-79c1180f7169?q=80&w=300&auto=format&fit=crop"
+        name: "Mohammad Tanvir Hasan",
+        role: "Senior Mathematics Faculty",
+        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop"
     },
     {
-        name: "Janaton Doe",
-        role: "Math Teacher",
-        image: "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?q=80&w=300&auto=format&fit=crop"
+        name: "Nusrat Jahan",
+        role: "English Literature Specialist",
+        image: "https://images.unsplash.com/photo-1580894732444-8ecded7900cd?q=80&w=400&auto=format&fit=crop"
     }
 ];
 

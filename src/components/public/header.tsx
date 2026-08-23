@@ -172,19 +172,19 @@ export function PublicHeader() {
                 <div className="container mx-auto flex flex-wrap justify-between items-center gap-2 sm:gap-3">
                     {/* Contact Information */}
                     <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 sm:gap-4 pr-1.5 sm:pr-0">
-                        <a href={`tel:${settings?.phone || "+1 (800) 555-1234"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
+                        <a href={`tel:${settings?.phone || "+880 1800-123456"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
                             <Phone className="h-3.5 w-3.5 text-[#044E43]" />
-                            <span>{settings?.phone || "+1 (800) 555-1234"}</span>
+                            <span>{settings?.phone || "+880 1800-123456"}</span>
                         </a>
                         <div className="w-px h-3.5 bg-gray-300 hidden sm:block" />
-                        <a href={`mailto:${settings?.email || "hello@ischool.com"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
+                        <a href={`mailto:${settings?.email || "info@ischool.edu.bd"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
                             <Mail className="h-3.5 w-3.5 text-[#044E43]" />
-                            <span>{settings?.email || "hello@ischool.com"}</span>
+                            <span>{settings?.email || "info@ischool.edu.bd"}</span>
                         </a>
                         <div className="w-px h-3.5 bg-gray-300 hidden md:block" />
                         <div className="hidden lg:flex items-center gap-1.5">
                             <MapPin className="h-3.5 w-3.5 text-[#044E43]" />
-                            <span>{settings?.address || "371 7th Ave, New York, NY 10001"}</span>
+                            <span>{settings?.address || "House 42, Road 11, Banani, Dhaka-1213"}</span>
                         </div>
                     </div>
 
@@ -193,7 +193,7 @@ export function PublicHeader() {
                         {/* Circular Social Buttons */}
                         <div className="flex items-center gap-2">
                             <a
-                                href={settings?.facebook_url || "#"}
+                                href={settings?.facebook_url && settings.facebook_url !== '#' ? settings.facebook_url : "https://facebook.com/ischool"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
@@ -202,7 +202,7 @@ export function PublicHeader() {
                                 <Facebook className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </a>
                             <a
-                                href={settings?.twitter_url || "#"}
+                                href={settings?.twitter_url && settings.twitter_url !== '#' ? settings.twitter_url : "https://twitter.com/ischool"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
@@ -211,7 +211,7 @@ export function PublicHeader() {
                                 <Twitter className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </a>
                             <a
-                                href={settings?.linkedin_url || "#"}
+                                href={settings?.linkedin_url && settings.linkedin_url !== '#' ? settings.linkedin_url : "https://linkedin.com/company/ischool"}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-gray-700 hover:border-[#044E43] hover:bg-[#044E43] text-slate-800 hover:text-white flex items-center justify-center transition-all duration-300 shadow-sm"
@@ -219,7 +219,7 @@ export function PublicHeader() {
                             >
                                 <Linkedin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </a>
-                            {settings?.instagram_url && (
+                            {(settings?.instagram_url && settings.instagram_url !== '#') && (
                                 <a
                                     href={settings.instagram_url}
                                     target="_blank"
@@ -384,7 +384,21 @@ export function PublicHeader() {
                                     </Link>
                                 );
                             })}
-                            <div className="pt-2 border-t border-gray-100">
+                            <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                <div className="flex items-center justify-between px-1 py-1">
+                                    <span className="text-xs font-bold text-slate-600">Language / ভাষা:</span>
+                                    <select
+                                        value={currentLangCode}
+                                        onChange={(e) => handleLanguageChange(e.target.value)}
+                                        className="bg-slate-50 border border-gray-300 rounded-lg py-1 px-3 text-xs font-bold text-slate-800"
+                                    >
+                                        {LANGUAGES.map((lang) => (
+                                            <option key={lang.short_code} value={lang.short_code}>
+                                                {lang.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                                 <Link
                                     href={!user ? "/login" : getDashboardUrl()}
                                     className="w-full py-2.5 px-4 bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-sm rounded-lg flex items-center justify-between shadow-sm transition-all"

@@ -61,6 +61,18 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: [
           {
+            key: "Strict-Transport-Security",
+            value: "max-age=31536000; includeSubDomains; preload",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self' http: https: data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' http: https: blob:; style-src 'self' 'unsafe-inline' http: https:; img-src 'self' data: blob: http: https:; font-src 'self' data: http: https:; connect-src 'self' http: https: ws: wss:; media-src 'self' data: blob: http: https:; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self' http: https:;",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=(), browsing-topics=()",
+          },
+          {
             key: "X-Frame-Options",
             value: "SAMEORIGIN",
           },

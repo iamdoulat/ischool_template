@@ -33,11 +33,12 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
     const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
-      next: { revalidate: 10 },
+      next: { revalidate: 30 },
       headers: { Accept: "application/json" },
-    });
+      signal: AbortSignal.timeout(1500),
+    }).catch(() => null);
 
-    if (res.ok) {
+    if (res && res.ok) {
       const json = await res.json();
       const settings = json.data || json;
       baseUrl = settings.base_url || "";

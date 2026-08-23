@@ -96,29 +96,21 @@ export function PublicFooter() {
                         </p>
 
                         <div className="flex gap-4 pt-2">
-                            {settings?.facebook_url && (
-                                <a href={settings.facebook_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
-                                    <Facebook className="h-5 w-5" />
-                                </a>
-                            )}
-                            {settings?.twitter_url && (
-                                <a href={settings.twitter_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
-                                    <Twitter className="h-5 w-5" />
-                                </a>
-                            )}
-                            {settings?.instagram_url && (
+                            <a href={settings?.facebook_url && settings.facebook_url !== '#' ? settings.facebook_url : "https://facebook.com/ischool"} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
+                                <Facebook className="h-5 w-5" />
+                            </a>
+                            <a href={settings?.twitter_url && settings.twitter_url !== '#' ? settings.twitter_url : "https://twitter.com/ischool"} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
+                                <Twitter className="h-5 w-5" />
+                            </a>
+                            <a href={settings?.linkedin_url && settings.linkedin_url !== '#' ? settings.linkedin_url : "https://linkedin.com/company/ischool"} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
+                                <Linkedin className="h-5 w-5" />
+                            </a>
+                            <a href={settings?.youtube_url && settings.youtube_url !== '#' ? settings.youtube_url : "https://youtube.com/@ischool"} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
+                                <Youtube className="h-5 w-5" />
+                            </a>
+                            {(settings?.instagram_url && settings.instagram_url !== '#') && (
                                 <a href={settings.instagram_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
                                     <Instagram className="h-5 w-5" />
-                                </a>
-                            )}
-                            {settings?.youtube_url && (
-                                <a href={settings.youtube_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
-                                    <Youtube className="h-5 w-5" />
-                                </a>
-                            )}
-                            {settings?.linkedin_url && (
-                                <a href={settings.linkedin_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#044E43] transition-colors">
-                                    <Linkedin className="h-5 w-5" />
                                 </a>
                             )}
                         </div>
@@ -135,7 +127,7 @@ export function PublicFooter() {
                                 ))
                             ) : (
                                 <>
-                                    <li><Link href="/about" className="hover:text-white transition-colors">{t("about_us")}</Link></li>
+                                    <li><Link href="/about-us" className="hover:text-white transition-colors">{t("about_us")}</Link></li>
                                     <li><Link href="/academics" className="hover:text-white transition-colors">{t("academics")}</Link></li>
                                     <li><Link href="/online_admission" className="hover:text-white transition-colors">{t("admissions")}</Link></li>
                                     <li><Link href="/exam-results" className="hover:text-white transition-colors">{t("exam_results")}</Link></li>
@@ -173,18 +165,18 @@ export function PublicFooter() {
                         <ul className="space-y-3 text-sm text-slate-400">
                             <li className="flex items-start gap-3">
                                 <MapPin className="h-5 w-5 text-[#044E43] shrink-0 mt-0.5" />
-                                <span>{settings?.address || "371 7th Ave, New York, NY 10001, USA"}</span>
+                                <span>{settings?.address || "House 42, Road 11, Banani, Dhaka-1213, Bangladesh"}</span>
                             </li>
                             <li className="flex items-center gap-3">
                                 <Phone className="h-5 w-5 text-[#044E43] shrink-0" />
-                                <a href={`tel:${settings?.phone || "+1 (800) 555-1234"}`} className="hover:text-white transition-colors">
-                                    {settings?.phone || "+1 (800) 555-1234"}
+                                <a href={`tel:${settings?.phone || "+880 1800-123456"}`} className="hover:text-white transition-colors">
+                                    {settings?.phone || "+880 1800-123456"}
                                 </a>
                             </li>
                             <li className="flex items-center gap-3">
                                 <Mail className="h-5 w-5 text-[#044E43] shrink-0" />
-                                <a href={`mailto:${settings?.email || "hello@eduex.com"}`} className="hover:text-white transition-colors">
-                                    {settings?.email || "hello@eduex.com"}
+                                <a href={`mailto:${settings?.email || "info@ischool.edu.bd"}`} className="hover:text-white transition-colors">
+                                    {settings?.email || "info@ischool.edu.bd"}
                                 </a>
                             </li>
                         </ul>

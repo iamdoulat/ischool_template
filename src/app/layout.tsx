@@ -26,11 +26,12 @@ export const viewport: Viewport = {
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { LanguageProvider } from "@/components/providers/language-provider";
 import { PWAInit } from "@/components/providers/pwa-init";
-
+import { JsonLd } from "@/components/seo/json-ld";
 import { getImageUrl } from "@/lib/image-url";
 
 export async function generateMetadata(): Promise<Metadata> {
   let appTitle = "iSchool";
+  let schoolDescription = "iSchool is an advanced, all-in-one School Management System and Educational Portal providing online admissions, examination results, student tracking, attendance, fees collection, and digital notices.";
   let rawFavicon = "/logo-admin-small.png";
   let rawPwaIcon192 = "/logo-app.png";
   let rawPwaIcon512 = "/logo-app.png";
@@ -40,14 +41,21 @@ export async function generateMetadata(): Promise<Metadata> {
     const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
       next: { revalidate: 30 },
       headers: { Accept: "application/json" },
-    });
+      signal: AbortSignal.timeout(1500),
+    }).catch(() => null);
 
-    if (res.ok) {
+    if (res && res.ok) {
       const json = await res.json();
       const settings = json.data || json;
 
-      if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
+      if (settings.school_name && settings.school_name.trim() !== "") {
+        appTitle = settings.school_name.trim();
+      } else if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
         appTitle = settings.pwa_app_short_name;
+      }
+
+      if (settings.school_description && settings.school_description.trim() !== "") {
+        schoolDescription = settings.school_description.trim();
       }
 
       if (settings.favicon) {
@@ -70,17 +78,58 @@ export async function generateMetadata(): Promise<Metadata> {
         rawPwaIcon512 = settings.pwa_icon_maskable;
       }
     }
-  } catch (error) {
-    console.error("Error generating SSR layout metadata:", error);
+  } catch {
+    // Graceful fallback to default metadata when backend is offline
   }
 
   const resolvedFaviconUrl = getImageUrl(rawFavicon) || rawFavicon;
   const resolvedPwa192 = getImageUrl(rawPwaIcon192) || rawPwaIcon192;
   const resolvedPwa512 = getImageUrl(rawPwaIcon512) || rawPwaIcon512;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ischool.com";
 
   return {
-    title: appTitle,
-    description: "Comprehensive School Management System & Portal",
+    metadataBase: new URL(baseUrl),
+    title: {
+      default: `${appTitle} — Comprehensive School Management System & Portal`,
+      template: `%s — ${appTitle}`,
+    },
+    description: schoolDescription,
+    keywords: [
+      "School Management System",
+      "SMS",
+      "LMS",
+      "Online Admission",
+      "Exam Results",
+      "Student Information System",
+      "School Portal",
+      "iSchool",
+    ],
+    authors: [{ name: appTitle }],
+    alternates: {
+      canonical: "./",
+    },
+    openGraph: {
+      type: "website",
+      locale: "en_US",
+      url: baseUrl,
+      siteName: appTitle,
+      title: `${appTitle} — Comprehensive School Management System`,
+      description: schoolDescription,
+      images: [
+        {
+          url: resolvedPwa512,
+          width: 512,
+          height: 512,
+          alt: `${appTitle} Logo`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${appTitle} — Modern School Management System`,
+      description: schoolDescription,
+      images: [resolvedPwa512],
+    },
     manifest: "/manifest.json",
     icons: {
       icon: [
@@ -113,6 +162,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <JsonLd />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning

@@ -346,8 +346,8 @@ export default function OnlineAdmissionPage() {
         }
     };
 
-    const supportPhone = globalSettings?.phone || "+1 234 567 890";
-    const supportEmail = globalSettings?.email || "admin@ischool.com";
+    const supportPhone = globalSettings?.phone || "+880 1800-123456";
+    const supportEmail = globalSettings?.email || "admissions@ischool.edu.bd";
     const formFeeNum = settings?.online_admission_form_fees ? Number(settings.online_admission_form_fees) : 100;
     const formattedFormFee = `$${formFeeNum.toFixed(2)}`;
 
@@ -433,11 +433,11 @@ export default function OnlineAdmissionPage() {
                             <Info className="w-10 h-10" />
                         </div>
                         <CardTitle className="text-3xl font-black tracking-tight">Admission Closed</CardTitle>
-                        <CardDescription className="text-base mt-2 px-4">The online admission window is currently closed for the 2026 session.</CardDescription>
+                        <CardDescription className="text-base mt-2 px-4">The online admission window is currently closed for this session.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4 pb-10 px-10">
                         <Button className="h-12 rounded-xl bg-slate-900 hover:bg-black" onClick={() => window.location.href = "/"}>Back to Home</Button>
-                        <p className="text-xs text-center text-slate-400">Please contact our helpdesk at +1 234 567 890</p>
+                        <p className="text-xs text-center text-slate-400">Please contact our helpdesk at {supportPhone}</p>
                     </CardContent>
                 </Card>
             </div>

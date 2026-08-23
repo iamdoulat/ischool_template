@@ -1,7 +1,8 @@
-const CACHE_NAME = 'ischool-pwa-v3';
+const CACHE_NAME = 'ischool-pwa-v4';
 
 const urlsToCache = [
   '/',
+  '/offline.html',
   '/manifest.json',
   '/favicon.ico',
   '/logo-app.png',
@@ -63,7 +64,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation requests: Network First, falling back to cache when offline
+  // Navigation requests: Network First, falling back to cache or offline.html when offline
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -78,7 +79,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(event.request).then((cachedResponse) => {
-            return cachedResponse || caches.match('/');
+            return cachedResponse || caches.match('/offline.html') || caches.match('/');
           });
         })
     );

@@ -15,11 +15,12 @@ export default async function Icon() {
     try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
         const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
-            next: { revalidate: 10 },
+            next: { revalidate: 30 },
             headers: { Accept: "application/json" },
-        });
+            signal: AbortSignal.timeout(1500),
+        }).catch(() => null);
 
-        if (res.ok) {
+        if (res && res.ok) {
             const json = await res.json();
             const settings = json.data || json;
             const raw = settings.favicon || settings.app_favicon || settings.admin_small_logo || settings.app_logo;
@@ -33,8 +34,8 @@ export default async function Icon() {
                 }
             }
         }
-    } catch (error) {
-        console.error("Error fetching icon in icon.tsx:", error);
+    } catch {
+        // Silent fallback
     }
 
     if (faviconUrl && (faviconUrl.startsWith("http://") || faviconUrl.startsWith("https://"))) {

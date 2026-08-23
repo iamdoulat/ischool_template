@@ -104,11 +104,11 @@ export function AboutUsSection({ about }: { about?: any }) {
         : defaultAccordions;
 
     return (
-        <section id="about" className="py-16 sm:py-24 bg-white dark:bg-slate-950 relative overflow-hidden">
+        <section id="about" className="pt-6 sm:pt-8 md:pt-10 pb-16 sm:pb-24 bg-white dark:bg-slate-950 relative overflow-hidden">
             <div className="container mx-auto px-4 sm:px-6 md:px-8 max-w-6xl space-y-16">
                 
                 {/* 1. Main Story / Overview */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
                     {/* Left: Images with floating badge */}
                     <div className="lg:col-span-6 relative">
                         <div className="relative rounded-3xl overflow-hidden shadow-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800">
@@ -132,9 +132,12 @@ export function AboutUsSection({ about }: { about?: any }) {
                     </div>
 
                     {/* Right: Narrative */}
-                    <div className="lg:col-span-6 space-y-5">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider border border-indigo-100 dark:border-indigo-900/50">
-                            <Sparkles className="h-3.5 w-3.5" /> {sectionTitle}
+                    <div className="lg:col-span-6 space-y-5 pt-0">
+                        <div>
+                            <div className="inline-flex items-center gap-2.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800 shadow-xs hover:bg-indigo-100/70 transition-all">
+                                <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                <span>{sectionTitle}</span>
+                            </div>
                         </div>
 
                         <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">

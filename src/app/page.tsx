@@ -81,7 +81,7 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero Section */}
         {hfs.hero_enabled !== false && (
-          <section className="relative bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-900 text-white overflow-hidden pt-8 pb-16 md:pt-10 md:pb-24 lg:pt-12 lg:pb-28">
+          <section className="relative bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-900 text-white overflow-hidden pt-8 pb-10 md:pt-10 md:pb-14 lg:pt-12 lg:pb-16">
             <div
               className="absolute inset-0 opacity-40 bg-cover bg-center mix-blend-overlay"
               style={hfs.hero_background ? { backgroundImage: `url('${hfs.hero_background}')` } : {}}

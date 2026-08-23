@@ -55,10 +55,21 @@ export default function DynamicPage() {
 
     useEffect(() => {
         const fetchPage = async () => {
+            const rawSlug = String(slug || "");
+            if (rawSlug.endsWith(".txt") || rawSlug.endsWith(".xml") || rawSlug.endsWith(".json") || rawSlug.endsWith(".ico")) {
+                setError("Page not found");
+                setLoading(false);
+                return;
+            }
+
             try {
                 const res = await api.get(`front-cms/pages/show-by-slug/${slug}`);
                 if (res.data?.status === "Success" || res.data?.data) {
-                    setPage(res.data.data || res.data);
+                    const loadedPage = res.data.data || res.data;
+                    setPage(loadedPage);
+                    if (loadedPage?.title) {
+                        document.title = `${loadedPage.title} — iSchool`;
+                    }
                 } else {
                     setError("Page not found");
                 }
