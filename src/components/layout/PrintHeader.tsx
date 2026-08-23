@@ -63,7 +63,7 @@ export function PrintHeader({ title, headerImageUrl: externalHeaderImageUrl, tab
                     <p>Address: {settings.address || "25 Kings Street, CA"}</p>
                     <p>Phone No.: {settings.phone || "89562423934"}</p>
                     <p>Email: {settings.email || "yourschool@gmail.com"}</p>
-                    <p>Website: {settings.base_url?.replace(/^https?:\/\//, '') || "www.yoursite.com"}</p>
+                    <p>Website: {(settings.frontend_url || process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.host : '') || settings.base_url)?.replace(/^https?:\/\//, '') || "localhost:3000"}</p>
                 </div>
 
             </div>

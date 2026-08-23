@@ -92,7 +92,7 @@ export const renderPdfHeader = async (
         rightY += 5;
         doc.text(`Email: ${settings?.email || "yourschool@gmail.com"}`, pageWidth - 14, rightY, { align: "right" });
         rightY += 5;
-        doc.text(`Website: ${settings?.base_url?.replace(/^https?:\/\//, '') || "www.yoursite.in"}`, pageWidth - 14, rightY, { align: "right" });
+        doc.text(`Website: ${(settings?.frontend_url || (typeof window !== 'undefined' ? window.location.host : '') || settings?.base_url)?.replace(/^https?:\/\//, '') || "localhost:3000"}`, pageWidth - 14, rightY, { align: "right" });
 
         startY = Math.max(logoY + 15, rightY + 10);
 

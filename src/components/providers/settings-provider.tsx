@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { getImageUrl } from "@/lib/image-url";
 
 const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://api.ischool.mddoulat.com").replace(/\/api\/v1\/?$/, "");
+const fallbackFrontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : "http://localhost:3000");
 
 interface GeneralSettings {
     school_name: string;
@@ -22,6 +23,7 @@ interface GeneralSettings {
     start_day_of_week: string;
     currency_format: string;
     base_url: string;
+    frontend_url?: string;
     file_upload_path: string;
     print_logo: string;
     print_logo_base64?: string;
@@ -95,7 +97,8 @@ function createDefaultSettings(): GeneralSettings {
         timezone: "UTC",
         start_day_of_week: "monday",
         currency_format: "USD",
-        base_url: fallbackBaseUrl,
+        base_url: fallbackFrontendUrl,
+        frontend_url: fallbackFrontendUrl,
         file_upload_path: "uploads/",
         print_logo: "/logo-print.png",
         print_logo_base64: "",
@@ -201,6 +204,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                         }
                     }
                 });
+
+                // Ensure frontend_url and base_url point to FRONTEND_URL (not backend port 8000)
+                if (!normalizedData.frontend_url || normalizedData.frontend_url.includes('8000')) {
+                    normalizedData.frontend_url = fallbackFrontendUrl;
+                }
+                if (!normalizedData.base_url || normalizedData.base_url.includes('8000') || normalizedData.base_url.includes('127.0.0.1:8000')) {
+                    normalizedData.base_url = normalizedData.frontend_url;
+                }
 
                 // Resolve logo & background image paths to absolute URLs if uploaded
                 const imageFields = [
