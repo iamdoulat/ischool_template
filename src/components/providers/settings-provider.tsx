@@ -84,6 +84,8 @@ interface GeneralSettings {
 function createDefaultSettings(): GeneralSettings {
     return {
         school_name: "iSchool Management System",
+        header_desktop_font_size: "22",
+        header_mobile_font_size: "14",
         school_slogan: "Excellence in Education",
         school_description: "Comprehensive school management system",
         school_code: "ISCHOOL",

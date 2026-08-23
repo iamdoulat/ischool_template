@@ -527,9 +527,11 @@ export default function GeneralSettingPage() {
             }
             if (field === 'header_desktop_font_size' && typeof window !== 'undefined') {
                 document.documentElement.style.setProperty('--preview-header-desktop-fz', value ? `${value}px` : '');
+                localStorage.setItem('header_desktop_font_size', String(value));
             }
             if (field === 'header_mobile_font_size' && typeof window !== 'undefined') {
                 document.documentElement.style.setProperty('--preview-header-mobile-fz', value ? `${value}px` : '');
+                localStorage.setItem('header_mobile_font_size', String(value));
             }
             if ((field === 'pwa_app_short_name' || field === 'pwa_app_description') && typeof window !== 'undefined') {
                 localStorage.setItem(`ischool_${field}`, String(value));

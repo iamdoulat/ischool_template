@@ -801,18 +801,16 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                         const localDeskFz = mounted && typeof window !== 'undefined' ? localStorage.getItem("header_desktop_font_size") : null;
                         const localTitleColor = mounted && typeof window !== 'undefined' ? localStorage.getItem("school_name_title_color") : null;
 
-                        const mobVal = settings?.header_mobile_font_size || localMobFz;
-                        const deskVal = settings?.header_desktop_font_size || localDeskFz;
+                        const mobVal = settings?.header_mobile_font_size || localMobFz || "14";
+                        const deskVal = settings?.header_desktop_font_size || localDeskFz || "22";
                         const titleColor = settings?.school_name_title_color || localTitleColor || "#6366f1";
                         const isGradient = titleColor.includes('gradient');
 
-                        const mobileFz = mobVal ? (String(mobVal).endsWith('px') ? String(mobVal) : `${mobVal}px`) : undefined;
-                        const desktopFz = deskVal ? (String(deskVal).endsWith('px') ? String(deskVal) : `${deskVal}px`) : undefined;
+                        const mobileFz = String(mobVal).endsWith('px') ? String(mobVal) : `${mobVal}px`;
+                        const desktopFz = String(deskVal).endsWith('px') ? String(deskVal) : `${deskVal}px`;
 
                         const titleStyle: React.CSSProperties = isGradient
                             ? {
-                                '--mobile-header-fz': `var(--preview-header-mobile-fz, ${mobileFz || '14px'})`,
-                                '--desktop-header-fz': `var(--preview-header-desktop-fz, ${desktopFz || '22px'})`,
                                 backgroundImage: `var(--preview-header-title-gradient, ${titleColor})`,
                                 WebkitBackgroundClip: 'text',
                                 backgroundClip: 'text',
@@ -820,27 +818,37 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                                 color: 'transparent',
                             }
                             : {
-                                '--mobile-header-fz': `var(--preview-header-mobile-fz, ${mobileFz || '14px'})`,
-                                '--desktop-header-fz': `var(--preview-header-desktop-fz, ${desktopFz || '22px'})`,
                                 color: `var(--preview-header-title-color, ${titleColor})`,
                                 WebkitTextFillColor: `var(--preview-header-title-color, ${titleColor})`,
                             };
 
                         return (
-                            <h1
-                                title={settings?.school_name}
-                                suppressHydrationWarning
-                                style={titleStyle}
-                                className={cn(
-                                    "font-black tracking-tight animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap truncate leading-tight [font-size:var(--mobile-header-fz)] md:[font-size:var(--desktop-header-fz)]"
-                                )}
-                            >
-                                {loading ? (
-                                    <div className="h-6 w-32 md:w-48 bg-muted-foreground/10 animate-pulse rounded-md" />
-                                ) : (
-                                    settings?.school_name || (typeof t === "function" ? t("smart_school") : "Smart School")
-                                )}
-                            </h1>
+                            <>
+                                <style>{`
+                                    .header-school-name-title {
+                                        font-size: var(--preview-header-mobile-fz, ${mobileFz}) !important;
+                                    }
+                                    @media (min-width: 768px) {
+                                        .header-school-name-title {
+                                            font-size: var(--preview-header-desktop-fz, ${desktopFz}) !important;
+                                        }
+                                    }
+                                `}</style>
+                                <h1
+                                    title={settings?.school_name}
+                                    suppressHydrationWarning
+                                    style={titleStyle}
+                                    className={cn(
+                                        "header-school-name-title font-black tracking-tight animate-in fade-in slide-in-from-left-4 duration-500 whitespace-nowrap truncate leading-tight"
+                                    )}
+                                >
+                                    {loading ? (
+                                        <div className="h-6 w-32 md:w-48 bg-muted-foreground/10 animate-pulse rounded-md" />
+                                    ) : (
+                                        settings?.school_name || (typeof t === "function" ? t("smart_school") : "Smart School")
+                                    )}
+                                </h1>
+                            </>
                         );
                     })()}
                 </div>
