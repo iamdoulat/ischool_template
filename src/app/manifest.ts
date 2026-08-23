@@ -1,5 +1,6 @@
 import { getImageUrl } from '@/lib/image-url';
 import type { MetadataRoute } from 'next';
+import { cookies, headers } from 'next/headers';
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   let pwaName = "iSchool";
@@ -8,6 +9,26 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   let rawIcon192 = "/logo-app.png";
   let rawMaskable = "/logo-app.png";
   let baseUrl = "";
+
+  let startUrl = "/dashboard";
+  try {
+    const cookieStore = await cookies();
+    const headersList = await headers();
+    const cookieStartUrl = cookieStore.get("pwa_start_url")?.value;
+    const cookieUserRole = cookieStore.get("user_role")?.value?.toLowerCase();
+    const referer = headersList.get("referer") || "";
+
+    if (
+      cookieUserRole === "student" ||
+      cookieUserRole === "parent" ||
+      cookieStartUrl === "/user/dashboard" ||
+      referer.includes("/user")
+    ) {
+      startUrl = "/user/dashboard";
+    }
+  } catch {
+    // Fallback if headers/cookies are not available during build
+  }
 
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
@@ -70,12 +91,14 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     return 'image/png';
   };
 
+  const isUser = startUrl === "/user/dashboard";
+
   return {
-    id: "/dashboard",
+    id: startUrl,
     name: pwaName,
     short_name: pwaName,
     description: description,
-    start_url: "/dashboard",
+    start_url: startUrl,
     scope: "/",
     display: "standalone",
     display_override: ["standalone", "window-controls-overlay", "minimal-ui"],
@@ -104,7 +127,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
         purpose: "maskable"
       }
     ],
-    shortcuts: [
+    shortcuts: isUser ? [
       {
         name: "Student Portal",
         short_name: "Student",
@@ -117,6 +140,21 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
         short_name: "Admin",
         description: "Open Admin Dashboard",
         url: "/dashboard",
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
+      }
+    ] : [
+      {
+        name: "Admin Portal",
+        short_name: "Admin",
+        description: "Open Admin Dashboard",
+        url: "/dashboard",
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
+      },
+      {
+        name: "Student Portal",
+        short_name: "Student",
+        description: "Open Student Dashboard",
+        url: "/user/dashboard",
         icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       }
     ]

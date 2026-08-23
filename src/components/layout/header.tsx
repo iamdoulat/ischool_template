@@ -701,6 +701,10 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
             console.error("Logout failed:", error);
         } finally {
             localStorage.removeItem("auth_token");
+            localStorage.removeItem("user_role");
+            localStorage.removeItem("pwa_start_url");
+            document.cookie = "pwa_start_url=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             setUserContext(null);
             router.push("/login");
         }

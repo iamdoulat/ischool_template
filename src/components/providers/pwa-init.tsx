@@ -46,6 +46,17 @@ export function PWAInit() {
     const localIcon192 = localStorage.getItem("ischool_pwa_icon_192");
     const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
     const localIconMaskable = localStorage.getItem("ischool_pwa_icon_maskable");
+    const userRole = (localStorage.getItem("user_role") || "").toLowerCase();
+    const storedStartUrl = localStorage.getItem("pwa_start_url");
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const isUserPortal = currentPath.startsWith("/user") || userRole === "student" || userRole === "parent" || storedStartUrl === "/user/dashboard";
+    const targetStartUrl = isUserPortal ? "/user/dashboard" : "/dashboard";
+
+    localStorage.setItem("pwa_start_url", targetStartUrl);
+    document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
+    if (userRole) {
+      document.cookie = `user_role=${userRole}; path=/; max-age=31536000; SameSite=Lax`;
+    }
 
     const appShortName = settings?.pwa_app_short_name || localShortName || "iSchool";
     const rawFavicon = settings?.favicon || localFavicon || "/logo-admin-small.png";
@@ -57,7 +68,7 @@ export function PWAInit() {
     const appIcon = getImageUrl(rawPwaIcon192) || "/logo-app.png";
     const appIcon512 = getImageUrl(rawPwaIcon512) || "/logo-app.png";
 
-    // 1. Safely sync Browser Main Favicon and Apple Touch Icon link tags without removing nodes
+    // 1. Safely sync Browser Main Favicon, Apple Touch Icon and Dynamic Manifest link tags
     const syncLinkTag = (rel: string, href: string) => {
       let link = document.querySelector<HTMLLinkElement>(`link[rel='${rel}']`);
       if (link) {
@@ -70,6 +81,8 @@ export function PWAInit() {
       }
     };
 
+    const manifestHref = isUserPortal ? "/manifest.json?portal=user" : "/manifest.json?portal=admin";
+    syncLinkTag("manifest", manifestHref);
     syncLinkTag("icon", faviconHref);
     syncLinkTag("shortcut icon", faviconHref);
     syncLinkTag("apple-touch-icon", appIcon);

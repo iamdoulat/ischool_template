@@ -3,13 +3,28 @@ import { getImageUrl } from "@/lib/image-url";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const portalParam = searchParams.get("portal");
+  const portalParam = searchParams.get("portal")?.toLowerCase();
+  const roleParam = searchParams.get("role")?.toLowerCase();
+  const cookieStartUrl = request.cookies.get("pwa_start_url")?.value;
+  const cookieUserRole = request.cookies.get("user_role")?.value?.toLowerCase();
   const referer = request.headers.get("referer") || "";
 
   let startUrl = "/dashboard";
-  if (portalParam === "user" || referer.includes("/user")) {
+  if (
+    portalParam === "user" ||
+    roleParam === "student" ||
+    roleParam === "parent" ||
+    cookieUserRole === "student" ||
+    cookieUserRole === "parent" ||
+    cookieStartUrl === "/user/dashboard" ||
+    referer.includes("/user")
+  ) {
     startUrl = "/user/dashboard";
-  } else if (portalParam === "admin" || referer.includes("/dashboard")) {
+  } else if (
+    portalParam === "admin" ||
+    cookieStartUrl === "/dashboard" ||
+    referer.includes("/dashboard")
+  ) {
     startUrl = "/dashboard";
   }
 
@@ -86,6 +101,8 @@ export async function GET(request: NextRequest) {
     return 'image/png';
   };
 
+  const isUser = startUrl === "/user/dashboard";
+
   const manifestData = {
     id: startUrl,
     name: schoolName,
@@ -120,19 +137,12 @@ export async function GET(request: NextRequest) {
         purpose: "maskable"
       }
     ],
-    shortcuts: [
+    shortcuts: isUser ? [
       {
         name: "Student Portal",
         short_name: "Student",
         description: "Open Student Dashboard",
         url: "/user/dashboard",
-        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
-      },
-      {
-        name: "Admin Portal",
-        short_name: "Admin",
-        description: "Open Admin Dashboard",
-        url: "/dashboard",
         icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       },
       {
@@ -143,10 +153,32 @@ export async function GET(request: NextRequest) {
         icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       },
       {
+        name: "Admin Portal",
+        short_name: "Admin",
+        description: "Open Admin Dashboard",
+        url: "/dashboard",
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
+      }
+    ] : [
+      {
+        name: "Admin Portal",
+        short_name: "Admin",
+        description: "Open Admin Dashboard",
+        url: "/dashboard",
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
+      },
+      {
         name: "Collect Fees",
         short_name: "Fees",
         description: "Fees collection & payments",
         url: "/dashboard/fees-collection/collect-fees",
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
+      },
+      {
+        name: "Student Portal",
+        short_name: "Student",
+        description: "Open Student Dashboard",
+        url: "/user/dashboard",
         icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       }
     ]

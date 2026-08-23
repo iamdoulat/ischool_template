@@ -115,14 +115,22 @@ export default function LoginPage() {
             const access_token = resData?.access_token || resData?.token;
             const user = resData?.user;
 
-            // Store token
+            // Store token and role-based PWA configuration
             if (access_token) {
                 localStorage.setItem("auth_token", access_token);
             }
 
-            // Redirect based on role
-            const userRole = user?.role || "";
-            if (userRole === "Student" || userRole === "Parent") {
+            // Redirect and configure PWA based on role
+            const userRole = user?.role || user?.user_type || "";
+            const isUserPortal = userRole === "Student" || userRole === "Parent" || userRole.toLowerCase() === "student" || userRole.toLowerCase() === "parent";
+            const targetStartUrl = isUserPortal ? "/user/dashboard" : "/dashboard";
+
+            localStorage.setItem("user_role", userRole || (isUserPortal ? "Student" : "Admin"));
+            localStorage.setItem("pwa_start_url", targetStartUrl);
+            document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
+            document.cookie = `user_role=${userRole}; path=/; max-age=31536000; SameSite=Lax`;
+
+            if (isUserPortal) {
                 window.location.href = "/user/dashboard";
             } else {
                 window.location.href = "/dashboard";

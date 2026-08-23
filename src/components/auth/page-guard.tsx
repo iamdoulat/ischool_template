@@ -37,6 +37,16 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
         const permissions: string[] = user?.permissions || [];
         const roleLower = role.toLowerCase();
 
+        // Synchronize role and PWA target start URL
+        const isUserRole = role === "Student" || role === "Parent" || roleLower === "student" || roleLower === "parent";
+        const targetStartUrl = isUserRole ? "/user/dashboard" : "/dashboard";
+        if (typeof window !== 'undefined') {
+          localStorage.setItem("user_role", role);
+          localStorage.setItem("pwa_start_url", targetStartUrl);
+          document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
+          document.cookie = `user_role=${role}; path=/; max-age=31536000; SameSite=Lax`;
+        }
+
         // Allow access to user portal routes for all authorized users
         if (pathname.startsWith("/user")) {
           setIsAuthorized(true);

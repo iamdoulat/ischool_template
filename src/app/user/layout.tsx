@@ -28,6 +28,8 @@ function UserLayoutContent({
     // Set PWA Manifest start_url to Student Portal
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            localStorage.setItem("pwa_start_url", "/user/dashboard");
+            document.cookie = "pwa_start_url=/user/dashboard; path=/; max-age=31536000; SameSite=Lax";
             let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
             if (!manifestLink) {
                 manifestLink = document.createElement("link");

@@ -28,6 +28,8 @@ function DashboardLayoutContent({
     // Set PWA Manifest start_url to Admin Portal
     useEffect(() => {
         if (typeof window !== 'undefined') {
+            localStorage.setItem("pwa_start_url", "/dashboard");
+            document.cookie = "pwa_start_url=/dashboard; path=/; max-age=31536000; SameSite=Lax";
             let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
             if (!manifestLink) {
                 manifestLink = document.createElement("link");
