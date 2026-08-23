@@ -34,34 +34,36 @@ export async function GET(request: NextRequest) {
       baseUrl = settings.base_url || "";
 
       let pwaName = "iSchool";
-      if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
-        pwaName = settings.pwa_app_short_name;
-      } else if (settings.school_name) {
-        pwaName = settings.school_name;
+      if (settings.pwa_app_short_name && typeof settings.pwa_app_short_name === "string" && settings.pwa_app_short_name.trim() !== "") {
+        pwaName = settings.pwa_app_short_name.trim();
       }
 
-      if (settings.pwa_app_description && settings.pwa_app_description.trim() !== "") {
-        description = settings.pwa_app_description;
-      } else if (settings.school_description) {
-        description = settings.school_description;
+      if (settings.pwa_app_description && typeof settings.pwa_app_description === "string" && settings.pwa_app_description.trim() !== "") {
+        description = settings.pwa_app_description.trim();
       }
 
-      if (settings.pwa_icon_512) {
-        rawIcon512 = settings.pwa_icon_512;
-      } else if (settings.app_logo) {
-        rawIcon512 = settings.app_logo;
+      if (settings.pwa_icon_512 && typeof settings.pwa_icon_512 === "string" && settings.pwa_icon_512.trim() !== "") {
+        rawIcon512 = settings.pwa_icon_512.trim();
+      } else if (settings.pwa_icon_192 && typeof settings.pwa_icon_192 === "string" && settings.pwa_icon_192.trim() !== "") {
+        rawIcon512 = settings.pwa_icon_192.trim();
+      } else if (settings.pwa_icon_maskable && typeof settings.pwa_icon_maskable === "string" && settings.pwa_icon_maskable.trim() !== "") {
+        rawIcon512 = settings.pwa_icon_maskable.trim();
       }
 
-      if (settings.pwa_icon_192) {
-        rawIcon192 = settings.pwa_icon_192;
-      } else if (settings.app_logo) {
-        rawIcon192 = settings.app_logo;
+      if (settings.pwa_icon_192 && typeof settings.pwa_icon_192 === "string" && settings.pwa_icon_192.trim() !== "") {
+        rawIcon192 = settings.pwa_icon_192.trim();
+      } else if (settings.pwa_icon_512 && typeof settings.pwa_icon_512 === "string" && settings.pwa_icon_512.trim() !== "") {
+        rawIcon192 = settings.pwa_icon_512.trim();
+      } else if (settings.pwa_icon_maskable && typeof settings.pwa_icon_maskable === "string" && settings.pwa_icon_maskable.trim() !== "") {
+        rawIcon192 = settings.pwa_icon_maskable.trim();
       }
 
-      if (settings.pwa_icon_maskable) {
-        rawMaskable = settings.pwa_icon_maskable;
-      } else {
-        rawMaskable = rawIcon512;
+      if (settings.pwa_icon_maskable && typeof settings.pwa_icon_maskable === "string" && settings.pwa_icon_maskable.trim() !== "") {
+        rawMaskable = settings.pwa_icon_maskable.trim();
+      } else if (settings.pwa_icon_512 && typeof settings.pwa_icon_512 === "string" && settings.pwa_icon_512.trim() !== "") {
+        rawMaskable = settings.pwa_icon_512.trim();
+      } else if (settings.pwa_icon_192 && typeof settings.pwa_icon_192 === "string" && settings.pwa_icon_192.trim() !== "") {
+        rawMaskable = settings.pwa_icon_192.trim();
       }
 
       schoolName = pwaName;
@@ -74,6 +76,15 @@ export async function GET(request: NextRequest) {
   const icon192 = getImageUrl(rawIcon192, baseUrl) || "/logo-app.png";
   const icon512 = getImageUrl(rawIcon512, baseUrl) || "/logo-app.png";
   const maskable = getImageUrl(rawMaskable, baseUrl) || icon512;
+
+  const getMimeType = (url: string) => {
+    const clean = url.split('?')[0].toLowerCase();
+    if (clean.endsWith('.webp')) return 'image/webp';
+    if (clean.endsWith('.jpg') || clean.endsWith('.jpeg')) return 'image/jpeg';
+    if (clean.endsWith('.svg')) return 'image/svg+xml';
+    if (clean.endsWith('.ico')) return 'image/x-icon';
+    return 'image/png';
+  };
 
   const manifestData = {
     id: startUrl,
@@ -93,19 +104,19 @@ export async function GET(request: NextRequest) {
       {
         src: icon192,
         sizes: "192x192 any",
-        type: "image/png",
+        type: getMimeType(icon192),
         purpose: "any"
       },
       {
         src: icon512,
         sizes: "512x512 any",
-        type: "image/png",
+        type: getMimeType(icon512),
         purpose: "any"
       },
       {
         src: maskable,
         sizes: "512x512 any",
-        type: "image/png",
+        type: getMimeType(maskable),
         purpose: "maskable"
       }
     ],
@@ -115,28 +126,28 @@ export async function GET(request: NextRequest) {
         short_name: "Student",
         description: "Open Student Dashboard",
         url: "/user/dashboard",
-        icons: [{ src: icon192, sizes: "192x192" }]
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       },
       {
         name: "Admin Portal",
         short_name: "Admin",
         description: "Open Admin Dashboard",
         url: "/dashboard",
-        icons: [{ src: icon192, sizes: "192x192" }]
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       },
       {
         name: "Notice Board",
         short_name: "Notices",
         description: "View school notices & updates",
         url: "/user/notice-board",
-        icons: [{ src: icon192, sizes: "192x192" }]
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       },
       {
         name: "Collect Fees",
         short_name: "Fees",
         description: "Fees collection & payments",
         url: "/dashboard/fees-collection/collect-fees",
-        icons: [{ src: icon192, sizes: "192x192" }]
+        icons: [{ src: icon192, sizes: "192x192", type: getMimeType(icon192) }]
       }
     ]
   };

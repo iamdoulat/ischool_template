@@ -200,9 +200,9 @@ iSchool provides full **Progressive Web App (PWA)** capabilities, allowing the e
 ### PWA Capabilities & Architectural Highlights
 1. **Zero-App-Store Installation**: Users can install the school application directly from their web browser with a single tap/click via the smart in-app install prompt.
 2. **Dynamic Manifest (`/manifest.json` & `src/app/manifest.ts`)**: The Web App Manifest dynamically synchronizes with General Settings:
-   - **App Name & Short Name**: Reads custom `pwa_app_short_name` or `school_name`.
-   - **App Description**: Reads custom `pwa_app_description` or `school_description`.
-   - **Dynamic Icons**: Supports `192x192`, `512x512`, and `maskable` adaptive icon formats uploaded directly from the Admin panel.
+   - **App Name & Short Name**: Reads custom `pwa_app_short_name` (PWA App Short Name field) configured under General Setting / Logo.
+   - **App Description**: Reads custom `pwa_app_description` (PWA App Description).
+   - **Dynamic Icons**: Dedicated PWA icons (`pwa_icon_512`, `pwa_icon_192`, and `pwa_icon_maskable`) separate from the standard browser favicon.
    - **App Theme Color & Background**: Synchronized with institutional primary colors (`#6366F1`) and background modes.
 3. **App Quick Shortcuts**: Native app shortcuts available on long-press or desktop right-click:
    - 🎓 **Student Portal**: Direct launch to `/user/dashboard`.

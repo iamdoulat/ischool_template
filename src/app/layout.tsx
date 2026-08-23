@@ -31,7 +31,9 @@ import { getImageUrl } from "@/lib/image-url";
 
 export async function generateMetadata(): Promise<Metadata> {
   let appTitle = "iSchool";
-  let appIcon = "/logo-app.png";
+  let rawFavicon = "/logo-admin-small.png";
+  let rawPwaIcon192 = "/logo-app.png";
+  let rawPwaIcon512 = "/logo-app.png";
 
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
@@ -46,25 +48,35 @@ export async function generateMetadata(): Promise<Metadata> {
 
       if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
         appTitle = settings.pwa_app_short_name;
-      } else if (settings.school_name) {
-        appTitle = settings.school_name;
       }
 
       if (settings.favicon) {
-        appIcon = settings.favicon;
-      } else if (settings.pwa_icon_192) {
-        appIcon = settings.pwa_icon_192;
+        rawFavicon = settings.favicon;
+      }
+
+      if (settings.pwa_icon_192) {
+        rawPwaIcon192 = settings.pwa_icon_192;
       } else if (settings.pwa_icon_512) {
-        appIcon = settings.pwa_icon_512;
-      } else if (settings.app_logo) {
-        appIcon = settings.app_logo;
+        rawPwaIcon192 = settings.pwa_icon_512;
+      } else if (settings.pwa_icon_maskable) {
+        rawPwaIcon192 = settings.pwa_icon_maskable;
+      }
+
+      if (settings.pwa_icon_512) {
+        rawPwaIcon512 = settings.pwa_icon_512;
+      } else if (settings.pwa_icon_192) {
+        rawPwaIcon512 = settings.pwa_icon_192;
+      } else if (settings.pwa_icon_maskable) {
+        rawPwaIcon512 = settings.pwa_icon_maskable;
       }
     }
   } catch (error) {
     console.error("Error generating SSR layout metadata:", error);
   }
 
-  const resolvedIconUrl = getImageUrl(appIcon) || appIcon;
+  const resolvedFaviconUrl = getImageUrl(rawFavicon) || rawFavicon;
+  const resolvedPwa192 = getImageUrl(rawPwaIcon192) || rawPwaIcon192;
+  const resolvedPwa512 = getImageUrl(rawPwaIcon512) || rawPwaIcon512;
 
   return {
     title: appTitle,
@@ -72,15 +84,16 @@ export async function generateMetadata(): Promise<Metadata> {
     manifest: "/manifest.json",
     icons: {
       icon: [
-        { url: resolvedIconUrl, sizes: "192x192", type: "image/png" },
-        { url: resolvedIconUrl, sizes: "512x512", type: "image/png" },
+        { url: resolvedFaviconUrl },
+        { url: resolvedPwa192, sizes: "192x192", type: "image/png" },
+        { url: resolvedPwa512, sizes: "512x512", type: "image/png" },
       ],
       apple: [
-        { url: resolvedIconUrl, sizes: "180x180", type: "image/png" },
-        { url: resolvedIconUrl, sizes: "192x192", type: "image/png" },
-        { url: resolvedIconUrl, sizes: "512x512", type: "image/png" },
+        { url: resolvedPwa192, sizes: "180x180", type: "image/png" },
+        { url: resolvedPwa192, sizes: "192x192", type: "image/png" },
+        { url: resolvedPwa512, sizes: "512x512", type: "image/png" },
       ],
-      shortcut: [resolvedIconUrl],
+      shortcut: [resolvedFaviconUrl],
     },
     appleWebApp: {
       capable: true,

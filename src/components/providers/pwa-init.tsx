@@ -45,14 +45,17 @@ export function PWAInit() {
     const localShortName = localStorage.getItem("ischool_pwa_app_short_name");
     const localIcon192 = localStorage.getItem("ischool_pwa_icon_192");
     const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
+    const localIconMaskable = localStorage.getItem("ischool_pwa_icon_maskable");
 
-    const appShortName = settings?.pwa_app_short_name || localShortName || settings?.school_name || "iSchool";
-    const rawFavicon = settings?.favicon || localFavicon || settings?.pwa_icon_192 || localIcon192 || settings?.admin_small_logo || settings?.app_logo || "/logo-admin-small.png";
-    const rawAppIcon = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.app_logo || "/logo-app.png";
+    const appShortName = settings?.pwa_app_short_name || localShortName || "iSchool";
+    const rawFavicon = settings?.favicon || localFavicon || "/logo-admin-small.png";
+    const rawPwaIcon192 = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_maskable || localIconMaskable || "/logo-app.png";
+    const rawPwaIcon512 = settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_maskable || localIconMaskable || "/logo-app.png";
     
     const resolvedFaviconUrl = getImageUrl(rawFavicon) || "/logo-admin-small.png";
     const faviconHref = `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
-    const appIcon = getImageUrl(rawAppIcon) || "/logo-app.png";
+    const appIcon = getImageUrl(rawPwaIcon192) || "/logo-app.png";
+    const appIcon512 = getImageUrl(rawPwaIcon512) || "/logo-app.png";
 
     // 1. Safely sync Browser Main Favicon and Apple Touch Icon link tags without removing nodes
     const syncLinkTag = (rel: string, href: string) => {
@@ -69,7 +72,7 @@ export function PWAInit() {
 
     syncLinkTag("icon", faviconHref);
     syncLinkTag("shortcut icon", faviconHref);
-    syncLinkTag("apple-touch-icon", appIcon || faviconHref);
+    syncLinkTag("apple-touch-icon", appIcon);
 
     // 2. Sync iOS Safari Apple App meta & touch icon tags
     let appleCapableTag = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-capable']");
@@ -138,7 +141,7 @@ export function PWAInit() {
       icon512Tag.setAttribute("sizes", "512x512");
       document.head.appendChild(icon512Tag);
     }
-    icon512Tag.href = getImageUrl(settings?.pwa_icon_512 || localIcon512 || rawAppIcon) || appIcon;
+    icon512Tag.href = appIcon512;
     // Auto-reload on Next.js ChunkLoadError (e.g. after production deployments update chunk hashes)
     const handleChunkError = (message?: string) => {
       if (message && /Loading chunk [\d]+ failed|ChunkLoadError/i.test(message)) {
@@ -165,7 +168,7 @@ export function PWAInit() {
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onUnhandledRejection);
     };
-  }, [settings?.favicon, settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.school_name, settings?.app_logo, settings?.admin_small_logo]);
+  }, [settings?.favicon, settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.pwa_icon_maskable]);
 
   return <PWAInstallPrompt />;
 }

@@ -18,7 +18,14 @@ export function PWAInstallPrompt() {
   
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true ||
+      localStorage.getItem("pwa_installed") === "true"
+    );
+  });
   const [showPrompt, setShowPrompt] = useState(false);
   const [showIOSModal, setShowIOSModal] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -26,10 +33,11 @@ export function PWAInstallPrompt() {
   const localShortName = typeof window !== "undefined" ? localStorage.getItem("ischool_pwa_app_short_name") : null;
   const localIcon192 = typeof window !== "undefined" ? localStorage.getItem("ischool_pwa_icon_192") : null;
   const localIcon512 = typeof window !== "undefined" ? localStorage.getItem("ischool_pwa_icon_512") : null;
+  const localIconMaskable = typeof window !== "undefined" ? localStorage.getItem("ischool_pwa_icon_maskable") : null;
 
-  const appName = settings?.pwa_app_short_name || localShortName || settings?.school_name || "iSchool";
+  const appName = settings?.pwa_app_short_name || localShortName || "iSchool";
   
-  const rawLogo = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.app_logo || "/logo-app.png";
+  const rawLogo = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_maskable || localIconMaskable || "/logo-app.png";
   const appLogo = getImageUrl(rawLogo) || "/logo-app.png";
 
   // Target exclusively user portal (/user/*) and admin portal (/dashboard/*)
@@ -45,7 +53,6 @@ export function PWAInstallPrompt() {
       localStorage.getItem("pwa_installed") === "true";
 
     if (isStandaloneMode) {
-      setIsStandalone(true);
       return;
     }
 

@@ -645,24 +645,36 @@ export default function GeneralSettingPage() {
     const handleLogoSuccess = (field: string, newUrl: string) => {
         if (typeof window !== 'undefined') {
             localStorage.setItem(`ischool_${field}`, newUrl);
-            if (field === "favicon" || field === "app_logo" || field === "admin_small_logo") {
-                const fullUrl = getImageUrl(newUrl) || newUrl;
-                const cacheBusted = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
-                
-                const syncLink = (rel: string) => {
-                    let link = document.querySelector<HTMLLinkElement>(`link[rel='${rel}']`);
-                    if (link) {
-                        link.href = cacheBusted;
-                    } else {
-                        link = document.createElement("link");
-                        link.rel = rel;
-                        link.href = cacheBusted;
-                        document.head.appendChild(link);
-                    }
-                };
+            const fullUrl = getImageUrl(newUrl) || newUrl;
+            const cacheBusted = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
 
-                syncLink("icon");
-                syncLink("shortcut icon");
+            const syncLink = (rel: string, href: string, extraAttr?: { name: string; value: string }) => {
+                let selector = `link[rel='${rel}']`;
+                if (extraAttr) {
+                    selector = `link[rel='${rel}'][${extraAttr.name}='${extraAttr.value}']`;
+                }
+                let link = document.querySelector<HTMLLinkElement>(selector);
+                if (link) {
+                    link.href = href;
+                } else {
+                    link = document.createElement("link");
+                    link.rel = rel;
+                    if (extraAttr) link.setAttribute(extraAttr.name, extraAttr.value);
+                    link.href = href;
+                    document.head.appendChild(link);
+                }
+            };
+
+            if (field === "favicon") {
+                syncLink("icon", cacheBusted);
+                syncLink("shortcut icon", cacheBusted);
+            } else if (field === "pwa_icon_192" || field === "pwa_icon_512" || field === "pwa_icon_maskable") {
+                syncLink("apple-touch-icon", cacheBusted);
+                if (field === "pwa_icon_192") {
+                    syncLink("icon", cacheBusted, { name: "sizes", value: "192x192" });
+                } else if (field === "pwa_icon_512") {
+                    syncLink("icon", cacheBusted, { name: "sizes", value: "512x512" });
+                }
             }
         }
         setFormData(prev => {
