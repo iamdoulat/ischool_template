@@ -96,6 +96,12 @@ export default function FrontCmsSettingPage() {
             title: "Welcome to iSchool",
             description: "Providing quality education for over two decades...",
             image_url: "",
+            experience_years: "25+",
+            experience_label: "Years Of Educational Excellence",
+            bullet_point_1: "Innovative STEM Curriculum",
+            bullet_point_2: "Personalized Mentorship",
+            bullet_point_3: "Global Ethical Values",
+            bullet_point_4: "Comprehensive Sports & Arts",
             accordions: [
                 { id: 1, title: "Collapsible Group Item #1", content: "Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch." },
                 { id: 2, title: "Collapsible Group Item #2", content: "Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore." },
@@ -730,6 +736,52 @@ export default function FrontCmsSettingPage() {
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Experience Label</Label>
                                         <Input value={settings.about_us?.experience_label || ""} onChange={(e) => updateNestedField("about_us", "experience_label", e.target.value)} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Years Of Educational Excellence" />
+                                    </div>
+                                </div>
+
+                                {/* Key Highlights / Bullet Points */}
+                                <div className="pt-4 border-t border-gray-100 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Key Highlights / Bullet Points</h4>
+                                        <span className="text-[9px] text-gray-400 font-medium">Displayed with checkmarks beside main description</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 1</Label>
+                                            <Input
+                                                value={settings.about_us?.bullet_point_1 ?? ""}
+                                                onChange={(e) => updateNestedField("about_us", "bullet_point_1", e.target.value)}
+                                                className="h-9 text-[11px] rounded-lg bg-gray-50/30"
+                                                placeholder="Innovative STEM Curriculum"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 2</Label>
+                                            <Input
+                                                value={settings.about_us?.bullet_point_2 ?? ""}
+                                                onChange={(e) => updateNestedField("about_us", "bullet_point_2", e.target.value)}
+                                                className="h-9 text-[11px] rounded-lg bg-gray-50/30"
+                                                placeholder="Personalized Mentorship"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 3</Label>
+                                            <Input
+                                                value={settings.about_us?.bullet_point_3 ?? ""}
+                                                onChange={(e) => updateNestedField("about_us", "bullet_point_3", e.target.value)}
+                                                className="h-9 text-[11px] rounded-lg bg-gray-50/30"
+                                                placeholder="Global Ethical Values"
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 4</Label>
+                                            <Input
+                                                value={settings.about_us?.bullet_point_4 ?? ""}
+                                                onChange={(e) => updateNestedField("about_us", "bullet_point_4", e.target.value)}
+                                                className="h-9 text-[11px] rounded-lg bg-gray-50/30"
+                                                placeholder="Comprehensive Sports & Arts"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 

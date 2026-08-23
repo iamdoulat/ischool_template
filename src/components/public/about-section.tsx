@@ -99,6 +99,11 @@ export function AboutUsSection({ about }: { about?: any }) {
     const stat4Val = activeAbout.stat4_val || "25+";
     const stat4Label = activeAbout.stat4_label || "Modern Laboratories";
 
+    const bullet1 = activeAbout.bullet_point_1 ?? activeAbout.feature1 ?? "Innovative STEM Curriculum";
+    const bullet2 = activeAbout.bullet_point_2 ?? activeAbout.feature2 ?? "Personalized Mentorship";
+    const bullet3 = activeAbout.bullet_point_3 ?? activeAbout.feature3 ?? "Global Ethical Values";
+    const bullet4 = activeAbout.bullet_point_4 ?? activeAbout.feature4 ?? "Comprehensive Sports & Arts";
+
     const accordions = (activeAbout.accordions && activeAbout.accordions.length > 0)
         ? activeAbout.accordions
         : defaultAccordions;
@@ -148,23 +153,31 @@ export function AboutUsSection({ about }: { about?: any }) {
                             {description}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 pt-2">
-                            <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                                <span>Innovative STEM Curriculum</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                                <span>Personalized Mentorship</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                                <span>Global Ethical Values</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                                <span>Comprehensive Sports & Arts</span>
-                            </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                            {bullet1 && (
+                                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                    <span>{bullet1}</span>
+                                </div>
+                            )}
+                            {bullet2 && (
+                                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                    <span>{bullet2}</span>
+                                </div>
+                            )}
+                            {bullet3 && (
+                                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                    <span>{bullet3}</span>
+                                </div>
+                            )}
+                            {bullet4 && (
+                                <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                                    <span>{bullet4}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

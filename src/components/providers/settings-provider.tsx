@@ -207,12 +207,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     }
                 });
 
-                // Ensure frontend_url and base_url point to FRONTEND_URL (not backend port 8000)
+                // Ensure frontend_url and base_url have valid fallbacks if empty
                 if (!normalizedData.frontend_url || normalizedData.frontend_url.includes('8000')) {
                     normalizedData.frontend_url = fallbackFrontendUrl;
                 }
-                if (!normalizedData.base_url || normalizedData.base_url.includes('8000') || normalizedData.base_url.includes('127.0.0.1:8000')) {
-                    normalizedData.base_url = normalizedData.frontend_url;
+                if (!normalizedData.base_url) {
+                    normalizedData.base_url = normalizedData.frontend_url || fallbackFrontendUrl;
                 }
 
                 // Resolve logo & background image paths to absolute URLs if uploaded

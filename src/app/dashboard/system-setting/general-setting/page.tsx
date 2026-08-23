@@ -491,6 +491,10 @@ export default function GeneralSettingPage() {
                     if (typeof window !== 'undefined') {
                         const savedChat = localStorage.getItem("ischool_enable_chat");
                         if (savedChat !== null) normalizedData.enable_chat = savedChat === "true";
+                        const savedBaseUrl = localStorage.getItem("ischool_base_url");
+                        if (!normalizedData.base_url && savedBaseUrl) normalizedData.base_url = savedBaseUrl;
+                        const savedUploadPath = localStorage.getItem("ischool_file_upload_path");
+                        if (!normalizedData.file_upload_path && savedUploadPath) normalizedData.file_upload_path = savedUploadPath;
                     }
 
                     return normalizedData;
@@ -596,6 +600,12 @@ export default function GeneralSettingPage() {
 
             if (payload.enable_chat !== undefined && payload.enable_chat !== null && typeof window !== 'undefined') {
                 localStorage.setItem("ischool_enable_chat", String(payload.enable_chat));
+            }
+            if (payload.base_url !== undefined && payload.base_url !== null && typeof window !== 'undefined') {
+                localStorage.setItem("ischool_base_url", String(payload.base_url));
+            }
+            if (payload.file_upload_path !== undefined && payload.file_upload_path !== null && typeof window !== 'undefined') {
+                localStorage.setItem("ischool_file_upload_path", String(payload.file_upload_path));
             }
 
             Object.keys(payload).forEach(k => { if (payload[k] === '') payload[k] = null; });
