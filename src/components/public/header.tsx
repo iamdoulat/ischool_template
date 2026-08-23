@@ -125,7 +125,7 @@ export function PublicHeader() {
         { name: t("admissions"), href: "/online_admission" },
         { name: t("exam_results"), href: "/exam-results" },
         { name: t("notices"), href: "/notices" },
-        { name: t("about_us"), href: "/academics" },
+        { name: t("about_us"), href: "/about-us" },
         { name: t("contact"), href: "/contact-us" },
     ];
 
@@ -331,7 +331,7 @@ export function PublicHeader() {
                             return (
                                 <Link
                                     key={item.name}
-                                    href={item.href || '#'}
+                                    href={item.href || '/'}
                                     target={item.newTab ? "_blank" : "_self"}
                                     className={cn(
                                         "px-3.5 py-2 text-sm font-semibold rounded-md transition-all flex items-center",
@@ -369,7 +369,7 @@ export function PublicHeader() {
                                 return (
                                     <Link
                                         key={item.name}
-                                        href={item.href || '#'}
+                                        href={item.href || '/'}
                                         target={item.newTab ? "_blank" : "_self"}
                                         className={cn(
                                             "px-4 py-3 text-sm font-medium rounded-lg flex items-center",

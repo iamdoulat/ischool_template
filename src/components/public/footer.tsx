@@ -34,7 +34,7 @@ export function PublicFooter() {
 
     const renderMenuLink = (item: MenuItem) => {
         const href = item.is_external
-            ? item.url || "#"
+            ? item.url || "/"
             : `/${(item.page || '').replace(/^\//, '')}`;
 
         const key = item.title.toLowerCase().trim().replace(/[\s\-_]+/g, '_');

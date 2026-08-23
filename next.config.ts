@@ -26,15 +26,34 @@ const nextConfig: NextConfig = {
       "@radix-ui/react-label",
       "@radix-ui/react-radio-group",
       "@radix-ui/react-switch",
+      "@radix-ui/react-accordion",
+      "@radix-ui/react-progress",
+      "@radix-ui/react-scroll-area",
+      "@radix-ui/react-separator",
+      "@radix-ui/react-slot",
+      "sonner",
+      "clsx",
+      "tailwind-merge",
     ],
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
       path: false,
       os: false,
     };
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization?.splitChunks,
+          chunks: "all",
+          maxInitialRequests: 20,
+          minSize: 20000,
+        },
+      };
+    }
     return config;
   },
   images: {

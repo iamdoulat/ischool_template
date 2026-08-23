@@ -359,7 +359,7 @@ export default function ExamResultPage() {
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex items-center gap-2">
                                                     <UserCircle className="h-4 w-4 text-gray-300" />
-                                                    <Link href="#" className="font-bold text-indigo-600 hover:underline">
+                                                    <Link href={`/dashboard/student-information/student-details/${student.id}`} className="font-bold text-indigo-600 hover:underline">
                                                         {student.name} {student.last_name}
                                                     </Link>
                                                 </div>

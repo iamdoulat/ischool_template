@@ -85,7 +85,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const resolvedFaviconUrl = getImageUrl(rawFavicon) || rawFavicon;
   const resolvedPwa192 = getImageUrl(rawPwaIcon192) || rawPwaIcon192;
   const resolvedPwa512 = getImageUrl(rawPwaIcon512) || rawPwaIcon512;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ischool.com";
+  const baseUrl = (process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ischool.coolify.mddoulat.com").replace(/\/+$/, "");
 
   return {
     metadataBase: new URL(baseUrl),

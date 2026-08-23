@@ -113,7 +113,7 @@ export default function Home() {
                     </Link>
                   </Button>
                   <Button asChild variant="outline" size="lg" className="text-base font-bold px-6 sm:px-10 h-14 rounded-full bg-white/10 text-white border-white/20 hover:bg-white hover:text-slate-900 backdrop-blur-sm transition-all duration-300 w-full sm:w-auto">
-                    <Link href={hfs.hero_btn2_link || "#"}>
+                    <Link href={hfs.hero_btn2_link || "/about-us"}>
                       {hfs.hero_btn2_text || t("take_a_tour")}
                     </Link>
                   </Button>

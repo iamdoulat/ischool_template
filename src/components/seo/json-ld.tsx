@@ -20,8 +20,8 @@ interface JsonLdProps {
 export function JsonLd({
   schoolName = "iSchool",
   description = "Comprehensive School Management System & Educational Institution Portal",
-  url = "https://ischool.com",
-  logoUrl = "https://ischool.com/logo-admin.png",
+  url = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ischool.coolify.mddoulat.com",
+  logoUrl = `${(process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ischool.coolify.mddoulat.com").replace(/\/+$/, "")}/logo-admin.png`,
   telephone = "+880 1800-123456",
   email = "info@ischool.edu.bd",
   address = {

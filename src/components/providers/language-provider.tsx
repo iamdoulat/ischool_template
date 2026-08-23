@@ -67,9 +67,10 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     const [loading, setLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<UserRecord>(null);
 
-    const updateLayoutDirection = (isRtl: boolean) => {
+    const updateLanguageAttributes = (lang: Language) => {
         if (typeof document !== 'undefined') {
-            document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+            document.documentElement.lang = lang.short_code || 'en';
+            document.documentElement.dir = lang.is_rtl ? 'rtl' : 'ltr';
         }
     };
 
@@ -92,7 +93,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             return lang;
         });
         fetchTranslations(lang.short_code);
-        updateLayoutDirection(lang.is_rtl);
+        updateLanguageAttributes(lang);
     }, [fetchTranslations]);
 
     const loadLanguageForUser = useCallback(async (user: UserRecord) => {
