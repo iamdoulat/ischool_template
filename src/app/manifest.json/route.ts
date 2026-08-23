@@ -3,28 +3,43 @@ import { getImageUrl } from "@/lib/image-url";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const portalParam = searchParams.get("portal")?.toLowerCase();
-  const roleParam = searchParams.get("role")?.toLowerCase();
-  const cookieStartUrl = request.cookies.get("pwa_start_url")?.value;
-  const cookieUserRole = request.cookies.get("user_role")?.value?.toLowerCase();
+  const portalParam = searchParams.get("portal")?.toLowerCase().trim();
+  const roleParam = searchParams.get("role")?.toLowerCase().trim();
+  const cookieStartUrl = request.cookies.get("pwa_start_url")?.value?.trim();
+  const cookieUserRole = request.cookies.get("user_role")?.value?.toLowerCase().trim();
   const referer = request.headers.get("referer") || "";
 
-  let startUrl = "/dashboard";
-  if (
+  const isStudentOrParent =
     portalParam === "user" ||
+    portalParam === "student" ||
+    portalParam === "parent" ||
     roleParam === "student" ||
     roleParam === "parent" ||
+    roleParam === "parents" ||
+    roleParam === "guardian" ||
+    roleParam === "std" ||
+    roleParam === "par" ||
     cookieUserRole === "student" ||
     cookieUserRole === "parent" ||
-    cookieStartUrl === "/user/dashboard" ||
-    referer.includes("/user")
-  ) {
-    startUrl = "/user/dashboard";
-  } else if (
+    cookieUserRole === "parents" ||
+    cookieUserRole === "guardian" ||
+    cookieUserRole === "std" ||
+    cookieUserRole === "par";
+
+  const isExplicitAdminOrStaff =
     portalParam === "admin" ||
-    cookieStartUrl === "/dashboard" ||
-    referer.includes("/dashboard")
-  ) {
+    portalParam === "dashboard" ||
+    (cookieUserRole && !isStudentOrParent) ||
+    (roleParam && !isStudentOrParent);
+
+  let startUrl = "/dashboard";
+  if (isStudentOrParent) {
+    startUrl = "/user/dashboard";
+  } else if (isExplicitAdminOrStaff) {
+    startUrl = "/dashboard";
+  } else if (cookieStartUrl === "/user/dashboard" || referer.includes("/user")) {
+    startUrl = "/user/dashboard";
+  } else {
     startUrl = "/dashboard";
   }
 

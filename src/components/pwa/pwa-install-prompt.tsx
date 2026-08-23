@@ -17,7 +17,10 @@ export function PWAInstallPrompt() {
   const { settings } = useSettings();
   
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isIOS, setIsIOS] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return /iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase());
+  });
   const [isStandalone, setIsStandalone] = useState(() => {
     if (typeof window === "undefined") return false;
     return (
@@ -69,9 +72,9 @@ export function PWAInstallPrompt() {
     // Detect iOS devices
     const userAgent = window.navigator.userAgent.toLowerCase();
     const iosDevice = /iphone|ipad|ipod/.test(userAgent);
-    setIsIOS(iosDevice);
 
     if (iosDevice) {
+      setIsIOS(true);
       const timer = setTimeout(() => setShowPrompt(true), 2000);
       return () => clearTimeout(timer);
     }

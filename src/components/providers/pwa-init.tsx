@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { PWAInstallPrompt } from "@/components/pwa/pwa-install-prompt";
 
@@ -8,6 +9,7 @@ import { getImageUrl } from "@/lib/image-url";
 
 export function PWAInit() {
   const { settings } = useSettings();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -46,16 +48,45 @@ export function PWAInit() {
     const localIcon192 = localStorage.getItem("ischool_pwa_icon_192");
     const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
     const localIconMaskable = localStorage.getItem("ischool_pwa_icon_maskable");
-    const userRole = (localStorage.getItem("user_role") || "").toLowerCase();
-    const storedStartUrl = localStorage.getItem("pwa_start_url");
-    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
-    const isUserPortal = currentPath.startsWith("/user") || userRole === "student" || userRole === "parent" || storedStartUrl === "/user/dashboard";
+    const storedRole = (localStorage.getItem("user_role") || "").toLowerCase().trim();
+    const storedStartUrl = localStorage.getItem("pwa_start_url")?.trim();
+    const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
+
+    const isStudentOrParentRole =
+      storedRole === "student" ||
+      storedRole === "parent" ||
+      storedRole === "parents" ||
+      storedRole === "guardian" ||
+      storedRole === "std" ||
+      storedRole === "par";
+
+    const isExplicitAdminOrStaffRole =
+      storedRole !== "" &&
+      !isStudentOrParentRole;
+
+    let isUserPortal = false;
+    if (isStudentOrParentRole) {
+      isUserPortal = true;
+    } else if (isExplicitAdminOrStaffRole) {
+      isUserPortal = false;
+    } else if (currentPath.startsWith("/user")) {
+      isUserPortal = true;
+    } else if (currentPath.startsWith("/dashboard")) {
+      isUserPortal = false;
+    } else if (storedStartUrl === "/user/dashboard") {
+      isUserPortal = true;
+    } else {
+      isUserPortal = false;
+    }
+
     const targetStartUrl = isUserPortal ? "/user/dashboard" : "/dashboard";
+    const manifestPortalParam = isUserPortal ? "user" : "admin";
+    const manifestHref = `/manifest.json?portal=${manifestPortalParam}`;
 
     localStorage.setItem("pwa_start_url", targetStartUrl);
     document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
-    if (userRole) {
-      document.cookie = `user_role=${userRole}; path=/; max-age=31536000; SameSite=Lax`;
+    if (storedRole) {
+      document.cookie = `user_role=${storedRole}; path=/; max-age=31536000; SameSite=Lax`;
     }
 
     const appShortName = settings?.pwa_app_short_name || localShortName || "iSchool";
@@ -81,7 +112,6 @@ export function PWAInit() {
       }
     };
 
-    const manifestHref = isUserPortal ? "/manifest.json?portal=user" : "/manifest.json?portal=admin";
     syncLinkTag("manifest", manifestHref);
     syncLinkTag("icon", faviconHref);
     syncLinkTag("shortcut icon", faviconHref);
@@ -181,7 +211,7 @@ export function PWAInit() {
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onUnhandledRejection);
     };
-  }, [settings?.favicon, settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.pwa_icon_maskable]);
+  }, [pathname, settings?.favicon, settings?.pwa_app_short_name, settings?.pwa_icon_192, settings?.pwa_icon_512, settings?.pwa_icon_maskable]);
 
   return <PWAInstallPrompt />;
 }

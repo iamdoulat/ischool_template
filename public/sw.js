@@ -1,9 +1,8 @@
-const CACHE_NAME = 'ischool-pwa-v4';
+const CACHE_NAME = 'ischool-pwa-v5';
 
 const urlsToCache = [
   '/',
   '/offline.html',
-  '/manifest.json',
   '/favicon.ico',
   '/logo-app.png',
   '/logo-admin.png'
@@ -61,6 +60,14 @@ self.addEventListener('fetch', (event) => {
     url.pathname.startsWith('/_next/webpack-hmr') ||
     url.pathname.includes('hot-update')
   ) {
+    return;
+  }
+
+  // Manifest requests: Always Network First so dynamic role & portal start_url is always fresh
+  if (url.pathname.includes('manifest')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
     return;
   }
 

@@ -32,19 +32,27 @@ export function PageGuard({ children }: { children: React.ReactNode }) {
       try {
         const res = await api.get("/profile");
         const user = res.data?.data || res.data;
-        const role: string = user?.role || "";
+        const role: string = user?.role || user?.user_type || user?.role_name || "";
         setUserRole(role);
         const permissions: string[] = user?.permissions || [];
-        const roleLower = role.toLowerCase();
+        const roleLower = String(role).toLowerCase().trim();
 
         // Synchronize role and PWA target start URL
-        const isUserRole = role === "Student" || role === "Parent" || roleLower === "student" || roleLower === "parent";
+        const isUserRole =
+          roleLower === "student" ||
+          roleLower === "parent" ||
+          roleLower === "parents" ||
+          roleLower === "guardian" ||
+          roleLower === "std" ||
+          roleLower === "par";
         const targetStartUrl = isUserRole ? "/user/dashboard" : "/dashboard";
+        const canonicalRole = isUserRole ? (roleLower.includes("par") ? "Parent" : "Student") : (role || "Admin");
+
         if (typeof window !== 'undefined') {
-          localStorage.setItem("user_role", role);
+          localStorage.setItem("user_role", canonicalRole);
           localStorage.setItem("pwa_start_url", targetStartUrl);
           document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
-          document.cookie = `user_role=${role}; path=/; max-age=31536000; SameSite=Lax`;
+          document.cookie = `user_role=${canonicalRole}; path=/; max-age=31536000; SameSite=Lax`;
         }
 
         // Allow access to user portal routes for all authorized users

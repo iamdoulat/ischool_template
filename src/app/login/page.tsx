@@ -121,14 +121,22 @@ export default function LoginPage() {
             }
 
             // Redirect and configure PWA based on role
-            const userRole = user?.role || user?.user_type || "";
-            const isUserPortal = userRole === "Student" || userRole === "Parent" || userRole.toLowerCase() === "student" || userRole.toLowerCase() === "parent";
+            const userRole = user?.role || user?.user_type || user?.role_name || "";
+            const roleLower = String(userRole).toLowerCase().trim();
+            const isUserPortal =
+                roleLower === "student" ||
+                roleLower === "parent" ||
+                roleLower === "parents" ||
+                roleLower === "guardian" ||
+                roleLower === "std" ||
+                roleLower === "par";
             const targetStartUrl = isUserPortal ? "/user/dashboard" : "/dashboard";
+            const canonicalRole = isUserPortal ? (roleLower.includes("par") ? "Parent" : "Student") : (userRole || "Admin");
 
-            localStorage.setItem("user_role", userRole || (isUserPortal ? "Student" : "Admin"));
+            localStorage.setItem("user_role", canonicalRole);
             localStorage.setItem("pwa_start_url", targetStartUrl);
             document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
-            document.cookie = `user_role=${userRole}; path=/; max-age=31536000; SameSite=Lax`;
+            document.cookie = `user_role=${canonicalRole}; path=/; max-age=31536000; SameSite=Lax`;
 
             if (isUserPortal) {
                 window.location.href = "/user/dashboard";

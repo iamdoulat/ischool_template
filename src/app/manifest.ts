@@ -14,17 +14,28 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   try {
     const cookieStore = await cookies();
     const headersList = await headers();
-    const cookieStartUrl = cookieStore.get("pwa_start_url")?.value;
-    const cookieUserRole = cookieStore.get("user_role")?.value?.toLowerCase();
+    const cookieStartUrl = cookieStore.get("pwa_start_url")?.value?.trim();
+    const cookieUserRole = cookieStore.get("user_role")?.value?.toLowerCase().trim();
     const referer = headersList.get("referer") || "";
 
-    if (
+    const isStudentOrParent =
       cookieUserRole === "student" ||
       cookieUserRole === "parent" ||
-      cookieStartUrl === "/user/dashboard" ||
-      referer.includes("/user")
-    ) {
+      cookieUserRole === "parents" ||
+      cookieUserRole === "guardian" ||
+      cookieUserRole === "std" ||
+      cookieUserRole === "par";
+
+    const isExplicitAdminOrStaff = cookieUserRole && !isStudentOrParent;
+
+    if (isStudentOrParent) {
       startUrl = "/user/dashboard";
+    } else if (isExplicitAdminOrStaff) {
+      startUrl = "/dashboard";
+    } else if (cookieStartUrl === "/user/dashboard" || referer.includes("/user")) {
+      startUrl = "/user/dashboard";
+    } else {
+      startUrl = "/dashboard";
     }
   } catch {
     // Fallback if headers/cookies are not available during build
