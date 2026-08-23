@@ -346,31 +346,31 @@ export default function FrontCmsSettingPage() {
             </div>
 
             <Tabs defaultValue="system" className="w-full">
-                <TabsList className="bg-white border text-gray-500 h-11 p-1 gap-1.5 rounded-lg shadow-sm border-gray-100 flex-wrap">
+                <TabsList className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 h-11 p-1 gap-1.5 rounded-lg shadow-sm flex-wrap">
                     <TabsTrigger
                         value="system"
-                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <Globe size={15} className="stroke-[2.5px]" />
                         <span>System</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="social"
-                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <Share2 size={15} className="stroke-[2.5px]" />
                         <span>Social Links</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="hero"
-                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <ImageIcon size={15} className="stroke-[2.5px]" />
                         <span>Hero</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="sections"
-                        className="text-[11px] font-bold uppercase gap-2 px-6 text-black hover:text-black hover:bg-gray-100/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200"
+                        className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <LayoutPanelLeft size={15} className="stroke-[2.5px]" />
                         <span>Sections</span>
