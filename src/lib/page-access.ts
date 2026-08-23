@@ -279,6 +279,7 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
   "/dashboard/system-setting/header-shortcuts": { moduleKey: "system_setting", submenuName: "header_shortcuts" },
 
   "/dashboard/system-setting/system-update": { moduleKey: "system_setting", submenuName: "system_update" },
+  "/dashboard/system-setting/system-logs": { moduleKey: "system_setting", submenuName: "system_logs" },
 };
 
 /** Maps each module key to its permission module names */

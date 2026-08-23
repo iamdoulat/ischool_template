@@ -295,6 +295,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "header_shortcuts", label: "Header Shortcuts" },
         { name: "system_update", label: "System Update" },
         { name: "api_key", label: "API Keys & MCP" },
+        { name: "system_logs", label: "System Logs" },
     ],
 };
 

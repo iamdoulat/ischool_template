@@ -731,6 +731,7 @@ export const i18nFallbacks: Record<string, string> = {
   file_types: "File Types",
   sidebar_menu: "Sidebar Menu",
   system_update: "System Update",
+  system_logs: "System Logs",
   notification_settings: "Notification Settings",
   session_settings: "Session Settings",
   manage_academic_sessions: "Manage academic sessions",

@@ -528,7 +528,8 @@ const menuItems = [
                     { name: "sidebar_menu", href: "/dashboard/system-setting/sidebar-menu" },
                     { name: "header_shortcuts", href: "/dashboard/system-setting/header-shortcuts" },
                     { name: "system_update", href: "/dashboard/system-setting/system-update" },
-                    { name: "api_key", href: "/dashboard/system-setting/api-key" },
+                    { name: "api_key", href: "/dashboard/system-setting/api-key", label: "API Keys & MCP" },
+                    { name: "system_logs", href: "/dashboard/system-setting/system-logs", label: "System Logs" },
                 ]
             },
         ]

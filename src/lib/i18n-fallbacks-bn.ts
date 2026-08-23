@@ -751,6 +751,7 @@ export const i18nFallbacksBn: Record<string, string> = {
   file_types: "ফাইলের ধরন",
   sidebar_menu: "সাইডবার মেনু",
   system_update: "সিস্টেম আপডেট",
+  system_logs: "সিস্টেম লগ",
   notification_settings: "Notification সেটিং",
   session_settings: "সেশন সেটিং",
   manage_academic_sessions: "একাডেমিক সেশন পরিচালনা করুন",
