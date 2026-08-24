@@ -110,15 +110,24 @@ export default function StudentFeesPage() {
     const cur = selectedCurrency?.symbol || "$";
 
     const fetchFees = useCallback(async () => {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+        if (!token) {
+            setLoading(false);
+            return;
+        }
+
         try {
-            const res = await api.get("/user/fees");
+            const res = await api.get("/user/fees", { skipGlobalErrorHandler: true });
             if (res.data.success) {
                 setData(res.data.data);
-            } else {
+            } else if (res.status !== 401) {
                 toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_fees") });
             }
-        } catch {
-            toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_fees") });
+        } catch (err: unknown) {
+            const error = err as { response?: { status?: number; data?: { message?: string } } };
+            if (error?.response?.status !== 401) {
+                toast({ variant: "destructive", title: t("error"), description: error?.response?.data?.message || t("failed_to_load_fees") });
+            }
         } finally {
             setLoading(false);
         }
@@ -459,7 +468,10 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; ch
 function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; open: boolean; onClose: () => void; onSuccess: () => void }) {
     const { t } = useTranslation();
     const { toast } = useToast();
-    const [gateways, setGateways] = useState<any[]>([]);
+    const { selectedCurrency } = useCurrency();
+    const cur = selectedCurrency?.symbol || "$";
+
+    const [gateways, setGateways] = useState<Array<{ provider: string; name: string }>>([]);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [selectedGateway, setSelectedGateway] = useState<string>("offline");
@@ -474,19 +486,23 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
 
     useEffect(() => {
         if (open) {
-            setLoading(true);
-            api.get("/user/payment-gateways")
-                .then(res => {
-                    if (res.data.success) {
-                        setGateways(res.data.data);
-                        if (res.data.data.length > 0) {
-                            setSelectedGateway(res.data.data[0].provider);
+            const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+            if (token) {
+                setLoading(true);
+                api.get("/user/payment-gateways", { skipGlobalErrorHandler: true })
+                    .then(res => {
+                        if (res.data.success) {
+                            setGateways(res.data.data);
+                            if (res.data.data.length > 0) {
+                                setSelectedGateway(res.data.data[0].provider);
+                            }
                         }
-                    }
-                })
-                .finally(() => setLoading(false));
+                    })
+                    .catch(() => {})
+                    .finally(() => setLoading(false));
+            }
             
-            if (fee) setAmount(fee.balance.toString());
+            if (fee) setAmount(fee.balance.toFixed(2));
             setPaymentDate(format(new Date(), "yyyy-MM-dd"));
         } else {
             // reset form
@@ -498,14 +514,29 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
         }
     }, [open, fee]);
 
+    const numAmount = parseFloat(amount) || 0;
+    const remainingAfterPay = fee ? Math.max(0, fee.balance - numAmount) : 0;
+    const isAmountExceeded = fee ? numAmount > (fee.balance + 0.001) : false;
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!fee) return;
+
+        if (numAmount <= 0) {
+            toast({ variant: "destructive", title: t("error"), description: "Please enter a valid payment amount." });
+            return;
+        }
+
+        if (isAmountExceeded) {
+            toast({ variant: "destructive", title: t("error"), description: `Amount cannot exceed the remaining due of ${cur}${fmt(fee.balance)}.` });
+            return;
+        }
+
         setSubmitting(true);
 
         const formData = new FormData();
         formData.append("student_fee_master_id", fee.id.toString());
-        formData.append("amount", amount);
+        formData.append("amount", numAmount.toString());
         formData.append("payment_date", paymentDate);
         if (referenceNo) formData.append("reference_no", referenceNo);
         if (bankName) formData.append("bank_name", bankName);
@@ -523,8 +554,9 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
             } else {
                 toast({ variant: "destructive", title: t("error"), description: res.data.message });
             }
-        } catch (err: any) {
-            toast({ variant: "destructive", title: t("error"), description: err.response?.data?.message || t("failed_to_submit_payment") });
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { message?: string } } };
+            toast({ variant: "destructive", title: t("error"), description: error.response?.data?.message || t("failed_to_submit_payment") });
         } finally {
             setSubmitting(false);
         }
@@ -532,72 +564,127 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                    <DialogTitle>{t("pay_fee")} - {fee?.name}</DialogTitle>
+            <DialogContent className="w-[95vw] sm:max-w-[520px] p-0 max-h-[90vh] flex flex-col overflow-hidden rounded-xl border border-muted/60 shadow-2xl">
+                <DialogHeader className="p-5 sm:p-6 pb-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shrink-0">
+                    <DialogTitle className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                        <CreditCard className="h-5 w-5 shrink-0" />
+                        <span className="truncate">{t("pay_fee")} - {fee?.name}</span>
+                    </DialogTitle>
+                    <p className="text-xs text-white/80">{fee?.code ? `Fee Code: ${fee.code}` : "Fee Payment"}</p>
                 </DialogHeader>
+
                 {loading ? (
-                    <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                    <div className="flex justify-center p-12"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>{t("payment_method")}</Label>
-                            <select 
-                                value={selectedGateway} 
-                                onChange={(e) => setSelectedGateway(e.target.value)}
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {gateways.map(g => (
-                                    <option key={g.provider} value={g.provider}>{g.name}</option>
-                                ))}
-                            </select>
+                    <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+                            {fee && (
+                                <div className="grid grid-cols-3 gap-2 p-3 bg-muted/40 rounded-lg border border-muted/60 text-center">
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Fee</span>
+                                        <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">{cur}{fmt(fee.amount)}</span>
+                                    </div>
+                                    <div className="border-x border-muted/60 flex flex-col justify-center px-1">
+                                        <span className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider">Paid</span>
+                                        <span className="text-xs sm:text-sm font-bold text-emerald-600 mt-0.5">{cur}{fmt(fee.paid_amount)}</span>
+                                    </div>
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-[10px] text-amber-600 uppercase font-bold tracking-wider">Balance Due</span>
+                                        <span className="text-xs sm:text-sm font-bold text-amber-600 mt-0.5">{cur}{fmt(fee.balance)}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold">{t("payment_method")}</Label>
+                                <select 
+                                    value={selectedGateway} 
+                                    onChange={(e) => setSelectedGateway(e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {gateways.map(g => (
+                                        <option key={g.provider} value={g.provider}>{g.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            {selectedGateway === "offline" ? (
+                                <div className="space-y-3.5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center">
+                                                <Label className="text-xs font-semibold">{t("amount")} ({cur}) <span className="text-destructive">*</span></Label>
+                                                {fee && fee.balance > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setAmount(fee.balance.toFixed(2))}
+                                                        className="text-[10px] text-primary hover:underline font-semibold"
+                                                    >
+                                                        Pay Full
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <Input 
+                                                type="number" 
+                                                value={amount} 
+                                                onChange={e => setAmount(e.target.value)} 
+                                                required 
+                                                min="0.01" 
+                                                step="0.01"
+                                                max={fee?.balance}
+                                                className={cn("h-10 font-bold", isAmountExceeded && "border-destructive text-destructive")}
+                                            />
+                                            {fee && (
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {numAmount > 0 && numAmount < fee.balance ? (
+                                                        <span className="text-amber-600 font-medium">Partial payment. Remaining: {cur}{fmt(remainingAfterPay)}</span>
+                                                    ) : isAmountExceeded ? (
+                                                        <span className="text-destructive font-medium">Exceeds remaining due of {cur}{fmt(fee.balance)}</span>
+                                                    ) : (
+                                                        <span>Enter partial or full remaining amount.</span>
+                                                    )}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold">{t("payment_date")} <span className="text-destructive">*</span></Label>
+                                            <DatePicker
+                                                value={paymentDate}
+                                                onChange={(d) => setPaymentDate(d)}
+                                                placeholder="DD/MM/YYYY"
+                                                className="h-10 border-input bg-background w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">{t("reference_no")}</Label>
+                                        <Input value={referenceNo} onChange={e => setReferenceNo(e.target.value)} placeholder="Transaction ID / Slip No / Reference" className="h-10" />
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold">{t("bank_name")}</Label>
+                                            <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. Chase Bank" className="h-10" />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold">{t("bank_account_no")}</Label>
+                                            <Input value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} placeholder="Account No" className="h-10" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">{t("screenshot")} / {t("proof")}</Label>
+                                        <Input type="file" onChange={e => setScreenshot(e.target.files?.[0] || null)} accept="image/*,.pdf" className="h-10 text-xs cursor-pointer file:cursor-pointer" />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="py-6 text-center text-muted-foreground text-sm">
+                                    {t("payment_gateway_coming_soon")}
+                                </div>
+                            )}
                         </div>
                         
-                        {selectedGateway === "offline" ? (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>{t("amount")}</Label>
-                                        <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} required min="0.01" step="0.01" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>{t("payment_date")}</Label>
-                                        <DatePicker
-                                            value={paymentDate}
-                                            onChange={(d) => setPaymentDate(d)}
-                                            placeholder="DD/MM/YYYY"
-                                            className="h-10 border-input bg-background"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>{t("reference_no")}</Label>
-                                    <Input value={referenceNo} onChange={e => setReferenceNo(e.target.value)} placeholder="Cheque No / Transaction ID" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label>{t("bank_name")}</Label>
-                                        <Input value={bankName} onChange={e => setBankName(e.target.value)} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>{t("bank_account_no")}</Label>
-                                        <Input value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>{t("screenshot")} / {t("proof")}</Label>
-                                    <Input type="file" onChange={e => setScreenshot(e.target.files?.[0] || null)} accept="image/*,.pdf" />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="py-4 text-center text-muted-foreground text-sm">
-                                {t("payment_gateway_coming_soon")}
-                            </div>
-                        )}
-                        
-                        <div className="flex justify-end gap-2 pt-2">
-                            <Button type="button" variant="outline" onClick={onClose}>{t("cancel")}</Button>
-                            <Button type="submit" disabled={submitting || selectedGateway !== "offline"}>
+                        <div className="flex justify-end gap-2 p-4 sm:p-5 border-t border-muted/50 bg-background shrink-0">
+                            <Button type="button" variant="outline" onClick={onClose} className="h-10 min-w-[80px]">{t("cancel")}</Button>
+                            <Button type="submit" variant="gradient" disabled={submitting || selectedGateway !== "offline" || isAmountExceeded} className="h-10 min-w-[100px] font-bold">
                                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {t("submit")}
                             </Button>

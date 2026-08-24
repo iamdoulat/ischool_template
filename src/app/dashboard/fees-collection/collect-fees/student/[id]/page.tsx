@@ -122,14 +122,14 @@ export default function CollectStudentFeesPage({ params }: { params: Promise<{ i
     }, [fetchStudentFees]);
 
     const openPaymentDialog = (fee: DueFee) => {
-        const total = fee.fee_master.amount;
-        const paid = fee.payments.reduce((acc: number, p: FeePayment) => acc + p.amount, 0);
-        const due = total - paid;
+        const total = Number(fee.fee_master?.amount) || 0;
+        const paid = (fee.payments || []).reduce((acc: number, p: FeePayment) => acc + (Number(p.amount) || 0), 0);
+        const due = Math.max(0, total - paid);
 
         setSelectedFee(fee);
         setPaymentData({
             ...paymentData,
-            amount: due.toString(),
+            amount: due > 0 ? due.toFixed(2) : "0.00",
             date: new Date().toISOString().split('T')[0]
         });
         setIsPaymentDialogOpen(true);
@@ -241,59 +241,77 @@ export default function CollectStudentFeesPage({ params }: { params: Promise<{ i
                                 </TableRow>
                             ) : (
                                 dueFees.map((fee) => {
-                                    const total = fee.fee_master.amount;
-                                    const paid = fee.payments.reduce((acc: number, p: FeePayment) => acc + p.amount, 0);
-                                    const due = total - paid;
-                                    const isPaid = due <= 0;
+                                    const total = Number(fee.fee_master?.amount) || 0;
+                                    const paid = (fee.payments || []).reduce((acc: number, p: FeePayment) => acc + (Number(p.amount) || 0), 0);
+                                    const due = Math.max(0, total - paid);
+                                    const isPaid = due <= 0 && total > 0;
+                                    const isPartial = paid > 0 && due > 0;
+                                    const fineAmount = Number(fee.fee_master?.fine_amount) || 0;
 
                                     return (
-                                        <TableRow key={fee.is_transport ? `t_${fee.id}` : `r_${fee.id}`} className="group border-b border-muted/50 last:border-none hover:bg-muted/10 transition-colors">
-                                            <TableCell className="py-4 pl-8">
-                                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2.5 py-0.5 rounded-lg whitespace-nowrap">
-                                                    {fee.fee_master.fee_group?.name || "N/A"}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <p className="text-sm font-semibold text-slate-700">{fee.fee_master.fee_type?.name || "N/A"}</p>
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <code className="text-[11px] bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">
-                                                    {fee.fee_master.fee_type?.code || "N/A"}
-                                                </code>
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-                                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    {fee.fee_master.due_date ? new Date(fee.fee_master.due_date).toLocaleDateString('en-GB') : "No Date"}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4 text-right">
-                                                <p className="text-sm font-bold text-destructive">
-                                                    {symbol}{(fee.fee_master.fine_amount || 0).toLocaleString()}
-                                                </p>
-                                            </TableCell>
-                                            <TableCell className="py-4 text-right">
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-black text-slate-800">{symbol}{total.toLocaleString()}</p>
-                                                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Paid: {symbol}{paid.toLocaleString()}</p>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="py-4 text-center pr-8">
-                                                {isPaid ? (
-                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] uppercase tracking-wider">
-                                                        <CheckCircle2 className="h-3 w-3" /> Paid
-                                                    </div>
-                                                ) : (
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={() => openPaymentDialog(fee)}
-                                                        className="h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-200 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 px-3 mx-auto"
-                                                    >
-                                                        <span className="font-bold text-sm leading-none">{symbol}</span> Collect
-                                                    </Button>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
+                                         <TableRow key={fee.is_transport ? `t_${fee.id}` : `r_${fee.id}`} className="group border-b border-muted/50 last:border-none hover:bg-muted/10 transition-colors">
+                                             <TableCell className="py-4 pl-8">
+                                                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2.5 py-0.5 rounded-lg whitespace-nowrap">
+                                                     {fee.fee_master?.fee_group?.name || "N/A"}
+                                                 </Badge>
+                                             </TableCell>
+                                             <TableCell className="py-4">
+                                                 <p className="text-sm font-semibold text-slate-700">{fee.fee_master?.fee_type?.name || "N/A"}</p>
+                                             </TableCell>
+                                             <TableCell className="py-4">
+                                                 <code className="text-[11px] bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">
+                                                     {fee.fee_master?.fee_type?.code || "N/A"}
+                                                 </code>
+                                             </TableCell>
+                                             <TableCell className="py-4">
+                                                 <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                                                     <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                                     {fee.fee_master?.due_date ? new Date(fee.fee_master.due_date).toLocaleDateString('en-GB') : "No Date"}
+                                                 </div>
+                                             </TableCell>
+                                             <TableCell className="py-4 text-right">
+                                                 <p className="text-sm font-bold text-destructive">
+                                                     {symbol}{fineAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                 </p>
+                                             </TableCell>
+                                             <TableCell className="py-4 text-right">
+                                                 <div className="space-y-1">
+                                                     <p className="text-sm font-black text-slate-800">
+                                                         {symbol}{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                     </p>
+                                                     <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">
+                                                         Paid: {symbol}{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                     </p>
+                                                     {isPartial && (
+                                                         <p className="text-[10px] font-bold text-amber-600 uppercase tracking-tighter">
+                                                             Due: {symbol}{due.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                         </p>
+                                                     )}
+                                                 </div>
+                                             </TableCell>
+                                             <TableCell className="py-4 text-center pr-8">
+                                                 {isPaid ? (
+                                                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] uppercase tracking-wider">
+                                                         <CheckCircle2 className="h-3 w-3" /> Paid
+                                                     </div>
+                                                 ) : (
+                                                     <div className="flex flex-col items-center gap-1">
+                                                         <Button
+                                                             size="sm"
+                                                             onClick={() => openPaymentDialog(fee)}
+                                                             className="h-8 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md shadow-slate-200 flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 px-3 mx-auto"
+                                                         >
+                                                             <span className="font-bold text-sm leading-none">{symbol}</span> Collect
+                                                         </Button>
+                                                         {isPartial && (
+                                                             <Badge variant="outline" className="text-[9px] font-semibold text-amber-600 border-amber-300 bg-amber-50 px-1.5 py-0">
+                                                                 Partial
+                                                             </Badge>
+                                                         )}
+                                                     </div>
+                                                 )}
+                                             </TableCell>
+                                         </TableRow>
                                     );
                                 })
                             )}

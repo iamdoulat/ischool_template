@@ -161,14 +161,14 @@ export default function QuickFeesPage() {
     };
 
     const openPaymentDialog = (fee: DueFee) => {
-        const total = fee.fee_master.amount;
-        const paid = fee.payments.reduce((acc: number, p: FeePayment) => acc + p.amount, 0);
-        const due = total - paid;
+        const total = Number(fee.fee_master?.amount) || 0;
+        const paid = (fee.payments || []).reduce((acc: number, p: FeePayment) => acc + (Number(p.amount) || 0), 0);
+        const due = Math.max(0, total - paid);
 
         setSelectedFee(fee);
         setPaymentData({
             ...paymentData,
-            amount: due.toString(),
+            amount: due > 0 ? due.toFixed(2) : "0.00",
             date: new Date().toISOString().split('T')[0]
         });
         setIsPaymentDialogOpen(true);
@@ -366,54 +366,59 @@ export default function QuickFeesPage() {
                                         <TableSkeleton rows={5} cols={8} />
                                     ) : (
                                         dueFees.map((fee) => {
-                                            const total = fee.fee_master.amount;
-                                            const paid = fee.payments.reduce((acc: number, p: FeePayment) => acc + p.amount, 0);
-                                            const due = total - paid;
-                                            const isPaid = due <= 0;
+                                            const total = Number(fee.fee_master?.amount) || 0;
+                                            const paid = (fee.payments || []).reduce((acc: number, p: FeePayment) => acc + (Number(p.amount) || 0), 0);
+                                            const due = Math.max(0, total - paid);
+                                            const isPaid = due <= 0 && total > 0;
+                                            const isPartial = paid > 0 && due > 0;
+                                            const fineAmount = Number(fee.fee_master?.fine_amount) || 0;
 
                                             return (
-                                                <TableRow key={fee.is_transport ? `t_${fee.id}` : `r_${fee.id}`} className="group border-b border-muted/50 last:border-none hover:bg-muted/20 transition-colors">
-                                                    <TableCell className="py-4 pl-8">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                                <UserCircle className="h-5 w-5 text-primary" />
-                                                            </div>
-                                                            <div className="space-y-0.5">
-                                                                <p className="font-bold text-sm text-slate-800 truncate max-w-[150px]">{studentData.name} {studentData.last_name}</p>
-                                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{studentData.admission_no}</p>
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="py-4">
-                                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2.5 py-0.5 rounded-lg">
-                                                            {fee.fee_master.fee_group?.name}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="py-4">
-                                                        <p className="text-sm font-semibold text-slate-600">{fee.fee_master.fee_type?.name}</p>
-                                                    </TableCell>
-                                                    <TableCell className="py-4">
-                                                        <code className="text-[11px] bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">
-                                                            {fee.fee_master.fee_type?.code || "N/A"}
-                                                        </code>
-                                                    </TableCell>
-                                                    <TableCell className="py-4">
-                                                        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-                                                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                                            {fee.fee_master.due_date ? new Date(fee.fee_master.due_date).toLocaleDateString() : "No Date"}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="py-4 text-right">
-                                                        <p className="text-sm font-bold text-destructive">
-                                                            {symbol}{(fee.fee_master.fine_amount || 0).toLocaleString()}
-                                                        </p>
-                                                    </TableCell>
-                                                    <TableCell className="py-4 text-right">
-                                                        <div className="space-y-1">
-                                                            <p className="text-sm font-black text-slate-800">{symbol}{total.toLocaleString()}</p>
-                                                            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Paid: {symbol}{paid.toLocaleString()}</p>
-                                                        </div>
-                                                    </TableCell>
+                                                 <TableRow key={fee.is_transport ? `t_${fee.id}` : `r_${fee.id}`} className="group border-b border-muted/50 last:border-none hover:bg-muted/20 transition-colors">
+                                                     <TableCell className="py-4 pl-8">
+                                                         <div className="flex items-center gap-3">
+                                                             <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                                 <UserCircle className="h-5 w-5 text-primary" />
+                                                             </div>
+                                                             <div className="space-y-0.5">
+                                                                 <p className="font-bold text-sm text-slate-800 truncate max-w-[150px]">{studentData.name} {studentData.last_name}</p>
+                                                                 <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{studentData.admission_no}</p>
+                                                             </div>
+                                                         </div>
+                                                     </TableCell>
+                                                     <TableCell className="py-4">
+                                                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2.5 py-0.5 rounded-lg">
+                                                             {fee.fee_master.fee_group?.name}
+                                                         </Badge>
+                                                     </TableCell>
+                                                     <TableCell className="py-4">
+                                                         <p className="text-sm font-semibold text-slate-600">{fee.fee_master.fee_type?.name}</p>
+                                                     </TableCell>
+                                                     <TableCell className="py-4">
+                                                         <code className="text-[11px] bg-slate-100 px-2 py-1 rounded font-mono text-slate-600">
+                                                             {fee.fee_master.fee_type?.code || "N/A"}
+                                                         </code>
+                                                     </TableCell>
+                                                     <TableCell className="py-4">
+                                                         <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                                                             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                                             {fee.fee_master.due_date ? new Date(fee.fee_master.due_date).toLocaleDateString() : "No Date"}
+                                                         </div>
+                                                     </TableCell>
+                                                     <TableCell className="py-4 text-right">
+                                                         <p className="text-sm font-bold text-destructive">
+                                                             {symbol}{fineAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                         </p>
+                                                     </TableCell>
+                                                     <TableCell className="py-4 text-right">
+                                                         <div className="space-y-1">
+                                                             <p className="text-sm font-black text-slate-800">{symbol}{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Paid: {symbol}{paid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                             {isPartial && (
+                                                                 <p className="text-[10px] font-bold text-amber-600 uppercase tracking-tighter">Due: {symbol}{due.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                             )}
+                                                         </div>
+                                                     </TableCell>
                                                     <TableCell className="py-4 text-center pr-8">
                                                         <div className="flex items-center justify-center gap-2">
                                                             {isPaid ? (
