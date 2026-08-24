@@ -452,8 +452,10 @@ export default function UserDashboardPage() {
             )}
 
             {/* ── Assignments Row: Homework & Daily Assignment ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {(showWidget("homework") || showWidget("daily_assignment")) && (
+            <div className={cn("grid grid-cols-1 gap-6", showWidget("homework") && showWidget("daily_assignment") ? "lg:grid-cols-2" : "lg:grid-cols-1")}>
                 {/* Homework */}
+                {showWidget("homework") && (
                 <SectionCard
                     icon={ClipboardList}
                     title={t("homework")}
@@ -479,7 +481,7 @@ export default function UserDashboardPage() {
                                 >
                                     <div className="flex items-start justify-between gap-2 mb-1">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-[13px] font-bold text-gray-800 dark:text-zinc-100 group-hover:text-indigo-600 transition-colors truncate">
+                                             <p className="text-[13px] font-bold text-gray-800 dark:text-zinc-100 group-hover:text-indigo-600 transition-colors truncate">
                                                 {item.title || item.subject}
                                             </p>
                                             <div className="flex items-center gap-2 mt-0.5">
@@ -544,8 +546,10 @@ export default function UserDashboardPage() {
                         <EmptyState icon={ClipboardList} text={t("no_homework_assigned")} />
                     )}
                 </SectionCard>
+                )}
 
                 {/* Daily Assignment */}
+                {showWidget("daily_assignment") && (
                 <SectionCard
                     icon={ClipboardList}
                     title={t("daily_assignment") || "Daily Assignment"}
@@ -632,7 +636,9 @@ export default function UserDashboardPage() {
                         <EmptyState icon={ClipboardList} text={t("no_assignments_found") || "No daily assignments assigned"} />
                     )}
                 </SectionCard>
+                )}
             </div>
+            )}
 
             {/* ── Bottom Row ── */}
             {(showWidget("teacher_list") || showWidget("visitor_list") || showWidget("library")) && (
