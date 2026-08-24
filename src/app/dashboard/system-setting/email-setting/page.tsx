@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Loader2, Mail, Send, RefreshCw, Server, CheckCircle2, Sliders, ShieldCheck, Clock, Save } from "lucide-react";
+import { Loader2, Mail, Send, RefreshCw, Server, Sliders, Clock, Save } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -161,8 +161,7 @@ export default function EmailSettingPage() {
             if (res.data?.status === 'success') {
                 sonnerToast.success(res.data.message || "Email interval settings saved successfully");
             }
-        } catch (error: any) {
-            console.error("Failed to save interval settings:", error);
+        } catch {
             sonnerToast.error("Failed to save interval settings");
         } finally {
             setSavingInterval(false);
@@ -188,7 +187,7 @@ export default function EmailSettingPage() {
         sent_count: 0,
     };
 
-    const handleFieldChange = (field: keyof GatewayConfig, value: any) => {
+    const handleFieldChange = (field: keyof GatewayConfig, value: string | number | boolean) => {
         setGatewaysData(prev => ({
             ...prev,
             [activeTab]: {
@@ -218,13 +217,24 @@ export default function EmailSettingPage() {
                     title: t("success_title"),
                     description: `${currentItem.name} configuration saved successfully`,
                 });
+                if (res.data.data) {
+                    setGatewaysData(prev => ({
+                        ...prev,
+                        [activeTab]: {
+                            ...prev[activeTab],
+                            config: res.data.data.config || {},
+                            status: Boolean(res.data.data.status),
+                        }
+                    }));
+                }
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errRes = error as { response?: { data?: { message?: string } } };
             sonnerToast.error(`Failed to save ${currentItem.name} configuration`);
             toast({
                 variant: "destructive",
                 title: t("error"),
-                description: error.response?.data?.message || `Failed to save ${currentItem.name}`,
+                description: errRes.response?.data?.message || `Failed to save ${currentItem.name}`,
             });
         } finally {
             setSavingTab(false);
@@ -233,8 +243,6 @@ export default function EmailSettingPage() {
 
     const handleToggleGateway = async (gatewayKey: string) => {
         const item = gatewaysData[gatewayKey];
-        if (!item) return;
-
         try {
             const res = await api.post(`/system-setting/email-gateways/${gatewayKey}/toggle`);
             if (res.data?.status === "success") {
@@ -253,8 +261,8 @@ export default function EmailSettingPage() {
                     sonnerToast.info(`${item.name} deactivated`);
                 }
             }
-        } catch (error) {
-            sonnerToast.error(`Failed to toggle ${item.name}`);
+        } catch {
+            sonnerToast.error(`Failed to toggle ${item?.name || gatewayKey}`);
         }
     };
 
@@ -270,7 +278,7 @@ export default function EmailSettingPage() {
                     sonnerToast.info("Round Robin load balancing deactivated");
                 }
             }
-        } catch (error) {
+        } catch {
             sonnerToast.error("Failed to toggle Round Robin load balancing");
         }
     };
@@ -296,12 +304,13 @@ export default function EmailSettingPage() {
                     description: `Test email sent successfully to ${testEmail}`,
                 });
             }
-        } catch (error: any) {
-            sonnerToast.error(error.response?.data?.message || `Failed to send test email via ${currentItem.name}`);
+        } catch (error: unknown) {
+            const errRes = error as { response?: { data?: { message?: string } } };
+            sonnerToast.error(errRes.response?.data?.message || `Failed to send test email via ${currentItem.name}`);
             toast({
                 variant: "destructive",
                 title: t("error"),
-                description: error.response?.data?.message || "Failed to send test email",
+                description: errRes.response?.data?.message || "Failed to send test email",
             });
         } finally {
             setTestingEmail(false);

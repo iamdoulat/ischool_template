@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Send, Bell, User, Users, RefreshCw, CheckCircle, Search } from "lucide-react";
+import { Send, Bell, Users, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +23,14 @@ interface SchoolClass {
     id: number;
     name: string;
     sections?: { id: number; name: string }[];
+}
+
+interface NotificationPayload {
+    title: string;
+    message: string;
+    recipients?: string[];
+    class_id?: number | null;
+    section_id?: number | null;
 }
 
 export default function SendNotificationPage() {
@@ -106,7 +114,7 @@ export default function SendNotificationPage() {
 
         setSending(true);
         try {
-            const payload: any = {
+            const payload: NotificationPayload = {
                 title,
                 message,
             };
@@ -129,10 +137,11 @@ export default function SendNotificationPage() {
             setTitle("");
             setMessage("");
             setSelectedTemplateId("");
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const errRes = err as { response?: { data?: { message?: string } } };
             toast({
                 title: t("error") || "Error",
-                description: err.response?.data?.message || "Failed to send notification.",
+                description: errRes.response?.data?.message || "Failed to send notification.",
                 variant: "destructive",
             });
         } finally {
@@ -267,7 +276,7 @@ export default function SendNotificationPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4 p-4">
-                            <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
+                            <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "roles" | "class")} className="w-full">
                                 <TabsList className="grid grid-cols-2 w-full mb-4">
                                     <TabsTrigger value="roles">By Role</TabsTrigger>
                                     <TabsTrigger value="class">By Class</TabsTrigger>

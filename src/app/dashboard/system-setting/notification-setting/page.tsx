@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,7 +16,7 @@ import {
     CardContent,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pencil, MessageSquare, Loader2, X, Info, Bell, Variable, Mail, Smartphone, MessageCircle } from "lucide-react";
+import { MessageSquare, Loader2, X, Info, Bell, Variable, Mail, Smartphone, MessageCircle } from "lucide-react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 
@@ -26,6 +26,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
+import { QueueMonitorCard } from "@/components/queue/queue-monitor-card";
 
 interface NotificationEvent {
     id: number;
@@ -356,7 +357,7 @@ function TemplateEditorModal({
                                     <p>Address: {settings?.address || "N/A"}</p>
                                     <p>Phone No.: {settings?.phone || "N/A"}</p>
                                     <p>Email: {settings?.email || "N/A"}</p>
-                                    <p>Website: {(settings as any)?.website || settings?.base_url || "N/A"}</p>
+                                    <p>Website: {(settings as { website?: string; base_url?: string } | null)?.website || settings?.base_url || "N/A"}</p>
                                 </div>
                             </div>
 
@@ -384,7 +385,7 @@ function TemplateEditorModal({
 
                             {/* Email Footer */}
                             <div className="bg-[#f8f9fa] border-t-4 border-t-[#2196f3] border-b-4 border-b-[#ff9800] p-4 text-center mt-2">
-                                <p className="text-[11px] text-gray-600 font-medium">Note: This email was sent from an email address that can't receive emails. Please don't reply to this email</p>
+                                <p className="text-[11px] text-gray-600 font-medium">Note: This email was sent from an email address that can&apos;t receive emails. Please don&apos;t reply to this email</p>
                             </div>
                         </div>
                     )}
@@ -463,11 +464,7 @@ export default function NotificationSettingPage() {
     const [editModal, setEditModal] = useState<{ item: NotificationEvent; type: TemplateType } | null>(null);
     const { toast } = useToast();
 
-    useEffect(() => {
-        fetchEvents();
-    }, []);
-
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         try {
             const res = await api.get('/system-setting/notification-settings');
             if (res.data.status === "success") setEvents(res.data.data);
@@ -476,7 +473,11 @@ export default function NotificationSettingPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [t, toast]);
+
+    useEffect(() => {
+        fetchEvents();
+    }, [fetchEvents]);
 
     const handleActiveToggle = (idx: number, checked: boolean) => {
         setEvents(prev => {
@@ -521,6 +522,9 @@ export default function NotificationSettingPage() {
             {editModal && <TemplateEditorModal item={editModal.item} type={editModal.type} onClose={() => setEditModal(null)} onSaved={handleEditSaved} />}
 
             <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans text-xs">
+                {/* Live Notification Queue Monitor & Emergency Cancellation */}
+                <QueueMonitorCard channelFilter="all" title="System Notification Queue & Emergency Stop" />
+
                 <Card className="pt-0 overflow-hidden">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
                         <div className="flex items-center gap-2.5">

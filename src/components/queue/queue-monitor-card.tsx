@@ -15,7 +15,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, AlertTriangle, RefreshCw, XCircle, ShieldAlert, MessageCircle, MessageSquare, Mail } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw, XCircle, ShieldAlert, MessageCircle, MessageSquare, Mail, Play } from "lucide-react";
 import api from "@/lib/api";
 import { toast as sonnerToast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,9 @@ export function QueueMonitorCard({
     });
     const [loading, setLoading] = useState(false);
     const [cancelling, setCancelling] = useState(false);
+    const [restarting, setRestarting] = useState(false);
     const [openDialog, setOpenDialog] = useState(false);
+    const [openRestartDialog, setOpenRestartDialog] = useState(false);
 
     const channelName =
         channelFilter === "whatsapp"
@@ -59,13 +61,14 @@ export function QueueMonitorCard({
             ? "Email"
             : "Notification";
 
-    const defaultTitle = title || `${channelName} Queue & Emergency Stop`;
+    const defaultTitle = title || `${channelName} Queue & Emergency Control`;
 
     const fetchQueueStatus = async () => {
         try {
             setLoading(true);
             const res = await api.get("/system-setting/notification-queue/status");
-            if (res.data?.status === "success" && res.data.data) {
+            const isOk = Boolean(res.data?.success || res.data?.status?.toLowerCase() === "success");
+            if (isOk && res.data.data) {
                 setStatus(res.data.data);
             }
         } catch {
@@ -77,7 +80,7 @@ export function QueueMonitorCard({
 
     useEffect(() => {
         fetchQueueStatus();
-        const interval = setInterval(fetchQueueStatus, 6000);
+        const interval = setInterval(fetchQueueStatus, 5000);
         return () => clearInterval(interval);
     }, []);
 
@@ -88,7 +91,8 @@ export function QueueMonitorCard({
                 channel: channelFilter,
                 clear_failed: channelFilter === "all",
             });
-            if (res.data?.status === "success") {
+            const isOk = Boolean(res.data?.success || res.data?.status?.toLowerCase() === "success");
+            if (isOk) {
                 sonnerToast.success(res.data.message || `${channelName} queue cancelled successfully`);
                 await fetchQueueStatus();
             }
@@ -98,6 +102,31 @@ export function QueueMonitorCard({
         } finally {
             setCancelling(false);
             setOpenDialog(false);
+        }
+    };
+
+    const handleRestartQueue = async () => {
+        try {
+            setRestarting(true);
+            const res = await api.post("/system-setting/notification-queue/restart", {
+                channel: channelFilter,
+            });
+            const isOk = Boolean(res.data?.success || res.data?.status?.toLowerCase() === "success");
+            if (isOk) {
+                sonnerToast.success(res.data.message || `Force restarted ${channelName} queue for immediate sending`);
+                await fetchQueueStatus();
+
+                // Progressive follow-up polls to reflect real-time draining
+                setTimeout(fetchQueueStatus, 1500);
+                setTimeout(fetchQueueStatus, 3000);
+                setTimeout(fetchQueueStatus, 5000);
+            }
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            sonnerToast.error(err.response?.data?.message || `Failed to restart ${channelName} queue`);
+        } finally {
+            setRestarting(false);
+            setOpenRestartDialog(false);
         }
     };
 
@@ -131,7 +160,7 @@ export function QueueMonitorCard({
                             {defaultTitle}
                         </h2>
                         <p className="text-[10px] text-gray-500 mt-0.5">
-                            Real-time {channelName} queue monitoring
+                            Real-time {channelName} queue monitoring & control
                         </p>
                     </div>
                 </div>
@@ -198,46 +227,92 @@ export function QueueMonitorCard({
                     </>
                 )}
 
-                {/* Emergency Cancel Action (Channel Specific) */}
-                <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
-                    <AlertDialogTrigger asChild>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={cancelling || countForChannel === 0}
-                            className="w-full h-8 text-[11px] font-bold uppercase bg-rose-600 hover:bg-rose-700 text-white shadow-none transition-all"
-                        >
-                            {cancelling ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                            ) : (
-                                <XCircle className="h-3.5 w-3.5 mr-1.5" />
-                            )}
-                            Emergency Cancel {channelName} Queue
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
-                                <AlertTriangle className="h-5 w-5 text-rose-600" />
-                                Emergency {channelName} Queue Cancellation
-                            </AlertDialogTitle>
-                            <AlertDialogDescription className="text-gray-600 text-sm leading-relaxed">
-                                Are you sure you want to cancel all pending <strong>{channelName}</strong> messages in the queue?
-                                <br /><br />
-                                This will instantly stop all {countForChannel} unsent {channelName} messages without affecting any other channels. This action cannot be undone.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Keep Sending</AlertDialogCancel>
-                            <AlertDialogAction
-                                onClick={handleCancelQueue}
-                                className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                {/* Queue Control Buttons: Force Restart & Emergency Cancel */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                    {/* Force Restart Queue Action */}
+                    <AlertDialog open={openRestartDialog} onOpenChange={setOpenRestartDialog}>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="default"
+                                size="sm"
+                                disabled={restarting || countForChannel === 0}
+                                className="w-full h-8 px-2 text-[10px] sm:text-[11px] font-bold uppercase bg-gradient-to-r from-[#6366F1] to-[#4F46E5] hover:from-[#4F46E5] hover:to-[#4338CA] text-white shadow-none transition-all truncate"
+                                title={`Force restart ${channelName} queue for immediate sending`}
                             >
-                                Yes, Cancel {channelName} Queue Now
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+                                {restarting ? (
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1 shrink-0" />
+                                ) : (
+                                    <Play className="h-3 w-3 mr-1 fill-white shrink-0" />
+                                )}
+                                <span className="truncate">Force Restart</span>
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2 text-indigo-600">
+                                    <RefreshCw className="h-5 w-5 text-indigo-600" />
+                                    Force Restart {channelName} Queue
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-600 text-sm leading-relaxed">
+                                    Are you sure you want to force restart the <strong>{channelName}</strong> queue?
+                                    <br /><br />
+                                    This will release all stuck/reserved <strong>{channelName}</strong> jobs, reset retry limits, and wake up background workers to start sending all {countForChannel} pending messages immediately.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={handleRestartQueue}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                                >
+                                    Yes, Restart Queue Now
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Emergency Cancel Action */}
+                    <AlertDialog open={openDialog} onOpenChange={setOpenDialog}>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={cancelling || countForChannel === 0}
+                                className="w-full h-8 px-2 text-[10px] sm:text-[11px] font-bold uppercase bg-rose-600 hover:bg-rose-700 text-white shadow-none transition-all truncate"
+                                title={`Emergency cancel ${channelName} queue`}
+                            >
+                                {cancelling ? (
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1 shrink-0" />
+                                ) : (
+                                    <XCircle className="h-3 w-3 mr-1 shrink-0" />
+                                )}
+                                <span className="truncate">Emergency Cancel</span>
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2 text-rose-600">
+                                    <AlertTriangle className="h-5 w-5 text-rose-600" />
+                                    Emergency {channelName} Queue Cancellation
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-600 text-sm leading-relaxed">
+                                    Are you sure you want to cancel all pending <strong>{channelName}</strong> messages in the queue?
+                                    <br /><br />
+                                    This will instantly stop all {countForChannel} unsent {channelName} messages without affecting any other channels. This action cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Keep Sending</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={handleCancelQueue}
+                                    className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                                >
+                                    Yes, Cancel {channelName} Queue Now
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             </CardContent>
         </Card>
     );
