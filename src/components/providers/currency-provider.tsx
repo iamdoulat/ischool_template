@@ -32,18 +32,29 @@ const CurrencyContext = createContext<CurrencyContextType>({
 
 export const useCurrency = () => useContext(CurrencyContext);
 
+let cachedCurrencies: Currency[] | null = null;
+
 export const CurrencyProvider = ({ children }: { children: React.ReactNode }) => {
     const [selectedCurrency, setSelectedCurrencyState] = useState<Currency | null>(null);
     const [availableCurrencies, setAvailableCurrencies] = useState<Currency[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchCurrencies = useCallback(async () => {
+        if (cachedCurrencies && cachedCurrencies.length > 0) {
+            setAvailableCurrencies(cachedCurrencies);
+            const active = cachedCurrencies.find((c: Currency) => c.is_active) || cachedCurrencies[0];
+            if (active) setSelectedCurrencyState(active);
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
             const response = await api.get("/system-setting/currencies").catch(() => ({ data: { status: 'Error', data: [] } }));
-            if (response.data.status === "Success") {
+            if (response.data.status === "Success" && Array.isArray(response.data.data)) {
                 const allowedCodes = ["USD", "BDT", "INR", "AED"];
                 const enabled = response.data.data.filter((c: Currency) => c.is_enabled && allowedCodes.includes(c.short_code));
+                cachedCurrencies = enabled;
                 setAvailableCurrencies(enabled);
 
                 const active = enabled.find((c: Currency) => c.is_active) || enabled.find((c: Currency) => c.short_code === 'USD') || enabled[0];

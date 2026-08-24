@@ -53,11 +53,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Skip API requests, Next.js HMR, and development live reload endpoints
+  // Skip all Next.js build assets, static chunks, HMR, APIs, and dev files
   if (
+    url.pathname.startsWith('/_next') ||
     url.pathname.startsWith('/api') ||
     url.pathname.startsWith('/v1') ||
-    url.pathname.startsWith('/_next/webpack-hmr') ||
     url.pathname.includes('hot-update')
   ) {
     return;

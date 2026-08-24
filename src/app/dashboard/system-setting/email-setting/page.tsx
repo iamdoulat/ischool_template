@@ -9,11 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Loader2, Mail, Send, Eye, EyeOff, RefreshCw, Server, CheckCircle2, Sliders, ShieldCheck } from "lucide-react";
+import { Loader2, Mail, Send, RefreshCw, Server, CheckCircle2, Sliders, ShieldCheck, Clock, Save } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { toast as sonnerToast } from "sonner";
+import { QueueMonitorCard } from "@/components/queue/queue-monitor-card";
 
 interface GatewayConfig {
     name: string;
@@ -66,12 +67,18 @@ export default function EmailSettingPage() {
     const [activeTab, setActiveTab] = useState<string>("smtp_1");
     const [loading, setLoading] = useState<boolean>(true);
     const [savingTab, setSavingTab] = useState<boolean>(false);
-    const [showPassword, setShowPassword] = useState<boolean>(false);
     const [testingEmail, setTestingEmail] = useState<boolean>(false);
     const [testEmail, setTestEmail] = useState<string>("");
 
     const [gatewaysData, setGatewaysData] = useState<Record<string, GatewayItem>>({});
     const [roundRobinEnabled, setRoundRobinEnabled] = useState<boolean>(false);
+    const [intervalConfig, setIntervalConfig] = useState<{ mode: string; min: number; max: number; fixed: number }>({
+        mode: "random",
+        min: 1,
+        max: 10,
+        fixed: 1,
+    });
+    const [savingInterval, setSavingInterval] = useState<boolean>(false);
 
     useEffect(() => {
         fetchEmailGateways();
@@ -86,7 +93,7 @@ export default function EmailSettingPage() {
                 const formatted: Record<string, GatewayItem> = {};
 
                 fetchedGateways.forEach((item) => {
-                    if (item.gateway !== "round_robin_setting") {
+                    if (item.gateway !== "round_robin_setting" && !item.gateway.endsWith('_queue_interval')) {
                         formatted[item.gateway] = {
                             gateway: item.gateway,
                             name: item.name || item.gateway,
@@ -134,12 +141,31 @@ export default function EmailSettingPage() {
 
                 setGatewaysData(formatted);
                 setRoundRobinEnabled(Boolean(res.data.round_robin?.enabled));
+
+                if (res.data.email_interval) {
+                    setIntervalConfig(res.data.email_interval);
+                }
             }
         } catch (error) {
             console.error("Failed to fetch email gateways:", error);
             sonnerToast.error("Failed to load email gateways");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveInterval = async () => {
+        setSavingInterval(true);
+        try {
+            const res = await api.post('/system-setting/email-gateways/interval', intervalConfig);
+            if (res.data?.status === 'success') {
+                sonnerToast.success(res.data.message || "Email interval settings saved successfully");
+            }
+        } catch (error: any) {
+            console.error("Failed to save interval settings:", error);
+            sonnerToast.error("Failed to save interval settings");
+        } finally {
+            setSavingInterval(false);
         }
     };
 
@@ -482,21 +508,14 @@ export default function EmailSettingPage() {
                                             <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
                                                 {t("smtp_password") || "SMTP Password"} <span className="text-red-500">*</span>
                                             </Label>
-                                            <div className="sm:col-span-3 relative">
+                                            <div className="sm:col-span-3">
                                                 <Input
-                                                    type={showPassword ? "text" : "password"}
+                                                    type="password"
                                                     value={currentItem.config.mail_password}
                                                     onChange={(e) => handleFieldChange("mail_password", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded pr-9"
+                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                                     placeholder="••••••••••••"
                                                 />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowPassword(!showPassword)}
-                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600 transition-colors"
-                                                >
-                                                    {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                                </button>
                                             </div>
                                         </div>
 
@@ -655,6 +674,93 @@ export default function EmailSettingPage() {
                         </p>
                     </CardContent>
                 </Card>
+
+                {/* Queue Sending Interval Control Card */}
+                <Card className="pt-0 overflow-hidden border-emerald-100 shadow-sm">
+                    <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 bg-gradient-to-r from-[#ECFDF5] to-[#EFF6FF] border-b border-gray-100">
+                        <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-indigo-600 text-white shadow-sm">
+                            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </span>
+                        <div className="min-w-0">
+                            <h2 className="text-[12px] sm:text-[13px] font-bold text-gray-800 tracking-tight leading-none">
+                                Sending Interval & Rate Limiter
+                            </h2>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                Queue delay between messages
+                            </p>
+                        </div>
+                    </div>
+
+                    <CardContent className="p-3.5 sm:p-4 space-y-3">
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-bold text-gray-700">Interval Mode</Label>
+                            <Select 
+                                value={intervalConfig.mode} 
+                                onValueChange={(val) => setIntervalConfig(prev => ({ ...prev, mode: val }))}
+                            >
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="random" className="text-[11px]">Random Delay (Anti-Ban)</SelectItem>
+                                    <SelectItem value="fixed" className="text-[11px]">Fixed Interval</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {intervalConfig.mode === "random" ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold text-gray-600">From (Sec)</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={300}
+                                        value={intervalConfig.min}
+                                        onChange={(e) => setIntervalConfig(prev => ({ ...prev, min: Math.max(1, Number(e.target.value)) }))}
+                                        className="h-8 text-[11px]"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold text-gray-600">To (Sec)</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={300}
+                                        value={intervalConfig.max}
+                                        onChange={(e) => setIntervalConfig(prev => ({ ...prev, max: Math.max(1, Number(e.target.value)) }))}
+                                        className="h-8 text-[11px]"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-bold text-gray-600">Interval (Seconds)</Label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={300}
+                                    value={intervalConfig.fixed}
+                                    onChange={(e) => setIntervalConfig(prev => ({ ...prev, fixed: Math.max(1, Number(e.target.value)) }))}
+                                    className="h-8 text-[11px]"
+                                />
+                            </div>
+                        )}
+
+                        <Button
+                            size="sm"
+                            onClick={handleSaveInterval}
+                            disabled={savingInterval}
+                            className="w-full h-8 text-[11px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                            {savingInterval ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                            Save Interval
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Live Queue Monitor & Emergency Cancellation */}
+                <QueueMonitorCard channelFilter="email" title="Email Queue & Emergency Stop" />
 
                 {/* Active Gateways Toggle List Sidebar */}
                 <Card className="pt-0 overflow-hidden">

@@ -74,8 +74,10 @@ export function PWAInstallPrompt() {
     const iosDevice = /iphone|ipad|ipod/.test(userAgent);
 
     if (iosDevice) {
-      setIsIOS(true);
-      const timer = setTimeout(() => setShowPrompt(true), 2000);
+      const timer = setTimeout(() => {
+        setIsIOS(true);
+        setShowPrompt(true);
+      }, 2000);
       return () => clearTimeout(timer);
     }
 

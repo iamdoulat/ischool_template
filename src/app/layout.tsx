@@ -25,6 +25,7 @@ export const viewport: Viewport = {
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { LanguageProvider } from "@/components/providers/language-provider";
+import { CurrencyProvider } from "@/components/providers/currency-provider";
 import { PWAInit } from "@/components/providers/pwa-init";
 import { JsonLd } from "@/components/seo/json-ld";
 import { getImageUrl } from "@/lib/image-url";
@@ -179,11 +180,13 @@ export default function RootLayout({
           <MSWInit>
             <ToastProvider duration={3000}>
               <LanguageProvider>
-                <SettingsProvider>
-                  {children}
-                  <Toaster />
-                  <SonnerToaster position="top-center" richColors />
-                </SettingsProvider>
+                <CurrencyProvider>
+                  <SettingsProvider>
+                    {children}
+                    <Toaster />
+                    <SonnerToaster position="top-center" richColors />
+                  </SettingsProvider>
+                </CurrencyProvider>
               </LanguageProvider>
             </ToastProvider>
           </MSWInit>

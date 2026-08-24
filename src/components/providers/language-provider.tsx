@@ -61,6 +61,8 @@ function getStorageKey(user: UserRecord): string {
     return "selected_language_public";
 }
 
+const translationMemoryCache: Record<string, Record<string, string>> = {};
+
 export const LanguageProvider = ({ children }: { children: React.ReactNode }) => {
     const [selectedLanguage, setSelectedLanguageState] = useState<Language | null>(null);
     const [translations, setTranslations] = useState<Record<string, string>>({});
@@ -75,10 +77,30 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     };
 
     const fetchTranslations = useCallback(async (code: string) => {
+        if (translationMemoryCache[code]) {
+            setTranslations(translationMemoryCache[code]);
+            return;
+        }
+
         try {
+            if (typeof window !== 'undefined') {
+                const stored = sessionStorage.getItem(`i18n_trans_${code}`);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    translationMemoryCache[code] = parsed;
+                    setTranslations(parsed);
+                    return;
+                }
+            }
+
             const response = await api.get(`/system-setting/languages/translations/${code}`).catch(() => ({ data: { success: false, data: {} } }));
-            if (response.data?.success) {
-                setTranslations(response.data.data as Record<string, string>);
+            if (response.data?.success && response.data.data) {
+                const data = response.data.data as Record<string, string>;
+                translationMemoryCache[code] = data;
+                setTranslations(data);
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem(`i18n_trans_${code}`, JSON.stringify(data));
+                }
             }
         } catch (error) {
             console.error("Failed to fetch translations", error);

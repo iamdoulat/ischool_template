@@ -9,10 +9,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Loader2, MessageCircle, Send, RefreshCw, Smartphone, ExternalLink, Sliders, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, MessageCircle, Send, RefreshCw, Smartphone, ExternalLink, Sliders, CheckCircle2, XCircle, Clock, Save } from "lucide-react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { toast as sonnerToast } from "sonner";
+import { QueueMonitorCard } from "@/components/queue/queue-monitor-card";
 
 interface GatewayFieldDef {
     key: string;
@@ -35,7 +36,7 @@ const gatewaysConfig: Record<string, GatewayConfigDef> = {
         guideUrl: "https://app.bipsms.com",
         fields: [
             { key: "secret", label: "API Secret", type: "password" },
-            { key: "account", label: "WhatsApp Account ID", type: "text" },
+            { key: "account", label: "WhatsApp Account ID", type: "password" },
             { key: "priority", label: "Priority", type: "select", options: ["1", "2"], optionLabels: { "1": "Yes (send immediately)", "2": "No (queue)" } },
         ]
     },
@@ -95,6 +96,13 @@ export default function WhatsappMessagingPage() {
 
     const [settingsData, setSettingsData] = useState<Record<string, ProviderStateItem>>({});
     const [roundRobinEnabled, setRoundRobinEnabled] = useState<boolean>(false);
+    const [intervalConfig, setIntervalConfig] = useState<{ mode: string; min: number; max: number; fixed: number }>({
+        mode: "random",
+        min: 1,
+        max: 10,
+        fixed: 1,
+    });
+    const [savingInterval, setSavingInterval] = useState<boolean>(false);
 
     useEffect(() => {
         fetchWhatsappSettings();
@@ -109,7 +117,7 @@ export default function WhatsappMessagingPage() {
                 const formatted: Record<string, ProviderStateItem> = {};
 
                 fetchedList.forEach((item) => {
-                    if (item.provider !== "round_robin_setting") {
+                    if (item.provider !== "round_robin_setting" && !item.provider.endsWith('_queue_interval')) {
                         formatted[item.provider] = {
                             provider: item.provider,
                             name: item.name || item.provider,
@@ -140,12 +148,34 @@ export default function WhatsappMessagingPage() {
 
                 setSettingsData(formatted);
                 setRoundRobinEnabled(Boolean(res.data.round_robin?.enabled));
+
+                if (res.data.whatsapp_interval) {
+                    setIntervalConfig(res.data.whatsapp_interval);
+                }
             }
         } catch (error) {
             console.error("Failed to fetch WhatsApp settings:", error);
             sonnerToast.error(t("failed_to_load") || "Failed to load WhatsApp settings");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSaveInterval = async () => {
+        setSavingInterval(true);
+        try {
+            const res = await api.post('/system-setting/sms-gateways/interval', {
+                channel: 'whatsapp',
+                ...intervalConfig
+            });
+            if (res.data?.status === 'success') {
+                sonnerToast.success(res.data.message || "WhatsApp interval settings saved successfully");
+            }
+        } catch (error: any) {
+            console.error("Failed to save interval settings:", error);
+            sonnerToast.error("Failed to save interval settings");
+        } finally {
+            setSavingInterval(false);
         }
     };
 
@@ -545,6 +575,93 @@ export default function WhatsappMessagingPage() {
                         </p>
                     </CardContent>
                 </Card>
+
+                {/* Queue Sending Interval Control Card */}
+                <Card className="pt-0 overflow-hidden border-emerald-100 shadow-sm">
+                    <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 bg-gradient-to-r from-[#ECFDF5] to-[#EFF6FF] border-b border-gray-100">
+                        <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-indigo-600 text-white shadow-sm">
+                            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </span>
+                        <div className="min-w-0">
+                            <h2 className="text-[12px] sm:text-[13px] font-bold text-gray-800 tracking-tight leading-none">
+                                Sending Interval & Anti-Ban
+                            </h2>
+                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                Queue delay between messages
+                            </p>
+                        </div>
+                    </div>
+
+                    <CardContent className="p-3.5 sm:p-4 space-y-3">
+                        <div className="space-y-1">
+                            <Label className="text-[11px] font-bold text-gray-700">Interval Mode</Label>
+                            <Select 
+                                value={intervalConfig.mode} 
+                                onValueChange={(val) => setIntervalConfig(prev => ({ ...prev, mode: val }))}
+                            >
+                                <SelectTrigger className="h-8 text-[11px] border-gray-200">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="random" className="text-[11px]">Random Delay (Anti-Ban)</SelectItem>
+                                    <SelectItem value="fixed" className="text-[11px]">Fixed Interval</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {intervalConfig.mode === "random" ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold text-gray-600">From (Sec)</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={300}
+                                        value={intervalConfig.min}
+                                        onChange={(e) => setIntervalConfig(prev => ({ ...prev, min: Math.max(1, Number(e.target.value)) }))}
+                                        className="h-8 text-[11px]"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold text-gray-600">To (Sec)</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={300}
+                                        value={intervalConfig.max}
+                                        onChange={(e) => setIntervalConfig(prev => ({ ...prev, max: Math.max(1, Number(e.target.value)) }))}
+                                        className="h-8 text-[11px]"
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-1">
+                                <Label className="text-[10px] font-bold text-gray-600">Interval (Seconds)</Label>
+                                <Input
+                                    type="number"
+                                    min={1}
+                                    max={300}
+                                    value={intervalConfig.fixed}
+                                    onChange={(e) => setIntervalConfig(prev => ({ ...prev, fixed: Math.max(1, Number(e.target.value)) }))}
+                                    className="h-8 text-[11px]"
+                                />
+                            </div>
+                        )}
+
+                        <Button
+                            size="sm"
+                            onClick={handleSaveInterval}
+                            disabled={savingInterval}
+                            className="w-full h-8 text-[11px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                            {savingInterval ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                            Save Interval
+                        </Button>
+                    </CardContent>
+                </Card>
+
+                {/* Live Queue Monitor & Emergency Cancellation */}
+                <QueueMonitorCard channelFilter="whatsapp" title="WhatsApp Queue & Emergency Stop" />
 
                 {/* Active Gateways Toggle List Sidebar */}
                 <Card className="pt-0 overflow-hidden">

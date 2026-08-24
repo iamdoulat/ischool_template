@@ -14,32 +14,41 @@ export function PWAInit() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Register Service Worker and force update / activation
+    // Register Service Worker only in production; unregister in development to prevent chunk collision
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker
-          .register("/sw.js")
-          .then((reg) => {
-            console.log("PWA Service Worker registered with scope:", reg.scope);
-            reg.update();
-            if (reg.waiting) {
-              reg.waiting.postMessage({ type: "SKIP_WAITING" });
-            }
-            reg.onupdatefound = () => {
-              const installingWorker = reg.installing;
-              if (installingWorker) {
-                installingWorker.onstatechange = () => {
-                  if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
-                    installingWorker.postMessage({ type: "SKIP_WAITING" });
-                  }
-                };
+      if (process.env.NODE_ENV === "production") {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((reg) => {
+              console.log("PWA Service Worker registered with scope:", reg.scope);
+              reg.update();
+              if (reg.waiting) {
+                reg.waiting.postMessage({ type: "SKIP_WAITING" });
               }
-            };
-          })
-          .catch((err) => {
-            console.log("PWA Service Worker registration failed:", err);
-          });
-      });
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                if (installingWorker) {
+                  installingWorker.onstatechange = () => {
+                    if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                      installingWorker.postMessage({ type: "SKIP_WAITING" });
+                    }
+                  };
+                }
+              };
+            })
+            .catch((err) => {
+              console.log("PWA Service Worker registration failed:", err);
+            });
+        });
+      } else {
+        // In development, ensure no active service workers intercept webpack HMR chunks
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        }).catch(() => {});
+      }
     }
 
     // Dynamic Head Tag Sync for iOS Safari, Browser Favicon & Android mobile app installation
@@ -185,13 +194,13 @@ export function PWAInit() {
       document.head.appendChild(icon512Tag);
     }
     icon512Tag.href = appIcon512;
-    // Auto-reload on Next.js ChunkLoadError (e.g. after production deployments update chunk hashes)
+    // Auto-reload on Next.js ChunkLoadError in production only (e.g. after production deployments update chunk hashes)
     const handleChunkError = (message?: string) => {
-      if (message && /Loading chunk [\d]+ failed|ChunkLoadError/i.test(message)) {
+      if (process.env.NODE_ENV === "production" && message && /Loading chunk [\d]+ failed|ChunkLoadError/i.test(message)) {
         const storageKey = "ischool_chunk_load_reload";
         const lastReload = sessionStorage.getItem(storageKey);
         const now = Date.now();
-        if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+        if (!lastReload || now - parseInt(lastReload, 10) > 30000) {
           sessionStorage.setItem(storageKey, now.toString());
           window.location.reload();
         }
