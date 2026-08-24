@@ -110,6 +110,12 @@ const eventVariables: Record<string, string[]> = {
     "Student Apply Leave": [
         "student_name", "class", "section", "apply_date", "from_date", "to_date", "message",
     ],
+    "Student Leave Approved": [
+        "student_name", "class", "section", "from_date", "to_date", "reason",
+    ],
+    "Student Leave Rejected": [
+        "student_name", "class", "section", "from_date", "to_date", "reason",
+    ],
 
     // ── Fee ──────────────────────────────────────────────────────────
     "Fee Processing": [
