@@ -643,6 +643,8 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, onDownloadInvoice, delay }
 }
 
 function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; open: boolean; onClose: () => void; onSuccess: () => void }) {
+    const { t } = useTranslation();
+    const { toast } = useToast();
     const { selectedCurrency } = useCurrency();
     const cur = selectedCurrency?.symbol || "$";
 
