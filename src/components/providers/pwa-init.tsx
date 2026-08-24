@@ -126,7 +126,15 @@ export function PWAInit() {
     syncLinkTag("shortcut icon", faviconHref);
     syncLinkTag("apple-touch-icon", appIcon);
 
-    // 2. Sync iOS Safari Apple App meta & touch icon tags
+    // 2. Sync Mobile App meta & touch icon tags (iOS & Modern Chromium browsers)
+    let mobileCapableTag = document.querySelector<HTMLMetaElement>("meta[name='mobile-web-app-capable']");
+    if (!mobileCapableTag) {
+      mobileCapableTag = document.createElement("meta");
+      mobileCapableTag.name = "mobile-web-app-capable";
+      document.head.appendChild(mobileCapableTag);
+    }
+    mobileCapableTag.content = "yes";
+
     let appleCapableTag = document.querySelector<HTMLMetaElement>("meta[name='apple-mobile-web-app-capable']");
     if (!appleCapableTag) {
       appleCapableTag = document.createElement("meta");

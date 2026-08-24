@@ -60,7 +60,6 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 export default function ExamSchedulePage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
-    const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
     // Criteria Data
@@ -77,22 +76,19 @@ export default function ExamSchedulePage() {
     const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
 
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
     const fetchInitialData = async () => {
-        setLoading(true);
         try {
             const response = await api.get('/examination/exam-schedules/criteria');
             setExamGroups(response.data.exam_groups || []);
-        } catch (error) {
-            const err = error as { response?: { data?: { message?: string }, status?: number } };
+        } catch {
             tt.error("failed_to_load_criteria_data");
-        } finally {
-            setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchInitialData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (selectedCriteria.exam_group_id) {
@@ -115,8 +111,7 @@ export default function ExamSchedulePage() {
                 exam_id: selectedCriteria.exam_id
             });
             setSchedule(response.data || []);
-        } catch (error) {
-            const err = error as { response?: { data?: { message?: string }, status?: number } };
+        } catch {
             tt.error("failed_to_fetch_schedule");
         } finally {
             setSearching(false);
@@ -124,7 +119,8 @@ export default function ExamSchedulePage() {
     };
 
     const filteredData = schedule.filter((item) =>
-        item.subject.name.toLowerCase().includes(searchTerm.toLowerCase())
+        (item.subject?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.subject?.code || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -252,23 +248,23 @@ export default function ExamSchedulePage() {
                                         <TableRow key={item.id} className="text-[13px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b last:border-0 border-gray-50 group">
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.subject.name}</span>
-                                                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("code")}: {item.subject.code}</span>
+                                                    <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.subject?.name || "—"}</span>
+                                                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("code")}: {item.subject?.code || "—"}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col gap-1">
                                                     <span className="flex items-center gap-2 font-bold text-gray-700">
-                                                        <CalendarDays className="h-3 w-3 text-gray-400" /> {item.date_from}
+                                                        <CalendarDays className="h-3 w-3 text-gray-400" /> {item.date_from || "—"}
                                                     </span>
                                                     <span className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                                                        <Clock className="h-3 w-3" /> {item.start_time}
+                                                        <Clock className="h-3 w-3" /> {item.start_time || "—"}
                                                     </span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full font-bold text-[10px]">
-                                                    {item.duration} {t("mins")}
+                                                    {item.duration || 0} {t("mins")}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -279,10 +275,10 @@ export default function ExamSchedulePage() {
                                             <TableCell className="py-4 px-6 text-right">
                                                 <div className="flex flex-col items-end gap-1">
                                                     <span className="flex items-center gap-2 font-bold text-emerald-600 text-[11px]">
-                                                        <Target className="h-3 w-3" /> {t("max")}: {parseFloat(item.max_marks).toFixed(2)}
+                                                        <Target className="h-3 w-3" /> {t("max")}: {item.max_marks ? parseFloat(item.max_marks).toFixed(2) : "0.00"}
                                                     </span>
                                                     <span className="flex items-center gap-2 font-bold text-rose-500 text-[10px]">
-                                                        <ShieldCheck className="h-3 w-3" /> {t("min")}: {parseFloat(item.min_marks).toFixed(2)}
+                                                        <ShieldCheck className="h-3 w-3" /> {t("min")}: {item.min_marks ? parseFloat(item.min_marks).toFixed(2) : "0.00"}
                                                     </span>
                                                 </div>
                                             </TableCell>

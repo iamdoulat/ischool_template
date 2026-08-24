@@ -15,7 +15,7 @@ import {
     Pencil, Trash2, Plus, Copy, FileSpreadsheet, FileText,
     Printer, ChevronLeft, ChevronRight, FolderKanban,
     Search, LayoutList, FileStack,
-    BarChart, Link, CheckCircle2, ArrowLeft, Users, BookOpen, FileDigit, MessageSquare, Trophy, X
+    BarChart, Link, CheckCircle2, ArrowLeft, Users, BookOpen, FileDigit, MessageSquare, Trophy, X, Send
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
@@ -62,6 +62,8 @@ interface ExamGroup {
     id: string;
     name: string;
     exams_count: number;
+    published_exams_count?: number;
+    result_published_count?: number;
     exam_type: string;
     description: string;
     exams?: Exam[];
@@ -167,20 +169,49 @@ export default function ExamGroupPage() {
     const [examSubjectRows, setExamSubjectRows] = useState<ExamSubjectRow[]>([]);
 
     // Managing Exam Group State (View 2)
+interface ExamScheduleItem {
+    id: number | string;
+    subject_id?: number | string;
+    subject?: { name: string };
+    date_from?: string;
+    start_time?: string;
+    duration?: string | number;
+    credit_hours?: string | number;
+    room_no?: string;
+    max_marks?: string | number;
+    min_marks?: string | number;
+}
+
+interface ExamMarkStudentItem {
+    id: number | string;
+    admission_no?: string;
+    name?: string;
+    theory_marks?: string | number | null;
+    practical_marks?: string | number | null;
+    is_absent?: boolean;
+}
+
+interface ExamRemarkStudentItem {
+    id: number | string;
+    admission_no?: string;
+    name?: string;
+    remarks?: string;
+}
+
     const [managingGroup, setManagingGroup] = useState<ExamGroup | null>(null);
 
     // Exam Marks Modal State
     const [examMarksOpen, setExamMarksOpen] = useState(false);
     const [examMarksData, setExamMarksData] = useState<{ exam: Exam | null }>({ exam: null });
-    const [examMarksSubjects, setExamMarksSubjects] = useState<any[]>([]);
+    const [examMarksSubjects, setExamMarksSubjects] = useState<Array<{ id: string; name: string }>>([]);
     const [selectedMarksSubject, setSelectedMarksSubject] = useState<string>("");
-    const [examMarksStudents, setExamMarksStudents] = useState<any[]>([]);
+    const [examMarksStudents, setExamMarksStudents] = useState<ExamMarkStudentItem[]>([]);
     const [marksLoading, setMarksLoading] = useState(false);
 
     // Teacher Remarks Modal State
     const [teacherRemarksOpen, setTeacherRemarksOpen] = useState(false);
     const [remarksData, setRemarksData] = useState<{ exam: Exam | null }>({ exam: null });
-    const [remarksStudents, setRemarksStudents] = useState<any[]>([]);
+    const [remarksStudents, setRemarksStudents] = useState<ExamRemarkStudentItem[]>([]);
     const [remarksLoading, setRemarksLoading] = useState(false);
 
     // Add Exam modal state
@@ -459,10 +490,29 @@ export default function ExamGroupPage() {
             setAddExamOpen(false);
             setEditingExamId(null);
             handleManageExams(managingGroup); // refresh
-        } catch (error) {
+        } catch {
             tt.error(editingExamId ? "failed_to_update_exam" : "failed_to_create_exam");
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleToggleExamPublish = async (exam: Exam, field: 'is_published' | 'is_result_published') => {
+        try {
+            const nextVal = !exam[field];
+            await api.put(`/examination/exams/${exam.id}`, {
+                name: exam.name,
+                session: exam.session,
+                exam_group_id: managingGroup?.id,
+                marksheet_template_id: exam.marksheet_template_id || null,
+                is_published: field === 'is_published' ? nextVal : !!exam.is_published,
+                is_result_published: field === 'is_result_published' ? nextVal : !!exam.is_result_published,
+                description: exam.description || "",
+            });
+            tt.success(nextVal ? "published_successfully" : "unpublished_successfully");
+            if (managingGroup) handleManageExams(managingGroup);
+        } catch {
+            tt.error("failed_to_update_exam");
         }
     };
 
@@ -618,36 +668,49 @@ export default function ExamGroupPage() {
         setExamSubjectRows([]);
         setExamSubjectOpen(true);
 
+        if (academicSubjects.length === 0) {
+            try {
+                const subRes = await api.get('/academics/subjects?no_paginate=true');
+                setAcademicSubjects(subRes.data?.data || subRes.data || []);
+            } catch {
+                // Ignore
+            }
+        }
+
         try {
             const res = await api.post(`/examination/exam-schedules/search`, { exam_id: exam.id });
-            const schedules = res.data || [];
+            const schedules: ExamScheduleItem[] = res.data || [];
+            const todayStr = new Date().toISOString().split("T")[0];
+
             if (schedules.length > 0) {
-                setExamSubjectRows(schedules.map((s: any) => ({
+                setExamSubjectRows(schedules.map((s: ExamScheduleItem) => ({
                     id: s.id.toString(),
                     subject: s.subject_id?.toString() || "",
-                    date: s.date_from ? s.date_from.split('T')[0] : "",
-                    start_time: s.start_time || "",
-                    duration: s.duration || "",
-                    credit_hours: s.credit_hours || "",
-                    room_no: s.room_no || "",
-                    marks_max: s.max_marks || "",
-                    marks_min: s.min_marks || ""
+                    date: s.date_from ? s.date_from.split('T')[0] : todayStr,
+                    start_time: s.start_time || "10:00:00",
+                    duration: s.duration?.toString() || "60",
+                    credit_hours: s.credit_hours?.toString() || "1.00",
+                    room_no: s.room_no || "101",
+                    marks_max: s.max_marks?.toString() || "100.00",
+                    marks_min: s.min_marks?.toString() || "33.00"
                 })));
             } else {
                 setExamSubjectRows([
-                    { id: Date.now().toString(), subject: "", date: "", start_time: "", duration: "", credit_hours: "", room_no: "", marks_max: "", marks_min: "" }
+                    { id: Date.now().toString(), subject: "", date: todayStr, start_time: "10:00:00", duration: "60", credit_hours: "1.00", room_no: "101", marks_max: "100.00", marks_min: "33.00" }
                 ]);
             }
         } catch (error) {
             console.error(error);
+            const todayStr = new Date().toISOString().split("T")[0];
             setExamSubjectRows([
-                { id: Date.now().toString(), subject: "", date: "", start_time: "", duration: "", credit_hours: "", room_no: "", marks_max: "", marks_min: "" }
+                { id: Date.now().toString(), subject: "", date: todayStr, start_time: "10:00:00", duration: "60", credit_hours: "1.00", room_no: "101", marks_max: "100.00", marks_min: "33.00" }
             ]);
         }
     };
 
     const handleAddExamSubjectRow = () => {
-        setExamSubjectRows([...examSubjectRows, { id: Date.now().toString(), subject: "", date: "", start_time: "", duration: "", credit_hours: "", room_no: "", marks_max: "", marks_min: "" }]);
+        const todayStr = new Date().toISOString().split("T")[0];
+        setExamSubjectRows([...examSubjectRows, { id: Date.now().toString(), subject: "", date: todayStr, start_time: "10:00:00", duration: "60", credit_hours: "1.00", room_no: "101", marks_max: "100.00", marks_min: "33.00" }]);
     };
 
     const handleRemoveExamSubjectRow = (id: string) => {
@@ -660,16 +723,23 @@ export default function ExamGroupPage() {
 
     const handleSaveExamSubjects = async () => {
         if (!examSubjectData.exam) return;
+        const validRows = examSubjectRows.filter(r => r.subject && r.subject !== "none");
+        if (validRows.length === 0) {
+            tt.error("please_select_at_least_one_subject");
+            return;
+        }
+
         setSubmitting(true);
         try {
-            const payload = examSubjectRows.filter(r => r.subject).map(r => ({
+            const payload = validRows.map(r => ({
                 subject_id: parseInt(r.subject),
                 date_from: r.date || null,
                 start_time: r.start_time || null,
                 duration: r.duration || null,
+                credit_hours: r.credit_hours || null,
                 room_no: r.room_no || null,
-                max_marks: r.marks_max ? parseFloat(r.marks_max) : null,
-                min_marks: r.marks_min ? parseFloat(r.marks_min) : null,
+                max_marks: r.marks_max ? parseFloat(r.marks_max) : 100,
+                min_marks: r.marks_min ? parseFloat(r.marks_min) : 33,
             }));
 
             await api.post(`/examination/exam-schedules`, {
@@ -680,7 +750,7 @@ export default function ExamGroupPage() {
             tt.success("exam_subjects_saved_successfully");
             setExamSubjectOpen(false);
             if (managingGroup) handleManageExams(managingGroup);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_save_exam_subjects");
         } finally {
             setSubmitting(false);
@@ -697,10 +767,10 @@ export default function ExamGroupPage() {
 
         try {
             const res = await api.post(`/examination/exam-schedules/search`, { exam_id: exam.id });
-            const schedules = res.data || [];
+            const schedules: ExamScheduleItem[] = res.data || [];
             // Map schedules to include subject details
-            const subjectsList = schedules.map((s: any) => ({
-                id: s.subject_id?.toString(),
+            const subjectsList = schedules.map((s: ExamScheduleItem) => ({
+                id: s.subject_id?.toString() || "",
                 name: s.subject?.name || `Subject ${s.subject_id}`
             }));
             setExamMarksSubjects(subjectsList);
@@ -873,10 +943,32 @@ export default function ExamGroupPage() {
                                             <TableCell>{exam.session || "-"}</TableCell>
                                             <TableCell className="text-center">{exam.subjects_count || 0}</TableCell>
                                             <TableCell className="text-center">
-                                                {exam.is_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" /> : "-"}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleExamPublish(exam, 'is_published')}
+                                                    title={exam.is_published ? t("click_to_unpublish_exam") : t("click_to_publish_exam")}
+                                                    className="inline-flex items-center justify-center p-1 rounded-full hover:bg-emerald-50 transition-all cursor-pointer"
+                                                >
+                                                    {exam.is_published ? (
+                                                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                                    ) : (
+                                                        <span className="h-4 w-4 rounded-full border-2 border-gray-300 inline-block hover:border-emerald-400" />
+                                                    )}
+                                                </button>
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                {exam.is_result_published ? <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" /> : "-"}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleExamPublish(exam, 'is_result_published')}
+                                                    title={exam.is_result_published ? t("click_to_unpublish_result") : t("click_to_publish_result")}
+                                                    className="inline-flex items-center justify-center p-1 rounded-full hover:bg-emerald-50 transition-all cursor-pointer"
+                                                >
+                                                    {exam.is_result_published ? (
+                                                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                                                    ) : (
+                                                        <span className="h-4 w-4 rounded-full border-2 border-gray-300 inline-block hover:border-emerald-400" />
+                                                    )}
+                                                </button>
                                             </TableCell>
                                             <TableCell>{exam.description || "-"}</TableCell>
                                             <TableCell className="text-right">
@@ -1339,16 +1431,16 @@ export default function ExamGroupPage() {
 
                 {/* Exam Marks Modal */}
                 <Dialog open={examMarksOpen} onOpenChange={setExamMarksOpen}>
-                    <DialogContent className="max-w-4xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
-                        <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
-                            <DialogTitle className="text-lg font-normal">{t("exam_marks")}</DialogTitle>
+                    <DialogContent className="sm:max-w-[1200px] w-[95vw] max-h-[90vh] rounded-xl border-0 shadow-2xl p-0 overflow-hidden bg-white flex flex-col">
+                        <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative shrink-0">
+                            <DialogTitle className="text-base font-bold tracking-tight text-white">{t("exam_marks")}</DialogTitle>
                         </DialogHeader>
 
-                        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-                            <div className="w-1/3">
-                                <Label className="text-sm font-normal text-gray-600">{t("subject")} <span className="text-red-500">*</span></Label>
+                        <div className="p-6 space-y-4 flex-1 overflow-y-auto max-h-[calc(90vh-140px)]">
+                            <div className="w-full md:w-1/3">
+                                <Label className="text-sm font-semibold text-gray-700">{t("subject")} <span className="text-red-500">*</span></Label>
                                 <Select value={selectedMarksSubject} onValueChange={(val) => handleMarksSubjectChange(val, examMarksData.exam!.id)}>
-                                    <SelectTrigger className="h-9 border-gray-300 rounded shadow-sm focus:ring-indigo-500 w-full mt-1">
+                                    <SelectTrigger className="h-10 border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 w-full mt-1 bg-white">
                                         <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1366,46 +1458,46 @@ export default function ExamGroupPage() {
                             </div>
 
                             {marksLoading ? (
-                                <div className="py-10 text-center text-gray-500">{t("loading")}...</div>
+                                <div className="py-16 text-center text-gray-500 font-medium">{t("loading")}...</div>
                             ) : examMarksStudents.length === 0 ? (
-                                <div className="py-10 text-center text-gray-500 italic">{t("no_students_assigned_to_this_exam")}</div>
+                                <div className="py-16 text-center text-gray-500 italic">{t("no_students_assigned_to_this_exam")}</div>
                             ) : (
-                                <div className="rounded border border-gray-200 overflow-hidden">
+                                <div className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                                     <table className="w-full text-sm">
-                                        <thead className="bg-[#f3f4f6]">
+                                        <thead className="bg-[#f3f4f6] sticky top-0 z-10">
                                             <tr className="border-b border-gray-200">
-                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700">{t("admission_no")}</th>
-                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700">{t("student_name")}</th>
-                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-24">{t("theory")}</th>
-                                                <th className="py-2.5 px-3 text-left font-semibold text-gray-700 w-24">{t("practical")}</th>
-                                                <th className="py-2.5 px-3 text-center font-semibold text-gray-700 w-24">{t("absent")}</th>
+                                                <th className="py-3 px-4 text-left font-bold text-gray-700 uppercase text-[11px] tracking-wider">{t("admission_no")}</th>
+                                                <th className="py-3 px-4 text-left font-bold text-gray-700 uppercase text-[11px] tracking-wider">{t("student_name")}</th>
+                                                <th className="py-3 px-4 text-left font-bold text-gray-700 uppercase text-[11px] tracking-wider w-36">{t("theory")}</th>
+                                                <th className="py-3 px-4 text-left font-bold text-gray-700 uppercase text-[11px] tracking-wider w-36">{t("practical")}</th>
+                                                <th className="py-3 px-4 text-center font-bold text-gray-700 uppercase text-[11px] tracking-wider w-28">{t("absent")}</th>
                                             </tr>
                                         </thead>
-                                        <tbody>
+                                        <tbody className="divide-y divide-gray-100">
                                             {examMarksStudents.map((s, idx) => (
-                                                <tr key={s.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                                    <td className="py-2.5 px-3 text-gray-700">{s.admission_no}</td>
-                                                    <td className="py-2.5 px-3 text-gray-700">{s.name}</td>
-                                                    <td className="py-2.5 px-3">
-                                                        <Input type="number" value={s.theory_marks ?? ""} onChange={(e) => {
+                                                <tr key={s.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
+                                                    <td className="py-3 px-4 text-gray-700 font-medium">{s.admission_no}</td>
+                                                    <td className="py-3 px-4 text-gray-800 font-semibold">{s.name}</td>
+                                                    <td className="py-3 px-4">
+                                                        <Input type="number" step="0.01" value={s.theory_marks ?? ""} onChange={(e) => {
                                                             const newStudents = [...examMarksStudents];
                                                             newStudents[idx].theory_marks = e.target.value;
                                                             setExamMarksStudents(newStudents);
-                                                        }} className="h-8 text-sm px-2 text-gray-700 border-gray-300" />
+                                                        }} className="h-9 text-sm px-3 text-gray-700 border-gray-300 rounded-lg focus:ring-indigo-500 bg-white" placeholder="0.00" />
                                                     </td>
-                                                    <td className="py-2.5 px-3">
-                                                        <Input type="number" value={s.practical_marks ?? ""} onChange={(e) => {
+                                                    <td className="py-3 px-4">
+                                                        <Input type="number" step="0.01" value={s.practical_marks ?? ""} onChange={(e) => {
                                                             const newStudents = [...examMarksStudents];
                                                             newStudents[idx].practical_marks = e.target.value;
                                                             setExamMarksStudents(newStudents);
-                                                        }} className="h-8 text-sm px-2 text-gray-700 border-gray-300" />
+                                                        }} className="h-9 text-sm px-3 text-gray-700 border-gray-300 rounded-lg focus:ring-indigo-500 bg-white" placeholder="0.00" />
                                                     </td>
-                                                    <td className="py-2.5 px-3 text-center">
+                                                    <td className="py-3 px-4 text-center">
                                                         <input type="checkbox" checked={!!s.is_absent} onChange={(e) => {
                                                             const newStudents = [...examMarksStudents];
                                                             newStudents[idx].is_absent = e.target.checked;
                                                             setExamMarksStudents(newStudents);
-                                                        }} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                                        }} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
                                                     </td>
                                                 </tr>
                                             ))}
@@ -1415,8 +1507,8 @@ export default function ExamGroupPage() {
                             )}
                         </div>
 
-                        <DialogFooter className="p-4 border-t border-gray-200 flex justify-end">
-                            <Button onClick={handleSaveExamMarks} disabled={submitting || !selectedMarksSubject} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-6 rounded shadow">
+                        <DialogFooter className="p-4 border-t border-gray-200 flex justify-end shrink-0 bg-white">
+                            <Button onClick={handleSaveExamMarks} disabled={submitting || !selectedMarksSubject} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity text-white h-9 px-6 rounded-lg font-bold text-xs shadow-md">
                                 {submitting ? t("saving") : t("save")}
                             </Button>
                         </DialogFooter>
@@ -1425,12 +1517,12 @@ export default function ExamGroupPage() {
 
                 {/* Teacher Remarks Modal */}
                 <Dialog open={teacherRemarksOpen} onOpenChange={setTeacherRemarksOpen}>
-                    <DialogContent className="max-w-4xl rounded-lg border-0 shadow-2xl p-0 overflow-hidden bg-white">
-                        <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative">
-                            <DialogTitle className="text-lg font-normal">{t("teacher_remarks")}</DialogTitle>
+                    <DialogContent className="sm:max-w-[1200px] w-[95vw] max-h-[90vh] rounded-xl border-0 shadow-2xl p-0 overflow-hidden bg-white flex flex-col">
+                        <DialogHeader className="p-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex justify-between items-center relative shrink-0">
+                            <DialogTitle className="text-base font-bold tracking-tight text-white">{t("teacher_remarks")}</DialogTitle>
                         </DialogHeader>
 
-                        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                        <div className="p-6 space-y-4 flex-1 overflow-y-auto max-h-[calc(90vh-140px)]">
                             {remarksLoading ? (
                                 <div className="py-10 text-center text-gray-500">{t("loading")}...</div>
                             ) : remarksStudents.length === 0 ? (
@@ -1606,15 +1698,16 @@ export default function ExamGroupPage() {
                                             <TableHead className="py-4 px-6">{t("group_name")}</TableHead>
                                             <TableHead className="py-4 px-6 text-center">{t("exams")}</TableHead>
                                             <TableHead className="py-4 px-6">{t("grading_system")}</TableHead>
+                                            <TableHead className="py-4 px-6 text-center">{t("status")}</TableHead>
                                             <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {loading ? (
-                                            <TableSkeleton rows={5} cols={4} />
+                                            <TableSkeleton rows={5} cols={5} />
                                         ) : groups.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={4} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                <TableCell colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                                     {t("no_data_found")}
                                                 </TableCell>
                                             </TableRow>
@@ -1638,10 +1731,32 @@ export default function ExamGroupPage() {
                                                             {group.exam_type}
                                                         </div>
                                                     </TableCell>
+                                                    <TableCell className="py-4 px-6 text-center">
+                                                        {(group.result_published_count || 0) > 0 ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                                {t("result_published")}
+                                                            </span>
+                                                        ) : (group.published_exams_count || 0) > 0 ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                                                                {t("exam_published")}
+                                                            </span>
+                                                        ) : (group.exams_count || 0) > 0 ? (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                                                                {t("draft")}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-50 text-gray-500 border border-gray-200">
+                                                                {t("no_exams")}
+                                                            </span>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell className="py-4 px-6 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <Button size="icon" variant="ghost" onClick={() => handleManageExams(group)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
-                                                                <Plus className="h-4 w-4" />
+                                                            <Button size="icon" variant="ghost" title={t("manage_publish_exams")} onClick={() => handleManageExams(group)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                                <Send className="h-4 w-4" />
                                                             </Button>
                                                             <Button size="icon" variant="ghost" onClick={() => handleEdit(group)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
                                                                 <Pencil className="h-4 w-4" />

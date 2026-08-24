@@ -11,6 +11,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -199,7 +200,9 @@ export default function IssueItemPage() {
             fetchIssues();
         } catch (error) {
             console.error("Error issuing item:", error);
-            tt.error("failed_to_issue_item");
+            const err = error as { response?: { data?: { message?: string } } };
+            const msg = err.response?.data?.message || t("failed_to_issue_item");
+            tt.error(msg);
         } finally {
             setSaving(false);
         }
@@ -377,6 +380,7 @@ export default function IssueItemPage() {
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="text-lg font-bold text-gray-800">{t("issue_item")}</DialogTitle>
+                        <DialogDescription className="text-xs text-gray-500">{t("fill_details_to_issue_item")}</DialogDescription>
                     </DialogHeader>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
                         <div className="space-y-1.5">
