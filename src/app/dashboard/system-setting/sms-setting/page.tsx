@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,11 +136,12 @@ const gatewaysConfig: Record<string, GatewayConfigDef> = {
         ]
     },
     "Custom SMS Gateway": {
-        providerName: "custom",
+        providerName: "custom_sms",
         fields: [
-            { key: "name", label: "Gateway Name", type: "text" },
-            { key: "url", label: "Gateway URL", type: "text" },
-            { key: "method", label: "Method (GET/POST)", type: "text" }
+            { key: "gateway_url", label: "Gateway URL", type: "text" },
+            { key: "http_method", label: "HTTP Method", type: "select", options: ["GET", "POST"] },
+            { key: "param_phone", label: "Phone Parameter Name", type: "text" },
+            { key: "param_message", label: "Message Parameter Name", type: "text" },
         ]
     }
 };
@@ -150,7 +151,7 @@ const gatewayTabKeys = Object.keys(gatewaysConfig);
 interface ProviderStateItem {
     provider: string;
     name: string;
-    config: Record<string, any>;
+    config: Record<string, string | number | boolean>;
     status: boolean;
     sent_count: number;
 }
@@ -188,11 +189,7 @@ export default function SmsSettingPage() {
     });
     const [savingInterval, setSavingInterval] = useState<boolean>(false);
 
-    useEffect(() => {
-        fetchSmsSettings();
-    }, []);
-
-    const fetchSmsSettings = async () => {
+    const fetchSmsSettings = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get('/system-setting/sms-gateways');
@@ -212,7 +209,6 @@ export default function SmsSettingPage() {
                     }
                 });
 
-                // Ensure all default gateways exist in state
                 gatewayTabKeys.forEach((tabKey) => {
                     const providerName = gatewaysConfig[tabKey].providerName;
                     if (!formatted[providerName]) {
@@ -222,7 +218,7 @@ export default function SmsSettingPage() {
                             config: {
                                 sms_limit: 100,
                             },
-                            status: providerName === "twilio",
+                            status: providerName === "bipsms",
                             sent_count: 0,
                         };
                     } else if (formatted[providerName].config.sms_limit === undefined) {
@@ -232,7 +228,6 @@ export default function SmsSettingPage() {
 
                 setSettingsData(formatted);
                 setRoundRobinEnabled(Boolean(res.data.round_robin?.enabled));
-
                 if (res.data.sms_interval) {
                     setIntervalConfig(res.data.sms_interval);
                 }
@@ -243,7 +238,11 @@ export default function SmsSettingPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
+
+    useEffect(() => {
+        fetchSmsSettings();
+    }, [fetchSmsSettings]);
 
     const handleSaveInterval = async () => {
         setSavingInterval(true);
@@ -255,8 +254,7 @@ export default function SmsSettingPage() {
             if (res.data?.status === 'success') {
                 sonnerToast.success(res.data.message || "SMS interval settings saved successfully");
             }
-        } catch (error: any) {
-            console.error("Failed to save interval settings:", error);
+        } catch {
             sonnerToast.error("Failed to save interval settings");
         } finally {
             setSavingInterval(false);
@@ -273,7 +271,7 @@ export default function SmsSettingPage() {
         sent_count: 0,
     };
 
-    const handleFieldChange = (fieldKey: string, value: any) => {
+    const handleFieldChange = (fieldKey: string, value: string | number | boolean) => {
         setSettingsData(prev => ({
             ...prev,
             [currentProviderKey]: {
@@ -300,18 +298,28 @@ export default function SmsSettingPage() {
             const res = await api.post('/system-setting/sms-gateways', payload);
             if (res.data?.status === 'success') {
                 sonnerToast.success(`${activeTab} configuration saved successfully!`);
+                if (res.data.data) {
+                    setSettingsData(prev => ({
+                        ...prev,
+                        [currentProviderKey]: {
+                            ...prev[currentProviderKey],
+                            config: res.data.data.config || {},
+                            status: Boolean(res.data.data.status),
+                        }
+                    }));
+                }
             } else {
                 sonnerToast.error(res.data?.message || `Failed to save ${activeTab} configuration`);
             }
-        } catch (err: any) {
-            sonnerToast.error(err.response?.data?.message || `Failed to save ${activeTab} configuration`);
+        } catch (err: unknown) {
+            const errRes = err as { response?: { data?: { message?: string } } };
+            sonnerToast.error(errRes.response?.data?.message || `Failed to save ${activeTab} configuration`);
         } finally {
             setSavingTab(false);
         }
     };
 
     const handleToggleGateway = async (providerKey: string, tabLabel: string) => {
-        const item = settingsData[providerKey];
         try {
             const res = await api.post(`/system-setting/sms-gateways/${providerKey}/toggle`);
             if (res.data?.status === 'success') {
@@ -330,7 +338,7 @@ export default function SmsSettingPage() {
                     sonnerToast.info(`${tabLabel} deactivated`);
                 }
             }
-        } catch (error) {
+        } catch {
             sonnerToast.error(`Failed to toggle ${tabLabel}`);
         }
     };
@@ -347,7 +355,7 @@ export default function SmsSettingPage() {
                     sonnerToast.info("SMS Round Robin load balancing deactivated");
                 }
             }
-        } catch (error) {
+        } catch {
             sonnerToast.error("Failed to toggle SMS Round Robin load balancing");
         }
     };
@@ -374,17 +382,15 @@ export default function SmsSettingPage() {
                 setTestResult({ ok: false, message: res.data?.message || "Test SMS failed" });
                 sonnerToast.error(res.data?.message || "Test SMS failed");
             }
-        } catch (err: any) {
-            const msg = err.response?.data?.message || "Failed to send test SMS";
+        } catch (err: unknown) {
+            const errRes = err as { response?: { data?: { message?: string } } };
+            const msg = errRes.response?.data?.message || "Failed to send test SMS";
             setTestResult({ ok: false, message: msg });
             sonnerToast.error(msg);
         } finally {
             setTesting(false);
         }
     };
-
-    const activeCount = Object.values(settingsData).filter(g => g.status).length;
-    const isConfigured = Object.keys(currentItem.config).length > 0;
 
     return (
         <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6 bg-gray-50/10 min-h-screen font-sans flex flex-col lg:flex-row gap-4 sm:gap-6">
@@ -660,7 +666,7 @@ export default function SmsSettingPage() {
                         </div>
 
                         <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 p-2.5 rounded border border-gray-100">
-                            💡 When enabled, outgoing SMS messages will rotate across all active SMS gateways based on each gateway's send limit per round.
+                            💡 When enabled, outgoing SMS messages will rotate across all active SMS gateways based on each gateway&apos;s send limit per round.
                         </p>
                     </CardContent>
                 </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,7 +66,7 @@ const gatewayTabKeys = Object.keys(gatewaysConfig);
 interface ProviderStateItem {
     provider: string;
     name: string;
-    config: Record<string, any>;
+    config: Record<string, string | number | boolean>;
     status: boolean;
     sent_count: number;
 }
@@ -104,11 +104,7 @@ export default function WhatsappMessagingPage() {
     });
     const [savingInterval, setSavingInterval] = useState<boolean>(false);
 
-    useEffect(() => {
-        fetchWhatsappSettings();
-    }, []);
-
-    const fetchWhatsappSettings = async () => {
+    const fetchWhatsappSettings = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get('/system-setting/sms-gateways');
@@ -159,7 +155,11 @@ export default function WhatsappMessagingPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
+
+    useEffect(() => {
+        fetchWhatsappSettings();
+    }, [fetchWhatsappSettings]);
 
     const handleSaveInterval = async () => {
         setSavingInterval(true);
@@ -171,8 +171,7 @@ export default function WhatsappMessagingPage() {
             if (res.data?.status === 'success') {
                 sonnerToast.success(res.data.message || "WhatsApp interval settings saved successfully");
             }
-        } catch (error: any) {
-            console.error("Failed to save interval settings:", error);
+        } catch {
             sonnerToast.error("Failed to save interval settings");
         } finally {
             setSavingInterval(false);
@@ -189,7 +188,7 @@ export default function WhatsappMessagingPage() {
         sent_count: 0,
     };
 
-    const handleFieldChange = (fieldKey: string, value: any) => {
+    const handleFieldChange = (fieldKey: string, value: string | number | boolean) => {
         setSettingsData(prev => ({
             ...prev,
             [currentProviderKey]: {
@@ -216,18 +215,28 @@ export default function WhatsappMessagingPage() {
             const res = await api.post('/system-setting/sms-gateways', payload);
             if (res.data?.status === 'success') {
                 sonnerToast.success(`${activeTab} WhatsApp configuration saved successfully!`);
+                if (res.data.data) {
+                    setSettingsData(prev => ({
+                        ...prev,
+                        [currentProviderKey]: {
+                            ...prev[currentProviderKey],
+                            config: res.data.data.config || {},
+                            status: Boolean(res.data.data.status),
+                        }
+                    }));
+                }
             } else {
                 sonnerToast.error(res.data?.message || `Failed to save ${activeTab} configuration`);
             }
-        } catch (err: any) {
-            sonnerToast.error(err.response?.data?.message || `Failed to save ${activeTab} configuration`);
+        } catch (err: unknown) {
+            const errRes = err as { response?: { data?: { message?: string } } };
+            sonnerToast.error(errRes.response?.data?.message || `Failed to save ${activeTab} configuration`);
         } finally {
             setSavingTab(false);
         }
     };
 
     const handleToggleGateway = async (providerKey: string, tabLabel: string) => {
-        const item = settingsData[providerKey];
         try {
             const res = await api.post(`/system-setting/sms-gateways/${providerKey}/toggle`);
             if (res.data?.status === 'success') {
@@ -246,7 +255,7 @@ export default function WhatsappMessagingPage() {
                     sonnerToast.info(`${tabLabel} deactivated`);
                 }
             }
-        } catch (error) {
+        } catch {
             sonnerToast.error(`Failed to toggle ${tabLabel}`);
         }
     };
@@ -263,7 +272,7 @@ export default function WhatsappMessagingPage() {
                     sonnerToast.info("WhatsApp Round Robin load balancing deactivated");
                 }
             }
-        } catch (error) {
+        } catch {
             sonnerToast.error("Failed to toggle WhatsApp Round Robin load balancing");
         }
     };
@@ -290,8 +299,9 @@ export default function WhatsappMessagingPage() {
                 setTestResult({ ok: false, message: res.data?.message || "Test WhatsApp message failed" });
                 sonnerToast.error(res.data?.message || "Test WhatsApp message failed");
             }
-        } catch (err: any) {
-            const msg = err.response?.data?.message || "Failed to send test WhatsApp message";
+        } catch (err: unknown) {
+            const errRes = err as { response?: { data?: { message?: string } } };
+            const msg = errRes.response?.data?.message || "Failed to send test WhatsApp message";
             setTestResult({ ok: false, message: msg });
             sonnerToast.error(msg);
         } finally {
@@ -571,7 +581,7 @@ export default function WhatsappMessagingPage() {
                         </div>
 
                         <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 p-2.5 rounded border border-gray-100">
-                            💡 When enabled, outgoing WhatsApp messages will rotate across active providers based on each provider's send limit per round.
+                            💡 When enabled, outgoing WhatsApp messages will rotate across active providers based on each provider&apos;s send limit per round.
                         </p>
                     </CardContent>
                 </Card>
