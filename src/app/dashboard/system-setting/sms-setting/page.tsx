@@ -229,7 +229,12 @@ export default function SmsSettingPage() {
                 setSettingsData(formatted);
                 setRoundRobinEnabled(Boolean(res.data.round_robin?.enabled));
                 if (res.data.sms_interval) {
-                    setIntervalConfig(res.data.sms_interval);
+                    setIntervalConfig({
+                        mode: res.data.sms_interval.mode || "random",
+                        min: Number(res.data.sms_interval.min) || 1,
+                        max: Number(res.data.sms_interval.max) || 10,
+                        fixed: Number(res.data.sms_interval.fixed) || 1,
+                    });
                 }
             }
         } catch (error) {
@@ -247,12 +252,26 @@ export default function SmsSettingPage() {
     const handleSaveInterval = async () => {
         setSavingInterval(true);
         try {
-            const res = await api.post('/system-setting/sms-gateways/interval', {
+            const payload = {
                 channel: 'sms',
-                ...intervalConfig
-            });
+                mode: intervalConfig.mode || "random",
+                min: Number(intervalConfig.min) || 1,
+                max: Number(intervalConfig.max) || 10,
+                fixed: Number(intervalConfig.fixed) || 1,
+            };
+            const res = await api.post('/system-setting/sms-gateways/interval', payload);
             if (res.data?.status === 'success') {
                 sonnerToast.success(res.data.message || "SMS interval settings saved successfully");
+                if (res.data.data) {
+                    setIntervalConfig({
+                        mode: res.data.data.mode || "random",
+                        min: Number(res.data.data.min) || 1,
+                        max: Number(res.data.data.max) || 10,
+                        fixed: Number(res.data.data.fixed) || 1,
+                    });
+                }
+            } else {
+                sonnerToast.error(res.data?.message || "Failed to save interval settings");
             }
         } catch {
             sonnerToast.error("Failed to save interval settings");
@@ -691,11 +710,11 @@ export default function SmsSettingPage() {
                         <div className="space-y-1">
                             <Label className="text-[11px] font-bold text-gray-700">Interval Mode</Label>
                             <Select 
-                                value={intervalConfig.mode} 
+                                value={intervalConfig.mode || "random"} 
                                 onValueChange={(val) => setIntervalConfig(prev => ({ ...prev, mode: val }))}
                             >
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200">
-                                    <SelectValue />
+                                    <SelectValue placeholder="Select interval mode" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="random" className="text-[11px]">Random Delay (Anti-Ban)</SelectItem>
@@ -704,7 +723,7 @@ export default function SmsSettingPage() {
                             </Select>
                         </div>
 
-                        {intervalConfig.mode === "random" ? (
+                        {(intervalConfig.mode || "random") === "random" ? (
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
                                     <Label className="text-[10px] font-bold text-gray-600">From (Sec)</Label>
@@ -712,8 +731,11 @@ export default function SmsSettingPage() {
                                         type="number"
                                         min={1}
                                         max={300}
-                                        value={intervalConfig.min}
-                                        onChange={(e) => setIntervalConfig(prev => ({ ...prev, min: Math.max(1, Number(e.target.value)) }))}
+                                        value={intervalConfig.min ?? ""}
+                                        onChange={(e) => {
+                                            const val = e.target.value === "" ? 1 : parseInt(e.target.value, 10);
+                                            setIntervalConfig(prev => ({ ...prev, min: isNaN(val) ? 1 : val }));
+                                        }}
                                         className="h-8 text-[11px]"
                                     />
                                 </div>
@@ -723,8 +745,11 @@ export default function SmsSettingPage() {
                                         type="number"
                                         min={1}
                                         max={300}
-                                        value={intervalConfig.max}
-                                        onChange={(e) => setIntervalConfig(prev => ({ ...prev, max: Math.max(1, Number(e.target.value)) }))}
+                                        value={intervalConfig.max ?? ""}
+                                        onChange={(e) => {
+                                            const val = e.target.value === "" ? 10 : parseInt(e.target.value, 10);
+                                            setIntervalConfig(prev => ({ ...prev, max: isNaN(val) ? 10 : val }));
+                                        }}
                                         className="h-8 text-[11px]"
                                     />
                                 </div>
@@ -736,8 +761,11 @@ export default function SmsSettingPage() {
                                     type="number"
                                     min={1}
                                     max={300}
-                                    value={intervalConfig.fixed}
-                                    onChange={(e) => setIntervalConfig(prev => ({ ...prev, fixed: Math.max(1, Number(e.target.value)) }))}
+                                    value={intervalConfig.fixed ?? ""}
+                                    onChange={(e) => {
+                                        const val = e.target.value === "" ? 1 : parseInt(e.target.value, 10);
+                                        setIntervalConfig(prev => ({ ...prev, fixed: isNaN(val) ? 1 : val }));
+                                    }}
                                     className="h-8 text-[11px]"
                                 />
                             </div>

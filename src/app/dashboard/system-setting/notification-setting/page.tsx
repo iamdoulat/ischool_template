@@ -357,7 +357,7 @@ function TemplateEditorModal({
                                     <p>Address: {settings?.address || "N/A"}</p>
                                     <p>Phone No.: {settings?.phone || "N/A"}</p>
                                     <p>Email: {settings?.email || "N/A"}</p>
-                                    <p>Website: {(settings as { website?: string; base_url?: string } | null)?.website || settings?.base_url || "N/A"}</p>
+                                    <p>Website: {(settings as { frontend_url?: string } | null)?.frontend_url || (typeof window !== "undefined" ? window.location.origin : "") || (settings as { website?: string } | null)?.website || "N/A"}</p>
                                 </div>
                             </div>
 
@@ -566,9 +566,9 @@ export default function NotificationSettingPage() {
                                             </div>
                                         </TableHead>
                                         <TableHead className="py-3 px-4 w-[150px]">{t("recipient")}</TableHead>
+                                        <TableHead className="py-3 px-4 min-w-[320px]">{t("templates")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[180px]">{t("sms_template_id")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[220px]">{t("whatsapp_template_id")}</TableHead>
-                                        <TableHead className="py-3 px-4">{t("templates")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -628,14 +628,6 @@ export default function NotificationSettingPage() {
                                                         </div>
                                                     </TableCell>
 
-                                                    <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[150px]">
-                                                        {item.sms_template_id || "-"}
-                                                    </TableCell>
-
-                                                    <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[200px]">
-                                                        {item.whatsapp_template_id || "-"}
-                                                    </TableCell>
-
                                                     <TableCell className="py-4 px-4">
                                                         <div className="space-y-2">
                                                             <p className="text-[10px] text-gray-500 leading-normal line-clamp-3 italic opacity-80">
@@ -691,8 +683,16 @@ export default function NotificationSettingPage() {
                                                                     <MessageCircle className="h-3 w-3" />
                                                                 </Button>
                                                             </div>
-</div>
-</TableCell>
+                                                        </div>
+                                                    </TableCell>
+
+                                                    <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[150px]">
+                                                        {item.sms_template_id || "-"}
+                                                    </TableCell>
+
+                                                    <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[200px]">
+                                                        {item.whatsapp_template_id || "-"}
+                                                    </TableCell>
                                                 </TableRow>
                                             );
                                         })

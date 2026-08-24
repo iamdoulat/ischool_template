@@ -27,6 +27,8 @@
   - [14. Comprehensive Reporting & Data Export](#14-comprehensive-reporting--data-export)
 - [🧩 Public CMS Shortcodes & Source Component Customization](#-public-cms-shortcodes--source-component-customization)
 - [📱 Progressive Web App (PWA) & Mobile Installation](#-progressive-web-app-pwa--mobile-installation)
+- [🛡️ Anti-Ban & Smart Message Dispatch Features](#️-anti-ban--smart-message-dispatch-features)
+- [⏰ Cron Job & Queue Worker Automation](#-cron-job--queue-worker-automation)
 - [🚀 Quick Start & Installation Guide](#-quick-start--installation-guide)
 - [💻 Scripts & Commands](#-scripts--commands)
 - [🎨 Design System & Theme Customization](#-design-system--theme-customization)
@@ -235,6 +237,75 @@ npm install
 npm run dev
 ```
 Open your browser and navigate to `http://localhost:3000`.
+
+---
+
+## 🛡️ Anti-Ban & Smart Message Dispatch Features
+
+iSchool includes an intelligent **Anti-Ban & Rate-Limiting Protection System** designed for smooth, reliable, and high-volume institutional communications across WhatsApp, SMS, and Email.
+
+### Key Capabilities
+
+* **Random Delay (Anti-Ban Mode)**: Injects dynamic, natural pauses between consecutive messages (e.g., random delay between 2 to 8 seconds) to simulate human typing rhythms and protect sending accounts from carrier restrictions.
+* **Fixed Interval Mode**: Delays consecutive messages by a consistent interval in seconds (e.g., exactly 5 seconds) for providers with fixed rate limits.
+* **Multi-Gateway Round-Robin Rotation**: Automatically rotates outgoing traffic across multiple connected WhatsApp numbers, SMS gateways, or SMTP accounts based on customizable per-round sending limits (e.g., 100 messages per gateway).
+* **Automated & Broadcast Support**: Seamlessly applies to both automated event notifications (attendance alerts, fee reminders, exam marks, admission notices) and manual bulk campaigns created in the Communicate module.
+* **Live Queue Monitor & Emergency Controls**:
+  - 📊 **Real-Time Queue Tracking**: Monitor pending, sent, and failed message queues directly from the dashboard.
+  - 🛑 **Emergency Stop / Cancel**: Instantly cancel or purge running broadcast campaigns with one click.
+  - ⚡ **Force Immediate Send**: Bypass delays to process and send remaining queued messages immediately on demand.
+
+### Supported Channels & Settings
+
+| Channel | Dashboard Location | Supported Features |
+| :--- | :--- | :--- |
+| **WhatsApp Messaging** | `/dashboard/system-setting/whatsapp-messaging` | Random Delay (Anti-Ban), Fixed Interval, Round-Robin Rotation, Live Queue Monitor |
+| **SMS Gateways** | `/dashboard/system-setting/sms-setting` | Random Delay (Anti-Ban), Fixed Interval, Round-Robin Rotation, Live Queue Monitor |
+| **Email Gateways** | `/dashboard/system-setting/email-setting` | Random Delay (Anti-Ban), Fixed Interval, Round-Robin Rotation, Live Queue Monitor |
+
+---
+
+## ⏰ Cron Job & Queue Worker Automation
+
+In production environments (especially shared hosting, cPanel, or serverless deployments without persistent Supervisor daemons), scheduled background jobs (like delayed Anti-Ban WhatsApp/SMS queues, fee reminders, and log cleanups) are processed via **Cron**.
+
+### 1. Which URL to Use for External Cron?
+Always target your **Laravel Backend API URL**:
+
+| Environment | Example Cron URL |
+| :--- | :--- |
+| **Separate Backend Subdomain** | `https://api.yourschool.com/api/v1/cron/run?key=YOUR_CRON_SECRET_KEY` |
+| **Unified Domain (Reverse Proxy)** | `https://yourschool.com/api/v1/cron/run?key=YOUR_CRON_SECRET_KEY` |
+| **Localhost Testing** | `http://localhost:8000/api/v1/cron/run?key=YOUR_CRON_SECRET_KEY` |
+
+> 🔍 **Status Check**: Visit `GET /api/v1/cron/status` on your backend server to verify health, pending queue counts, and view the exact recommended cron syntax.
+
+### 2. Setup with cron-job.org
+1. In `backend/.env`, set your secure secret key:
+   ```env
+   CRON_SECRET_KEY=your_secure_random_secret_key
+   ```
+2. In **[cron-job.org](https://cron-job.org)**, create a new cron job:
+   - **Title**: `iSchool Queue & Automation Worker`
+   - **URL**: `https://api.yourschool.com/api/v1/cron/run?key=your_secure_random_secret_key`
+   - **Execution Schedule**: Every **1 minute** (or every 2–5 minutes)
+   - **Request Method**: `GET`
+
+### 3. Setup with cPanel or Linux Server Cron
+Add the standard Laravel scheduler command to crontab:
+```bash
+* * * * * cd /path/to/ischool/backend && php artisan schedule:run >> /dev/null 2>&1
+```
+Or trigger the cron endpoint via curl:
+```bash
+* * * * * curl -s "https://api.yourschool.com/api/v1/cron/run?key=your_secure_random_secret_key" > /dev/null 2>&1
+```
+
+### 4. What the Cron Runner Automates:
+* 🚀 **Queue Processing**: Drains pending WhatsApp, SMS, and Email Anti-Ban jobs when their scheduled delay time arrives.
+* 🔔 **Daily Fee Reminders**: Automatically executes `fees:send-reminders` every morning at 8:00 AM.
+* 💾 **Automated Backups**: Runs scheduled database backups if enabled in System Settings.
+* 🧹 **Log & Cache Maintenance**: Automatically purges communication logs older than 60 days to keep the database fast and lightweight.
 
 ---
 
