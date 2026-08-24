@@ -30,7 +30,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
     Search, FolderOpen, ChevronLeft, ChevronRight, 
     UserPlus, ShieldAlert, GraduationCap, Users, 
-    Info, Zap, RefreshCw, Save, Calendar
+    Zap, RefreshCw, Save, Calendar, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -61,18 +61,29 @@ interface Incident {
     point: number;
 }
 
+interface SchoolSection {
+    id: number | string;
+    name: string;
+}
+
+interface SchoolClass {
+    id: number | string;
+    name: string;
+    sections?: SchoolSection[];
+}
+
 export default function AssignIncidentPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [criteria, setCriteria] = useState<{ classes: any[] }>({ classes: [] });
+    const [criteria, setCriteria] = useState<{ classes: SchoolClass[] }>({ classes: [] });
     const [incidents, setIncidents] = useState<Incident[]>([]);
     
     // Selection State
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
-    const [sections, setSections] = useState<any[]>([]);
+    const [sections, setSections] = useState<SchoolSection[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
@@ -102,7 +113,7 @@ export default function AssignIncidentPage() {
         try {
             const response = await api.get('/behaviour/reports/criteria');
             setCriteria(response.data);
-        } catch (error) {
+        } catch {
             console.error("Failed to fetch analytical criteria");
         }
     };
@@ -111,7 +122,7 @@ export default function AssignIncidentPage() {
         try {
             const response = await api.get('/behaviour/incidents', { params: { per_page: 100 } });
             setIncidents(response.data.data || []);
-        } catch (error) {
+        } catch {
             console.error("Failed to fetch incident registry");
         }
     };
@@ -129,7 +140,7 @@ export default function AssignIncidentPage() {
             });
             setStudents(response.data);
             setSelectedStudents([]);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_locate_students");
         } finally {
             setLoading(false);
@@ -161,7 +172,7 @@ export default function AssignIncidentPage() {
                 description: ""
             });
             handleSearch(); // Refresh total points
-        } catch (error) {
+        } catch {
             tt.error("failed_to_assign_incident");
         } finally {
             setSubmitting(false);
@@ -361,78 +372,127 @@ export default function AssignIncidentPage() {
 
             {/* Assignment Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white">
-                    <div className="bg-indigo-500/5 p-8 border-b border-indigo-100 flex items-center justify-between">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-black text-gray-800 uppercase tracking-[0.2em] flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-lg bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-                                    <ShieldAlert className="h-5 w-5" />
-                                </div>
+                <DialogContent className="sm:max-w-lg p-0 overflow-hidden bg-white border border-gray-100 rounded-2xl shadow-2xl gap-0">
+                    <DialogHeader className="flex flex-row items-center gap-3 px-6 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100 space-y-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <ShieldAlert className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <DialogTitle className="text-sm font-bold text-gray-800 tracking-tight leading-none">
                                 {t("assign_incident")}
                             </DialogTitle>
-                        </DialogHeader>
-                    </div>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {t("record_and_assign_behavioural_incident_to_students")}
+                            </p>
+                        </div>
+                    </DialogHeader>
 
-                    <div className="p-10 grid grid-cols-1 gap-8">
-                        <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100/50 flex items-center gap-4">
-                            <div className="h-8 w-8 rounded-full bg-white flex items-center justify-center text-indigo-500 shadow-sm">
-                                <Users className="h-4 w-4" />
+                    <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                        {/* Target Student Count Banner */}
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50/70 border border-indigo-100">
+                            <div className="flex items-center gap-2.5">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-xs">
+                                    <Users className="h-4 w-4" />
+                                </span>
+                                <div>
+                                    <p className="text-xs font-bold text-indigo-950">
+                                        {t("target_x_students_selected", { count: selectedStudents.length })}
+                                    </p>
+                                    <p className="text-[10px] text-indigo-600 font-medium">
+                                        {t("incident_will_be_applied_to_all_selected_students")}
+                                    </p>
+                                </div>
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-700">
-                                {t("target_x_students_selected", { count: selectedStudents.length })}
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-100 text-indigo-700 border border-indigo-200">
+                                {selectedStudents.length} {t("selected")}
                             </span>
                         </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("incident_type")} <span className="text-red-500">*</span></Label>
+                        {/* Incident Type Select */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-gray-700">
+                                {t("incident_type")} <span className="text-red-500">*</span>
+                            </Label>
                             <Select value={formData.incident_id} onValueChange={(val) => setFormData({...formData, incident_id: val})}>
-                                <SelectTrigger className="h-14 rounded-lg bg-gray-50/50 border-gray-100 focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6">
+                                <SelectTrigger className="h-9 text-xs bg-white border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
                                     <SelectValue placeholder={t("select_incident_type")} />
                                 </SelectTrigger>
-                                <SelectContent className="rounded-lg border-gray-100 shadow-2xl">
+                                <SelectContent className="max-h-60">
                                     {incidents.map(inc => (
-                                        <SelectItem key={inc.id} value={inc.id.toString()}>
-                                            {inc.title} ({inc.point > 0 ? '+' : ''}{inc.point})
+                                        <SelectItem key={inc.id} value={inc.id.toString()} className="text-xs">
+                                            <div className="flex items-center justify-between w-full gap-4">
+                                                <span>{inc.title}</span>
+                                                <span className={cn(
+                                                    "px-1.5 py-0.5 rounded text-[10px] font-bold font-mono",
+                                                    (inc.point || 0) >= 0 ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                                                )}>
+                                                    {inc.point > 0 ? `+${inc.point}` : inc.point} pts
+                                                </span>
+                                            </div>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("incident_date")} <span className="text-red-500">*</span></Label>
+                        {/* Incident Date Input */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-gray-700">
+                                {t("incident_date")} <span className="text-red-500">*</span>
+                            </Label>
                             <div className="relative">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                                 <Input
                                     type="date"
                                     value={formData.incident_date}
                                     onChange={(e) => setFormData({...formData, incident_date: e.target.value})}
-                                    className="h-14 border-gray-100 bg-gray-50/50 rounded-lg focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight pl-14 pr-6"
+                                    className="h-9 text-xs pl-9 bg-white border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-3">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] ml-1">{t("assigned_description")}</Label>
+                        {/* Description Textarea */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-gray-700">
+                                {t("assigned_description")}
+                            </Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                                 placeholder={t("details_regarding_this_specific_assignment")}
-                                rows={4}
-                                className="border-gray-100 bg-gray-50/50 rounded-lg focus:ring-indigo-500 shadow-none text-sm font-bold tracking-tight px-6 py-4 resize-none"
+                                rows={3}
+                                className="text-xs bg-white border-gray-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 resize-none"
                             />
                         </div>
                     </div>
 
-                    <div className="p-8 bg-gray-50/50 border-t border-gray-100 flex justify-end gap-4">
-                        <Button variant="ghost" onClick={() => setOpen(false)} className="h-12 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest">{t("discard")}</Button>
+                    {/* Dialog Footer */}
+                    <div className="px-6 py-3.5 bg-gray-50/70 border-t border-gray-100 flex items-center justify-end gap-2.5">
                         <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                            className="h-8 px-4 text-xs font-medium rounded-full border-gray-200 hover:bg-gray-100"
+                        >
+                            {t("discard")}
+                        </Button>
+                        <Button
+                            type="button"
                             onClick={handleAssign}
                             disabled={submitting}
-                            className="btn-gradient text-white px-12 h-12 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-3 active:scale-95"
+                            className="h-8 px-6 text-xs font-bold uppercase rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-md border-none transition-all disabled:opacity-50"
                         >
-                            {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            {t("commit_assignment")}
+                            {submitting ? (
+                                <>
+                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    {t("saving")}
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-1.5 h-3.5 w-3.5" />
+                                    {t("commit_assignment")}
+                                </>
+                            )}
                         </Button>
                     </div>
                 </DialogContent>
