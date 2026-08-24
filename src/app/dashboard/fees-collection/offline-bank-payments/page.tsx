@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -109,24 +109,29 @@ export default function OfflineBankPaymentsPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const { symbol, formatCurrency } = useCurrencyFormatter();
-    const [invoiceData, setInvoiceData] = useState<any>(null);
-    const [printSettings, setPrintSettings] = useState<any>(null);
+    const [invoiceData, setInvoiceData] = useState<{
+        type: string;
+        id: number;
+        trx_id?: number | string;
+        date: string;
+        reference_no?: string;
+        studentName: string;
+        admissionNo: string;
+        detail: string;
+        amount: number;
+    } | null>(null);
+    const [printSettings, setPrintSettings] = useState<{
+        header_image_base64?: string;
+        footer_content?: string;
+        type?: string;
+    } | null>(null);
     const { settings } = useSettings();
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
 
-    useEffect(() => {
-        fetchPayments();
-        setCurrentPage(1);
-    }, [filterStatus]);
-
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery]);
-
-    const fetchPayments = async () => {
+    const fetchPayments = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get("/fee-collection/offline-payments", {
@@ -139,7 +144,16 @@ export default function OfflineBankPaymentsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filterStatus, tt]);
+
+    useEffect(() => {
+        fetchPayments();
+        setCurrentPage(1);
+    }, [fetchPayments]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
 
     const handleApprove = async () => {
         if (!selectedPayment) return;
@@ -257,11 +271,14 @@ export default function OfflineBankPaymentsPage() {
             try {
                 const res = await api.get('system-setting/print-settings');
                 if (res.data?.status === 'success') {
-                    const invoiceSetting = res.data.data.find((s: any) => s.type === 'Invoice');
+                    const list = Array.isArray(res.data.data) ? res.data.data : [];
+                    const invoiceSetting = list.find((s: { type?: string }) => s.type === 'Invoice');
                     setPrintSettings(invoiceSetting);
                     currentSettings = invoiceSetting;
                 }
-            } catch (e) {}
+            } catch {
+                // fallback gracefully
+            }
         }
 
         const paymentType = payment.course 
@@ -271,6 +288,7 @@ export default function OfflineBankPaymentsPage() {
         setInvoiceData({
             type: 'bank',
             id: payment.id,
+            trx_id: payment.id,
             date: payment.payment_date,
             reference_no: payment.reference_no,
             studentName: payment.student ? `${payment.student.name || ''} ${payment.student.last_name || ''}`.trim() : 'N/A',
@@ -291,9 +309,10 @@ export default function OfflineBankPaymentsPage() {
                     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
                     pdf.save(`invoice_${payment.id}.pdf`);
                     tt.success("invoice_downloaded");
-                } catch (e: any) {
-                    console.error("PDF Gen Error:", e);
-                    tt.error(`Failed to generate PDF: ${e.message || 'Unknown error'}`);
+                } catch (error: unknown) {
+                    const err = error as { message?: string };
+                    console.error("PDF Gen Error:", err);
+                    tt.error(`Failed to generate PDF: ${err.message || 'Unknown error'}`);
                 } finally {
                     setInvoiceData(null);
                 }
@@ -460,7 +479,7 @@ export default function OfflineBankPaymentsPage() {
                                                 <TableCell className="py-4">
                                                     <div className="flex flex-col">
                                                         <span className="text-sm font-bold text-slate-800">
-                                                            {payment.student ? `${payment.student.name || ''} ${payment.student.last_name || ''}`.trim() : 'N/A'}
+                                                             {payment.student ? `${payment.student.name || ''} ${payment.student.last_name || ''}`.trim() : 'N/A'}
                                                         </span>
                                                         <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">
                                                             {payment.student?.admission_no || 'N/A'} • {payment.student?.school_class?.name || payment.student?.school_class?.class || payment.student?.schoolClass?.name || payment.student?.schoolClass?.class || ''}({payment.student?.section?.name || payment.student?.section?.section || ''})
@@ -669,13 +688,13 @@ export default function OfflineBankPaymentsPage() {
                         {/* Header */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
                             {/* Left Column: Logo + School Name */}
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '380px' }}>
                                 {printSettings?.header_image_base64 ? (
-                                    <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '80px', objectFit: 'contain', marginBottom: '8px' }} />
+                                    <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
                                 ) : settings?.print_logo_base64 ? (
-                                    <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '80px', objectFit: 'contain', marginBottom: '8px' }} />
+                                    <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
                                 ) : null}
-                                <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b', lineHeight: '1.2', margin: 0 }}>{settings?.school_name || "iSchool"}</h1>
+                                <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', lineHeight: '1.2', margin: 0, textAlign: 'left' }}>{settings?.school_name || "iSchool"}</h1>
                             </div>
                             
                             {/* Right Column: Address and Others */}
@@ -689,9 +708,14 @@ export default function OfflineBankPaymentsPage() {
                                 {settings?.email && (
                                     <div><span style={{ fontWeight: 'bold' }}>Email:</span> {settings.email}</div>
                                 )}
-                                {settings?.base_url && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Website:</span> {settings.base_url.replace(/^https?:\/\//, '')}</div>
-                                )}
+                                {(() => {
+                                    const siteUrl = (settings?.frontend_url || (typeof window !== 'undefined' ? window.location.origin : ''))
+                                        .replace(/^https?:\/\//, '')
+                                        .replace(/^api\./, '');
+                                    return siteUrl ? (
+                                        <div><span style={{ fontWeight: 'bold' }}>Website:</span> {siteUrl}</div>
+                                    ) : null;
+                                })()}
                             </div>
                         </div>
 
@@ -702,18 +726,19 @@ export default function OfflineBankPaymentsPage() {
 
                         {/* Invoice Meta Row */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
-                            <div style={{ display: 'flex', gap: '24px' }}>
+                            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
                                 <div>
                                     <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Request ID:</span> <span style={{ color: '#4f46e5', fontWeight: '900' }}>#{invoiceData.id}</span>
                                 </div>
-                                {invoiceData.reference_no && (
-                                    <div>
-                                        <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Ref No:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>{invoiceData.reference_no}</span>
-                                    </div>
-                                )}
+                                <div>
+                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Ref No:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>{invoiceData.reference_no || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Trx ID:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>#{invoiceData.trx_id || invoiceData.id}</span>
+                                </div>
                             </div>
                             <div>
-                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Date:</span> <span style={{ fontWeight: '600' }}>{new Date(invoiceData.date).toLocaleDateString()}</span>
+                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Date:</span> <span style={{ fontWeight: '600' }}>{new Date(invoiceData.date).toLocaleDateString('en-GB')}</span>
                             </div>
                         </div>
 

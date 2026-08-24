@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,10 +18,12 @@ import { format } from "date-fns";
 import {
     Printer, CreditCard, Copy, FileSpreadsheet, FileDown,
     User, Loader2, Wallet, ArrowLeft, ChevronRight, Receipt,
+    Download
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas-pro";
 
 type Payment = {
     id: number;
@@ -61,43 +64,49 @@ type Student = {
     photo: string;
 };
 
-type FeesData = { student: Student; session: string; fees: FeeRow[] };
+type FeesData = {
+    student: Student;
+    session: string;
+    fees: FeeRow[];
+};
 
-const fmt = (n: number) =>
-    n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-function StatusBadge({ status }: { status: string }) {
-    const { t } = useTranslation();
-    const map: Record<string, string> = {
-        Paid: "bg-green-100 text-green-700 border-green-200",
-        Unpaid: "bg-red-100 text-red-600 border-red-200",
-        Partial: "bg-amber-100 text-amber-700 border-amber-200",
-        Pending: "bg-yellow-100 text-yellow-700 border-yellow-200",
+function StatusBadge({ status }: { status: FeeRow["status"] }) {
+    const map: Record<FeeRow["status"], { label: string; className: string }> = {
+        Paid: { label: "PAID", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" },
+        Unpaid: { label: "UNPAID", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" },
+        Partial: { label: "PARTIAL", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" },
+        Pending: { label: "PENDING", className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20" },
     };
+    const s = map[status] || map.Unpaid;
     return (
-        <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded-full uppercase border", map[status] ?? "bg-gray-100 text-gray-600 border-gray-200")}>
-            {t(status.toLowerCase())}
+        <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase", s.className)}>
+            {s.label}
         </span>
     );
 }
 
-/* Animated count-up number */
-function CountUp({ value, prefix }: { value: number; prefix: string }) {
-    const [display, setDisplay] = useState(0);
+function CountUp({ value, prefix = "" }: { value: number; prefix?: string }) {
+    const [displayed, setDisplayed] = useState(0);
     useEffect(() => {
-        let raf = 0;
-        const start = performance.now();
-        const dur = 700;
-        const tick = (now: number) => {
-            const p = Math.min(1, (now - start) / dur);
-            setDisplay(value * (1 - Math.pow(1 - p, 3)));
-            if (p < 1) raf = requestAnimationFrame(tick);
-        };
-        raf = requestAnimationFrame(tick);
-        return () => cancelAnimationFrame(raf);
+        let start = 0;
+        const duration = 600;
+        const step = 16;
+        const increment = value / (duration / step);
+        const timer = setInterval(() => {
+            start += increment;
+            if (start >= value) {
+                setDisplayed(value);
+                clearInterval(timer);
+            } else {
+                setDisplayed(start);
+            }
+        }, step);
+        return () => clearInterval(timer);
     }, [value]);
-    return <>{prefix}{fmt(display)}</>;
+    return <span>{prefix}{displayed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
 }
+
+const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function StudentFeesPage() {
     const { t } = useTranslation();
@@ -108,6 +117,23 @@ export default function StudentFeesPage() {
     const { toast } = useToast();
     const { selectedCurrency } = useCurrency();
     const cur = selectedCurrency?.symbol || "$";
+    const [invoiceData, setInvoiceData] = useState<{
+        id: number | string;
+        trx_id?: string | number;
+        reference_no?: string;
+        date: string;
+        studentName: string;
+        admissionNo: string;
+        detail: string;
+        amount: number;
+        status?: string;
+    } | null>(null);
+    const [printSettings, setPrintSettings] = useState<{
+        header_image_base64?: string;
+        footer_content?: string;
+        type?: string;
+    } | null>(null);
+    const { settings } = useSettings();
 
     const fetchFees = useCallback(async () => {
         const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
@@ -115,85 +141,85 @@ export default function StudentFeesPage() {
             setLoading(false);
             return;
         }
-
         try {
             const res = await api.get("/user/fees", { skipGlobalErrorHandler: true });
-            if (res.data.success) {
-                setData(res.data.data);
-            } else if (res.status !== 401) {
-                toast({ variant: "destructive", title: t("error"), description: res.data.message || t("failed_to_load_fees") });
-            }
-        } catch (err: unknown) {
-            const error = err as { response?: { status?: number; data?: { message?: string } } };
-            if (error?.response?.status !== 401) {
-                toast({ variant: "destructive", title: t("error"), description: error?.response?.data?.message || t("failed_to_load_fees") });
-            }
+            if (res.data.success) setData(res.data.data);
+        } catch {
+            // ignore unauthenticated or network drop
         } finally {
             setLoading(false);
         }
-    }, [toast, t]);
+    }, []);
 
-    useEffect(() => {
-        fetchFees();
-    }, [fetchFees]);
+    useEffect(() => { fetchFees(); }, [fetchFees]);
 
-    const fees = data?.fees ?? [];
+    const fees = useMemo(() => data?.fees ?? [], [data?.fees]);
     const allIds = fees.map((f) => f.id);
     const allChecked = allIds.length > 0 && selected.length === allIds.length;
     const toggleAll = () => setSelected(allChecked ? [] : allIds);
-    const toggleOne = (id: number) =>
-        setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    const toggleOne = (id: number) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
-    const totals = fees.reduce(
-        (acc, f) => ({
-            amount: acc.amount + f.amount,
-            fine: acc.fine + f.fine,
-            discount: acc.discount + f.discount,
-            fineAmt: acc.fineAmt + f.fine_amount,
-            paid: acc.paid + f.paid_amount,
-            balance: acc.balance + f.balance,
-        }),
-        { amount: 0, fine: 0, discount: 0, fineAmt: 0, paid: 0, balance: 0 }
-    );
+    const totals = useMemo(() => fees.reduce((acc, f) => ({
+        amount: acc.amount + f.amount, fine: acc.fine + f.fine, discount: acc.discount + f.discount,
+        fineAmt: acc.fineAmt + f.fine_amount, paid: acc.paid + f.paid_amount, balance: acc.balance + f.balance,
+    }), { amount: 0, fine: 0, discount: 0, fineAmt: 0, paid: 0, balance: 0 }), [fees]);
 
-    const exportToExcel = useCallback(() => {
-        const ws = XLSX.utils.json_to_sheet(fees.map((f) => ({
-            Fees: `${f.name} (${f.code})`,
-            "Due Date": f.due_date,
-            Status: f.status,
-            "Amount": f.amount,
-            "Discount": f.discount,
-            "Fine": f.fine_amount,
-            "Paid": f.paid_amount,
-            "Balance": f.balance,
-        })));
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Fees");
-        XLSX.writeFile(wb, "student-fees.xlsx");
-    }, [fees]);
-
-    const exportToPDF = useCallback(() => {
-        const doc = new jsPDF("l");
-        doc.text("Student Fees", 14, 16);
-        autoTable(doc, {
-            head: [["Fees", "Due Date", "Status", "Amount", "Discount", "Fine", "Paid", "Balance"]],
-            body: fees.map((f) => [
-                `${f.name} (${f.code})`, f.due_date, f.status,
-                fmt(f.amount), fmt(f.discount), fmt(f.fine_amount), fmt(f.paid_amount), fmt(f.balance),
-            ]),
-            startY: 22,
-            styles: { fontSize: 8 },
-        });
-        doc.save("student-fees.pdf");
-    }, [fees]);
-
-    const copyToClipboard = useCallback(() => {
-        const text = fees.map((f) =>
-            [`${f.name} (${f.code})`, f.due_date, f.status, fmt(f.amount), fmt(f.paid_amount), fmt(f.balance)].join("\t")
-        ).join("\n");
+    const copyToClipboard = () => {
+        const headers = ["Fees", "Due Date", "Status", "Amount", "Discount", "Fine", "Paid", "Balance"];
+        const rows = fees.map((f) => [`${f.name} (${f.code})`, f.due_date, f.status, f.amount.toFixed(2), f.discount.toFixed(2), f.fine_amount.toFixed(2), f.paid_amount.toFixed(2), f.balance.toFixed(2)]);
+        const text = [headers.join("\t"), ...rows.map((r) => r.join("\t"))].join("\n");
         navigator.clipboard.writeText(text);
         toast({ title: t("copied_to_clipboard") });
-    }, [fees, toast, t]);
+    };
+
+    const exportToExcel = () => {
+        const rows = fees.map((f) => ({ Fees: `${f.name} (${f.code})`, "Due Date": f.due_date, Status: f.status, Amount: f.amount, Discount: f.discount, Fine: f.fine_amount, Paid: f.paid_amount, Balance: f.balance }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Fees");
+        XLSX.writeFile(wb, "student_fees.xlsx");
+    };
+
+    const exportToPDF = () => {
+        const doc = new jsPDF();
+        doc.text(t("student_fees_report"), 14, 15);
+        autoTable(doc, { head: [["Fees", "Due Date", "Status", `Amount (${cur})`, `Paid (${cur})`, `Balance (${cur})`]], body: fees.map((f) => [`${f.name} (${f.code})`, f.due_date, f.status, fmt(f.amount), fmt(f.paid_amount), fmt(f.balance)]), startY: 20 });
+        doc.save("student_fees.pdf");
+    };
+
+    const downloadPaymentInvoice = async (fee: FeeRow, payment?: Payment) => {
+        let currentSettings = printSettings;
+        if (!currentSettings) {
+            try {
+                const res = await api.get('system-setting/print-settings', { skipGlobalErrorHandler: true });
+                if (res.data?.success) {
+                    const list = Array.isArray(res.data.data?.data || res.data.data) ? (res.data.data?.data || res.data.data) : [];
+                    const invoiceSetting = list.find((s: { type?: string }) => s.type === 'Invoice');
+                    if (invoiceSetting) { setPrintSettings(invoiceSetting); currentSettings = invoiceSetting; }
+                }
+            } catch {}
+        }
+        const amt = payment ? payment.paid : (fee.paid_amount > 0 ? fee.paid_amount : fee.amount);
+        const refNo = payment?.note?.replace(/.*?Ref:\s*/i, '') || payment?.payment_id || '';
+        const trxId = payment?.payment_id || payment?.id || fee.id;
+        const payDate = payment?.date || (fee.payments?.[0]?.date) || format(new Date(), 'dd/MM/yyyy');
+        setInvoiceData({ id: payment?.id || fee.id, trx_id: trxId, reference_no: refNo, date: payDate, studentName: data?.student?.name || 'N/A', admissionNo: data?.student?.admission_no || 'N/A', detail: `${fee.name} (${fee.code || 'Fee'})`, amount: amt, status: fee.status === 'Paid' ? 'PAID' : (fee.paid_amount > 0 ? 'PARTIAL' : 'UNPAID') });
+        setTimeout(async () => {
+            const element = document.getElementById('modern-invoice-template-student');
+            if (element) {
+                try {
+                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, allowTaint: true });
+                    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                    const pdf = new jsPDF();
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`invoice_${payment?.id || fee.id}.pdf`);
+                    toast({ title: t("success"), description: t("invoice_downloaded") });
+                } finally { setInvoiceData(null); }
+            }
+        }, 500);
+    };
 
     if (loading) {
         return (
@@ -343,11 +369,12 @@ export default function StudentFeesPage() {
                                     <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("fine")} ({cur})</th>
                                     <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("paid")} ({cur})</th>
                                     <th className="px-2 py-3 text-right font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">{t("balance")} ({cur})</th>
+                                    <th className="px-2 py-3 text-center font-bold text-gray-700 dark:text-gray-200 w-14">{t("action")}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {fees.length === 0 ? (
-                                    <tr><td colSpan={12} className="text-center py-10 text-gray-400">{t("no_fees_assigned")}</td></tr>
+                                    <tr><td colSpan={13} className="text-center py-10 text-gray-400">{t("no_fees_assigned")}</td></tr>
                                 ) : (
                                     fees.map((fee, idx) => {
                                         const checked = selected.includes(fee.id);
@@ -358,6 +385,7 @@ export default function StudentFeesPage() {
                                                 checked={checked}
                                                 onToggle={() => toggleOne(fee.id)}
                                                 onPay={() => setPayingFee(fee)}
+                                                onDownloadInvoice={downloadPaymentInvoice}
                                                 delay={idx * 40}
                                             />
                                         );
@@ -378,6 +406,7 @@ export default function StudentFeesPage() {
                                         <td className="px-2 py-3 text-right text-gray-700 dark:text-gray-300">{cur}{fmt(totals.fineAmt)}</td>
                                         <td className="px-2 py-3 text-right text-green-600 dark:text-green-400">{cur}{fmt(totals.paid)}</td>
                                         <td className="px-2 py-3 text-right text-red-600 dark:text-red-400">{cur}{fmt(totals.balance)}</td>
+                                        <td></td>
                                     </tr>
                                 )}
                             </tbody>
@@ -392,17 +421,140 @@ export default function StudentFeesPage() {
                 onClose={() => setPayingFee(null)}
                 onSuccess={fetchFees}
             />
+            {/* Student Invoice Template (Hidden for PDF rendering) */}
+            {invoiceData && (
+                <div style={{ position: 'fixed', top: 0, left: 0, zIndex: -50, opacity: 0, pointerEvents: 'none' }}>
+                    <div id="modern-invoice-template-student" style={{ width: '800px', backgroundColor: '#ffffff', padding: '48px', fontFamily: 'sans-serif', color: '#1e293b', minHeight: '1122px', boxSizing: 'border-box' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                            {/* Left Column: Logo + School Name */}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '380px' }}>
+                                {printSettings?.header_image_base64 ? (
+                                    <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
+                                ) : settings?.print_logo_base64 ? (
+                                    <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
+                                ) : null}
+                                <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', lineHeight: '1.2', margin: 0, textAlign: 'left' }}>{settings?.school_name || "iSchool"}</h1>
+                            </div>
+                            
+                            {/* Right Column: Address and Others */}
+                            <div style={{ textAlign: 'right', fontSize: '13px', color: '#1e293b', lineHeight: '1.5' }}>
+                                {settings?.address && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Address:</span> {settings.address}</div>
+                                )}
+                                {settings?.phone && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Phone No.:</span> {settings.phone}</div>
+                                )}
+                                {settings?.email && (
+                                    <div><span style={{ fontWeight: 'bold' }}>Email:</span> {settings.email}</div>
+                                )}
+                                {(() => {
+                                    const siteUrl = (settings?.frontend_url || (typeof window !== 'undefined' ? window.location.origin : ''))
+                                        .replace(/^https?:\/\//, '')
+                                        .replace(/^api\./, '');
+                                    return siteUrl ? (
+                                        <div><span style={{ fontWeight: 'bold' }}>Website:</span> {siteUrl}</div>
+                                    ) : null;
+                                })()}
+                            </div>
+                        </div>
+
+                        {/* Centered full-width black bar */}
+                        <div style={{ backgroundColor: '#000000', color: '#ffffff', fontWeight: 'bold', textAlign: 'center', padding: '10px 0', letterSpacing: '0.2em', fontSize: '15px', marginBottom: '24px', textTransform: 'uppercase', borderRadius: '4px' }}>
+                            INVOICE
+                        </div>
+
+                        {/* Invoice Meta Row */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
+                            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div>
+                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Request ID:</span> <span style={{ color: '#4f46e5', fontWeight: '900' }}>#{invoiceData.id}</span>
+                                </div>
+                                <div>
+                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Ref No:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>{invoiceData.reference_no || 'N/A'}</span>
+                                </div>
+                                <div>
+                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Trx ID:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>#{invoiceData.trx_id || invoiceData.id}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Date:</span> <span style={{ fontWeight: '600' }}>{invoiceData.date}</span>
+                            </div>
+                        </div>
+
+                        {/* Billed To */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', backgroundColor: '#f8fafc', padding: '24px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Billed To</p>
+                                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>{invoiceData.studentName}</h3>
+                                <p style={{ fontSize: '14px', color: '#64748b', fontWeight: '500', margin: 0 }}>Admission No: {invoiceData.admissionNo}</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Status</p>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '32px', padding: '0 16px', fontSize: '12px', fontWeight: 'bold', borderRadius: '4px', backgroundColor: invoiceData.status === 'PAID' ? '#dcfce7' : '#fef3c7', color: invoiceData.status === 'PAID' ? '#15803d' : '#b45309' }}>
+                                    {invoiceData.status || 'PAID'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '32px' }}>
+                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
+                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
+                                            <p style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px', margin: 0 }}>{invoiceData.detail}</p>
+                                        </td>
+                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>
+                                            {cur}{fmt(invoiceData.amount)}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Total */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '64px' }}>
+                            <div style={{ width: '50%', backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #f1f5f9', boxSizing: 'border-box' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b' }}>Subtotal</span>
+                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{cur}{fmt(invoiceData.amount)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #e2e8f0', marginTop: '16px' }}>
+                                    <span style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>Total Paid</span>
+                                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#4f46e5' }}>{cur}{fmt(invoiceData.amount)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ textAlign: 'center', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
+                            {printSettings?.footer_content ? (
+                                <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
+                            ) : (
+                                <p style={{ fontSize: '14px', fontWeight: '500', color: '#64748b', margin: 0 }}>Thank you for your payment!</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; checked: boolean; onToggle: () => void; onPay: () => void; delay: number }) {
+function FeeRowGroup({ fee, checked, onToggle, onPay, onDownloadInvoice, delay }: { fee: FeeRow; checked: boolean; onToggle: () => void; onPay: () => void; onDownloadInvoice: (f: FeeRow, p?: Payment) => void; delay: number }) {
     const [visible, setVisible] = useState(false);
     const { t } = useTranslation();
 
     useEffect(() => {
-        const t = setTimeout(() => setVisible(true), delay);
-        return () => clearTimeout(t);
+        const timer = setTimeout(() => setVisible(true), delay);
+        return () => clearTimeout(timer);
     }, [delay]);
 
     return (
@@ -444,6 +596,19 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; ch
                 <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.fine_amount)}</td>
                 <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.paid_amount)}</td>
                 <td className="px-2 py-2.5 text-right font-medium text-gray-700 dark:text-gray-200">{fee.balance > 0 ? fmt(fee.balance) : "—"}</td>
+                <td className="px-2 py-2.5 text-center">
+                    {fee.paid_amount > 0 ? (
+                        <button
+                            onClick={() => onDownloadInvoice(fee)}
+                            className="p-1.5 rounded-lg text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all inline-flex items-center justify-center shadow-xs"
+                            title="Download Invoice"
+                        >
+                            <Download className="h-4 w-4" />
+                        </button>
+                    ) : (
+                        <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>
+                    )}
+                </td>
             </tr>
 
             {fee.payments.map((p) => (
@@ -452,13 +617,25 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; ch
                     <td className="px-2 py-1.5 pl-6"><ChevronRight className="h-3 w-3 inline text-gray-300 dark:text-gray-600" /></td>
                     <td colSpan={2}></td>
                     <td></td>
-                    <td className="px-2 py-1.5 text-[#6366F1] dark:text-indigo-400 font-medium">{p.payment_id}</td>
+                    <td className="px-2 py-1.5 text-[#6366F1] dark:text-indigo-400 font-medium">
+                        <div className="flex items-center gap-1.5">
+                            <span>{p.payment_id}</span>
+                            <button
+                                onClick={() => onDownloadInvoice(fee, p)}
+                                className="p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all inline-flex items-center justify-center"
+                                title="Download Receipt"
+                            >
+                                <Download className="h-3 w-3" />
+                            </button>
+                        </div>
+                    </td>
                     <td className="px-2 py-1.5">{p.mode}</td>
                     <td className="px-2 py-1.5 whitespace-nowrap">{p.date}</td>
                     <td className="px-2 py-1.5 text-right">{p.discount > 0 ? fmt(p.discount) : "0.00"}</td>
                     <td className="px-2 py-1.5 text-right">{p.fine > 0 ? fmt(p.fine) : "0.00"}</td>
                     <td className="px-2 py-1.5 text-right">{fmt(p.paid)}</td>
                     <td className="px-2 py-1.5 text-right">{fmt(p.balance)}</td>
+                    <td></td>
                 </tr>
             ))}
         </>
@@ -466,8 +643,6 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, delay }: { fee: FeeRow; ch
 }
 
 function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; open: boolean; onClose: () => void; onSuccess: () => void }) {
-    const { t } = useTranslation();
-    const { toast } = useToast();
     const { selectedCurrency } = useCurrency();
     const cur = selectedCurrency?.symbol || "$";
 
