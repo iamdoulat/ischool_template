@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import html2canvas from 'html2canvas-pro';
 import jsPDF from 'jspdf';
 import { AdmitCardTemplateLayout, AdmitCardData } from "@/components/examination/AdmitCardTemplateLayout";
+import { getImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -52,6 +53,10 @@ interface Student {
     gender: string;
     category: string;
     phone: string;
+    photo?: string;
+    student_photo?: string;
+    avatar?: string;
+    image?: string;
 }
 
 export default function PrintAdmitCardPage() {
@@ -196,7 +201,7 @@ export default function PrintAdmitCardPage() {
             backgroundColor: '#ffffff'
         });
         const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'pt', 'a4');
+        const pdf = new jsPDF('p', 'pt', 'a5');
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
         pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
@@ -298,7 +303,7 @@ export default function PrintAdmitCardPage() {
         setPrintProgress({ current: 0, total: selectedIds.length });
 
         try {
-            const pdf = new jsPDF('p', 'pt', 'a4'); // A4 size
+            const pdf = new jsPDF('p', 'pt', 'a5'); // A5 size
             let addedPages = 0;
 
             for (let i = 0; i < selectedIds.length; i++) {
@@ -531,11 +536,26 @@ export default function PrintAdmitCardPage() {
                                                 />
                                             </TableCell>
                                             <TableCell className="py-4 px-6 font-bold text-gray-700 bg-gray-50/30">{student.admission_no}</TableCell>
-                                            <TableCell className="py-4 px-6">
-                                                <span className="font-bold text-indigo-600 flex items-center gap-2">
-                                                    <UserCircle className="h-3.5 w-3.5 text-gray-300" />
-                                                    {student.name} {student.last_name}
-                                                </span>
+                                            <TableCell className="py-3 px-6">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="h-8 w-8 rounded-full overflow-hidden bg-indigo-50 border border-indigo-100 shrink-0 flex items-center justify-center text-indigo-600 font-bold text-xs shadow-2xs">
+                                                        {student.photo || student.student_photo || student.avatar || student.image ? (
+                                                            <img
+                                                                src={getImageUrl(student.photo || student.student_photo || student.avatar || student.image)}
+                                                                alt={student.name}
+                                                                className="h-full w-full object-cover"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLElement).style.display = 'none';
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <span>{student.name ? student.name.charAt(0).toUpperCase() : "S"}</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="font-bold text-gray-800 leading-tight">
+                                                        {student.name} {student.last_name}
+                                                    </span>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 font-medium">{student.father_name || "---"}</TableCell>
                                             <TableCell className="py-4 px-6 text-[11px] font-bold">

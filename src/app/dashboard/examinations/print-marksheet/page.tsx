@@ -15,6 +15,7 @@ import Link from "next/link";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
 import { MarksheetTemplateLayout, MarksheetData } from "@/components/examination/MarksheetTemplateLayout";
+import { getImageUrl } from "@/lib/image-url";
 import { useRef } from "react";
 
 interface Student {
@@ -27,6 +28,10 @@ interface Student {
     gender: string;
     category: string;
     phone: string;
+    photo?: string;
+    student_photo?: string;
+    avatar?: string;
+    image?: string;
 }
 
 interface Exam {
@@ -507,11 +512,26 @@ export default function PrintMarksheetPage() {
                                                 />
                                             </TableCell>
                                             <TableCell className="py-4 px-6 font-bold text-gray-700 bg-gray-50/30">{student.admission_no}</TableCell>
-                                            <TableCell className="py-4 px-6">
-                                                <Link href={`/dashboard/students/${student.id}`} className="font-bold text-indigo-600 hover:underline flex items-center gap-2">
-                                                    <UserCircle className="h-3.5 w-3.5 text-gray-300" />
-                                                    {student.name}
-                                                </Link>
+                                            <TableCell className="py-3 px-6">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="h-8 w-8 rounded-full overflow-hidden bg-indigo-50 border border-indigo-100 shrink-0 flex items-center justify-center text-indigo-600 font-bold text-xs shadow-2xs">
+                                                        {student.photo || student.student_photo || student.avatar || student.image ? (
+                                                            <img
+                                                                src={getImageUrl(student.photo || student.student_photo || student.avatar || student.image)}
+                                                                alt={student.name}
+                                                                className="h-full w-full object-cover"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLElement).style.display = 'none';
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <span>{student.name ? student.name.charAt(0).toUpperCase() : "S"}</span>
+                                                        )}
+                                                    </div>
+                                                    <Link href={`/dashboard/students/${student.id}`} className="font-bold text-indigo-600 hover:underline">
+                                                        {student.name}
+                                                    </Link>
+                                                </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 font-medium">{student.father_name || "---"}</TableCell>
                                             <TableCell className="py-4 px-6 text-[11px] font-bold">

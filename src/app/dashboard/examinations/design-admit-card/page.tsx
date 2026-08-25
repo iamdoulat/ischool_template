@@ -674,7 +674,7 @@ export default function DesignAdmitCardPage() {
                         <div className="p-4 md:p-8 bg-gray-100 min-h-[500px] overflow-x-auto">
                             {previewTemplate && (
                                 <div className="mx-auto w-max">
-                                    <div className="bg-white shadow-xl" style={{ width: previewTemplate?.name?.toLowerCase().includes('design 2') ? '1588px' : '794px' }}>
+                                    <div className="bg-white shadow-xl rounded-sm" style={{ width: '580px' }}>
                                         <AdmitCardTemplateLayout data={getMockAdmitCardData(previewTemplate)} />
                                     </div>
                                 </div>

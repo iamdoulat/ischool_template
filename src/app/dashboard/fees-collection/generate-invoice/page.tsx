@@ -564,7 +564,7 @@ function GenerateInvoiceContent() {
                                         <p><span className="font-bold text-slate-900" style={{ color: '#0f172a' }}>Address:</span> {settings.address || "House#68, Road#10, Sector,11"}</p>
                                         <p><span className="font-bold text-slate-900" style={{ color: '#0f172a' }}>Phone No.:</span> {settings.phone || "+8801851046320"}</p>
                                         <p><span className="font-bold text-slate-900" style={{ color: '#0f172a' }}>Email:</span> {settings.email || "smartideasbd24@gmail.com"}</p>
-                                        <p><span className="font-bold text-slate-900" style={{ color: '#0f172a' }}>Website:</span> {settings.base_url?.replace(/^https?:\/\//, '') || "api.ischool.mddoulat.com"}</p>
+                                        <p><span className="font-bold text-slate-900" style={{ color: '#0f172a' }}>Website:</span> {(settings.frontend_url || (typeof window !== 'undefined' ? window.location.host : '') || process.env.NEXT_PUBLIC_FRONTEND_URL || "localhost:3000")?.replace(/^https?:\/\//, '')}</p>
                                     </div>
                                 </div>
 

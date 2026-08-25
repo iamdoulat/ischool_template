@@ -436,9 +436,7 @@ export default function SearchIncomePage() {
                                 {settings?.email && (
                                     <div><span style={{ fontWeight: 'bold' }}>Email:</span> {settings.email}</div>
                                 )}
-                                {settings?.base_url && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Website:</span> {settings.base_url.replace(/^https?:\/\//, '')}</div>
-                                )}
+                                <div><span style={{ fontWeight: 'bold' }}>Website:</span> {(settings?.frontend_url || (typeof window !== 'undefined' ? window.location.host : '') || process.env.NEXT_PUBLIC_FRONTEND_URL || "localhost:3000")?.replace(/^https?:\/\//, '')}</div>
                             </div>
                         </div>
 

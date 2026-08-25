@@ -1188,36 +1188,44 @@ export default function ExamResultPage() {
 
             {/* Exam Result List / Tabulation Sheet Section */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <FileBarChart className="h-5 w-5" />
+                <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-amber-50/40 via-indigo-50/20 to-purple-50/20">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                            <FileBarChart className="h-4 w-4" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("tabulation_record")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredStudents.length} {t("students_found")}</p>
+                            <CardTitle className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                                {t("tabulation_record")}
+                                {filteredStudents.length > 0 && (
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                        {filteredStudents.length} {t("students")}
+                                    </span>
+                                )}
+                            </CardTitle>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{filteredStudents.length} {t("students_found")}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-gray-400">
-                        <Button variant="ghost" size="icon" onClick={handleCopy} title="Copy Tabulation Sheet" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer"><Copy className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={handleExportCSV} title="Export CSV / Excel" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer"><FileSpreadsheet className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={downloadTabulationPDF} title="Download Tabulation PDF" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer"><Download className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print Tabulation Record" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer"><Printer className="h-4 w-4" /></Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-                        <div className="relative w-full md:w-72">
-                            <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
+
+                    {/* Right Controls: Search Input + Export Toolbar */}
+                    <div className="flex items-center gap-2.5 self-end md:self-auto flex-wrap">
+                        <div className="relative w-48 sm:w-60">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                             <Input
                                 placeholder={t("search_by_student_name")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                className="pl-8.5 h-8.5 text-xs rounded-lg border-slate-200 bg-white focus:bg-white focus:ring-indigo-500 transition-all shadow-2xs"
                             />
                         </div>
+                        <div className="flex items-center gap-1 text-gray-400">
+                            <Button variant="outline" size="icon" onClick={handleCopy} title="Copy Tabulation Sheet" className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer shadow-2xs"><Copy className="h-3.5 w-3.5" /></Button>
+                            <Button variant="outline" size="icon" onClick={handleExportCSV} title="Export CSV / Excel" className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all cursor-pointer shadow-2xs"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                            <Button variant="outline" size="icon" onClick={downloadTabulationPDF} title="Download Tabulation PDF" className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all cursor-pointer shadow-2xs"><Download className="h-3.5 w-3.5" /></Button>
+                            <Button variant="outline" size="icon" onClick={() => window.print()} title="Print Tabulation Record" className="h-8 w-8 rounded-lg border-slate-200 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer shadow-2xs"><Printer className="h-3.5 w-3.5" /></Button>
+                        </div>
                     </div>
-
+                </CardHeader>
+                <CardContent className="p-4 md:p-5 space-y-3">
                     <div className="rounded-lg border border-gray-100 overflow-hidden shadow-sm overflow-x-auto custom-scrollbar">
                         <Table className="min-w-[1100px]">
                             <TableHeader className="!bg-[#f3f4f6] text-[10px] uppercase font-bold text-gray-600">
@@ -1443,6 +1451,15 @@ export default function ExamResultPage() {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {/* Table Footer: Showing entries on the left */}
+                    {filteredStudents.length > 0 && (
+                        <div className="flex items-center justify-between pt-1">
+                            <div className="text-xs text-slate-500 font-medium">
+                                {t("showing")} <strong className="text-slate-800">{filteredStudents.length}</strong> {t("of")} {filteredStudents.length} {t("entries")}
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 

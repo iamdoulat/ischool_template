@@ -128,7 +128,7 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
                                 <div><span className="font-bold">Address:</span> {settings?.address || "25 Kings Street, CA"}</div>
                                 <div><span className="font-bold">Phone No.:</span> {settings?.phone || "89562423934"}</div>
                                 <div><span className="font-bold">Email:</span> {settings?.email || "yourschool@gmail.com"}</div>
-                                <div><span className="font-bold">Website:</span> {settings?.base_url?.replace(/^https?:\/\//, '') || "www.yoursite.in"}</div>
+                                <div><span className="font-bold">Website:</span> {(settings?.frontend_url || (typeof window !== 'undefined' ? window.location.host : '') || process.env.NEXT_PUBLIC_FRONTEND_URL || "localhost:3000")?.replace(/^https?:\/\//, '')}</div>
                             </div>
                         </div>
                         <div className="text-center py-2 font-bold text-lg uppercase" style={{ backgroundColor: '#000000', color: '#ffffff' }}>
