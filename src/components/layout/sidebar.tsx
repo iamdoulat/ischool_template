@@ -810,14 +810,14 @@ export function Sidebar({
                             )}
                         </div>
                     ) : (
-                        <div className="flex items-center justify-center w-full px-1">
+                        <div className="flex items-center justify-start w-full px-1">
                             {settingsLoading ? (
                                 <div className={cn("h-8 w-36 animate-pulse rounded", settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white' ? "bg-gray-200 dark:bg-gray-700" : "bg-white/20")} />
                             ) : settings?.admin_logo && !logoError ? (
-                                <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} onError={() => setLogoError(true)} className="h-10 max-h-[44px] w-full max-w-[200px] object-contain" />
+                                <img src={getImageUrl(settings.admin_logo)} alt={settings.school_name} onError={() => setLogoError(true)} className="h-10 max-h-[44px] w-auto max-w-[200px] object-contain object-left" />
                             ) : (
                                 <span className={cn(
-                                    "font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300 truncate",
+                                    "font-extrabold text-lg tracking-tight uppercase animate-in fade-in slide-in-from-left-4 duration-300 truncate text-left",
                                     settings?.primary_color?.toLowerCase() === '#ffffff' || settings?.primary_color?.toLowerCase() === '#fff' || settings?.primary_color?.toLowerCase() === 'white'
                                         ? "text-gray-900 dark:text-white"
                                         : "text-white"
