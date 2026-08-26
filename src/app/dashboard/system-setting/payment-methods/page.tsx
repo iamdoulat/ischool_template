@@ -423,28 +423,34 @@ export default function PaymentMethodsPage() {
                                                     Seamless integration with automated instant checkout, webhooks & auto fee settlement for Bangladesh & global payment methods.
                                                 </p>
                                                 <div className="pt-1 flex flex-wrap items-center gap-2">
-                                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Quick Endpoint Preset:</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            handleFieldChange("uddoktapay", "api_url", "https://sandbox.uddoktapay.com/api/checkout-v2");
-                                                            handleFieldChange("uddoktapay", "mode", "sandbox");
-                                                        }}
-                                                        className="px-2 py-0.5 text-[10px] font-medium bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded text-gray-600 shadow-2xs transition-colors"
-                                                    >
-                                                        Sandbox (Test Mode)
-                                                    </button>
+                                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Quick Endpoint Presets:</span>
                                                     <button
                                                         type="button"
                                                         onClick={() => {
                                                             handleFieldChange("uddoktapay", "api_url", "https://pay.uddoktapay.com/api/checkout-v2");
                                                             handleFieldChange("uddoktapay", "mode", "live");
                                                         }}
-                                                        className="px-2 py-0.5 text-[10px] font-medium bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded text-gray-600 shadow-2xs transition-colors"
+                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
                                                     >
-                                                        Live Gateway URL
+                                                        Live (pay.uddoktapay.com)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleFieldChange("uddoktapay", "api_url", "https://sandbox.uddoktapay.com/api/checkout-v2");
+                                                            handleFieldChange("uddoktapay", "mode", "sandbox");
+                                                            if (!currentData.config?.api_key || currentData.config.api_key.trim() === "") {
+                                                                handleFieldChange("uddoktapay", "api_key", "982d381360a69d419689740d9f2e26ce36fb7a50");
+                                                            }
+                                                        }}
+                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                                                    >
+                                                        Sandbox (Test Mode)
                                                     </button>
                                                 </div>
+                                                <p className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-800">
+                                                    <strong>Note:</strong> In live mode, if you have a branded UddoktaPay merchant panel, enter your panel API URL (e.g. <code>https://yourpanel.uddoktapay.com/api/checkout-v2</code>) and your Live API Key from your merchant dashboard.
+                                                </p>
                                             </div>
                                         )}
 
