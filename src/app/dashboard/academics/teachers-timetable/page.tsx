@@ -266,10 +266,15 @@ export default function TeachersTimetablePage() {
     return (
         <div className="space-y-4">
             {/* Header/Title */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100 no-print">
-                <div className="flex items-center gap-2 text-[#6366f1]">
-                    <Clock className="h-6 w-6" />
-                    <h1 className="text-xl font-medium text-gray-800">{t("teacher_time_table")}</h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Clock className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">{t("teachers_timetable")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("view_weekly_teacher_period_schedules") || "Weekly class period routine and timetable by teacher"}</p>
+                    </div>
                 </div>
             </div>
 

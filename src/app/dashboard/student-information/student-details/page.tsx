@@ -23,7 +23,12 @@ import {
     BadgeCheck,
     X,
     GraduationCap,
-    LogIn
+    LogIn,
+    Copy,
+    FileSpreadsheet,
+    FileText,
+    Printer,
+    Columns3
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -46,6 +51,7 @@ import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
 import { downloadAdmissionFormPdf } from "@/lib/pdf-utils";
+import { exportData } from "@/lib/export-utils";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useCurrency } from "@/components/providers/currency-provider";
 
@@ -133,6 +139,7 @@ export default function StudentDetailsPage() {
         category: searchParams.get("category") || "",
     });
 
+    const [perPage, setPerPage] = useState<number>(50);
     const [pagination, setPagination] = useState({
         current_page: 1,
         last_page: 1,
@@ -172,6 +179,58 @@ export default function StudentDetailsPage() {
             tt.error(err?.response?.data?.message || "failed_to_impersonate_student");
         } finally {
             setImpersonatingId(null);
+        }
+    };
+
+    const handleExport = (type: "copy" | "excel" | "pdf" | "print") => {
+        if (!students || students.length === 0) {
+            tt.error("no_data_to_export" || "No data to export");
+            return;
+        }
+        const columns = [
+            "#",
+            "Admission No",
+            "Student Name",
+            "Class",
+            "Section",
+            "Roll No",
+            "Father Name",
+            "Date of Birth",
+            "Gender",
+            "Category",
+            "Mobile Number",
+            "Status"
+        ];
+        const rows = students.map((s, idx) => [
+            ((pagination.current_page - 1) * perPage) + idx + 1,
+            s.admission_no || "-",
+            `${s.name || ""} ${s.last_name || ""}`.trim() || "-",
+            s.school_class?.name || "-",
+            s.section?.name || "-",
+            s.roll_no || "-",
+            s.father_name || "-",
+            formatDate(s.dob),
+            s.gender || "-",
+            s.student_category?.category_name || s.category || "-",
+            s.phone || "-",
+            s.active ? "Active" : "Disabled"
+        ]);
+
+        exportData(type, {
+            filename: `student-details-${new Date().toISOString().split("T")[0]}`,
+            title: "Student Details List",
+            columns,
+            rows,
+        });
+        if (type === "copy") {
+            tt.success("copied_to_clipboard" || "Copied to clipboard!");
+        }
+    };
+
+    const handlePerPageChange = (newLimit: number) => {
+        setPerPage(newLimit);
+        if (hasSearched) {
+            handleSearch(1, newLimit);
         }
     };
 
@@ -305,9 +364,9 @@ export default function StudentDetailsPage() {
 
             const routeName = (fullData.route_title && !/^\d+$/.test(String(fullData.route_title).trim())) ? fullData.route_title :
                 (fullData.transport_route_name && !/^\d+$/.test(String(fullData.transport_route_name).trim())) ? fullData.transport_route_name :
-                fullData.route?.title || fullData.route?.route_title || fullData.route?.name ||
-                fullData.transport_route?.title || fullData.transport_route?.route_title || fullData.transport_route?.name ||
-                routeObj?.title || routeObj?.route_title || routeObj?.name;
+                    fullData.route?.title || fullData.route?.route_title || fullData.route?.name ||
+                    fullData.transport_route?.title || fullData.transport_route?.route_title || fullData.transport_route?.name ||
+                    routeObj?.title || routeObj?.route_title || routeObj?.name;
 
             const pickupId = fullData.transport_pickup_point_id || fullData.pickup_point_id || fullData.route_pickup_point_id || studentAssignment?.pickup_point_id || studentAssignment?.route_pickup_point_id;
             const pickupObj = Array.isArray(pickupsList) ? pickupsList.find((p: any) => p.id?.toString() === pickupId?.toString()) : null;
@@ -333,43 +392,38 @@ export default function StudentDetailsPage() {
 
             const roomNo = (fullData.room_number && !/^\d+$/.test(String(fullData.room_number).trim())) ? String(fullData.room_number) :
                 (fullData.room_no && !/^\d+$/.test(String(fullData.room_no).trim())) ? String(fullData.room_no) :
-                fullData.room?.room_number || fullData.room?.room_no || fullData.room?.name ||
-                fullData.hostel_room?.room_number || fullData.hostel_room?.room_no || fullData.hostel_room?.name ||
-                roomObj?.room_number || roomObj?.room_no || roomObj?.name;
+                    fullData.room?.room_number || fullData.room?.room_no || fullData.room?.name ||
+                    fullData.hostel_room?.room_number || fullData.hostel_room?.room_no || fullData.hostel_room?.name ||
+                    roomObj?.room_number || roomObj?.room_no || roomObj?.name;
 
             const houseId = fullData.house || fullData.student_house_id || fullData.house_id;
             const houseObj = Array.isArray(housesList) ? housesList.find((h: any) => h.id?.toString() === houseId?.toString() || h.name === houseId || h.house_name === houseId) : null;
 
             const houseName = (fullData.house_name && !/^\d+$/.test(String(fullData.house_name).trim())) ? fullData.house_name :
-                fullData.student_house?.house_name || fullData.student_house?.name ||
-                houseObj?.house_name || houseObj?.name || houseObj?.title ||
-                (typeof fullData.house === "string" && !/^\d+$/.test(fullData.house.trim()) ? fullData.house : undefined);
+                fullData.student_house?.name || fullData.student_house?.house_name ||
+                houseObj?.house_name || houseObj?.name || (houseId && !/^\d+$/.test(String(houseId).trim()) ? houseId : "");
 
-            const className = fullData.school_class?.name || student.school_class?.name || "";
-            const sectionName = fullData.section?.name || student.section?.name || "";
-            const fullName = `${fullData.name || ""} ${fullData.last_name || ""}`.trim();
-            const photoUrl = getImageUrl(fullData.avatar);
+            const className = fullData.school_class?.name || fullData.class_name || student.school_class?.name || "";
+            const sectionName = fullData.section?.name || fullData.section_name || student.section?.name || "";
+
+            const rawPhoto = fullData.avatar || fullData.student_photo || fullData.photo || fullData.image || student.avatar;
+            const photoUrl = rawPhoto ? getImageUrl(rawPhoto) : undefined;
+
+            const rawFatherPhoto = fullData.father_photo || fullData.father_image || fullData.father_pic;
+            const rawMotherPhoto = fullData.mother_photo || fullData.mother_image || fullData.mother_pic;
+            const rawGuardianPhoto = fullData.guardian_photo || fullData.guardian_image || fullData.guardian_pic;
 
             const parentPhotos = {
-                mother: getImageUrl(fullData.mother_photo),
-                father: getImageUrl(fullData.father_photo),
-                guardian: getImageUrl(fullData.guardian_photo)
+                father_photo: rawFatherPhoto ? getImageUrl(rawFatherPhoto) : undefined,
+                mother_photo: rawMotherPhoto ? getImageUrl(rawMotherPhoto) : undefined,
+                guardian_photo: rawGuardianPhoto ? getImageUrl(rawGuardianPhoto) : undefined,
             };
 
-            const afData = admissionFormRes?.data?.data;
-            const admissionFormConfig = afData ? {
-                documents: Array.isArray(afData.documents) ? afData.documents : [],
-                fee_policy: afData.settings?.fee_policy || "",
-                office_use_only: afData.settings?.office_use_only || "",
-                terms_conditions: afData.settings?.terms_conditions || "",
-                declaration: afData.settings?.declaration || "",
-                pre_documents_note: afData.settings?.pre_documents_note || "",
-            } : undefined;
+            const admissionFormConfig = admissionFormRes?.data?.data || null;
 
             await downloadAdmissionFormPdf(
                 {
                     ...fullData,
-                    full_name: fullName,
                     route_title: routeName,
                     pickup_point_name: pickupName,
                     hostel_name: hostelName,
@@ -401,11 +455,12 @@ export default function StudentDetailsPage() {
         }
     };
 
-    const handleSearch = async (page = 1) => {
+    const handleSearch = async (page = 1, customLimit?: number) => {
         setHasSearched(true);
         setLoading(true);
+        const limit = customLimit || perPage;
         try {
-            const params: Record<string, any> = { limit: 50, page };
+            const params: Record<string, any> = { limit, page };
             if (filters.school_class_id) params.school_class_id = filters.school_class_id;
             if (filters.section_id) params.section_id = filters.section_id;
             if (filters.status) params.status = filters.status;
@@ -435,13 +490,13 @@ export default function StudentDetailsPage() {
     };
 
     const tableHeaders = [
-        t("avatar"), t("admission_no"), t("student_name"), t("roll_no"), t("class"),
+        "#", t("avatar"), t("admission_no"), t("student_name"), t("roll_no"), t("class"),
         t("father_name"), t("date_of_birth"), t("gender"), t("category"),
         t("mobile_number"), t("status"), t("action")
     ];
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen animate-in fade-in duration-500">
             {/* Select Criteria Card */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
@@ -456,8 +511,8 @@ export default function StudentDetailsPage() {
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {/* Class */}
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                                 {t("class")}
                             </label>
                             <div className="relative">
@@ -467,124 +522,123 @@ export default function StudentDetailsPage() {
                                         const val = e.target.value;
                                         setFilters(prev => ({ ...prev, school_class_id: val, section_id: "" }));
                                     }}
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">{t("select_class")}</option>
-                                    {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    <option value="" className="text-gray-400">{t("select_class")}</option>
+                                    {classes.map(c => <option key={c.id} value={c.id} className="text-gray-900 font-medium">{c.name}</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
                         {/* Section */}
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                                 {t("section")}
                             </label>
                             <div className="relative">
                                 <select
                                     value={filters.section_id}
                                     onChange={(e) => setFilters(prev => ({ ...prev, section_id: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">{t("select_section")}</option>
-                                    {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                    <option value="" className="text-gray-400">{t("select_section")}</option>
+                                    {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id} className="text-gray-900 font-medium">{s.name}</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
                         {/* Category */}
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                                 {t("category")}
                             </label>
                             <div className="relative">
                                 <select
                                     value={filters.category}
                                     onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">{t("select_category") || "Select Category"}</option>
+                                    <option value="" className="text-gray-400">{t("select_category") || "Select Category"}</option>
                                     {categories.map(cat => (
-                                        <option key={cat.id} value={cat.category_name || cat.name || cat.id.toString()}>
+                                        <option key={cat.id} value={cat.category_name || cat.name || cat.id.toString()} className="text-gray-900 font-medium">
                                             {cat.category_name || cat.name}
                                         </option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
                         {/* Gender */}
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                                 {t("gender")}
                             </label>
                             <div className="relative">
                                 <select
                                     value={filters.gender}
                                     onChange={(e) => setFilters(prev => ({ ...prev, gender: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">{t("select_gender") || "Select Gender"}</option>
-                                    <option value="Male">{t("male") || "Male"}</option>
-                                    <option value="Female">{t("female") || "Female"}</option>
-                                    <option value="Other">{t("other") || "Other"}</option>
+                                    <option value="" className="text-gray-400">{t("select_gender") || "Select Gender"}</option>
+                                    <option value="Male" className="text-gray-900 font-medium">{t("male") || "Male"}</option>
+                                    <option value="Female" className="text-gray-900 font-medium">{t("female") || "Female"}</option>
+                                    <option value="Other" className="text-gray-900 font-medium">{t("other") || "Other"}</option>
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
                         {/* Status */}
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                                 {t("status")}
                             </label>
                             <div className="relative">
                                 <select
                                     value={filters.status}
                                     onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="">{t("select_status")}</option>
-                                    <option value="active">{t("active")}</option>
-                                    <option value="disabled">{t("disabled")}</option>
+                                    <option value="" className="text-gray-400">{t("select_status")}</option>
+                                    <option value="active" className="text-gray-900 font-medium">{t("active")}</option>
+                                    <option value="disabled" className="text-gray-900 font-medium">{t("disabled")}</option>
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
                         {/* Search By Keyword */}
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                                 {t("search_by_keyword")}
                             </label>
                             <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-indigo-600 transition-colors" />
                                 <Input
                                     placeholder={t("search_by_student_name_roll_number_etc")}
                                     value={filters.search}
                                     onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                                    className="h-11 pl-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all text-xs"
+                                    className="h-11 pl-10 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 font-semibold placeholder:text-gray-400 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:ring-indigo-500 transition-all text-xs"
                                     onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-muted/30">
+                    <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
                         <Button
                             variant="outline"
-                            className="h-10 px-6 rounded-lg border-muted/50 hover:bg-muted/50 text-xs"
+                            className="h-9 px-5 rounded-full border-gray-200 hover:bg-gray-50 text-xs font-bold uppercase tracking-wider"
                             onClick={handleReset}
                             disabled={loading}
                         >
                             {t("reset")}
                         </Button>
                         <Button
-                            variant="gradient"
-                            className="h-10 px-8 text-xs"
+                            className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase tracking-wider shadow-md cursor-pointer"
                             onClick={() => handleSearch(1)}
                             disabled={loading}
                         >
@@ -597,60 +651,129 @@ export default function StudentDetailsPage() {
 
             {/* Results Table Card */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Users className="h-5 w-5" />
-                    </span>
-                    <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_details")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                            {!hasSearched
-                                ? (t("search_by_class_and_section") || "Search by Class & Section to view records")
-                                : `${pagination.total} ${pagination.total === 1 ? t("student_found") : t("students_found")}`}
-                        </p>
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Users className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_details")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {!hasSearched
+                                    ? (t("search_by_class_and_section") || "Search by Class & Section to view records")
+                                    : `${pagination.total} ${pagination.total === 1 ? t("student_found") : t("students_found")}`}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Action Toolbar */}
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                        {/* Row Selection Dropdown */}
+                        <div className="relative">
+                            <select
+                                value={perPage}
+                                onChange={(e) => handlePerPageChange(Number(e.target.value))}
+                                className="h-8 pl-3 pr-7 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white/90 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer"
+                            >
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                                <option value={500}>500</option>
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                        </div>
+
+                        {/* Export & Action Icon Buttons */}
+                        <div className="flex items-center gap-1 bg-white/60 dark:bg-gray-800/60 p-1 rounded-lg border border-gray-200/60 dark:border-gray-700">
+                            <Button
+                                onClick={() => handleExport("copy")}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
+                                title="Copy to clipboard"
+                            >
+                                <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                onClick={() => handleExport("excel")}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-emerald-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
+                                title="Export to Excel (.xlsx)"
+                            >
+                                <FileSpreadsheet className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                onClick={() => handleExport("pdf")}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-rose-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
+                                title="Export to PDF"
+                            >
+                                <FileText className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                onClick={() => handleExport("print")}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
+                                title="Print Table"
+                            >
+                                <Printer className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                onClick={() => setViewMode(prev => prev === "list" ? "details" : "list")}
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
+                                title={viewMode === "list" ? "Switch to Details View" : "Switch to List View"}
+                            >
+                                <Columns3 className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
 
-                <div className="border-b border-muted/50">
-                    <div className="flex px-2">
+                <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50/40">
+                    <div className="flex px-4">
                         <button
                             onClick={() => setViewMode("list")}
                             className={cn(
-                                "flex items-center gap-2 px-6 py-4 text-sm font-bold transition-all relative",
-                                viewMode === "list" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                                "flex items-center gap-2 px-5 py-3.5 text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer",
+                                viewMode === "list" ? "text-indigo-600 dark:text-indigo-400" : "text-gray-500 hover:text-gray-800"
                             )}
                         >
                             <LayoutList className="h-4 w-4" />
                             {t("list_view")}
                             {viewMode === "list" && (
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(var(--primary),0.5)]" />
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full shadow-sm" />
                             )}
                         </button>
                         <button
                             onClick={() => setViewMode("details")}
                             className={cn(
-                                "flex items-center gap-2 px-6 py-4 text-sm font-bold transition-all relative",
-                                viewMode === "details" ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                                "flex items-center gap-2 px-5 py-3.5 text-xs font-bold uppercase tracking-wider transition-all relative cursor-pointer",
+                                viewMode === "details" ? "text-indigo-600 dark:text-indigo-400" : "text-gray-500 hover:text-gray-800"
                             )}
                         >
                             <LayoutGrid className="h-4 w-4" />
                             {t("details_view")}
                             {viewMode === "details" && (
-                                <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-[0_-2px_8px_rgba(var(--primary),0.5)]" />
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full shadow-sm" />
                             )}
                         </button>
                     </div>
                 </div>
 
-                <div className="p-0 min-h-[400px]">
+                <div className="p-0 min-h-[380px]">
                     {!hasSearched ? (
                         /* Initial Prompt Before Search */
-                        <div className="py-24 flex flex-col items-center justify-center text-center space-y-4 px-4">
+                        <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 px-4">
                             <div className="p-5 bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 shadow-sm">
                                 <FolderSearch className="h-12 w-12 text-[#6366F1]" />
                             </div>
                             <div className="space-y-1.5 max-w-md">
-                                <h3 className="font-bold text-lg text-slate-800 dark:text-gray-100">
+                                <h3 className="font-bold text-base text-gray-800 dark:text-gray-100">
                                     {t("search_by_class_and_section") || "Search by Class & Section"}
                                 </h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -658,8 +781,7 @@ export default function StudentDetailsPage() {
                                 </p>
                             </div>
                             <Button
-                                variant="gradient"
-                                className="h-10 px-8 text-xs font-semibold shadow-sm mt-2"
+                                className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase tracking-wider shadow-md mt-2 cursor-pointer"
                                 onClick={() => handleSearch(1)}
                             >
                                 <Search className="h-4 w-4 mr-1.5" />
@@ -671,16 +793,16 @@ export default function StudentDetailsPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-muted/30">
+                                        <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                                             {tableHeaders.map((header) => (
-                                                <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
+                                                <th key={header} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 whitespace-nowrap">
                                                     {header}
                                                 </th>
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <TableSkeleton rows={8} cols={12} />
+                                        <TableSkeleton rows={8} cols={13} />
                                     </tbody>
                                 </table>
                             </div>
@@ -694,100 +816,120 @@ export default function StudentDetailsPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-muted/30">
+                                        <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                                             {tableHeaders.map((header) => (
-                                                <th key={header} className="px-6 py-5 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap">
+                                                <th key={header} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 whitespace-nowrap">
                                                     {header}
                                                 </th>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        {students.map((student) => (
-                                            <tr key={student.id} className="group hover:bg-muted/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <Avatar className="h-10 w-10 border border-muted-foreground/20 shadow-sm">
+                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                        {students.map((student, idx) => (
+                                            <tr key={student.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
+                                                <td className="px-4 py-3.5 text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                    {((pagination.current_page - 1) * perPage) + idx + 1}
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    <Avatar className="h-9 w-9 border border-gray-200 shadow-2xs">
                                                         <AvatarImage src={getImageUrl(student.avatar)} />
-                                                        <AvatarFallback className="bg-primary/5 text-primary text-[10px] font-black">
-                                                            {student.name.substring(0, 2).toUpperCase()}
+                                                        <AvatarFallback className="bg-indigo-50 text-indigo-700 text-[10px] font-black">
+                                                            {student.name ? student.name.substring(0, 2).toUpperCase() : "ST"}
                                                         </AvatarFallback>
                                                     </Avatar>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.admission_no}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-primary">{student.name} {student.last_name}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.roll_no || "-"}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">
-                                                    {student.school_class?.name} ({student.section?.name})
+                                                <td className="px-4 py-3.5">
+                                                    <span className="font-mono text-xs font-bold text-indigo-600 bg-indigo-50/80 dark:bg-indigo-950/50 dark:text-indigo-300 px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-900">
+                                                        {student.admission_no}
+                                                    </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.father_name || "-"}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{formatDate(student.dob)}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.gender || "-"}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.student_category?.category_name || student.category || "-"}</td>
-                                                <td className="px-6 py-4 text-sm font-bold text-foreground/80">{student.phone || "-"}</td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-3.5">
+                                                    <span
+                                                        onClick={() => {
+                                                            setSelectedStudent(student);
+                                                            setViewDialogOpen(true);
+                                                        }}
+                                                        className="text-xs font-bold text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition-colors cursor-pointer"
+                                                    >
+                                                        {student.name} {student.last_name}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-900 dark:text-gray-100">{student.roll_no || "-"}</td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
+                                                    {student.school_class?.name} {student.section?.name ? `(${student.section?.name})` : ""}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.father_name || "-"}</td>
+                                                <td className="px-4 py-3.5 text-xs font-medium text-gray-700 dark:text-gray-300">{formatDate(student.dob)}</td>
+                                                <td className="px-4 py-3.5 text-xs font-medium text-gray-700 dark:text-gray-300">{student.gender || "-"}</td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.student_category?.category_name || student.category || "-"}</td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.phone || "-"}</td>
+                                                <td className="px-4 py-3.5">
                                                     <Badge className={cn(
-                                                        "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                                        "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
                                                         student.active
-                                                            ? "bg-green-500/10 text-green-600 border-green-500/20"
-                                                            : "bg-red-500/10 text-red-600 border-red-500/20"
+                                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300"
+                                                            : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300"
                                                     )} variant="outline">
                                                         {student.active ? t("active") : t("disabled")}
                                                     </Badge>
                                                 </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
+                                                <td className="px-4 py-3.5">
+                                                    <div className="flex items-center gap-1.5">
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-lg bg-purple-600 border-purple-600 text-white hover:bg-purple-700 transition-all shadow-sm shrink-0"
+                                                            className="h-8 w-12 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 border-none text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md shrink-0 cursor-pointer active:scale-95"
                                                             onClick={() => handleImpersonate(student)}
                                                             disabled={impersonatingId === student.id}
                                                             title="Login immediately as Student (Impersonate)"
                                                         >
                                                             {impersonatingId === student.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                             ) : (
-                                                                <LogIn className="h-4 w-4" />
+                                                                <LogIn className="h-3.5 w-3.5" />
                                                             )}
                                                         </Button>
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-lg bg-indigo-500 border-indigo-500 text-white hover:bg-indigo-600 transition-all shadow-sm"
+                                                            className="h-8 w-12 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 border-none text-white hover:from-blue-600 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-95"
                                                             onClick={() => {
                                                                 setSelectedStudent(student);
                                                                 setViewDialogOpen(true);
                                                             }}
+                                                            title="View Student"
                                                         >
-                                                            <Eye className="h-4 w-4" />
+                                                            <Eye className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-lg bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-sm"
+                                                            className="h-8 w-12 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 border-none text-white hover:from-emerald-600 hover:to-teal-700 transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-95"
                                                             onClick={() => handleDownloadPdf(student)}
                                                             title="Download Admission Form PDF"
                                                         >
-                                                            <Download className="h-4 w-4" />
+                                                            <Download className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-lg bg-amber-500 border-amber-500 text-white hover:bg-amber-600 transition-all shadow-sm"
+                                                            className="h-8 w-12 rounded-lg bg-gradient-to-r from-[#FF9800] to-amber-500 border-none text-white hover:from-orange-500 hover:to-amber-600 transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-95"
                                                             onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
+                                                            title="Edit Student"
                                                         >
-                                                            <Pencil className="h-4 w-4" />
+                                                            <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
-                                                            className="h-8 w-8 rounded-lg bg-red-500 border-red-500 text-white hover:bg-red-600 transition-all shadow-sm"
+                                                            className="h-8 w-12 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 border-none text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-95"
                                                             onClick={() => {
                                                                 setSelectedStudent(student);
                                                                 setDeleteDialogOpen(true);
                                                             }}
+                                                            title="Delete Student"
                                                         >
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
                                                 </td>
@@ -799,118 +941,145 @@ export default function StudentDetailsPage() {
                         ) : (
                             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {students.map((student) => (
-                                    <div key={student.id} className="group relative bg-card rounded-lg border border-muted/50 p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500 overflow-hidden">
-                                        <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2 z-10">
+                                    <div
+                                        key={student.id}
+                                        className="group relative bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col justify-between"
+                                    >
+                                        {/* Card Top Banner with Status */}
+                                        <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850 px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
+                                            <span className="font-mono text-[11px] font-bold text-indigo-600 bg-white/80 dark:bg-gray-800/80 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900 shadow-2xs">
+                                                {student.admission_no}
+                                            </span>
+                                            <Badge className={cn(
+                                                "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-2xs",
+                                                student.active
+                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300"
+                                                    : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300"
+                                            )}>
+                                                {student.active ? t("active") : t("disabled")}
+                                            </Badge>
+                                        </div>
+
+                                        {/* Card Body */}
+                                        <div className="p-5 flex flex-col items-center text-center space-y-3.5 flex-1">
+                                            <div className="relative cursor-pointer" onClick={() => { setSelectedStudent(student); setViewDialogOpen(true); }}>
+                                                <Avatar className="h-20 w-20 rounded-2xl border-2 border-white dark:border-gray-800 shadow-md ring-2 ring-indigo-100 dark:ring-indigo-900/50">
+                                                    <AvatarImage src={getImageUrl(student.avatar)} className="object-cover" />
+                                                    <AvatarFallback className="bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 text-indigo-700 text-xl font-black">
+                                                        {student.name ? student.name.substring(0, 2).toUpperCase() : "ST"}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </div>
+
+                                            <div className="space-y-0.5 w-full">
+                                                <h3
+                                                    onClick={() => { setSelectedStudent(student); setViewDialogOpen(true); }}
+                                                    className="font-bold text-sm tracking-tight text-gray-900 dark:text-gray-100 line-clamp-1 hover:text-indigo-600 transition-colors cursor-pointer"
+                                                >
+                                                    {student.name} {student.last_name}
+                                                </h3>
+                                                <p className="text-[11px] font-medium text-gray-500">
+                                                    {student.gender || "-"} {student.dob ? `• ${formatDate(student.dob)}` : ""}
+                                                </p>
+                                            </div>
+
+                                            {/* Class & Roll No Badges with Luxury Soft Gradients */}
+                                            <div className="w-full grid grid-cols-2 gap-2">
+                                                <div className="bg-gradient-to-br from-indigo-50/90 via-indigo-50/40 to-purple-50/60 dark:from-indigo-950/40 dark:to-purple-950/30 p-2.5 rounded-xl text-center border border-indigo-100/80 dark:border-indigo-900/50 shadow-2xs">
+                                                    <p className="text-[10px] font-bold text-indigo-600/90 dark:text-indigo-400 uppercase tracking-wider">{t("class")}</p>
+                                                    <p className="text-xs font-bold text-gray-900 dark:text-gray-100 line-clamp-1 mt-0.5">
+                                                        {student.school_class?.name || "-"} {student.section?.name ? `(${student.section?.name})` : ""}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-amber-50/60 dark:from-amber-950/40 dark:to-orange-950/30 p-2.5 rounded-xl text-center border border-amber-100/80 dark:border-amber-900/50 shadow-2xs">
+                                                    <p className="text-[10px] font-bold text-amber-600/90 dark:text-amber-400 uppercase tracking-wider">{t("roll_no")}</p>
+                                                    <p className="text-xs font-bold text-gray-900 dark:text-gray-100 line-clamp-1 mt-0.5">
+                                                        {student.roll_no || "-"}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Details Rows */}
+                                            <div className="w-full space-y-2 pt-1 border-t border-gray-100 dark:border-gray-800 text-left text-[11.5px]">
+                                                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                                    <User className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                                    <span className="truncate text-gray-600 dark:text-gray-400 font-medium">
+                                                        {t("father_name")}: <strong className="text-gray-900 dark:text-gray-100 font-bold">{student.father_name || "-"}</strong>
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                                    <Phone className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                                    <span className="truncate text-gray-600 dark:text-gray-400 font-medium">
+                                                        {t("phone")}: <strong className="text-gray-900 dark:text-gray-100 font-bold">{student.phone || "-"}</strong>
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                                                    <BadgeCheck className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                                    <span className="truncate text-gray-600 dark:text-gray-400 font-medium">
+                                                        {t("category")}: <strong className="text-gray-900 dark:text-gray-100 font-bold">{student.student_category?.category_name || student.category || "-"}</strong>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Card Footer Action Buttons with Vibrant Gradient Colors */}
+                                        <div className="bg-gray-50/80 dark:bg-gray-800/80 px-4 py-2.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-1.5">
                                             <Button
                                                 variant="outline"
                                                 size="icon"
-                                                className="h-8 w-8 rounded-full bg-purple-600 border-purple-600 text-white hover:bg-purple-700 transition-all shadow-lg"
+                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 border-none text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
                                                 onClick={() => handleImpersonate(student)}
                                                 disabled={impersonatingId === student.id}
-                                                title="Login immediately as Student (Impersonate)"
+                                                title="Login as Student"
                                             >
                                                 {impersonatingId === student.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                 ) : (
-                                                    <LogIn className="h-4 w-4" />
+                                                    <LogIn className="h-3.5 w-3.5" />
                                                 )}
                                             </Button>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
-                                                className="h-8 w-8 rounded-full bg-indigo-500 border-indigo-500 text-white hover:bg-indigo-600 transition-all shadow-lg"
+                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 border-none text-white hover:from-blue-600 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
                                                 onClick={() => {
                                                     setSelectedStudent(student);
                                                     setViewDialogOpen(true);
                                                 }}
+                                                title="View Details"
                                             >
-                                                <Eye className="h-4 w-4" />
+                                                <Eye className="h-3.5 w-3.5" />
                                             </Button>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
-                                                className="h-8 w-8 rounded-full bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-lg"
+                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 border-none text-white hover:from-emerald-600 hover:to-teal-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
                                                 onClick={() => handleDownloadPdf(student)}
-                                                title="Download Admission Form PDF"
+                                                title="Download PDF"
                                             >
-                                                <Download className="h-4 w-4" />
+                                                <Download className="h-3.5 w-3.5" />
                                             </Button>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
-                                                className="h-8 w-8 rounded-full bg-amber-500 border-amber-500 text-white hover:bg-amber-600 transition-all shadow-lg"
+                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-amber-500 border-none text-white hover:from-orange-500 hover:to-amber-600 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
                                                 onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
+                                                title="Edit"
                                             >
-                                                <Pencil className="h-4 w-4" />
+                                                <Pencil className="h-3.5 w-3.5" />
                                             </Button>
                                             <Button
                                                 variant="outline"
                                                 size="icon"
-                                                className="h-8 w-8 rounded-full bg-red-500 border-red-500 text-white hover:bg-red-600 transition-all shadow-lg"
+                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 border-none text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
                                                 onClick={() => {
                                                     setSelectedStudent(student);
                                                     setDeleteDialogOpen(true);
                                                 }}
+                                                title="Delete"
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
-                                        </div>
-
-                                        <div className="flex flex-col items-center text-center space-y-4">
-                                            <div className="relative">
-                                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-lg blur opacity-20 group-hover:opacity-40 transition duration-500" />
-                                                <Avatar className="h-24 w-24 rounded-lg border-2 border-white shadow-md relative">
-                                                    <AvatarImage src={getImageUrl(student.avatar)} />
-                                                    <AvatarFallback className="bg-primary/5 text-primary text-2xl font-black">
-                                                        {student.name.substring(0, 2).toUpperCase()}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <h3 className="font-black text-lg tracking-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-                                                    {student.name} {student.last_name}
-                                                </h3>
-                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted/50 px-3 py-1 rounded-full inline-block">
-                                                    {t("adm_label")}: {student.admission_no}
-                                                </p>
-                                            </div>
-
-                                            <div className="w-full pt-4 grid grid-cols-2 gap-3">
-                                                <div className="bg-muted/30 p-2 rounded-lg text-center">
-                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">{t("class")}</p>
-                                                    <p className="text-xs font-bold text-foreground line-clamp-1">{student.school_class?.name}</p>
-                                                </div>
-                                                <div className="bg-muted/30 p-2 rounded-lg text-center">
-                                                    <p className="text-[10px] font-black text-muted-foreground/60 uppercase">{t("roll_no")}</p>
-                                                    <p className="text-xs font-bold text-foreground">{student.roll_no || "-"}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="w-full space-y-2 pt-2 border-t border-muted/50">
-                                                <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
-                                                    <User className="h-3 w-3 text-primary/60" />
-                                                    <span className="line-clamp-1">{t("f_label")}: {student.father_name || "-"}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between w-full">
-                                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
-                                                        <Phone className="h-3 w-3 text-primary/60" />
-                                                        <span>{student.phone || "-"}</span>
-                                                    </div>
-                                                    <Badge className={cn(
-                                                        "px-2 py-0 rounded-full text-[8px] font-bold uppercase tracking-widest border-none shadow-none h-4",
-                                                        student.active
-                                                            ? "bg-green-500/10 text-green-600"
-                                                            : "bg-red-500/10 text-red-600"
-                                                    )}>
-                                                        {student.active ? t("active") : t("disabled")}
-                                                    </Badge>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
-                                                    <BadgeCheck className="h-3 w-3 text-primary/60" />
-                                                    <span className="line-clamp-1">{t("cat_label")}: {student.student_category?.category_name || student.category || "-"}</span>
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -918,35 +1087,27 @@ export default function StudentDetailsPage() {
                         )
                     ) : (
                         /* Empty State */
-                        <div className="py-24 flex flex-col items-center justify-center text-center space-y-6">
+                        <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">
                             <div className="relative group">
-                                <div className="absolute -inset-4 bg-gradient-to-tr from-amber-500/20 to-orange-500/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                <div className="relative p-8 bg-muted/30 rounded-[2.5rem] border border-muted/50 shadow-inner group-hover:scale-105 transition-transform duration-500">
-                                    <img
-                                        src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png"
-                                        alt={t("no_data")}
-                                        className="h-24 w-24 object-contain opacity-80 drop-shadow-2xl grayscale group-hover:grayscale-0 transition-all duration-500"
-                                    />
-                                    <div className="absolute -bottom-2 -right-2 p-3 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-muted/50">
-                                        <FolderSearch className="h-6 w-6 text-amber-500" />
-                                    </div>
+                                <div className="relative p-6 bg-gray-50 dark:bg-gray-800 rounded-3xl border border-gray-200 shadow-2xs">
+                                    <FolderSearch className="h-12 w-12 text-indigo-500" />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <p className="font-black text-xl tracking-tight text-foreground uppercase">
+                            <div className="space-y-1">
+                                <p className="font-bold text-base text-gray-800 dark:text-gray-100 uppercase tracking-wider">
                                     {t("no_students_found")}
                                 </p>
-                                <p className="text-sm text-muted-foreground max-w-[320px] mx-auto leading-relaxed">
+                                <p className="text-xs text-gray-500 max-w-[320px] mx-auto leading-relaxed">
                                     {t("click_search_to_show_all_students_or_refine_your_filters")}
                                 </p>
                             </div>
-                            <div className="flex gap-3">
-                                <Button variant="outline" className="h-12 px-6 rounded-lg" onClick={handleReset}>
-                                    <Search className="h-5 w-5" />
+                            <div className="flex gap-2.5 pt-2">
+                                <Button variant="outline" className="h-9 px-5 rounded-full text-xs font-bold uppercase border-gray-200" onClick={handleReset}>
+                                    <Search className="h-4 w-4 mr-1.5" />
                                     {t("try_different_criteria")}
                                 </Button>
-                                <Button variant="gradient" className="h-12 px-8 rounded-lg" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
-                                    <Plus className="h-5 w-5" />
+                                <Button className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase shadow-md" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
+                                    <Plus className="h-4 w-4 mr-1.5" />
                                     {t("add_new_record")}
                                 </Button>
                             </div>
@@ -955,14 +1116,14 @@ export default function StudentDetailsPage() {
                 </div>
 
                 {!loading && students.length > 0 && (
-                    <div className="px-6 py-4 bg-muted/10 border-t border-muted/50 flex items-center justify-between">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                    <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                             {t("showing_x_to_y_of_z", { from: pagination.from, to: pagination.to, total: pagination.total })}
                         </p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                             <Button
                                 size="icon"
-                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-50"
+                                className="h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 cursor-pointer"
                                 onClick={() => handleSearch(pagination.current_page - 1)}
                                 disabled={pagination.current_page === 1 || loading}
                             >
@@ -973,10 +1134,10 @@ export default function StudentDetailsPage() {
                                     key={i}
                                     onClick={() => handleSearch(i + 1)}
                                     className={cn(
-                                        "h-8 w-8 rounded-[10px] p-0 font-bold active:scale-95 transition-all shadow-md",
+                                        "h-8 w-8 rounded-lg p-0 text-xs font-bold transition-all shadow-xs cursor-pointer",
                                         pagination.current_page === i + 1
-                                            ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1]"
-                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                            ? "btn-gradient text-white"
+                                            : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
                                     )}
                                 >
                                     {i + 1}
@@ -984,7 +1145,7 @@ export default function StudentDetailsPage() {
                             ))}
                             <Button
                                 size="icon"
-                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-50"
+                                className="h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 cursor-pointer"
                                 onClick={() => handleSearch(pagination.current_page + 1)}
                                 disabled={pagination.current_page === pagination.last_page || loading}
                             >
@@ -997,51 +1158,45 @@ export default function StudentDetailsPage() {
 
             {/* View Student Dialog */}
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent className="w-[95vw] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl p-0 overflow-hidden border-none shadow-2xl rounded-2xl bg-background/95 backdrop-blur-md">
-                    <DialogHeader className="p-6 md:p-8 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent relative">
-                        <div className="absolute top-4 right-4">
-                            <Button variant="ghost" size="icon" onClick={() => setViewDialogOpen(false)} className="rounded-full hover:bg-white/20 transition-all">
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <div className="flex flex-col sm:flex-row items-center gap-6 md:gap-8">
-                            <div className="relative group shrink-0">
-                                <div className="absolute -inset-1 bg-gradient-to-tr from-primary to-indigo-500 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500" />
-                                <Avatar className="h-28 w-28 md:h-36 md:w-36 rounded-2xl border-4 border-white shadow-xl relative transition-transform duration-500 group-hover:scale-[1.02]">
-                                    <AvatarImage src={getImageUrl(selectedStudent?.avatar)} />
-                                    <AvatarFallback className="bg-primary/5 text-primary text-3xl font-black">
-                                        {selectedStudent?.name?.substring(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                </Avatar>
-                            </div>
-                            <div className="text-center sm:text-left space-y-2.5 flex-1 min-w-0">
+                <DialogContent className="w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl p-0 overflow-hidden border border-gray-200/80 dark:border-gray-800 shadow-2xl rounded-3xl bg-white dark:bg-gray-900">
+                    <DialogHeader className="p-6 md:p-8 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850 border-b border-gray-100 dark:border-gray-800 relative">
+                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                            <Avatar className="h-24 w-24 md:h-28 md:w-28 rounded-3xl border-4 border-white dark:border-gray-800 shadow-lg relative shrink-0 ring-4 ring-indigo-100/60 dark:ring-indigo-950/40">
+                                <AvatarImage src={getImageUrl(selectedStudent?.avatar)} className="object-cover" />
+                                <AvatarFallback className="bg-gradient-to-br from-[#FF9800]/15 to-[#6366F1]/15 text-indigo-700 text-2xl font-black">
+                                    {selectedStudent?.name ? selectedStudent?.name.substring(0, 2).toUpperCase() : "ST"}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="text-center sm:text-left space-y-2 flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                                    <Badge variant="secondary" className="px-3 py-1 rounded-full bg-primary/10 text-primary border-primary/20 text-[11px] font-bold uppercase tracking-widest shadow-sm">
+                                    <Badge className="px-3 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-900 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
                                         {t("student_profile")}
                                     </Badge>
-                                    <Badge variant="outline" className={cn(
-                                        "px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest",
-                                        selectedStudent?.active ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"
+                                    <Badge className={cn(
+                                        "px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-2xs",
+                                        selectedStudent?.active ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300"
                                     )}>
                                         {selectedStudent?.active ? t("active") : t("disabled")}
                                     </Badge>
                                 </div>
-                                <DialogTitle className="text-2xl md:text-4xl font-black tracking-tight text-foreground truncate">
+                                <DialogTitle className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 truncate">
                                     {selectedStudent?.name} {selectedStudent?.last_name}
                                 </DialogTitle>
-                                <div className="flex flex-wrap justify-center sm:justify-start gap-3">
-                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs md:text-sm bg-white/60 dark:bg-zinc-800/60 px-3.5 py-1.5 rounded-xl border border-muted/50 shadow-sm">
-                                        <BadgeCheck className="h-4 w-4 text-primary shrink-0" />
-                                        <span>{t("adm_label")}: <strong className="text-foreground">{selectedStudent?.admission_no}</strong></span>
+                                <div className="flex flex-wrap justify-center sm:justify-start gap-2.5 pt-0.5">
+                                    <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-bold text-xs bg-white/90 dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-gray-700 shadow-2xs">
+                                        <BadgeCheck className="h-4 w-4 text-indigo-600 shrink-0" />
+                                        <span className="text-gray-500 font-medium">{t("admission_no")}:</span>
+                                        <strong className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{selectedStudent?.admission_no}</strong>
                                     </div>
-                                    <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs md:text-sm bg-white/60 dark:bg-zinc-800/60 px-3.5 py-1.5 rounded-xl border border-muted/50 shadow-sm">
-                                        <GraduationCap className="h-4 w-4 text-indigo-500 shrink-0" />
-                                        <span>{selectedStudent?.school_class?.name || "Class"} ({selectedStudent?.section?.name || "A"})</span>
+                                    <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-bold text-xs bg-white/90 dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-gray-700 shadow-2xs">
+                                        <GraduationCap className="h-4 w-4 text-indigo-600 shrink-0" />
+                                        <span>{selectedStudent?.school_class?.name || "Class"} {selectedStudent?.section?.name ? `(${selectedStudent.section.name})` : ""}</span>
                                     </div>
                                     {selectedStudent?.roll_no && (
-                                        <div className="flex items-center gap-2 text-muted-foreground font-bold text-xs md:text-sm bg-white/60 dark:bg-zinc-800/60 px-3.5 py-1.5 rounded-xl border border-muted/50 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-bold text-xs bg-white/90 dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-gray-700 shadow-2xs">
                                             <User className="h-4 w-4 text-amber-500 shrink-0" />
-                                            <span>Roll: <strong className="text-foreground">{selectedStudent.roll_no}</strong></span>
+                                            <span className="text-gray-500 font-medium">Roll:</span>
+                                            <strong className="text-gray-900 dark:text-gray-100">{selectedStudent.roll_no}</strong>
                                         </div>
                                     )}
                                 </div>
@@ -1049,63 +1204,65 @@ export default function StudentDetailsPage() {
                         </div>
                     </DialogHeader>
 
-                    <div className="p-6 md:p-8 space-y-6 max-h-[65vh] overflow-y-auto custom-scrollbar">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 md:gap-8">
+                    <div className="p-6 md:p-8 space-y-6 max-h-[60vh] overflow-y-auto">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Personal Info */}
-                            <div className="space-y-4 bg-muted/20 p-5 rounded-2xl border border-muted/40">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                            <div className="space-y-3.5 bg-gray-50/70 dark:bg-gray-800/40 p-5 sm:p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-2xs">
+                                <h4 className="text-[11.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                                     <User className="h-4 w-4" /> {t("personal_details")}
                                 </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                    <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob)} icon={Calendar} />
-                                    <InfoField label={t("gender")} value={selectedStudent?.gender} icon={User} />
-                                    <InfoField label={t("blood_group")} value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
-                                    <InfoField label={t("religion")} value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob)} icon={Calendar} color="indigo" />
+                                    <InfoField label={t("gender")} value={selectedStudent?.gender} icon={User} color="purple" />
+                                    <InfoField label={t("blood_group")} value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} color="rose" />
+                                    <InfoField label={t("religion")} value={selectedStudent?.religion || "-"} icon={BadgeCheck} color="blue" />
                                 </div>
                             </div>
 
                             {/* Contact & Parent Info */}
-                            <div className="space-y-4 bg-muted/20 p-5 rounded-2xl border border-muted/40">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500 flex items-center gap-2">
+                            <div className="space-y-3.5 bg-gray-50/70 dark:bg-gray-800/40 p-5 sm:p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-2xs">
+                                <h4 className="text-[11.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
                                     <Phone className="h-4 w-4" /> {t("contact_and_guardian")}
                                 </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                    <InfoField label={t("mobile_number")} value={selectedStudent?.phone} icon={Phone} />
-                                    <InfoField label={t("email_address")} value={selectedStudent?.email || "-"} icon={Mail} />
-                                    <InfoField label={t("father_name")} value={selectedStudent?.father_name} icon={User} />
-                                    <InfoField label={t("category")} value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <InfoField label={t("mobile_number")} value={selectedStudent?.phone} icon={Phone} color="emerald" />
+                                    <InfoField label={t("email_address")} value={selectedStudent?.email || "-"} icon={Mail} color="blue" />
+                                    <InfoField label={t("father_name")} value={selectedStudent?.father_name} icon={User} color="amber" />
+                                    <InfoField label={t("category")} value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} color="indigo" />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="p-4 md:p-6 bg-muted/20 border-t border-muted/50 flex flex-col sm:flex-row items-center gap-3">
-                        <Button variant="outline" className="w-full sm:w-auto rounded-xl h-11 px-6 font-bold" onClick={() => setViewDialogOpen(false)}>
+                    <DialogFooter className="p-4 md:p-6 bg-gray-50/80 dark:bg-gray-850/80 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center gap-3">
+                        <Button
+                            variant="outline"
+                            className="w-full sm:w-auto rounded-full h-10 px-6 text-xs font-bold uppercase tracking-wider border-gray-200 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 shadow-xs cursor-pointer"
+                            onClick={() => setViewDialogOpen(false)}
+                        >
                             {t("close")}
                         </Button>
-                        <div className="flex items-center gap-3 w-full sm:w-auto sm:ml-auto">
+                        <div className="flex items-center gap-2.5 w-full sm:w-auto sm:ml-auto">
                             {selectedStudent && (
                                 <Button
-                                    variant="outline"
-                                    className="flex-1 sm:flex-initial rounded-xl h-11 px-5 font-bold bg-purple-600 text-white hover:bg-purple-700 border-purple-600 shadow-sm"
+                                    className="flex-1 sm:flex-initial rounded-full h-10 px-6 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
                                     onClick={() => {
                                         setViewDialogOpen(false);
                                         handleImpersonate(selectedStudent);
                                     }}
                                 >
-                                    <LogIn className="h-4 w-4 mr-2" />
-                                    Impersonate Student
+                                    <LogIn className="h-3.5 w-3.5 mr-1.5" />
+                                    Impersonate
                                 </Button>
                             )}
                             <Button
-                                variant="gradient"
-                                className="flex-1 sm:flex-initial rounded-xl h-11 px-6 font-bold"
+                                className="btn-gradient text-white flex-1 sm:flex-initial rounded-full h-10 px-7 text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
                                 onClick={() => {
                                     setViewDialogOpen(false);
                                     router.push(`/dashboard/student-information/student-details/${selectedStudent?.id}/edit`);
                                 }}
                             >
-                                <Pencil className="h-4 w-4 mr-2" />
+                                <Pencil className="h-3.5 w-3.5 mr-1.5" />
                                 {t("edit_profile")}
                             </Button>
                         </div>
@@ -1115,28 +1272,40 @@ export default function StudentDetailsPage() {
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent className="max-w-md border-none shadow-2xl rounded-lg bg-background/95 backdrop-blur-md">
-                    <DialogHeader className="pt-6">
-                        <div className="mx-auto w-16 h-16 bg-red-100 rounded-lg flex items-center justify-center mb-4">
-                            <Trash2 className="h-8 w-8 text-red-600" />
+                <DialogContent className="max-w-md border border-gray-200/80 dark:border-gray-800 shadow-2xl rounded-3xl bg-white dark:bg-gray-900 p-0 overflow-hidden">
+                    <div className="p-6 sm:p-7 text-center">
+                        <div className="mx-auto w-16 h-16 bg-rose-50 dark:bg-rose-950/50 rounded-2xl ring-8 ring-rose-50/60 dark:ring-rose-950/30 flex items-center justify-center mb-4 shadow-2xs">
+                            <Trash2 className="h-8 w-8 text-rose-600 dark:text-rose-400" />
                         </div>
-                        <DialogTitle className="text-2xl font-black text-center tracking-tight">{t("delete_record")}</DialogTitle>
-                        <DialogDescription className="text-center pt-2 font-medium">
-                            {t("are_you_sure_you_want_to_delete")} <span className="text-foreground font-bold">{selectedStudent?.name} {selectedStudent?.last_name}</span>?
-                            <br />{t("this_action_is_permanent_and_cannot_be_undone")}
+                        <DialogTitle className="text-xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+                            {t("delete_record")}
+                        </DialogTitle>
+                        <DialogDescription className="text-center pt-2.5 text-xs font-medium text-gray-500 dark:text-gray-400 leading-relaxed">
+                            {t("are_you_sure_you_want_to_delete")}
+                            <span className="block mt-2 font-bold text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-800 py-1.5 px-3 rounded-xl border border-gray-200/60 dark:border-gray-700/60 mx-auto max-w-xs truncate">
+                                {selectedStudent?.name} {selectedStudent?.last_name}
+                            </span>
+                            <span className="block mt-2 text-[11px] text-gray-400">
+                                {t("this_action_is_permanent_and_cannot_be_undone")}
+                            </span>
                         </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="flex flex-row gap-3 p-6 mt-2">
-                        <Button variant="outline" className="flex-1 rounded-lg h-12 font-bold" onClick={() => setDeleteDialogOpen(false)}>
+                    </div>
+                    <DialogFooter className="flex flex-row gap-3 p-4 sm:p-5 bg-gray-50/80 dark:bg-gray-850/80 border-t border-gray-100 dark:border-gray-800">
+                        <Button
+                            variant="outline"
+                            className="flex-1 rounded-full h-10 text-xs font-bold uppercase tracking-wider border-gray-200 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 cursor-pointer shadow-xs"
+                            onClick={() => setDeleteDialogOpen(false)}
+                            disabled={deleting}
+                        >
                             {t("cancel")}
                         </Button>
                         <Button
-                            variant="destructive"
-                            className="flex-1 rounded-lg h-12 font-bold bg-red-600 hover:bg-red-700 shadow-lg shadow-red-200"
+                            className="flex-1 rounded-full h-10 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
                             onClick={handleDelete}
                             disabled={deleting}
                         >
-                            {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : t("delete_student")}
+                            {deleting && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+                            {t("delete_student")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1145,15 +1314,24 @@ export default function StudentDetailsPage() {
     );
 }
 
-function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: React.ElementType }) {
+function InfoField({ label, value, icon: Icon, color = "indigo" }: { label: string, value?: string, icon: React.ElementType, color?: string }) {
+    const colorClasses = {
+        indigo: "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50",
+        purple: "bg-purple-50 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400 border-purple-100 dark:border-purple-900/50",
+        emerald: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50",
+        amber: "bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400 border-amber-100 dark:border-amber-900/50",
+        rose: "bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border-rose-100 dark:border-rose-900/50",
+        blue: "bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 border-blue-100 dark:border-blue-900/50",
+    }[color] || "bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50";
+
     return (
-        <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
-            <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">
-                <Icon className="h-4 w-4 text-primary" />
+        <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-800 shadow-2xs hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-800 transition-all group">
+            <div className={cn("p-2.5 rounded-xl border shrink-0 transition-transform group-hover:scale-110", colorClasses)}>
+                <Icon className="h-4 w-4" />
             </div>
-            <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{label}</p>
-                <p className="text-sm font-bold text-foreground">{value || "N/A"}</p>
+            <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-400">{label}</p>
+                <p className="text-xs font-bold text-gray-900 dark:text-gray-100 truncate mt-0.5">{value || "-"}</p>
             </div>
         </div>
     );

@@ -68,13 +68,13 @@ export function DatePicker({ value, onChange, placeholder = "DD/MM/YYYY", classN
           variant={"outline"}
           disabled={disabled}
           className={cn(
-            "w-full justify-start text-left font-normal h-11 border-gray-200 rounded-lg group relative",
-            !date && "text-muted-foreground",
+            "w-full justify-start text-left font-medium text-xs h-11 border-gray-200 bg-gray-50/40 dark:bg-gray-800/40 rounded-lg group relative focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:ring-indigo-500",
+            !date ? "text-gray-400" : "text-gray-900 dark:text-gray-100 font-semibold",
             className
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4 text-indigo-500" />
-          {date ? format(date, "dd/MM/yyyy") : <span>{placeholder}</span>}
+          {date ? format(date, "dd/MM/yyyy") : <span className="text-gray-400">{placeholder}</span>}
           
           {date && !disabled && (
             <div

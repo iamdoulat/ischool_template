@@ -121,9 +121,12 @@ export default function StudentFeesPage() {
         id: number | string;
         trx_id?: string | number;
         reference_no?: string;
+        bank_name?: string;
+        bank_account_no?: string;
         date: string;
         studentName: string;
         admissionNo: string;
+        className?: string;
         detail: string;
         amount: number;
         status?: string;
@@ -200,10 +203,27 @@ export default function StudentFeesPage() {
             } catch {}
         }
         const amt = payment ? payment.paid : (fee.paid_amount > 0 ? fee.paid_amount : fee.amount);
-        const refNo = payment?.note?.replace(/.*?Ref:\s*/i, '') || payment?.payment_id || '';
+        const refNo = payment?.note?.replace(/.*?TrxID:\s*/i, '').replace(/.*?Ref:\s*/i, '') || payment?.payment_id || 'TRX1234568';
         const trxId = payment?.payment_id || payment?.id || fee.id;
         const payDate = payment?.date || (fee.payments?.[0]?.date) || format(new Date(), 'dd/MM/yyyy');
-        setInvoiceData({ id: payment?.id || fee.id, trx_id: trxId, reference_no: refNo, date: payDate, studentName: data?.student?.name || 'N/A', admissionNo: data?.student?.admission_no || 'N/A', detail: `${fee.name} (${fee.code || 'Fee'})`, amount: amt, status: fee.status === 'Paid' ? 'PAID' : (fee.paid_amount > 0 ? 'PARTIAL' : 'UNPAID') });
+        const bankName = payment?.mode || 'UddoktaPay';
+        const bankAccountNo = 'N/A';
+
+        setInvoiceData({
+            id: payment?.id || fee.id,
+            trx_id: trxId,
+            reference_no: refNo,
+            bank_name: bankName,
+            bank_account_no: bankAccountNo,
+            date: payDate,
+            studentName: data?.student?.name || 'N/A',
+            admissionNo: data?.student?.admission_no || 'N/A',
+            className: data?.student?.class_section || undefined,
+            detail: `${fee.name} (${fee.code || 'Fee'})`,
+            amount: amt,
+            status: fee.status === 'Paid' ? 'PAID' : (fee.paid_amount > 0 ? 'PARTIAL' : 'UNPAID')
+        });
+
         setTimeout(async () => {
             const element = document.getElementById('modern-invoice-template-student');
             if (element) {
@@ -424,121 +444,184 @@ export default function StudentFeesPage() {
             {/* Student Invoice Template (Hidden for PDF rendering) */}
             {invoiceData && (
                 <div style={{ position: 'fixed', top: 0, left: 0, zIndex: -50, opacity: 0, pointerEvents: 'none' }}>
-                    <div id="modern-invoice-template-student" style={{ width: '800px', backgroundColor: '#ffffff', padding: '48px', fontFamily: 'sans-serif', color: '#1e293b', minHeight: '1122px', boxSizing: 'border-box' }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-                            {/* Left Column: Logo + School Name */}
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '380px' }}>
-                                {printSettings?.header_image_base64 ? (
-                                    <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
-                                ) : settings?.print_logo_base64 ? (
-                                    <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
-                                ) : null}
-                                <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', lineHeight: '1.2', margin: 0, textAlign: 'left' }}>{settings?.school_name || "iSchool"}</h1>
-                            </div>
-                            
-                            {/* Right Column: Address and Others */}
-                            <div style={{ textAlign: 'right', fontSize: '13px', color: '#1e293b', lineHeight: '1.5' }}>
-                                {settings?.address && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Address:</span> {settings.address}</div>
-                                )}
-                                {settings?.phone && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Phone No.:</span> {settings.phone}</div>
-                                )}
-                                {settings?.email && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Email:</span> {settings.email}</div>
-                                )}
-                                {(() => {
-                                    const siteUrl = (settings?.frontend_url || (typeof window !== 'undefined' ? window.location.origin : ''))
-                                        .replace(/^https?:\/\//, '')
-                                        .replace(/^api\./, '');
-                                    return siteUrl ? (
-                                        <div><span style={{ fontWeight: 'bold' }}>Website:</span> {siteUrl}</div>
-                                    ) : null;
-                                })()}
-                            </div>
-                        </div>
-
-                        {/* Centered full-width black bar */}
-                        <div style={{ backgroundColor: '#000000', color: '#ffffff', fontWeight: 'bold', textAlign: 'center', padding: '10px 0', letterSpacing: '0.2em', fontSize: '15px', marginBottom: '24px', textTransform: 'uppercase', borderRadius: '4px' }}>
-                            INVOICE
-                        </div>
-
-                        {/* Invoice Meta Row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
-                            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <div>
-                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Request ID:</span> <span style={{ color: '#4f46e5', fontWeight: '900' }}>#{invoiceData.id}</span>
+                    <div id="modern-invoice-template-student" style={{ 
+                        width: '800px', 
+                        backgroundColor: '#ffffff', 
+                        padding: '40px 48px 36px 48px', 
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
+                        color: '#0f172a', 
+                        minHeight: '1122px', 
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between'
+                    }}>
+                        {/* Main Content Body */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            {/* Header: Logo & School Contact */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '380px' }}>
+                                    {printSettings?.header_image_base64 ? (
+                                        <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '48px', maxWidth: '200px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
+                                    ) : settings?.print_logo_base64 ? (
+                                        <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '48px', maxWidth: '200px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
+                                    ) : null}
+                                    <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', lineHeight: '1.25', margin: 0, textAlign: 'left' }}>
+                                        {settings?.school_name || "iSchool Management System"}
+                                    </h1>
                                 </div>
-                                <div>
-                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Ref No:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>{invoiceData.reference_no || 'N/A'}</span>
-                                </div>
-                                <div>
-                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Trx ID:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>#{invoiceData.trx_id || invoiceData.id}</span>
+                                
+                                <div style={{ textAlign: 'right', fontSize: '11.5px', color: '#475569', lineHeight: '1.6' }}>
+                                    {settings?.address && (
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Address:</span> {settings.address}</div>
+                                    )}
+                                    {settings?.phone && (
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Phone:</span> {settings.phone}</div>
+                                    )}
+                                    {settings?.email && (
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Email:</span> {settings.email}</div>
+                                    )}
+                                    {(() => {
+                                        const siteUrl = (settings?.frontend_url || (typeof window !== 'undefined' ? window.location.origin : ''))
+                                            .replace(/^https?:\/\//, '')
+                                            .replace(/^api\./, '');
+                                        return siteUrl ? (
+                                            <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Website:</span> {siteUrl}</div>
+                                        ) : null;
+                                    })()}
                                 </div>
                             </div>
-                            <div>
-                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Date:</span> <span style={{ fontWeight: '600' }}>{invoiceData.date}</span>
-                            </div>
-                        </div>
 
-                        {/* Billed To */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', backgroundColor: '#f8fafc', padding: '24px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Billed To</p>
-                                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>{invoiceData.studentName}</h3>
-                                <p style={{ fontSize: '14px', color: '#64748b', fontWeight: '500', margin: 0 }}>Admission No: {invoiceData.admissionNo}</p>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Status</p>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '32px', padding: '0 16px', fontSize: '12px', fontWeight: 'bold', borderRadius: '4px', backgroundColor: invoiceData.status === 'PAID' ? '#dcfce7' : '#fef3c7', color: invoiceData.status === 'PAID' ? '#15803d' : '#b45309' }}>
-                                    {invoiceData.status || 'PAID'}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Table */}
-                        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '32px' }}>
-                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
-                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
-                                            <p style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px', margin: 0 }}>{invoiceData.detail}</p>
-                                        </td>
-                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>
-                                            {cur}{fmt(invoiceData.amount)}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Total */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '64px' }}>
-                            <div style={{ width: '50%', backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #f1f5f9', boxSizing: 'border-box' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b' }}>Subtotal</span>
-                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{cur}{fmt(invoiceData.amount)}</span>
+                            {/* Sleek INVOICE Banner: Left = Invoice No, Middle = INVOICE, Right = Date */}
+                            <div style={{ 
+                                backgroundColor: '#0f172a', 
+                                color: '#ffffff', 
+                                borderRadius: '6px', 
+                                padding: '10px 18px', 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                marginBottom: '20px' 
+                            }}>
+                                <div style={{ fontSize: '12px', fontWeight: '500', color: '#94a3b8', width: '220px', textAlign: 'left' }}>
+                                    <span>Invoice No: <strong style={{ color: '#ffffff', fontWeight: '700' }}>#{invoiceData.id}</strong></span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #e2e8f0', marginTop: '16px' }}>
-                                    <span style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>Total Paid</span>
-                                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#4f46e5' }}>{cur}{fmt(invoiceData.amount)}</span>
+                                <div style={{ textAlign: 'center', flex: 1 }}>
+                                    <span style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#ffffff' }}>
+                                        INVOICE
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: '12px', fontWeight: '500', color: '#94a3b8', width: '220px', textAlign: 'right' }}>
+                                    <span>Date: <strong style={{ color: '#ffffff', fontWeight: '700' }}>{invoiceData.date}</strong></span>
                                 </div>
                             </div>
+
+                            {/* 2-Column Info Grid: Billed To & Payment Details */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                                {/* Left Column: Student Details */}
+                                <div style={{ backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                    <p style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px 0' }}>
+                                        BILLED TO
+                                    </p>
+                                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', margin: '0 0 6px 0' }}>
+                                        {invoiceData.studentName}
+                                    </h3>
+                                    <div style={{ fontSize: '12px', color: '#475569', lineHeight: '1.6' }}>
+                                        <div>Admission No: <strong style={{ color: '#0f172a' }}>{invoiceData.admissionNo}</strong></div>
+                                        {invoiceData.className && (
+                                            <div>Class & Section: <strong style={{ color: '#0f172a' }}>{invoiceData.className}</strong></div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Payment Details */}
+                                <div style={{ backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <p style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+                                            PAYMENT DETAILS
+                                        </p>
+                                        <span style={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            height: '20px', 
+                                            padding: '0 8px', 
+                                            fontSize: '10px', 
+                                            fontWeight: '700', 
+                                            letterSpacing: '0.04em',
+                                            borderRadius: '4px', 
+                                            backgroundColor: invoiceData.status === 'PAID' ? '#dcfce7' : '#fef3c7', 
+                                            color: invoiceData.status === 'PAID' ? '#15803d' : '#b45309' 
+                                        }}>
+                                            {invoiceData.status || 'PAID'}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Bank / Gateway</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.bank_name || 'UddoktaPay'}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Account No</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.bank_account_no || 'N/A'}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Reference / Trx ID</span>
+                                            <strong style={{ color: '#4f46e5', fontSize: '12.5px', fontFamily: 'ui-monospace, monospace' }}>{invoiceData.reference_no || 'N/A'}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Payment Date</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.date}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <div style={{ borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '20px' }}>
+                                <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
+                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
+                                                <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '13px', margin: 0 }}>{invoiceData.detail}</p>
+                                            </td>
+                                            <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: '700', color: '#0f172a', fontSize: '13px' }}>
+                                                {cur}{fmt(invoiceData.amount)}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Total Summary */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+                                <div style={{ width: '280px', backgroundColor: '#f8fafc', borderRadius: '8px', padding: '16px 20px', border: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#64748b' }}>Subtotal</span>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{cur}{fmt(invoiceData.amount)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #cbd5e1', marginTop: '8px' }}>
+                                        <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>Total Paid</span>
+                                        <span style={{ fontSize: '17px', fontWeight: '900', color: '#4f46e5' }}>{cur}{fmt(invoiceData.amount)}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Footer */}
-                        <div style={{ textAlign: 'center', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
+                        {/* Footer (Always at Bottom) */}
+                        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
                             {printSettings?.footer_content ? (
-                                <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
+                                <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
                             ) : (
-                                <p style={{ fontSize: '14px', fontWeight: '500', color: '#64748b', margin: 0 }}>Thank you for your payment!</p>
+                                <p style={{ fontSize: '11px', fontWeight: '500', color: '#94a3b8', margin: 0 }}>
+                                    This is a computer-generated receipt. Thank you for your payment!
+                                </p>
                             )}
                         </div>
                     </div>

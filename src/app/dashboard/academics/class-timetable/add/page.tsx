@@ -1,24 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-    Plus, Search, Printer, Clock, User, BookOpen, MapPin, AlertCircle, Loader2, X, Trash2, Save, Wand2, Calendar
+    Plus,
+    Search,
+    Clock,
+    User,
+    BookOpen,
+    MapPin,
+    Loader2,
+    Trash2,
+    Save,
+    Wand2,
+    Calendar,
+    Filter,
+    Sparkles,
+    Copy,
+    GraduationCap,
+    Layers,
+    CheckCircle2
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 import { useSettings } from "@/components/providers/settings-provider";
-import { useMemo } from "react";
 
-const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DEFAULT_DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 interface TimetableRow {
     id: string; // temp client side id
@@ -41,7 +57,7 @@ export default function AddClassTimetablePage() {
 
     // Derived ordered days based on settings
     const orderedDays = useMemo(() => {
-        const startDay = settings?.start_day_of_week?.toLowerCase() || "monday";
+        const startDay = settings?.start_day_of_week?.toLowerCase() || "saturday";
         const startIndex = DEFAULT_DAYS.findIndex(d => d.toLowerCase() === startDay);
         if (startIndex === -1) return DEFAULT_DAYS;
         return [...DEFAULT_DAYS.slice(startIndex), ...DEFAULT_DAYS.slice(0, startIndex)];
@@ -62,16 +78,22 @@ export default function AddClassTimetablePage() {
 
     // Quick Parameter states
     const [quickParams, setQuickParams] = useState({
-        start_time: "",
+        start_time: "09:00",
         duration: "45",
         interval: "5",
-        room: ""
+        room: "101"
     });
 
     // Timetable data state
     const [dayData, setDayData] = useState<DayData>(
         DEFAULT_DAYS.reduce((acc, day) => ({ ...acc, [day]: [] }), {})
     );
+
+    // UI states
+    const [loading, setLoading] = useState(false);
+    const [searching, setSearching] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [currentDay, setCurrentDay] = useState("Saturday");
 
     // Update empty timetable grid when orderedDays changes
     useEffect(() => {
@@ -85,13 +107,7 @@ export default function AddClassTimetablePage() {
         if (orderedDays.length > 0) setCurrentDay(orderedDays[0]);
     }, [orderedDays]);
 
-    // UI states
-    const [loading, setLoading] = useState(false);
-    const [searching, setSearching] = useState(false);
-    const [saving, setSaving] = useState(false);
-    const [currentDay, setCurrentDay] = useState("Monday");
-
-    // Load prerequisites (classes, subjects, teachers)
+    // Load prerequisites
     useEffect(() => {
         const fetchPrerequisites = async () => {
             setLoading(true);
@@ -143,9 +159,10 @@ export default function AddClassTimetablePage() {
         const assignment = classTeacherAssignments.find(
             (a: any) => String(a.class_id) === selectedClassId && String(a.section_id) === selectedSectionId
         );
-        if (!assignment?.teachers?.length) return [];
+        if (!assignment?.teachers?.length) return staffList;
         const assignedIds = new Set(assignment.teachers.map((t: any) => String(t.id)));
-        return staffList.filter((s: any) => assignedIds.has(String(s.id)));
+        const matched = staffList.filter((s: any) => assignedIds.has(String(s.id)));
+        return matched.length > 0 ? matched : staffList;
     }, [selectedClassId, selectedSectionId, classTeacherAssignments, staffList]);
 
     const handleSearch = async () => {
@@ -165,14 +182,13 @@ export default function AddClassTimetablePage() {
             });
             const entries = res.data.data || [];
 
-            // Map entries to our dayData state in the correct order
             const newDayData = orderedDays.reduce((acc, day) => {
                 const dayEntries = entries.filter((e: any) => e.day === day).map((e: any) => ({
                     id: e.id.toString(),
-                    subject_id: e.subject_id.toString(),
-                    staff_id: e.staff_id.toString(),
-                    start_time: e.start_time,
-                    end_time: e.end_time,
+                    subject_id: e.subject_id?.toString() || "",
+                    staff_id: e.staff_id?.toString() || "",
+                    start_time: e.start_time || "",
+                    end_time: e.end_time || "",
                     room: e.room || ""
                 }));
                 return { ...acc, [day]: dayEntries };
@@ -189,17 +205,32 @@ export default function AddClassTimetablePage() {
     };
 
     const addRow = (day: string) => {
+        const prevRows = dayData[day] || [];
+        let nextStartTime = quickParams.start_time || "09:00";
+        let nextEndTime = "09:45";
+
+        if (prevRows.length > 0) {
+            const lastRow = prevRows[prevRows.length - 1];
+            if (lastRow.end_time) {
+                const interval = parseInt(quickParams.interval) || 5;
+                const duration = parseInt(quickParams.duration) || 45;
+                nextStartTime = addMinutesToTime(lastRow.end_time, interval);
+                nextEndTime = addMinutesToTime(nextStartTime, duration);
+            }
+        }
+
         const newRow: TimetableRow = {
             id: Math.random().toString(36).substr(2, 9),
-            subject_id: "",
-            staff_id: "",
-            start_time: "",
-            end_time: "",
-            room: dayData[day].length > 0 ? dayData[day][dayData[day].length - 1].room : quickParams.room
+            subject_id: filteredSubjects[prevRows.length % filteredSubjects.length]?.id?.toString() || "",
+            staff_id: filteredTeachers[0]?.id?.toString() || "",
+            start_time: nextStartTime,
+            end_time: nextEndTime,
+            room: prevRows.length > 0 ? prevRows[prevRows.length - 1].room : quickParams.room
         };
+
         setDayData({
             ...dayData,
-            [day]: [...dayData[day], newRow]
+            [day]: [...prevRows, newRow]
         });
     };
 
@@ -221,7 +252,7 @@ export default function AddClassTimetablePage() {
         if (!timeStr) return "";
         const [hours, mins] = timeStr.split(':').map(Number);
         const date = new Date();
-        date.setHours(hours, mins, 0, 0);
+        date.setHours(hours || 0, mins || 0, 0, 0);
         date.setMinutes(date.getMinutes() + minutes);
         const h = date.getHours().toString().padStart(2, '0');
         const m = date.getMinutes().toString().padStart(2, '0');
@@ -241,14 +272,12 @@ export default function AddClassTimetablePage() {
         }
 
         let currentTime = quickParams.start_time;
-        const duration = parseInt(quickParams.duration) || 0;
-        const interval = parseInt(quickParams.interval) || 0;
+        const duration = parseInt(quickParams.duration) || 45;
+        const interval = parseInt(quickParams.interval) || 5;
 
-        const newRows = currentRows.map((row, index) => {
+        const newRows = currentRows.map((row) => {
             const start = currentTime;
             const end = addMinutesToTime(start, duration);
-
-            // Prepare time for NEXT row
             currentTime = addMinutesToTime(end, interval);
 
             return {
@@ -266,6 +295,25 @@ export default function AddClassTimetablePage() {
         tt.success("time_parameters_applied", { count: currentRows.length, day: t(currentDay.toLowerCase()) });
     };
 
+    const copyCurrentDayToAllDays = () => {
+        const sourceRows = dayData[currentDay] || [];
+        if (sourceRows.length === 0) {
+            tt.error("no_rows_to_copy");
+            return;
+        }
+
+        const updated: DayData = {};
+        orderedDays.forEach(day => {
+            updated[day] = sourceRows.map(r => ({
+                ...r,
+                id: Math.random().toString(36).substr(2, 9)
+            }));
+        });
+
+        setDayData(updated);
+        tt.success(`Copied ${currentDay} schedule to all weekdays!`);
+    };
+
     const handleSave = async () => {
         if (!selectedClassId || !selectedSectionId || !selectedSubjectGroupId) {
             tt.error("criteria_missing");
@@ -274,8 +322,6 @@ export default function AddClassTimetablePage() {
 
         setSaving(true);
         try {
-            // Bulk Save per day (or all at once if backend supports)
-            // For now, let's just save the current day's entries
             const entries = dayData[currentDay].map(row => ({
                 subject_id: row.subject_id,
                 staff_id: row.staff_id,
@@ -307,38 +353,30 @@ export default function AddClassTimetablePage() {
         }
     };
 
+    const currentDayRows = dayData[currentDay] || [];
+
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
-                <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Calendar className="h-5 w-5" />
-                    </span>
-                    <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("add_timetable_entry")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("build_weekly_class_period_schedules")}</p>
+        <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen">
+            {/* Top Criteria Selection Card */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Calendar className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {t("add_timetable_entry")}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("build_weekly_class_period_schedules")}</p>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Select Criteria Section */}
-            <Card>
-                <CardContent className="pt-6">
-                    <div className="flex justify-between items-center mb-4 pb-2 border-b">
-                        <h2 className="text-lg font-medium text-gray-800">{t("select_criteria")}</h2>
-                        <Button
-                            onClick={handleSearch}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-9 text-xs gap-2 shadow-md transition-all duration-300"
-                            disabled={searching || loading}
-                        >
-                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            {t("search")}
-                        </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Class */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
@@ -350,17 +388,20 @@ export default function AddClassTimetablePage() {
                                     fetchSectionsByClass(val);
                                 }}
                             >
-                                <SelectTrigger className="h-10">
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                        {/* Section */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
@@ -368,211 +409,340 @@ export default function AddClassTimetablePage() {
                                 onValueChange={setSelectedSectionId}
                                 disabled={!selectedClassId}
                             >
-                                <SelectTrigger className="h-10">
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                     <SelectValue placeholder={!selectedClassId ? t("select_class_first") : t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600 uppercase">
-                                {t("subject_group")} <span className="text-red-500">*</span>
-                            </Label>
-                            <Select value={selectedSubjectGroupId} onValueChange={setSelectedSubjectGroupId}>
-                                <SelectTrigger className="h-10">
-                                    <SelectValue placeholder={t("select")} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {subjectGroups.filter(sg => !selectedClassId || sg.school_class_id.toString() === selectedClassId).map(sg => (
-                                        <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
+                                    {sections.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
 
-            {/* Quick Params Section */}
-            <Card>
-                <CardContent className="pt-6">
-                    <p className="text-sm text-gray-500 mb-4">{t("select_parameter_to_generate_timetable_quickly")}</p>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("period_start_time")} *</Label>
-                            <Input
-                                type="time"
-                                value={quickParams.start_time}
-                                onChange={(e) => setQuickParams({ ...quickParams, start_time: e.target.value })}
-                                className="h-10"
-                            />
+                        {/* Subject Group */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                {t("subject_group")} <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                                value={selectedSubjectGroupId}
+                                onValueChange={setSelectedSubjectGroupId}
+                                disabled={!selectedClassId}
+                            >
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder={t("select")} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {subjectGroups
+                                        .filter(sg => !selectedClassId || sg.school_class_id.toString() === selectedClassId)
+                                        .map(sg => (
+                                            <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("duration_minute")} *</Label>
-                            <Input
-                                type="number"
-                                value={quickParams.duration}
-                                onChange={(e) => setQuickParams({ ...quickParams, duration: e.target.value })}
-                                className="h-10"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("interval_minute")} *</Label>
-                            <Input
-                                type="number"
-                                value={quickParams.interval}
-                                onChange={(e) => setQuickParams({ ...quickParams, interval: e.target.value })}
-                                className="h-10"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("room_no")}</Label>
-                            <Input
-                                value={quickParams.room}
-                                onChange={(e) => setQuickParams({ ...quickParams, room: e.target.value })}
-                                className="h-10"
-                                placeholder={t("e.g. 101")}
-                            />
-                        </div>
+                    </div>
+
+                    <div className="flex justify-end mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
                         <Button
-                            onClick={applyQuickParams}
-                            className="bg-[#6366f1] hover:bg-[#5558dd] text-white h-10 gap-2"
+                            onClick={handleSearch}
+                            disabled={searching || loading}
+                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
                         >
-                            <Wand2 className="h-4 w-4" /> {t("apply")}
+                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                            {t("search")}
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
-            {/* Day Tabs and Table */}
-            <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-                <Tabs value={currentDay} onValueChange={setCurrentDay} className="w-full">
-                    <div className="border-b bg-gray-50/50 flex justify-between items-center px-4">
-                        <TabsList className="bg-transparent h-12 gap-0 p-0 border-r">
-                            {orderedDays.map(day => (
-                                <TabsTrigger
+            {/* Quick Auto-Schedule Generator Bar */}
+            <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/70 via-white to-amber-50/50 dark:from-indigo-950/40 dark:via-gray-900 dark:to-gray-900 shadow-2xs space-y-3">
+                <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-amber-500" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-950 dark:text-indigo-200">
+                        {t("select_parameter_to_generate_timetable_quickly")}
+                    </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-indigo-500" /> Period Start Time *
+                        </Label>
+                        <Input
+                            type="time"
+                            value={quickParams.start_time}
+                            onChange={(e) => setQuickParams({ ...quickParams, start_time: e.target.value })}
+                            className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-none"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                            Duration (Minutes) *
+                        </Label>
+                        <Input
+                            type="number"
+                            value={quickParams.duration}
+                            onChange={(e) => setQuickParams({ ...quickParams, duration: e.target.value })}
+                            className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-none"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                            Interval / Break (Min) *
+                        </Label>
+                        <Input
+                            type="number"
+                            value={quickParams.interval}
+                            onChange={(e) => setQuickParams({ ...quickParams, interval: e.target.value })}
+                            className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-none"
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                            Default Room No.
+                        </Label>
+                        <Input
+                            value={quickParams.room}
+                            onChange={(e) => setQuickParams({ ...quickParams, room: e.target.value })}
+                            className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-none"
+                            placeholder="e.g. 101"
+                        />
+                    </div>
+
+                    <Button
+                        type="button"
+                        onClick={applyQuickParams}
+                        className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        Apply Timing
+                    </Button>
+                </div>
+            </div>
+
+            {/* Weekly Days Schedule Table Card */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                {/* Custom Styled Day Tabs Navigation Bar */}
+                <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-900/50 p-2 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    {/* Day Pill Buttons */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        {orderedDays.map((day) => {
+                            const count = dayData[day]?.length || 0;
+                            const isActive = currentDay === day;
+                            return (
+                                <button
                                     key={day}
-                                    value={day}
-                                    className="h-12 rounded-none px-6 border-b-2 border-transparent data-[state=active]:border-[#6366f1] data-[state=active]:bg-white data-[state=active]:shadow-none transition-all"
+                                    type="button"
+                                    onClick={() => setCurrentDay(day)}
+                                    className={cn(
+                                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                                        isActive
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-200/50"
+                                            : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 border border-gray-200 dark:border-gray-700"
+                                    )}
                                 >
-                                    {t(day.toLowerCase())}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                        <Button
-                            onClick={() => addRow(currentDay)}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white h-8 text-xs gap-1 shadow-md"
-                        >
-                            <Plus className="h-4 w-4" /> {t("add_new")}
-                        </Button>
+                                    {day}
+                                    {count > 0 && (
+                                        <span className={cn(
+                                            "px-1.5 py-0.2 rounded-full text-[10px] font-black",
+                                            isActive ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"
+                                        )}>
+                                            {count}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {orderedDays.map(day => (
-                        <TabsContent key={day} value={day} className="p-0 m-0 border-none outline-none">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-gray-50 border-b text-gray-600 font-medium">
-                                        <tr>
-                                            <th className="py-3 px-4">{t("subject")}</th>
-                                            <th className="py-3 px-4">{t("time_from")} *</th>
-                                            <th className="py-3 px-4">{t("time_to")} *</th>
-                                            <th className="py-3 px-4">{t("teacher")}</th>
-                                            <th className="py-3 px-4">{t("room_no")}</th>
-                                            <th className="py-3 px-4 w-10 text-center">{t("action")}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y">
-                                        {dayData[day]?.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={6} className="py-10 text-center text-gray-500">
-                                                    {t("no_entries_added_for_day", { day: t(day.toLowerCase()) })}
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            dayData[day]?.map((row) => (
-                                                <tr key={row.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="py-2 px-4 whitespace-nowrap min-w-[200px]">
-                                                        <Select value={row.subject_id} onValueChange={(v) => updateRow(day, row.id, "subject_id", v)}>
-                                                            <SelectTrigger className="h-9">
-                                                                <SelectValue placeholder={t("select")} />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {filteredSubjects.map((s: any) => (
-                                                                    <SelectItem key={s.id} value={s.id.toString()}>{s.name} ({s.code})</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </td>
-                                                    <td className="py-2 px-4 whitespace-nowrap">
-                                                        <Input
-                                                            type="time"
-                                                            value={row.start_time}
-                                                            onChange={(e) => updateRow(day, row.id, "start_time", e.target.value)}
-                                                            className="h-9"
-                                                        />
-                                                    </td>
-                                                    <td className="py-2 px-4 whitespace-nowrap">
-                                                        <Input
-                                                            type="time"
-                                                            value={row.end_time}
-                                                            onChange={(e) => updateRow(day, row.id, "end_time", e.target.value)}
-                                                            className="h-9"
-                                                        />
-                                                    </td>
-                                                    <td className="py-2 px-4 whitespace-nowrap min-w-[200px]">
-                                                        <Select value={row.staff_id} onValueChange={(v) => updateRow(day, row.id, "staff_id", v)}>
-                                                            <SelectTrigger className="h-9">
-                                                                <SelectValue placeholder={t("select")} />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {filteredTeachers.map((s: any) => (
-                                                                    <SelectItem key={s.id} value={s.id.toString()}>{s.name} ({s.staff_id})</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </td>
-                                                    <td className="py-2 px-4 whitespace-nowrap">
-                                                        <Input
-                                                            value={row.room}
-                                                            onChange={(e) => updateRow(day, row.id, "room", e.target.value)}
-                                                            className="h-9"
-                                                            placeholder={t("room")}
-                                                        />
-                                                    </td>
-                                                    <td className="py-2 px-4 text-center">
-                                                        <Button
-                                                            variant="destructive"
-                                                            size="icon"
-                                                            className="h-8 w-8"
-                                                            onClick={() => removeRow(day, row.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </TabsContent>
-                    ))}
+                    {/* Batch Actions & Add Period */}
+                    <div className="flex items-center gap-2">
+                        {currentDayRows.length > 0 && (
+                            <Button
+                                type="button"
+                                onClick={copyCurrentDayToAllDays}
+                                variant="outline"
+                                className="h-8 px-3 rounded-lg text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1"
+                            >
+                                <Copy className="h-3.5 w-3.5 text-indigo-500" />
+                                Copy to All Days
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            onClick={() => addRow(currentDay)}
+                            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add Period
+                        </Button>
+                    </div>
+                </div>
 
-                    <div className="p-4 border-t bg-gray-50 flex justify-end">
+                <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-gray-50/90 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300">
+                                <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
+                                    <TableHead className="py-3 px-4 w-[90px]">Period</TableHead>
+                                    <TableHead className="py-3 px-4 min-w-[200px]">{t("subject")}</TableHead>
+                                    <TableHead className="py-3 px-4 w-[150px]">{t("time_from")} *</TableHead>
+                                    <TableHead className="py-3 px-4 w-[150px]">{t("time_to")} *</TableHead>
+                                    <TableHead className="py-3 px-4 min-w-[220px]">{t("teacher")}</TableHead>
+                                    <TableHead className="py-3 px-4 w-[130px]">{t("room_no")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-center w-[70px]">{t("action")}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {currentDayRows.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="px-4 py-16 text-center">
+                                            <div className="flex flex-col items-center justify-center space-y-2">
+                                                <div className="p-3 bg-indigo-50 dark:bg-gray-800 rounded-2xl text-indigo-500">
+                                                    <Clock className="h-7 w-7" />
+                                                </div>
+                                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                                                    No schedule periods added for {currentDay}
+                                                </p>
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => addRow(currentDay)}
+                                                    variant="outline"
+                                                    className="h-8 px-4 rounded-full text-xs font-bold text-indigo-600 border-indigo-200 mt-2"
+                                                >
+                                                    <Plus className="h-3.5 w-3.5 mr-1" /> Add 1st Period
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    currentDayRows.map((row, idx) => (
+                                        <TableRow
+                                            key={row.id}
+                                            className="text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 hover:bg-indigo-50/20 transition-colors"
+                                        >
+                                            {/* Period Number */}
+                                            <TableCell className="py-3 px-4">
+                                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800">
+                                                    #{idx + 1}
+                                                </span>
+                                            </TableCell>
+
+                                            {/* Subject Select */}
+                                            <TableCell className="py-3 px-4">
+                                                <Select
+                                                    value={row.subject_id}
+                                                    onValueChange={(v) => updateRow(currentDay, row.id, "subject_id", v)}
+                                                >
+                                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg shadow-none">
+                                                        <SelectValue placeholder={t("select")} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {filteredSubjects.map((s: any) => (
+                                                            <SelectItem key={s.id} value={s.id.toString()}>
+                                                                {s.name} {s.code ? `(${s.code})` : ""}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+
+                                            {/* Time From */}
+                                            <TableCell className="py-3 px-4">
+                                                <div className="relative">
+                                                    <Input
+                                                        type="time"
+                                                        value={row.start_time}
+                                                        onChange={(e) => updateRow(currentDay, row.id, "start_time", e.target.value)}
+                                                        className="h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg shadow-none"
+                                                    />
+                                                </div>
+                                            </TableCell>
+
+                                            {/* Time To */}
+                                            <TableCell className="py-3 px-4">
+                                                <div className="relative">
+                                                    <Input
+                                                        type="time"
+                                                        value={row.end_time}
+                                                        onChange={(e) => updateRow(currentDay, row.id, "end_time", e.target.value)}
+                                                        className="h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg shadow-none"
+                                                    />
+                                                </div>
+                                            </TableCell>
+
+                                            {/* Teacher Select */}
+                                            <TableCell className="py-3 px-4">
+                                                <Select
+                                                    value={row.staff_id}
+                                                    onValueChange={(v) => updateRow(currentDay, row.id, "staff_id", v)}
+                                                >
+                                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg shadow-none">
+                                                        <SelectValue placeholder={t("select")} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {filteredTeachers.map((s: any) => (
+                                                            <SelectItem key={s.id} value={s.id.toString()}>
+                                                                {s.name} {s.staff_id ? `(${s.staff_id})` : ""}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+
+                                            {/* Room No */}
+                                            <TableCell className="py-3 px-4">
+                                                <Input
+                                                    value={row.room}
+                                                    onChange={(e) => updateRow(currentDay, row.id, "room", e.target.value)}
+                                                    className="h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg shadow-none"
+                                                    placeholder="Room No"
+                                                />
+                                            </TableCell>
+
+                                            {/* Delete Action */}
+                                            <TableCell className="py-3 px-4 text-center">
+                                                <Button
+                                                    type="button"
+                                                    onClick={() => removeRow(currentDay, row.id)}
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
+                                                    title="Delete Period"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Bottom Save Bar */}
+                    <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="text-xs text-gray-500 font-bold">
+                            {currentDay}: {currentDayRows.length} Scheduled Periods
+                        </div>
                         <Button
                             onClick={handleSave}
-                            className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-8 h-10 gap-2 shadow-md transition-all duration-300 font-semibold"
-                            disabled={saving}
+                            disabled={saving || currentDayRows.length === 0}
+                            className="btn-gradient text-white px-8 h-10 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center gap-2"
                         >
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                            <Save className="h-4 w-4" />
                             {t("save_timetable")}
                         </Button>
                     </div>
-                </Tabs>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

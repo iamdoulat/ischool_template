@@ -5,8 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-    Plus, Search, Printer, Clock, User, BookOpen, MapPin, AlertCircle, Loader2, Trash2, CalendarClock, Filter
+    Plus,
+    Search,
+    Printer,
+    Clock,
+    User,
+    BookOpen,
+    MapPin,
+    AlertCircle,
+    Loader2,
+    Trash2,
+    CalendarClock,
+    Filter,
+    Sparkles,
+    Calendar,
+    GraduationCap,
+    Layers,
+    CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -14,7 +32,18 @@ import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useSettings } from "@/components/providers/settings-provider";
-import { formatTime } from "@/lib/utils";
+import { formatTime, cn } from "@/lib/utils";
+import { getImageUrl } from "@/lib/image-url";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TimetableEntry {
     id: number;
@@ -26,7 +55,7 @@ interface TimetableEntry {
     end_time: string;
     room: string;
     subject?: { name: string; code?: string };
-    staff?: { name: string; staff_id?: string };
+    staff?: { name: string; staff_id?: string; avatar?: string; photo?: string };
 }
 
 interface TimetableDay {
@@ -51,20 +80,18 @@ interface SubjectGroupOption {
     school_class_id?: number | string;
 }
 
-const DEFAULT_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DEFAULT_DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 function TimetableSkeleton({ days }: { days: string[] }) {
     return (
-        <div className="overflow-x-auto">
-            <div className="flex min-w-max">
+        <div className="overflow-x-auto p-4">
+            <div className="flex min-w-max gap-4">
                 {days.map((day) => (
-                    <div key={day} className="flex-1 min-w-[200px] border-r last:border-r-0">
-                        <div className="bg-gray-50/50 p-2 text-center border-b">
-                            <span className="text-sm font-bold text-gray-700">{day}</span>
-                        </div>
-                        <div className="p-3 space-y-3 bg-white min-h-[400px]">
+                    <div key={day} className="flex-1 min-w-[230px]">
+                        <div className="h-10 rounded-xl bg-muted/60 animate-pulse mb-3" />
+                        <div className="space-y-3">
                             {Array.from({ length: 3 }).map((_, i) => (
-                                <div key={i} className="h-20 rounded-lg bg-muted/60 animate-pulse" />
+                                <div key={i} className="h-28 rounded-xl bg-muted/60 animate-pulse" />
                             ))}
                         </div>
                     </div>
@@ -83,7 +110,7 @@ export default function ClassTimetablePage() {
 
     // Derived ordered days based on settings
     const orderedDays = useMemo(() => {
-        const startDay = settings?.start_day_of_week?.toLowerCase() || "monday";
+        const startDay = settings?.start_day_of_week?.toLowerCase() || "saturday";
         const startIndex = DEFAULT_DAYS.findIndex(d => d.toLowerCase() === startDay);
         if (startIndex === -1) return DEFAULT_DAYS;
         return [...DEFAULT_DAYS.slice(startIndex), ...DEFAULT_DAYS.slice(0, startIndex)];
@@ -102,6 +129,11 @@ export default function ClassTimetablePage() {
     // Timetable data
     const [timetableData, setTimetableData] = useState<TimetableDay[]>([]);
 
+    // Delete dialog states
+    const [entryToDelete, setEntryToDelete] = useState<number | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
     // Initialize/Update empty timetable grid when orderedDays changes
     useEffect(() => {
         setTimetableData(orderedDays.map(day => ({ day, entries: [] })));
@@ -111,7 +143,7 @@ export default function ClassTimetablePage() {
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
 
-    // Total scheduled entries (for header subtitle count)
+    // Total scheduled entries
     const totalEntries = useMemo(
         () => timetableData.reduce((sum, d) => sum + d.entries.length, 0),
         [timetableData]
@@ -168,12 +200,12 @@ export default function ClassTimetablePage() {
             });
             const entries = res.data.data || [];
 
-            // Group entries by day in the correct order
             const grouped = orderedDays.map(day => ({
                 day,
                 entries: entries.filter((e: TimetableEntry) => e.day === day)
             }));
             setTimetableData(grouped);
+            tt.success("timetable_data_loaded");
         } catch (error) {
             console.error("Error searching timetable:", error);
             tt.error("failed_to_fetch");
@@ -182,16 +214,26 @@ export default function ClassTimetablePage() {
         }
     };
 
-    const handleDeleteEntry = async (id: number) => {
-        if (!confirm(t("are_you_sure_delete_entry"))) return;
+    const confirmDeleteEntry = (id: number) => {
+        setEntryToDelete(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleDeleteEntry = async () => {
+        if (!entryToDelete) return;
+        setDeleting(true);
 
         try {
-            await api.delete(`/academics/class-timetables/${id}`);
+            await api.delete(`/academics/class-timetables/${entryToDelete}`);
             tt.success("entry_deleted_successfully");
-            handleSearch(); // Refresh list
+            handleSearch();
         } catch (error) {
             console.error("Error deleting entry:", error);
             tt.error("failed_to_delete");
+        } finally {
+            setDeleting(false);
+            setIsDeleteDialogOpen(false);
+            setEntryToDelete(null);
         }
     };
 
@@ -199,14 +241,31 @@ export default function ClassTimetablePage() {
         window.print();
     };
 
+    const selectedClassName = classes.find(c => String(c.id) === selectedClassId)?.name;
+    const selectedSectionName = sections.find(s => String(s.id) === selectedSectionId)?.name;
+
     return (
-        <div className="space-y-4">
-            {/* Header/Title */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100 no-print">
-                <div className="flex items-center gap-2 text-[#6366f1]">
-                    <CalendarClock className="h-6 w-6" />
-                    <h1 className="text-xl font-medium text-gray-800">{t("class_time_table")}</h1>
+        <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen">
+            {/* Header/Title Banner */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CalendarClock className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">
+                            {t("class_timetable")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("view_weekly_class_period_schedules") || "Weekly class period routine and timetable schedules"}
+                        </p>
+                    </div>
                 </div>
+                <Link href="/dashboard/academics/class-timetable/add">
+                    <Button className="btn-gradient text-white px-5 h-9 text-xs gap-1.5 shadow-md rounded-full font-bold uppercase tracking-wider">
+                        <Plus className="h-4 w-4" /> {t("add_new") || "Add Timetable"}
+                    </Button>
+                </Link>
             </div>
 
             {/* Select Criteria Section */}
@@ -217,21 +276,19 @@ export default function ClassTimetablePage() {
                             <Filter className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {t("select_criteria")}
+                            </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">{t("choose_class_section_to_view_timetable")}</p>
                         </div>
                     </div>
-                    <Link href="/dashboard/academics/class-timetable/add">
-                        <Button className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-3 h-8 text-xs gap-1 shadow-md transition-all duration-300">
-                            <Plus className="h-4 w-4" /> {t("add")}
-                        </Button>
-                    </Link>
                 </CardHeader>
 
-                <CardContent className="px-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                <CardContent className="px-5 pb-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Class */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
@@ -243,7 +300,7 @@ export default function ClassTimetablePage() {
                                     fetchSectionsByClass(val);
                                 }}
                             >
-                                <SelectTrigger className="h-10">
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -252,8 +309,9 @@ export default function ClassTimetablePage() {
                             </Select>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                        {/* Section */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
@@ -261,7 +319,7 @@ export default function ClassTimetablePage() {
                                 onValueChange={setSelectedSectionId}
                                 disabled={!selectedClassId}
                             >
-                                <SelectTrigger className="h-10">
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                     <SelectValue placeholder={!selectedClassId ? t("select_class_first") : t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -270,28 +328,35 @@ export default function ClassTimetablePage() {
                             </Select>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600 uppercase">
+                        {/* Subject Group */}
+                        <div className="space-y-1.5">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("subject_group")}
                             </Label>
-                            <Select value={selectedSubjectGroupId} onValueChange={setSelectedSubjectGroupId}>
-                                <SelectTrigger className="h-10">
+                            <Select
+                                value={selectedSubjectGroupId}
+                                onValueChange={setSelectedSubjectGroupId}
+                                disabled={!selectedClassId}
+                            >
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {subjectGroups.filter(sg => !selectedClassId || String(sg.school_class_id) === selectedClassId).map(sg => (
-                                        <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
-                                    ))}
+                                    {subjectGroups
+                                        .filter(sg => !selectedClassId || String(sg.school_class_id) === selectedClassId)
+                                        .map(sg => (
+                                            <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
+                                        ))}
                                 </SelectContent>
                             </Select>
                         </div>
                     </div>
 
-                    <div className="flex justify-end">
+                    <div className="flex justify-end mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
                         <Button
                             onClick={handleSearch}
-                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs gap-2 shadow-md transition-all duration-300"
                             disabled={searching || loading}
+                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
                         >
                             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                             {t("search")}
@@ -300,7 +365,7 @@ export default function ClassTimetablePage() {
                 </CardContent>
             </Card>
 
-            {/* Timetable Section */}
+            {/* Timetable Weekly Matrix Card */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                     <div className="flex items-center gap-2.5">
@@ -308,77 +373,178 @@ export default function ClassTimetablePage() {
                             <CalendarClock className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("class_timetable")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_scheduled_entries", { count: totalEntries })}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {t("class_timetable")}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {selectedClassName && selectedSectionName
+                                    ? `${selectedClassName} • Section ${selectedSectionName} (${totalEntries} Periods Scheduled)`
+                                    : t("x_scheduled_entries", { count: totalEntries })}
+                            </p>
                         </div>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded shadow-sm p-0 border-0 no-print"
-                        onClick={handlePrint}
-                    >
-                        <Printer className="h-5 w-5" />
-                    </Button>
+
+                    <div className="flex items-center gap-2">
+                        {totalEntries > 0 && (
+                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold px-2.5 py-1">
+                                {totalEntries} Scheduled Periods
+                            </Badge>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded-lg shadow-sm p-0 border-0 no-print cursor-pointer"
+                            onClick={handlePrint}
+                            title="Print Timetable"
+                        >
+                            <Printer className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </CardHeader>
 
-                <CardContent className="px-0">
+                <CardContent className="p-0">
                     {searching ? (
                         <TimetableSkeleton days={orderedDays} />
                     ) : (
-                        <div className="overflow-x-auto rounded-lg border border-gray-200/50 shadow-sm">
-                            <div className="flex min-w-max">
-                                {timetableData.map((dayData) => (
-                                    <div key={dayData.day} className="flex-1 min-w-[200px] border-r last:border-r-0">
-                                        <div className="bg-gray-100 p-2 text-center border-b font-bold text-gray-700">
-                                            <span>{t(dayData.day.toLowerCase())}</span>
-                                        </div>
-                                        <div className="p-3 space-y-3 bg-white min-h-[400px]">
-                                            {dayData.entries.length > 0 ? (
-                                                dayData.entries.map((entry, idx) => (
-                                                    <div key={idx} className="bg-white border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow relative group">
-                                                        <button
-                                                            onClick={() => handleDeleteEntry(entry.id)}
-                                                            className="absolute top-2 right-2 p-1 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        <div className="overflow-x-auto p-4 sm:p-5">
+                            <div className="flex min-w-max gap-4 items-start">
+                                {timetableData.map((dayData) => {
+                                    const entryCount = dayData.entries.length;
+                                    return (
+                                        <div
+                                            key={dayData.day}
+                                            className="flex-1 min-w-[240px] max-w-[280px] flex flex-col space-y-3 bg-gray-50/40 dark:bg-gray-900/30 p-3 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-2xs"
+                                        >
+                                            {/* Column Header */}
+                                            <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                                                <span className="text-xs font-black text-gray-800 dark:text-gray-100 uppercase tracking-wider">
+                                                    {dayData.day}
+                                                </span>
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight",
+                                                    entryCount > 0
+                                                        ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200"
+                                                        : "bg-gray-100 text-gray-500 dark:bg-gray-700"
+                                                )}>
+                                                    {entryCount > 0 ? `${entryCount} Period${entryCount === 1 ? '' : 's'}` : "Off"}
+                                                </span>
+                                            </div>
+
+                                            {/* Period Cards Container */}
+                                            <div className="space-y-3 min-h-[300px]">
+                                                {entryCount > 0 ? (
+                                                    dayData.entries.map((entry, idx) => (
+                                                        <div
+                                                            key={entry.id || idx}
+                                                            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3.5 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all duration-200 relative group"
                                                         >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </button>
-                                                        <div className="space-y-2 text-[11px]">
-                                                            <div className="flex items-start gap-2">
-                                                                <BookOpen className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                                <span className="font-semibold text-green-600">{t("subject")}: {entry.subject?.name} ({entry.subject?.code})</span>
+                                                            {/* Quick Delete Button */}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => confirmDeleteEntry(entry.id)}
+                                                                className="absolute top-2.5 right-2.5 h-6 w-6 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-2xs"
+                                                                title="Delete Period"
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+
+                                                            {/* Period Time Pill */}
+                                                            <div className="flex items-center gap-1.5 mb-2.5">
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10.5px] border border-indigo-100 dark:border-indigo-900/60">
+                                                                    <Clock className="h-3 w-3 text-indigo-500" />
+                                                                    #{idx + 1} • {formatTime(entry.start_time, tf)} - {formatTime(entry.end_time, tf)}
+                                                                </span>
                                                             </div>
-                                                            <div className="flex items-start gap-2">
-                                                                <Clock className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                                <span className="text-green-700 font-medium">{formatTime(entry.start_time, tf)} - {formatTime(entry.end_time, tf)}</span>
+
+                                                            {/* Subject Name */}
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <div className="h-6 w-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
+                                                                    <BookOpen className="h-3.5 w-3.5" />
+                                                                </div>
+                                                                <span className="font-bold text-gray-900 dark:text-gray-100 text-xs truncate">
+                                                                    {entry.subject?.name} {entry.subject?.code ? `(${entry.subject?.code})` : ""}
+                                                                </span>
                                                             </div>
-                                                            <div className="flex items-start gap-2">
-                                                                <User className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                                <span className="text-green-700 font-medium">{entry.staff?.name} ({entry.staff?.staff_id})</span>
-                                                            </div>
-                                                            <div className="flex items-start gap-2">
-                                                                <MapPin className="h-3.5 w-3.5 text-gray-400 mt-0.5" />
-                                                                <span className="text-green-700 font-medium">{t("room_no")}: {entry.room || t("n_a")}</span>
+
+                                                            {/* Teacher & Room Rows */}
+                                                            <div className="space-y-1 pt-1.5 border-t border-gray-100 dark:border-gray-700/60 text-[11px]">
+                                                                <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
+                                                                    <div className="flex items-center gap-1.5 truncate">
+                                                                        <User className="h-3 w-3 text-gray-400 shrink-0" />
+                                                                        <span className="truncate font-medium">{entry.staff?.name || "Teacher"}</span>
+                                                                    </div>
+                                                                    {entry.staff?.staff_id && (
+                                                                        <span className="text-[9.5px] font-mono text-gray-400 font-semibold shrink-0">
+                                                                            {entry.staff.staff_id}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 text-[10.5px]">
+                                                                    <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
+                                                                    <span>Room {entry.room || "N/A"}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
+                                                    ))
+                                                ) : (
+                                                    /* Empty / Off Day Placeholder */
+                                                    <div className="bg-white/60 dark:bg-gray-800/40 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl p-6 text-center flex flex-col items-center justify-center gap-2">
+                                                        <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-400">
+                                                            <AlertCircle className="h-4 w-4" />
+                                                        </div>
+                                                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">
+                                                            {t("not_scheduled")}
+                                                        </span>
+                                                        <Link href="/dashboard/academics/class-timetable/add">
+                                                            <button
+                                                                type="button"
+                                                                className="text-[10.5px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5 mt-1 cursor-pointer"
+                                                            >
+                                                                <Plus className="h-3 w-3" /> Add Period
+                                                            </button>
+                                                        </Link>
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <div className="bg-white border rounded-lg p-3 text-center">
-                                                    <div className="flex items-center justify-center gap-2 text-red-500 text-[11px] font-medium py-1">
-                                                        <AlertCircle className="h-3.5 w-3.5" />
-                                                        <span>{t("not_scheduled")}</span>
-                                                    </div>
-                                                </div>
-                                            )}
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">
+                            {t("are_you_absolutely_sure") || "Delete Timetable Entry?"}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
+                            {t("delete_entry_confirm_message") || "Are you sure you want to remove this period schedule? This action cannot be undone."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-6">
+                        <AlertDialogCancel disabled={deleting} className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200">
+                            {t("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleDeleteEntry();
+                            }}
+                            className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md"
+                            disabled={deleting}
+                        >
+                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            {t("delete")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

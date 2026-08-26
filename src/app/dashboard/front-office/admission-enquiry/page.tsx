@@ -73,6 +73,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getImageUrl } from "@/lib/image-url";
 
 interface AdmissionEnquiry {
     id: number;
@@ -90,6 +92,9 @@ interface AdmissionEnquiry {
     class_id: number | null;
     no_of_child: number;
     status: "Active" | "Passive" | "Dead" | "Won" | "Lost";
+    avatar?: string | null;
+    photo?: string | null;
+    image?: string | null;
 }
 
 interface SchoolClass {
@@ -402,22 +407,20 @@ export default function AdmissionEnquiryPage() {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+        <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen pb-20 animate-in fade-in duration-500">
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-lg">
-                            <Users className="h-5 w-5" />
-                        </span>
-                        {t("admission_enquiry")}
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1 ml-11">{t("manage_follow_up_admission_leads")}</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Users className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">{t("admission_enquiry")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("manage_follow_up_admission_leads")}</p>
+                    </div>
                 </div>
                 <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 gap-1.5 text-xs font-semibold rounded-lg self-start sm:self-auto"
+                    className="btn-gradient text-white px-5 h-9 text-xs gap-1.5 shadow-md rounded-full font-bold uppercase tracking-wider cursor-pointer"
                     onClick={() => { setPage(1); fetchEnquiries(); }}
                     disabled={loading}
                 >
@@ -428,7 +431,7 @@ export default function AdmissionEnquiryPage() {
 
             {/* Select Criteria Section */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100 dark:border-gray-800">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Filter className="h-5 w-5" />
                     </span>
@@ -439,83 +442,83 @@ export default function AdmissionEnquiryPage() {
                 </CardHeader>
                 <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-6 gap-4 items-end">
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("class")}</label>
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">{t("class")}</label>
                             <div className="relative">
                                 <select
-                                    className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors"
+                                    className="flex h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 appearance-none cursor-pointer transition-all"
                                     value={filters.class_id}
                                     onChange={(e) => setFilters({ ...filters, class_id: e.target.value })}
                                 >
-                                    <option value="">{t("select")}</option>
+                                    <option value="" className="text-gray-400">{t("select")}</option>
                                     {classes.map(cls => (
-                                        <option key={cls.id} value={cls.id}>{cls.name}</option>
+                                        <option key={cls.id} value={cls.id} className="text-gray-900 font-medium">{cls.name}</option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("source")}</label>
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">{t("source")}</label>
                             <div className="relative">
                                 <select
-                                    className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors"
+                                    className="flex h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 appearance-none cursor-pointer transition-all"
                                     value={filters.source}
                                     onChange={(e) => setFilters({ ...filters, source: e.target.value })}
                                 >
-                                    <option value="">{t("select")}</option>
+                                    <option value="" className="text-gray-400">{t("select")}</option>
                                     {sources.map(src => (
-                                        <option key={src.id} value={src.name}>{src.name}</option>
+                                        <option key={src.id} value={src.name} className="text-gray-900 font-medium">{src.name}</option>
                                     ))}
                                 </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("enquiry_from_date")}</label>
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">{t("enquiry_from_date")}</label>
                             <DatePicker
                                 value={filters.from_date}
                                 onChange={(val) => setFilters({ ...filters, from_date: val })}
                                 placeholder={t("from_date")}
-                                className="h-10 bg-muted/30 border-muted/50 group-hover:border-indigo-200 transition-colors"
+                                className="h-10 bg-gray-50/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 transition-colors"
                             />
                         </div>
 
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("enquiry_to_date")}</label>
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">{t("enquiry_to_date")}</label>
                             <DatePicker
                                 value={filters.to_date}
                                 onChange={(val) => setFilters({ ...filters, to_date: val })}
                                 placeholder={t("to_date")}
-                                className="h-10 bg-muted/30 border-muted/50 group-hover:border-indigo-200 transition-colors"
+                                className="h-10 bg-gray-50/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 transition-colors"
                             />
                         </div>
 
-                        <div className="space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("status")}</label>
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">{t("status")}</label>
                             <div className="relative">
                                 <select
-                                    className="flex h-10 w-full rounded-lg border border-muted/50 bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer group-hover:border-indigo-200 transition-colors"
+                                    className="flex h-10 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 appearance-none cursor-pointer transition-all"
                                     value={filters.status}
                                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                                 >
-                                    <option value="">{t("select")}</option>
-                                    <option value="All">{t("all")}</option>
-                                    <option value="Active">{t("active")}</option>
-                                    <option value="Passive">{t("passive")}</option>
-                                    <option value="Dead">{t("dead")}</option>
-                                    <option value="Won">{t("won")}</option>
-                                    <option value="Lost">{t("lost")}</option>
+                                    <option value="" className="text-gray-400">{t("select")}</option>
+                                    <option value="All" className="text-gray-900 font-medium">{t("all")}</option>
+                                    <option value="Active" className="text-gray-900 font-medium">{t("active")}</option>
+                                    <option value="Passive" className="text-gray-900 font-medium">{t("passive")}</option>
+                                    <option value="Dead" className="text-gray-900 font-medium">{t("dead")}</option>
+                                    <option value="Won" className="text-gray-900 font-medium">{t("won")}</option>
+                                    <option value="Lost" className="text-gray-900 font-medium">{t("lost")}</option>
                                 </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
                         <div className="flex justify-end">
-                            <Button variant="gradient" className="h-10 px-8" onClick={() => { setPage(1); fetchEnquiries(); }} disabled={loading}>
-                                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 text-white mr-2" />}
+                            <Button className="btn-gradient text-white h-10 px-8 rounded-full text-xs font-bold uppercase tracking-wider shadow-md cursor-pointer w-full md:w-auto" onClick={() => { setPage(1); fetchEnquiries(); }} disabled={loading}>
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Search className="h-4 w-4 text-white mr-1.5" />}
                                 {t("search")}
                             </Button>
                         </div>
@@ -525,7 +528,7 @@ export default function AdmissionEnquiryPage() {
 
             {/* List Table */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Users className="h-5 w-5" />
@@ -537,11 +540,11 @@ export default function AdmissionEnquiryPage() {
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingEnquiry(null); resetForm(); } }}>
                         <DialogTrigger asChild>
-                            <Button variant="gradient" size="sm" className="h-9 px-6">
+                            <Button className="btn-gradient text-white h-9 px-5 text-xs rounded-full font-bold uppercase tracking-wider shadow-md cursor-pointer">
                                 <Plus className="h-4 w-4 mr-1" /> {t("add")}
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl sm:!max-w-[80vw] lg:!max-w-[68rem] p-0 overflow-hidden border-none shadow-2xl gap-0">
+                        <DialogContent className="max-w-4xl sm:!max-w-[80vw] lg:!max-w-[68rem] p-0 overflow-hidden border-none shadow-2xl gap-0 rounded-2xl">
                             {/* Gradient header */}
                             <div className="relative bg-gradient-to-r from-[#FF9800] to-[#6366F1] px-6 py-5 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -557,19 +560,19 @@ export default function AdmissionEnquiryPage() {
                                 </div>
                                 <button
                                     onClick={() => setIsDialogOpen(false)}
-                                    className="text-white/80 hover:text-white hover:bg-white/15 rounded-lg p-1.5 transition-colors"
+                                    className="text-white/80 hover:text-white hover:bg-white/15 rounded-lg p-1.5 transition-colors cursor-pointer"
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
 
-                            <div className="p-6 space-y-6 bg-white overflow-y-auto max-h-[72vh]">
+                            <div className="p-6 space-y-6 bg-white dark:bg-gray-900 overflow-y-auto max-h-[72vh]">
                                 {/* Section: Contact Information */}
                                 <ModalSection icon={User} title={t("contact_information")}>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
                                         <Field icon={User} label={t("name")} required>
                                             <Input
-                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                 value={formData.name}
                                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                                 placeholder={t("enter_full_name")}
@@ -577,7 +580,7 @@ export default function AdmissionEnquiryPage() {
                                         </Field>
                                         <Field icon={Phone} label={t("phone")} required>
                                             <Input
-                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                 value={formData.phone}
                                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                                 placeholder={t("enter_phone_number")}
@@ -586,7 +589,7 @@ export default function AdmissionEnquiryPage() {
                                         <Field icon={Mail} label={t("email")}>
                                             <Input
                                                 type="email"
-                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                 value={formData.email || ""}
                                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                                 placeholder="name@example.com"
@@ -594,7 +597,7 @@ export default function AdmissionEnquiryPage() {
                                         </Field>
                                         <Field icon={MapPin} label={t("address")}>
                                             <Input
-                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                 value={formData.address || ""}
                                                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                                 placeholder={t("enter_address")}
@@ -611,7 +614,7 @@ export default function AdmissionEnquiryPage() {
                                                 value={formData.date || ""}
                                                 onChange={(val) => setFormData({ ...formData, date: val })}
                                                 placeholder={t("select_date")}
-                                                className="bg-slate-50/50 border-slate-200"
+                                                className="bg-gray-50/40 border-gray-200"
                                             />
                                         </Field>
                                         <Field icon={Radio} label={t("source")}>
@@ -634,7 +637,7 @@ export default function AdmissionEnquiryPage() {
                                             <Input
                                                 type="number"
                                                 min="1"
-                                                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                 value={formData.no_of_child}
                                                 onChange={(e) => setFormData({ ...formData, no_of_child: parseInt(e.target.value) || 1 })}
                                             />
@@ -650,7 +653,7 @@ export default function AdmissionEnquiryPage() {
                                                 value={formData.next_follow_up_date || ""}
                                                 onChange={(val) => setFormData({ ...formData, next_follow_up_date: val })}
                                                 placeholder={t("select_date")}
-                                                className="bg-slate-50/50 border-slate-200"
+                                                className="bg-gray-50/40 border-gray-200"
                                             />
                                         </Field>
                                         <Field icon={UserCheck} label={t("assigned")}>
@@ -694,7 +697,7 @@ export default function AdmissionEnquiryPage() {
                                         <Field icon={FileText} label={t("description")}>
                                             <Textarea
                                                 rows={3}
-                                                className="rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20 resize-none"
+                                                className="rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none text-xs"
                                                 value={formData.description || ""}
                                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                                 placeholder={t("enter_description")}
@@ -703,7 +706,7 @@ export default function AdmissionEnquiryPage() {
                                         <Field icon={StickyNote} label={t("note")}>
                                             <Textarea
                                                 rows={3}
-                                                className="rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20 resize-none"
+                                                className="rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none text-xs"
                                                 value={formData.note || ""}
                                                 onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                                                 placeholder={t("enter_note")}
@@ -713,12 +716,12 @@ export default function AdmissionEnquiryPage() {
                                 </ModalSection>
                             </div>
 
-                            <DialogFooter className="bg-slate-50/80 px-6 py-4 border-t border-slate-200 sm:justify-end gap-2">
-                                <Button variant="outline" className="h-10 px-6 rounded-lg font-semibold" onClick={() => setIsDialogOpen(false)} disabled={saving}>
+                            <DialogFooter className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 sm:justify-end gap-2">
+                                <Button variant="outline" className="h-9 px-5 rounded-full text-xs font-bold uppercase border-gray-200" onClick={() => setIsDialogOpen(false)} disabled={saving}>
                                     {t("cancel")}
                                 </Button>
-                                <Button variant="gradient" className="h-10 px-8 rounded-lg font-bold shadow-lg shadow-primary/20" onClick={handleSave} disabled={saving}>
-                                    {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                <Button className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase shadow-md cursor-pointer" onClick={handleSave} disabled={saving}>
+                                    {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                                     {editingEnquiry ? t("update") : t("save")}
                                 </Button>
                             </DialogFooter>
@@ -727,12 +730,12 @@ export default function AdmissionEnquiryPage() {
                 </CardHeader>
                 <CardContent className="p-6">
                     {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                        <div className="relative w-full md:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-5">
+                        <div className="relative w-full md:w-72">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                                 placeholder={t("search_by_name_or_phone")}
-                                className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50"
+                                className="pl-10 h-10 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus-visible:bg-white focus-visible:ring-indigo-500 shadow-none"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -746,19 +749,19 @@ export default function AdmissionEnquiryPage() {
                                         setPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-16 text-xs border border-muted/50 bg-muted/30 hover:bg-muted/50 transition-colors shadow-none rounded-lg font-semibold text-muted-foreground bg-white">
+                                    <SelectTrigger className="h-9 w-20 text-xs border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl font-bold text-gray-700 dark:text-gray-200">
                                         <SelectValue placeholder={String(limit)} />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-lg border-muted/50">
+                                    <SelectContent className="rounded-xl border-gray-200">
                                         {[20, 50, 100, 500].map((n) => (
-                                            <SelectItem key={n} value={String(n)} className="font-medium text-slate-700">
+                                            <SelectItem key={n} value={String(n)} className="font-semibold text-xs text-gray-700">
                                                 {n}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex gap-1">
+                            <div className="flex gap-1.5 bg-gray-50 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
                                 <IconButton icon={Printer} onClick={() => window.print()} title={t("print")} />
                                 <IconButton icon={CopyIcon} onClick={exportToCopy} title={t("copy")} />
                                 <IconButton icon={TableIcon} onClick={exportToExcel} title={t("excel")} />
@@ -770,18 +773,19 @@ export default function AdmissionEnquiryPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto rounded-lg border border-muted/50">
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-muted/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            <thead className="bg-gray-50 dark:bg-gray-800 text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                                 <tr>
                                     <Th className="w-10">
                                         <input
                                             type="checkbox"
-                                            className="h-4 w-4 rounded border-muted/50 text-primary cursor-pointer"
+                                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                                             checked={displayedEnquiries.length > 0 && selectedIds.size === displayedEnquiries.length}
                                             onChange={(e) => handleSelectAll(e.target.checked)}
                                         />
                                     </Th>
+                                    <Th className="w-12">#</Th>
                                     <Th>{t("name")}</Th>
                                     <Th>{t("phone")}</Th>
                                     <Th className="hidden lg:table-cell">{t("source")}</Th>
@@ -795,77 +799,116 @@ export default function AdmissionEnquiryPage() {
                                                 <button
                                                     disabled={selectedIds.size === 0}
                                                     className={cn(
-                                                        "p-1 rounded transition-all shadow-sm active:scale-90",
-                                                        selectedIds.size > 0 ? "bg-red-500 text-white hover:bg-red-600" : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                                                        "p-1 rounded-md transition-all shadow-2xs active:scale-90 cursor-pointer",
+                                                        selectedIds.size > 0 ? "bg-rose-500 text-white hover:bg-rose-600" : "bg-gray-200 text-gray-400 cursor-not-allowed opacity-50"
                                                     )}
                                                     title={t("delete_selected")}
                                                 >
-                                                    <Trash2 className="h-3 w-3" />
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
                                             </AlertDialogTrigger>
-                                            <AlertDialogContent>
+                                            <AlertDialogContent className="rounded-2xl">
                                                 <AlertDialogHeader>
-                                                    <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
-                                                    <AlertDialogDescription>
+                                                    <AlertDialogTitle className="text-base font-bold text-gray-900">{t("are_you_absolutely_sure")}</AlertDialogTitle>
+                                                    <AlertDialogDescription className="text-xs text-gray-600">
                                                         {t("permanently_delete_selected_enquiries", { count: selectedIds.size })}
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_all")}</AlertDialogAction>
+                                                <AlertDialogFooter className="gap-2">
+                                                    <AlertDialogCancel className="rounded-full h-9 text-xs font-bold uppercase">{t("cancel")}</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={handleBulkDelete} className="bg-rose-600 hover:bg-rose-700 rounded-full h-9 text-xs font-bold uppercase">{t("delete_all")}</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
                                     </Th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-muted/30">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
                                 {displayedEnquiries.length > 0 ? (
-                                    displayedEnquiries.map((item) => (
-                                        <tr key={item.id} className="hover:bg-muted/10 transition-colors">
+                                    displayedEnquiries.map((item, idx) => (
+                                        <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
                                             <Td>
                                                 <input
                                                     type="checkbox"
-                                                    className="h-4 w-4 rounded border-muted/50 text-primary cursor-pointer"
+                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                                                     checked={selectedIds.has(item.id)}
                                                     onChange={() => handleSelectOne(item.id)}
                                                 />
                                             </Td>
-                                            <Td className="font-semibold text-slate-700">{item.name}</Td>
-                                            <Td className="text-slate-600 font-medium">{item.phone}</Td>
-                                            <Td className="text-slate-600 font-medium hidden lg:table-cell">{item.source || "-"}</Td>
-                                            <Td className="text-slate-600 font-medium hidden md:table-cell">{item.date ? item.date.split("T")[0] : "-"}</Td>
-                                            <Td className="text-slate-600 font-medium hidden xl:table-cell">{item.next_follow_up_date ? item.next_follow_up_date.split("T")[0] : "-"}</Td>
+                                            <Td className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                {((page - 1) * limit) + idx + 1}
+                                            </Td>
+                                            <Td>
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-9 w-9 rounded-xl border border-indigo-100 dark:border-indigo-900 shadow-2xs shrink-0">
+                                                        <AvatarImage
+                                                            src={getImageUrl(item.avatar || item.photo || item.image)}
+                                                            alt={item.name}
+                                                            className="object-cover"
+                                                        />
+                                                        <AvatarFallback className="bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 text-indigo-700 font-bold text-xs">
+                                                            {item.name ? item.name.substring(0, 2).toUpperCase() : "AE"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span
+                                                            className="font-bold text-xs text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition-colors cursor-pointer truncate"
+                                                            onClick={() => handleEdit(item)}
+                                                        >
+                                                            {item.name}
+                                                        </span>
+                                                        {item.email && (
+                                                            <span className="text-[10.5px] text-gray-500 truncate">{item.email}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </Td>
+                                            <Td>
+                                                <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+                                                    {item.phone}
+                                                </span>
+                                            </Td>
+                                            <Td className="hidden lg:table-cell">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300">
+                                                    {item.source || "-"}
+                                                </span>
+                                            </Td>
+                                            <Td className="text-xs font-medium text-gray-700 dark:text-gray-300 hidden md:table-cell">
+                                                {item.date ? item.date.split("T")[0] : "-"}
+                                            </Td>
+                                            <Td className="text-xs font-medium text-gray-700 dark:text-gray-300 hidden xl:table-cell">
+                                                {item.next_follow_up_date ? item.next_follow_up_date.split("T")[0] : "-"}
+                                            </Td>
                                             <Td>
                                                 <Badge variant="outline" className={cn(
-                                                    "text-[10px] font-bold px-2 py-0.5",
-                                                    item.status === "Active" ? "border-green-200 text-green-700 bg-green-50/30" :
-                                                        item.status === "Passive" ? "border-orange-200 text-orange-700 bg-orange-50/30" :
-                                                            item.status === "Won" ? "border-emerald-200 text-emerald-700 bg-emerald-50/30" :
-                                                                item.status === "Lost" ? "border-slate-200 text-slate-700 bg-slate-50/30" :
-                                                                    "border-red-200 text-red-700 bg-red-50/30"
+                                                    "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
+                                                    item.status === "Active" ? "border-emerald-200 text-emerald-700 bg-emerald-50/80 dark:bg-emerald-950 dark:text-emerald-300" :
+                                                        item.status === "Passive" ? "border-amber-200 text-amber-700 bg-amber-50/80 dark:bg-amber-950 dark:text-amber-300" :
+                                                            item.status === "Won" ? "border-indigo-200 text-indigo-700 bg-indigo-50/80 dark:bg-indigo-950 dark:text-indigo-300" :
+                                                                item.status === "Lost" ? "border-slate-200 text-slate-700 bg-slate-50/80" :
+                                                                    "border-rose-200 text-rose-700 bg-rose-50/80 dark:bg-rose-950 dark:text-rose-300"
                                                 )}>
                                                     {item.status}
                                                 </Badge>
                                             </Td>
                                             <Td className="text-right">
-                                                <div className="flex justify-end gap-1 px-2">
-                                                    <ActionBtn icon={Phone} className="bg-green-500" title={t("call_x", { phone: item.phone })} onClick={() => { if (item.phone) window.location.href = `tel:${item.phone}`; }} />
-                                                    <ActionBtn icon={Pencil} className="bg-indigo-500" onClick={() => handleEdit(item)} title={t("edit")} />
+                                                <div className="flex justify-end gap-1.5">
+                                                    <ActionBtn icon={Phone} className="bg-emerald-500 hover:bg-emerald-600" title={t("call_x", { phone: item.phone })} onClick={() => { if (item.phone) window.location.href = `tel:${item.phone}`; }} />
+                                                    <ActionBtn icon={Pencil} className="bg-indigo-500 hover:bg-indigo-600" onClick={() => handleEdit(item)} title={t("edit")} />
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <ActionBtn icon={X} className="bg-red-500" title={t("delete")} />
+                                                            <ActionBtn icon={X} className="bg-rose-500 hover:bg-rose-600" title={t("delete")} />
                                                         </AlertDialogTrigger>
-                                                        <AlertDialogContent>
+                                                        <AlertDialogContent className="rounded-2xl">
                                                             <AlertDialogHeader>
-                                                                <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
-                                                                <AlertDialogDescription>
+                                                                <AlertDialogTitle className="text-base font-bold text-gray-900">{t("are_you_sure")}</AlertDialogTitle>
+                                                                <AlertDialogDescription className="text-xs text-gray-600">
                                                                     {t("permanently_delete_enquiry_for", { name: item.name })}
                                                                 </AlertDialogDescription>
                                                             </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDelete(item.id)} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
+                                                            <AlertDialogFooter className="gap-2">
+                                                                <AlertDialogCancel className="rounded-full h-9 text-xs font-bold uppercase">{t("cancel")}</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDelete(item.id)} className="bg-rose-600 hover:bg-rose-700 rounded-full h-9 text-xs font-bold uppercase">{t("delete")}</AlertDialogAction>
                                                             </AlertDialogFooter>
                                                         </AlertDialogContent>
                                                     </AlertDialog>
@@ -875,8 +918,8 @@ export default function AdmissionEnquiryPage() {
                                     ))
                                 ) : (
                                     <tr>
-                                        <Td colSpan={8} className="text-center py-10">
-                                            {loading ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : t("no_enquiries_found")}
+                                        <Td colSpan={9} className="text-center py-12 text-xs font-semibold text-gray-400">
+                                            {loading ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-600" /> : t("no_enquiries_found")}
                                         </Td>
                                     </tr>
                                 )}
@@ -884,15 +927,14 @@ export default function AdmissionEnquiryPage() {
                         </table>
                     </div>
 
-                    <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                    <div className="mt-5 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                             {t("showing_x_to_y_of_z", { from: total > 0 ? ((page - 1) * limit) + 1 : 0, to: Math.min(page * limit, total), total })}
                         </p>
                         <div className="flex items-center gap-1.5 flex-wrap justify-center">
                             <Button
-                                variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-[10px] border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:scale-95 transition-all bg-white"
+                                className="h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 cursor-pointer shadow-xs"
                                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                                 disabled={page === 1 || loading}
                             >
@@ -901,13 +943,16 @@ export default function AdmissionEnquiryPage() {
 
                             {getPageNumbers(page, lastPage).map((p, idx) =>
                                 p === "…" ? (
-                                    <span key={`gap-${idx}`} className="px-1.5 text-gray-400 text-sm select-none">…</span>
+                                    <span key={`gap-${idx}`} className="px-1.5 text-gray-400 text-xs select-none">…</span>
                                 ) : (
                                     <Button
                                         key={p}
-                                        variant={page === p ? "pagination-active" : "pagination-inactive"}
-                                        size="icon"
-                                        className="h-8 w-8 rounded-[10px] text-xs font-bold"
+                                        className={cn(
+                                            "h-8 w-8 rounded-lg p-0 text-xs font-bold transition-all shadow-xs cursor-pointer",
+                                            page === p
+                                                ? "btn-gradient text-white"
+                                                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                        )}
                                         onClick={() => setPage(p)}
                                         disabled={loading}
                                     >
@@ -917,9 +962,8 @@ export default function AdmissionEnquiryPage() {
                             )}
 
                             <Button
-                                variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-[10px] border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:scale-95 transition-all bg-white"
+                                className="h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 cursor-pointer shadow-xs"
                                 onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
                                 disabled={page === lastPage || lastPage === 0 || loading}
                             >

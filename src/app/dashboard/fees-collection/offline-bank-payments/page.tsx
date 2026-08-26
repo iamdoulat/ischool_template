@@ -17,7 +17,11 @@ import {
     X,
     ExternalLink,
     Landmark,
-    Download
+    Download,
+    Copy,
+    Zap,
+    AlertCircle,
+    User
 } from "lucide-react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,7 +63,7 @@ interface OfflinePayment {
     bank_name: string;
     bank_account_no: string;
     screenshot: string | null;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "approved" | "rejected" | string;
     status_date: string | null;
     rejection_reason: string | null;
     student?: {
@@ -73,10 +77,15 @@ interface OfflinePayment {
     student_fee_master?: {
         fee_master?: {
             fee_type?: { name?: string };
+            fee_group?: { name?: string };
         };
     };
     course?: {
         title?: string;
+    };
+    action_by?: {
+        name?: string;
+        last_name?: string;
     };
 }
 
@@ -105,7 +114,17 @@ export default function OfflineBankPaymentsPage() {
     const [selectedPayment, setSelectedPayment] = useState<OfflinePayment | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
     const [rejectionReason, setRejectionReason] = useState("");
+    const [isRejectMode, setIsRejectMode] = useState(false);
+    const [copiedRef, setCopiedRef] = useState(false);
     const [processing, setProcessing] = useState(false);
+
+    const copyReferenceNo = (ref: string) => {
+        if (!ref) return;
+        navigator.clipboard.writeText(ref);
+        setCopiedRef(true);
+        tt.success("copied_to_clipboard");
+        setTimeout(() => setCopiedRef(false), 2000);
+    };
     const { t } = useTranslation();
     const tt = useTranslateToast();
     const { symbol, formatCurrency } = useCurrencyFormatter();
@@ -115,8 +134,11 @@ export default function OfflineBankPaymentsPage() {
         trx_id?: number | string;
         date: string;
         reference_no?: string;
+        bank_name?: string;
+        bank_account_no?: string;
         studentName: string;
         admissionNo: string;
+        className?: string;
         detail: string;
         amount: number;
     } | null>(null);
@@ -285,14 +307,21 @@ export default function OfflineBankPaymentsPage() {
             ? `Course Purchase: ${payment.course.title || ''}` 
             : (payment.student_fee_master?.fee_master?.fee_type?.name || t("general_payment"));
 
+        const studentClass = payment.student
+            ? `${payment.student.school_class?.name || payment.student.school_class?.class || payment.student.schoolClass?.name || payment.student.schoolClass?.class || ''} ${payment.student.section?.name ? `(${payment.student.section.name})` : ''}`.trim()
+            : 'N/A';
+
         setInvoiceData({
             type: 'bank',
             id: payment.id,
             trx_id: payment.id,
             date: payment.payment_date,
-            reference_no: payment.reference_no,
+            reference_no: payment.reference_no || 'N/A',
+            bank_name: payment.bank_name || 'UddoktaPay',
+            bank_account_no: payment.bank_account_no || 'N/A',
             studentName: payment.student ? `${payment.student.name || ''} ${payment.student.last_name || ''}`.trim() : 'N/A',
             admissionNo: payment.student?.admission_no || 'N/A',
+            className: studentClass || undefined,
             detail: paymentType,
             amount: payment.amount || 0,
         });
@@ -514,6 +543,8 @@ export default function OfflineBankPaymentsPage() {
                                                             onClick={() => {
                                                                 setSelectedPayment(payment);
                                                                 setRejectionReason("");
+                                                                setIsRejectMode(false);
+                                                                setCopiedRef(false);
                                                                 setIsDetailsOpen(true);
                                                             }}
                                                             className="h-9 w-9 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 transition-all hover:scale-110 active:scale-95"
@@ -564,119 +595,346 @@ export default function OfflineBankPaymentsPage() {
                 </div>
             </Card>
 
-            {/* Details Dialog */}
+            {/* Complete Functional & Scrollable Details Dialog */}
             <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                <DialogContent className="max-w-3xl border-none shadow-2xl rounded-lg overflow-hidden p-0 bg-background/95 backdrop-blur-xl">
-                    <DialogHeader className="p-8 border-b border-muted/20 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-white/20 rounded-lg text-white">
-                                    <Landmark className="h-6 w-6" />
+                <DialogContent className="sm:max-w-[720px] max-h-[90vh] p-0 flex flex-col overflow-hidden rounded-2xl border border-gray-100 shadow-2xl bg-white">
+                    {/* Fixed Modal Header */}
+                    <DialogHeader className="px-6 py-4 sm:px-8 sm:py-5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shrink-0 relative">
+                        <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                                <div className="p-2.5 sm:p-3 bg-white/20 rounded-xl backdrop-blur-md border border-white/30 shrink-0 text-white">
+                                    {selectedPayment?.bank_name?.toLowerCase().includes('uddokta') ? (
+                                        <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-amber-300" />
+                                    ) : (
+                                        <Landmark className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    )}
                                 </div>
-                                <div>
-                                    <DialogTitle className="text-2xl font-bold text-white">{t("payment_details")}</DialogTitle>
-                                    <DialogDescription className="text-white/80 font-medium">
-                                        {t("review_the_submission_from", { name: selectedPayment?.student ? `${selectedPayment.student.name || ''} ${selectedPayment.student.last_name || ''}`.trim() : "" })}
+                                <div className="min-w-0 flex-1">
+                                    <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-white leading-snug">
+                                        Payment Submission Details
+                                    </DialogTitle>
+                                    <DialogDescription className="text-white/90 text-xs font-medium truncate mt-0.5">
+                                        {selectedPayment?.student
+                                            ? `${selectedPayment.student.name || ''} ${selectedPayment.student.last_name || ''}`.trim()
+                                            : "Student Fee Submission"}
+                                        {selectedPayment?.student?.admission_no && ` • Adm #${selectedPayment.student.admission_no}`}
                                     </DialogDescription>
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end">
-                                <span className="text-2xl font-black text-white">{symbol}{(selectedPayment?.amount || 0).toFixed(2)}</span>
-                                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">{t("request")} #{selectedPayment?.id}</span>
+                            <div className="flex flex-col items-end shrink-0">
+                                <span className="text-xl sm:text-2xl font-black text-white leading-none">
+                                    {symbol}{(selectedPayment?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                                <div className="flex items-center gap-1.5 mt-1.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/80 bg-white/10 px-2 py-0.5 rounded-full border border-white/20">
+                                        Request #{selectedPayment?.id}
+                                    </span>
+                                    {((selectedPayment?.status || '').toLowerCase() === 'approved') ? (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-100 bg-emerald-600/60 px-2 py-0.5 rounded-full border border-emerald-400/40 flex items-center gap-1">
+                                            <CheckCircle2 className="h-3 w-3" /> Approved
+                                        </span>
+                                    ) : ((selectedPayment?.status || '').toLowerCase() === 'rejected') ? (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-100 bg-red-600/60 px-2 py-0.5 rounded-full border border-red-400/40 flex items-center gap-1">
+                                            <XCircle className="h-3 w-3" /> Rejected
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-100 bg-amber-600/60 px-2 py-0.5 rounded-full border border-amber-400/40 flex items-center gap-1 animate-pulse">
+                                            <Clock className="h-3 w-3" /> Pending Review
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[60vh] overflow-y-auto">
-                        {/* Info Section */}
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("bank_name")}</span>
-                                    <p className="text-sm font-bold">{selectedPayment?.bank_name || 'N/A'}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("account_no")}</span>
-                                    <p className="text-sm font-bold">{selectedPayment?.bank_account_no || 'N/A'}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("reference_no")}</span>
-                                    <p className="text-sm font-bold text-primary">{selectedPayment?.reference_no || 'N/A'}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("payment_date")}</span>
-                                    <p className="text-sm font-bold">{selectedPayment?.payment_date ? new Date(selectedPayment.payment_date).toLocaleDateString() : 'N/A'}</p>
-                                </div>
-                            </div>
-
-                            <div className="p-4 rounded-lg bg-muted/20 border border-muted/50 space-y-2">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">{t("rejection_reason_required")}</span>
-                                <Textarea
-                                    placeholder={t("provide_reason_for_rejection")}
-                                    value={rejectionReason}
-                                    onChange={(e) => setRejectionReason(e.target.value)}
-                                    className="min-h-[100px] bg-background/50 border-muted/50 rounded-lg text-xs font-medium resize-none focus:ring-primary/20"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Image Section */}
-                        <div className="space-y-3">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1.5">
-                                <FileText className="h-3 w-3" /> {t("payment_proof_or_screenshot")}
-                            </span>
-                            <div className="aspect-[4/3] rounded-lg bg-muted/10 border-2 border-dashed border-muted/50 flex items-center justify-center overflow-hidden group/img relative">
-                                {selectedPayment?.screenshot ? (
-                                    <>
-                                        <img
-                                            src={selectedPayment.screenshot}
-                                            alt="Payment Proof"
-                                            className="w-full h-full object-cover transition-transform group-hover/img:scale-110"
-                                        />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                                            <a href={selectedPayment.screenshot} target="_blank" className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors">
-                                                <ExternalLink className="h-5 w-5" />
-                                            </a>
-                                        </div>
-                                    </>
+                    {/* Scrollable Form Body */}
+                    <div className="flex-1 overflow-y-auto px-6 py-5 sm:px-8 sm:py-6 space-y-5">
+                        {/* Student & Fee Summary Card */}
+                        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                    <User className="h-3.5 w-3.5 text-indigo-600" /> Student & Fee Details
+                                </span>
+                                {selectedPayment?.course ? (
+                                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                                        Online Course
+                                    </span>
                                 ) : (
-                                    <div className="flex flex-col items-center gap-2 text-muted-foreground/40">
-                                        <XCircle className="h-10 w-10" />
-                                        <span className="text-xs font-bold">{t("no_screenshot_uploaded")}</span>
-                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                        {selectedPayment?.student_fee_master?.fee_master?.fee_group?.name || "Tuition Fee"}
+                                    </span>
                                 )}
                             </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
+                                <div>
+                                    <span className="text-[10px] font-medium text-slate-400 block">Student Name</span>
+                                    <p className="font-bold text-slate-800">
+                                        {selectedPayment?.student
+                                            ? `${selectedPayment.student.name || ''} ${selectedPayment.student.last_name || ''}`.trim()
+                                            : "N/A"}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-medium text-slate-400 block">Class & Section</span>
+                                    <p className="font-bold text-slate-800">
+                                        {selectedPayment?.student?.school_class?.name || selectedPayment?.student?.school_class?.class || selectedPayment?.student?.schoolClass?.name || selectedPayment?.student?.schoolClass?.class || "N/A"}
+                                        {selectedPayment?.student?.section?.name ? ` (${selectedPayment.student.section.name})` : ""}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-medium text-slate-400 block">Fee Type</span>
+                                    <p className="font-bold text-indigo-600">
+                                        {selectedPayment?.course?.title
+                                            ? `Course: ${selectedPayment.course.title}`
+                                            : selectedPayment?.student_fee_master?.fee_master?.fee_type?.name || "General Fee Collection"}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Transaction Information Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Left: Transaction Info */}
+                            <div className="space-y-3.5 p-4 rounded-xl bg-white border border-gray-200 shadow-sm">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                                    Payment Method & Reference
+                                </span>
+
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-medium text-gray-500">Gateway / Bank</span>
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-sm font-bold text-gray-900">
+                                            {selectedPayment?.bank_name || 'N/A'}
+                                        </p>
+                                        {selectedPayment?.bank_name?.toLowerCase().includes('uddokta') ? (
+                                            <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded border border-amber-300">
+                                                Online Gateway
+                                            </span>
+                                        ) : selectedPayment?.bank_account_no && selectedPayment.bank_account_no !== 'N/A' ? (
+                                            <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-300">
+                                                Bank Account
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <span className="text-[10px] font-medium text-gray-500">Transaction ID / Reference</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-200 select-all">
+                                            {selectedPayment?.reference_no || 'N/A'}
+                                        </span>
+                                        {selectedPayment?.reference_no && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => copyReferenceNo(selectedPayment.reference_no)}
+                                                className="h-7 px-2 text-[10px] font-bold text-gray-600 hover:text-indigo-600"
+                                                title="Copy Transaction ID"
+                                            >
+                                                {copiedRef ? (
+                                                    <><Check className="h-3.5 w-3.5 mr-1 text-emerald-600" /> Copied</>
+                                                ) : (
+                                                    <><Copy className="h-3.5 w-3.5 mr-1" /> Copy</>
+                                                )}
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-gray-100">
+                                    <div className="space-y-0.5">
+                                        <span className="text-[10px] font-medium text-gray-500">Account No</span>
+                                        <p className="text-xs font-semibold text-gray-800">
+                                            {selectedPayment?.bank_account_no || 'N/A'}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <span className="text-[10px] font-medium text-gray-500">Payment Date</span>
+                                        <p className="text-xs font-semibold text-gray-800">
+                                            {selectedPayment?.payment_date ? new Date(selectedPayment.payment_date).toLocaleDateString('en-GB') : 'N/A'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right: Screenshot / Online Proof Card */}
+                            <div className="space-y-2 p-4 rounded-xl bg-white border border-gray-200 shadow-sm flex flex-col">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                                    <FileText className="h-3.5 w-3.5 text-indigo-500" /> Payment Proof / Screenshot
+                                </span>
+
+                                <div className="flex-1 min-h-[140px] rounded-lg bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative group/img">
+                                    {selectedPayment?.screenshot ? (
+                                        <>
+                                            <img
+                                                src={selectedPayment.screenshot}
+                                                alt="Payment Proof"
+                                                className="w-full h-full object-cover transition-transform group-hover/img:scale-105"
+                                            />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                <a
+                                                    href={selectedPayment.screenshot}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-2.5 bg-white rounded-full text-gray-900 hover:bg-gray-100 shadow-lg transition-colors flex items-center gap-1 text-xs font-bold"
+                                                >
+                                                    <ExternalLink className="h-4 w-4" /> View Full Image
+                                                </a>
+                                            </div>
+                                        </>
+                                    ) : selectedPayment?.bank_name?.toLowerCase().includes('uddokta') || selectedPayment?.reference_no ? (
+                                        <div className="p-4 text-center space-y-1.5">
+                                            <div className="h-9 w-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto">
+                                                <Zap className="h-5 w-5 text-amber-500" />
+                                            </div>
+                                            <p className="text-xs font-bold text-gray-800">Online Gateway Submission</p>
+                                            <p className="text-[10px] text-gray-500 leading-relaxed max-w-[200px]">
+                                                Transaction verified with Reference ID: <strong className="font-mono text-indigo-600">{selectedPayment?.reference_no}</strong>
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-1 text-gray-400 p-4 text-center">
+                                            <XCircle className="h-8 w-8 text-gray-300" />
+                                            <span className="text-xs font-medium">No Screenshot Uploaded</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Status Banners */}
+                        {((selectedPayment?.status || '').toLowerCase() === 'approved') && (
+                            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2.5">
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                                <div>
+                                    <strong className="font-bold">Payment Approved & Fee Applied:</strong> This payment has been verified and credited to the student record.
+                                    {selectedPayment?.status_date && (
+                                        <span className="block text-[11px] text-emerald-700 mt-0.5">
+                                            Approved on {new Date(selectedPayment.status_date).toLocaleString('en-GB')}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {((selectedPayment?.status || '').toLowerCase() === 'rejected') && (
+                            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-900 text-xs flex items-start gap-2.5">
+                                <XCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                    <strong className="font-bold text-red-800">Payment Submission Rejected:</strong>
+                                    <p className="text-xs text-red-700 font-medium">
+                                        Reason: {selectedPayment?.rejection_reason || "No reason specified."}
+                                    </p>
+                                    {selectedPayment?.status_date && (
+                                        <span className="block text-[10px] text-red-600">
+                                            Rejected on {new Date(selectedPayment.status_date).toLocaleString('en-GB')}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Inline Rejection Reason Box (Activated when Admin clicks Reject) */}
+                        {isRejectMode && ((selectedPayment?.status || '').toLowerCase() === 'pending') && (
+                            <div className="p-4 rounded-xl bg-red-50/80 border border-red-200 space-y-3 animate-in fade-in duration-200">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-red-800 flex items-center gap-1.5">
+                                        <AlertCircle className="h-4 w-4 text-red-600" /> Provide Rejection Reason (Required)
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => setIsRejectMode(false)}
+                                        className="h-6 px-2 text-[10px] text-gray-500 hover:text-gray-800"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                                <Textarea
+                                    placeholder="Enter reason for rejecting this payment (e.g. Invalid transaction ID, amount mismatch, etc.)..."
+                                    value={rejectionReason}
+                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                    className="min-h-[85px] bg-white border-red-200 focus:border-red-400 rounded-lg text-xs text-gray-800 font-medium resize-none shadow-none"
+                                    autoFocus
+                                />
+                                <div className="flex items-center justify-end gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setIsRejectMode(false)}
+                                        className="h-8 text-xs font-semibold"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={processing || !rejectionReason.trim()}
+                                        onClick={handleReject}
+                                        className="h-8 text-xs font-bold bg-destructive hover:bg-destructive/90 text-white shadow-sm"
+                                    >
+                                        {processing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <X className="h-3.5 w-3.5 mr-1" />}
+                                        Confirm Rejection
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    <DialogFooter className="p-8 bg-muted/5 border-t border-muted/20 flex flex-col sm:flex-row gap-3">
+                    {/* Fixed Modal Footer */}
+                    <DialogFooter className="px-6 py-3.5 sm:px-8 sm:py-4 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-center justify-between gap-2.5 shrink-0">
                         <Button
                             variant="outline"
                             onClick={() => setIsDetailsOpen(false)}
-                            className="flex-1 h-12 rounded-lg font-bold uppercase tracking-widest text-[10px] border-muted/50 hover:bg-muted/10"
+                            className="w-full sm:w-auto h-9 sm:h-10 px-5 text-xs font-bold rounded-lg border-gray-200 hover:bg-white text-gray-700"
                         >
-                            {t("close")}
+                            Close
                         </Button>
-                        {selectedPayment?.status === 'pending' && (
-                            <>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                            {/* If Approved, offer Invoice Download */}
+                            {((selectedPayment?.status || '').toLowerCase() === 'approved') && (
                                 <Button
-                                    onClick={handleReject}
-                                    disabled={processing}
-                                    className="flex-1 h-12 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-destructive/20 transition-all active:scale-95 flex items-center gap-2"
+                                    type="button"
+                                    onClick={() => selectedPayment && downloadPaymentInvoice(selectedPayment)}
+                                    className="w-full sm:w-auto h-9 sm:h-10 px-5 rounded-lg font-bold text-xs bg-slate-800 hover:bg-slate-700 text-white shadow-sm flex items-center gap-1.5"
                                 >
-                                    {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                                    {t("reject_payment")}
+                                    <Download className="h-3.5 w-3.5" /> Download Invoice
                                 </Button>
-                                <Button
-                                    onClick={handleApprove}
-                                    disabled={processing}
-                                    className="flex-[1.5] h-12 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-primary/20 transition-all active:scale-95 flex items-center gap-2"
-                                >
-                                    {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                    {t("approve_and_apply_fee")}
-                                </Button>
-                            </>
-                        )}
+                            )}
+
+                            {/* If Pending and not in reject mode, show Reject & Approve buttons */}
+                            {((selectedPayment?.status || '').toLowerCase() === 'pending') && !isRejectMode && (
+                                <>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setIsRejectMode(true)}
+                                        disabled={processing}
+                                        className="w-full sm:w-auto h-9 sm:h-10 px-4 rounded-lg border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 font-bold text-xs flex items-center gap-1.5 transition-colors"
+                                    >
+                                        <X className="h-3.5 w-3.5" /> Reject Payment
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={handleApprove}
+                                        disabled={processing}
+                                        className="w-full sm:w-auto h-9 sm:h-10 px-6 rounded-lg font-bold text-xs bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20 flex items-center gap-1.5 active:scale-95 transition-all"
+                                    >
+                                        {processing ? (
+                                            <><Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Processing...</>
+                                        ) : (
+                                            <><Check className="h-4 w-4 mr-1.5" /> Approve & Apply Fee</>
+                                        )}
+                                    </Button>
+                                </>
+                            )}
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -684,121 +942,184 @@ export default function OfflineBankPaymentsPage() {
             {/* Invoice Template (Hidden) */}
             {invoiceData && (
                 <div style={{ position: 'fixed', top: 0, left: 0, zIndex: -50, opacity: 0, pointerEvents: 'none' }}>
-                    <div id="modern-invoice-template-bank" style={{ width: '800px', backgroundColor: '#ffffff', padding: '48px', fontFamily: 'sans-serif', color: '#1e293b', minHeight: '1122px', boxSizing: 'border-box' }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-                            {/* Left Column: Logo + School Name */}
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '380px' }}>
-                                {printSettings?.header_image_base64 ? (
-                                    <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
-                                ) : settings?.print_logo_base64 ? (
-                                    <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '45px', maxWidth: '180px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
-                                ) : null}
-                                <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', lineHeight: '1.2', margin: 0, textAlign: 'left' }}>{settings?.school_name || "iSchool"}</h1>
-                            </div>
-                            
-                            {/* Right Column: Address and Others */}
-                            <div style={{ textAlign: 'right', fontSize: '13px', color: '#1e293b', lineHeight: '1.5' }}>
-                                {settings?.address && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Address:</span> {settings.address}</div>
-                                )}
-                                {settings?.phone && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Phone No.:</span> {settings.phone}</div>
-                                )}
-                                {settings?.email && (
-                                    <div><span style={{ fontWeight: 'bold' }}>Email:</span> {settings.email}</div>
-                                )}
-                                {(() => {
-                                    const siteUrl = (settings?.frontend_url || (typeof window !== 'undefined' ? window.location.origin : ''))
-                                        .replace(/^https?:\/\//, '')
-                                        .replace(/^api\./, '');
-                                    return siteUrl ? (
-                                        <div><span style={{ fontWeight: 'bold' }}>Website:</span> {siteUrl}</div>
-                                    ) : null;
-                                })()}
-                            </div>
-                        </div>
-
-                        {/* Centered full-width black bar */}
-                        <div style={{ backgroundColor: '#000000', color: '#ffffff', fontWeight: 'bold', textAlign: 'center', padding: '10px 0', letterSpacing: '0.2em', fontSize: '15px', marginBottom: '24px', textTransform: 'uppercase', borderRadius: '4px' }}>
-                            INVOICE
-                        </div>
-
-                        {/* Invoice Meta Row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '24px' }}>
-                            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <div>
-                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Request ID:</span> <span style={{ color: '#4f46e5', fontWeight: '900' }}>#{invoiceData.id}</span>
+                    <div id="modern-invoice-template-bank" style={{ 
+                        width: '800px', 
+                        backgroundColor: '#ffffff', 
+                        padding: '40px 48px 36px 48px', 
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
+                        color: '#0f172a', 
+                        minHeight: '1122px', 
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between'
+                    }}>
+                        {/* Main Content Body */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            {/* Header: Logo & School Contact */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', maxWidth: '380px' }}>
+                                    {printSettings?.header_image_base64 ? (
+                                        <img src={printSettings.header_image_base64} alt="Header" style={{ maxHeight: '48px', maxWidth: '200px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
+                                    ) : settings?.print_logo_base64 ? (
+                                        <img src={settings.print_logo_base64} alt="Logo" style={{ maxHeight: '48px', maxWidth: '200px', objectFit: 'contain', marginBottom: '8px', alignSelf: 'flex-start' }} />
+                                    ) : null}
+                                    <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', lineHeight: '1.25', margin: 0, textAlign: 'left' }}>
+                                        {settings?.school_name || "iSchool Management System"}
+                                    </h1>
                                 </div>
-                                <div>
-                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Ref No:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>{invoiceData.reference_no || 'N/A'}</span>
-                                </div>
-                                <div>
-                                    <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Trx ID:</span> <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>#{invoiceData.trx_id || invoiceData.id}</span>
+                                
+                                <div style={{ textAlign: 'right', fontSize: '11.5px', color: '#475569', lineHeight: '1.6' }}>
+                                    {settings?.address && (
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Address:</span> {settings.address}</div>
+                                    )}
+                                    {settings?.phone && (
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Phone:</span> {settings.phone}</div>
+                                    )}
+                                    {settings?.email && (
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Email:</span> {settings.email}</div>
+                                    )}
+                                    {(() => {
+                                        const siteUrl = (settings?.frontend_url || (typeof window !== 'undefined' ? window.location.origin : ''))
+                                            .replace(/^https?:\/\//, '')
+                                            .replace(/^api\./, '');
+                                        return siteUrl ? (
+                                            <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Website:</span> {siteUrl}</div>
+                                        ) : null;
+                                    })()}
                                 </div>
                             </div>
-                            <div>
-                                <span style={{ fontWeight: 'bold', color: '#1e293b' }}>Date:</span> <span style={{ fontWeight: '600' }}>{new Date(invoiceData.date).toLocaleDateString('en-GB')}</span>
-                            </div>
-                        </div>
 
-                        {/* Billed To */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '32px', backgroundColor: '#f8fafc', padding: '24px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Billed To</p>
-                                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>{invoiceData.studentName}</h3>
-                                <p style={{ fontSize: '14px', color: '#64748b', fontWeight: '500', margin: 0 }}>Admission No: {invoiceData.admissionNo}</p>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Status</p>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '32px', padding: '0 16px', fontSize: '12px', fontWeight: 'bold', borderRadius: '4px', backgroundColor: '#dcfce7', color: '#15803d' }}>
-                                    PAID
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Table */}
-                        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '32px' }}>
-                            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
-                                        <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
-                                            <p style={{ fontWeight: 'bold', color: '#1e293b', fontSize: '14px', margin: 0 }}>{invoiceData.detail}</p>
-                                        </td>
-                                        <td style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', fontSize: '14px' }}>
-                                            {formatCurrency(invoiceData.amount)}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Total */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '64px' }}>
-                            <div style={{ width: '50%', backgroundColor: '#f8fafc', borderRadius: '12px', padding: '24px', border: '1px solid #f1f5f9', boxSizing: 'border-box' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#64748b' }}>Subtotal</span>
-                                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#1e293b' }}>{formatCurrency(invoiceData.amount)}</span>
+                            {/* Sleek INVOICE Banner: Left = Invoice No, Middle = INVOICE, Right = Date */}
+                            <div style={{ 
+                                backgroundColor: '#0f172a', 
+                                color: '#ffffff', 
+                                borderRadius: '6px', 
+                                padding: '10px 18px', 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                marginBottom: '20px' 
+                            }}>
+                                <div style={{ fontSize: '12px', fontWeight: '500', color: '#94a3b8', width: '220px', textAlign: 'left' }}>
+                                    <span>Invoice No: <strong style={{ color: '#ffffff', fontWeight: '700' }}>#{invoiceData.id}</strong></span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #e2e8f0', marginTop: '16px' }}>
-                                    <span style={{ fontSize: '16px', fontWeight: '900', color: '#1e293b' }}>Total Paid</span>
-                                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#4f46e5' }}>{formatCurrency(invoiceData.amount)}</span>
+                                <div style={{ textAlign: 'center', flex: 1 }}>
+                                    <span style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#ffffff' }}>
+                                        INVOICE
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: '12px', fontWeight: '500', color: '#94a3b8', width: '220px', textAlign: 'right' }}>
+                                    <span>Date: <strong style={{ color: '#ffffff', fontWeight: '700' }}>{invoiceData.date ? (invoiceData.date.includes('/') ? invoiceData.date : new Date(invoiceData.date).toLocaleDateString('en-GB')) : 'N/A'}</strong></span>
                                 </div>
                             </div>
+
+                            {/* 2-Column Info Grid: Billed To & Payment Details */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+                                {/* Left Column: Student Details */}
+                                <div style={{ backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                    <p style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px 0' }}>
+                                        BILLED TO
+                                    </p>
+                                    <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', margin: '0 0 6px 0' }}>
+                                        {invoiceData.studentName}
+                                    </h3>
+                                    <div style={{ fontSize: '12px', color: '#475569', lineHeight: '1.6' }}>
+                                        <div>Admission No: <strong style={{ color: '#0f172a' }}>{invoiceData.admissionNo}</strong></div>
+                                        {invoiceData.className && (
+                                            <div>Class & Section: <strong style={{ color: '#0f172a' }}>{invoiceData.className}</strong></div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Right Column: Payment Details */}
+                                <div style={{ backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <p style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+                                            PAYMENT DETAILS
+                                        </p>
+                                        <span style={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            height: '20px', 
+                                            padding: '0 8px', 
+                                            fontSize: '10px', 
+                                            fontWeight: '700', 
+                                            letterSpacing: '0.04em',
+                                            borderRadius: '4px', 
+                                            backgroundColor: '#dcfce7', 
+                                            color: '#15803d' 
+                                        }}>
+                                            PAID
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Bank / Gateway</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.bank_name || 'UddoktaPay'}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Account No</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.bank_account_no || 'N/A'}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Reference / Trx ID</span>
+                                            <strong style={{ color: '#4f46e5', fontSize: '12.5px', fontFamily: 'ui-monospace, monospace' }}>{invoiceData.reference_no || 'N/A'}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Payment Date</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.date ? (invoiceData.date.includes('/') ? invoiceData.date : new Date(invoiceData.date).toLocaleDateString('en-GB')) : 'N/A'}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Table */}
+                            <div style={{ borderRadius: '8px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '20px' }}>
+                                <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                                    <thead>
+                                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
+                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
+                                                <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '13px', margin: 0 }}>{invoiceData.detail}</p>
+                                            </td>
+                                            <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: '700', color: '#0f172a', fontSize: '13px' }}>
+                                                {formatCurrency(invoiceData.amount)}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Total Summary */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+                                <div style={{ width: '280px', backgroundColor: '#f8fafc', borderRadius: '8px', padding: '16px 20px', border: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#64748b' }}>Subtotal</span>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{formatCurrency(invoiceData.amount)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #cbd5e1', marginTop: '8px' }}>
+                                        <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>Total Paid</span>
+                                        <span style={{ fontSize: '17px', fontWeight: '900', color: '#4f46e5' }}>{formatCurrency(invoiceData.amount)}</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Footer */}
-                        <div style={{ textAlign: 'center', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
+                        {/* Footer (Always at Bottom) */}
+                        <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
                             {printSettings?.footer_content ? (
-                                <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
+                                <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
                             ) : (
-                                <p style={{ fontSize: '14px', fontWeight: '500', color: '#64748b', margin: 0 }}>Thank you for your payment!</p>
+                                <p style={{ fontSize: '11px', fontWeight: '500', color: '#94a3b8', margin: 0 }}>
+                                    This is a computer-generated receipt. Thank you for your payment!
+                                </p>
                             )}
                         </div>
                     </div>

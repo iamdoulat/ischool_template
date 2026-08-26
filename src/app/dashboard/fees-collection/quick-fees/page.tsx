@@ -488,50 +488,68 @@ export default function QuickFeesPage() {
                 </div>
             )}
 
-            {/* Payment Dialog */}
+            {/* Complete Functional & Scrollable Payment Dialog */}
             <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-lg border-none shadow-2xl">
-                    <DialogHeader className="p-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white relative">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-white/20 rounded-lg backdrop-blur-md border border-white/30">
-                                <CreditCard className="h-6 w-6" />
+                <DialogContent className="sm:max-w-[560px] p-0 max-h-[90vh] flex flex-col overflow-hidden rounded-2xl border border-gray-100 shadow-2xl">
+                    {/* Fixed Modal Header */}
+                    <DialogHeader className="px-6 py-4 sm:px-7 sm:py-5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shrink-0 relative">
+                        <div className="flex items-center gap-3.5">
+                            <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-md border border-white/30 shrink-0">
+                                <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
                             </div>
-                            <div>
-                                <DialogTitle className="text-2xl font-bold tracking-tight">Collect Fee</DialogTitle>
-                                <DialogDescription className="text-white/80 font-medium">
-                                    {selectedFee?.fee_master.fee_group?.name} - {selectedFee?.fee_master.fee_type?.name}
+                            <div className="min-w-0 flex-1">
+                                <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight leading-snug">
+                                    Collect Fee
+                                </DialogTitle>
+                                <DialogDescription className="text-white/90 text-xs font-medium truncate mt-0.5">
+                                    {selectedFee?.fee_master.fee_group?.name || "General"} — {selectedFee?.fee_master.fee_type?.name} ({studentData?.name || "Student"})
                                 </DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <form onSubmit={handlePaymentSubmit}>
-                        <div className="p-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                        Amount To Pay <span className="text-destructive">*</span>
+                    {/* Scrollable Form Body */}
+                    <form onSubmit={handlePaymentSubmit} className="flex-1 overflow-hidden flex flex-col">
+                        <div className="flex-1 overflow-y-auto px-6 py-5 sm:px-7 sm:py-6 space-y-4 sm:space-y-5">
+                            {/* Summary calculation */}
+                            <div className="p-3 bg-gradient-to-r from-amber-50/70 to-indigo-50/70 border border-indigo-100 rounded-xl flex items-center justify-between text-xs">
+                                <span className="font-semibold text-gray-700">Net Payable Amount:</span>
+                                <span className="text-sm font-black text-indigo-700">
+                                    {symbol}{(Math.max(0, (parseFloat(paymentData.amount) || 0) + (parseFloat(paymentData.fine) || 0) - (parseFloat(paymentData.discount) || 0))).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+
+                            {/* Row 1: Amount & Date */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                        Amount To Pay ({symbol}) <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
-                                        <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
+                                            {symbol}
+                                        </span>
                                         <Input
                                             type="number"
-                                            className="pl-11 h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white font-bold"
+                                            step="any"
+                                            min="0"
+                                            className="pl-8 h-10 rounded-lg bg-gray-50/60 border-gray-200 focus:bg-white text-xs font-bold text-gray-800 shadow-none focus:ring-1 focus:ring-indigo-500"
                                             value={paymentData.amount}
                                             onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })}
                                             required
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-2 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                        Payment Date <span className="text-destructive">*</span>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                        Payment Date <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
-                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                                         <Input
                                             type="date"
-                                            className="pl-11 h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white font-medium"
+                                            className="pl-9 h-10 rounded-lg bg-gray-50/60 border-gray-200 focus:bg-white text-xs font-medium text-gray-800 shadow-none focus:ring-1 focus:ring-indigo-500"
                                             value={paymentData.date}
                                             onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
                                             required
@@ -540,60 +558,69 @@ export default function QuickFeesPage() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                        Discount
+                            {/* Row 2: Discount & Fine */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                        Discount ({symbol})
                                     </label>
                                     <Input
                                         type="number"
-                                        className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
+                                        step="any"
+                                        min="0"
+                                        className="h-10 rounded-lg bg-gray-50/60 border-gray-200 focus:bg-white text-xs text-gray-800 shadow-none focus:ring-1 focus:ring-indigo-500"
                                         value={paymentData.discount}
                                         onChange={(e) => setPaymentData({ ...paymentData, discount: e.target.value })}
                                     />
                                 </div>
-                                <div className="space-y-2 group">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                        Fine
+                                <div className="space-y-1.5">
+                                    <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                        Fine ({symbol})
                                     </label>
                                     <Input
                                         type="number"
-                                        className="h-12 rounded-lg bg-muted/30 border-muted/50 focus:bg-white"
+                                        step="any"
+                                        min="0"
+                                        className="h-10 rounded-lg bg-gray-50/60 border-gray-200 focus:bg-white text-xs text-gray-800 shadow-none focus:ring-1 focus:ring-indigo-500"
                                         value={paymentData.fine}
                                         onChange={(e) => setPaymentData({ ...paymentData, fine: e.target.value })}
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Payment Mode <span className="text-destructive">*</span>
+                            {/* Row 3: Payment Mode */}
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                    Payment Mode <span className="text-red-500">*</span>
                                 </label>
-                                <div className="relative">
-                                    <select
-                                        className="flex h-12 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white focus-visible:border-primary transition-all font-medium"
-                                        value={paymentData.payment_mode}
-                                        onChange={(e) => setPaymentData({ ...paymentData, payment_mode: e.target.value })}
-                                    >
+                                <select
+                                    className="flex h-10 w-full rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2 text-xs font-semibold ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:bg-white transition-all text-gray-800"
+                                    value={paymentData.payment_mode}
+                                    onChange={(e) => setPaymentData({ ...paymentData, payment_mode: e.target.value })}
+                                >
+                                    <optgroup label="Active Online Gateways">
+                                        <option value="UddoktaPay">⚡ UddoktaPay (Online - bKash/Nagad/Rocket/Cards)</option>
+                                        <option value="Online">Online Gateway</option>
+                                    </optgroup>
+                                    <optgroup label="Offline Collection">
                                         <option value="Cash">Cash</option>
-                                        <option value="Cheque">Cheque</option>
-                                        <option value="DD">DD</option>
                                         <option value="Bank Transfer">Bank Transfer</option>
-                                        <option value="Online">Online</option>
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                </div>
+                                        <option value="Cheque">Cheque</option>
+                                        <option value="DD">Demand Draft (DD)</option>
+                                    </optgroup>
+                                </select>
                             </div>
 
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                    Payment Note
+                            {/* Payment Note */}
+                            <div className="space-y-1.5">
+                                <label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">
+                                    Payment Note / Remarks
                                 </label>
                                 <div className="relative">
-                                    <FileText className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
+                                    <FileText className="absolute left-3.5 top-3 h-3.5 w-3.5 text-gray-400" />
                                     <textarea
-                                        className="flex min-h-[100px] w-full rounded-lg border border-muted/50 bg-muted/30 px-11 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-white transition-all resize-none"
-                                        placeholder="Add any specific instructions or notes..."
+                                        className="flex min-h-[75px] w-full rounded-lg border border-gray-200 bg-gray-50/60 pl-9 pr-3 py-2.5 text-xs text-gray-800 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:bg-white transition-all resize-none shadow-none"
+                                        placeholder="Add receipt number, memo, or payment instructions..."
                                         value={paymentData.note}
                                         onChange={(e) => setPaymentData({ ...paymentData, note: e.target.value })}
                                     ></textarea>
@@ -601,22 +628,22 @@ export default function QuickFeesPage() {
                             </div>
                         </div>
 
-                        <DialogFooter className="p-8 bg-muted/20 border-t border-muted/50 flex gap-4">
+                        {/* Fixed Modal Footer */}
+                        <DialogFooter className="px-6 py-3.5 sm:px-7 sm:py-4 bg-gray-50 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 shrink-0">
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="flex-1 h-12 rounded-lg font-bold border-muted/50"
+                                className="w-full sm:w-auto h-9 sm:h-10 px-5 text-xs font-bold rounded-lg border-gray-200 hover:bg-white text-gray-700"
                                 onClick={() => setIsPaymentDialogOpen(false)}
                             >
                                 Cancel
                             </Button>
                             <Button
                                 type="submit"
-                                variant="gradient"
-                                className="flex-1 h-12 rounded-lg font-bold shadow-lg shadow-primary/20"
+                                className="w-full sm:w-auto h-9 sm:h-10 px-6 rounded-lg font-bold text-xs bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20"
                                 disabled={loading}
                             >
-                                {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle2 className="h-5 w-5 mr-2" />}
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <CheckCircle2 className="h-4 w-4 mr-1.5" />}
                                 Complete Payment
                             </Button>
                         </DialogFooter>

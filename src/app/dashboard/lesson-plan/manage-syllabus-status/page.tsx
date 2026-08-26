@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
     Select,
     SelectContent,
@@ -14,8 +15,29 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Search, FileSpreadsheet, FileText, Printer, Filter, ListChecks } from "lucide-react";
+import {
+    Search,
+    FileSpreadsheet,
+    FileText,
+    Printer,
+    Copy,
+    Filter,
+    ListChecks,
+    CheckCircle2,
+    Circle,
+    Calendar,
+    Route,
+    BookOpen,
+    Layers,
+    GraduationCap,
+    Sparkles,
+    Check,
+    Clock
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface OptionItem {
     id: string | number;
@@ -51,20 +73,16 @@ interface LessonStatus {
     topics: TopicStatus[];
 }
 
-function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
+function TableSkeleton({ rows = 5 }: { rows?: number }) {
     return (
-        <>
+        <div className="space-y-4 p-4">
             {Array.from({ length: rows }).map((_, i) => (
-                <tr key={i} className="border-b border-muted/30">
-                    {Array.from({ length: cols }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
-                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
-                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
-                        </td>
-                    ))}
-                </tr>
+                <div key={i} className="p-4 rounded-2xl border border-gray-100 bg-white space-y-3 animate-pulse">
+                    <div className="h-4 bg-muted/60 rounded w-1/4" />
+                    <div className="h-8 bg-muted/40 rounded w-full" />
+                </div>
             ))}
-        </>
+        </div>
     );
 }
 
@@ -76,6 +94,7 @@ export default function ManageSyllabusStatusPage() {
     const [subjects, setSubjects] = useState<OptionItem[]>([]);
     const [syllabusData, setSyllabusData] = useState<LessonStatus[]>([]);
     const [loading, setLoading] = useState(false);
+    const [updatingId, setUpdatingId] = useState<string | null>(null);
 
     // Form State
     const [criteria, setCriteria] = useState({
@@ -152,7 +171,7 @@ export default function ManageSyllabusStatusPage() {
         setLoading(true);
         try {
             const response = await api.get('/lesson-plan/topics');
-            const allTopics: RawTopic[] = response.data;
+            const allTopics: RawTopic[] = response.data || [];
 
             // Filter based on criteria
             const filtered = allTopics.filter(t =>
@@ -167,7 +186,7 @@ export default function ManageSyllabusStatusPage() {
                 subjectGroup: t.subjectGroup,
                 subject: t.subject,
                 lesson: t.lesson,
-                topics: t.topics.map((topic) => ({
+                topics: (t.topics || []).map((topic) => ({
                     id: topic.id,
                     name: topic.name,
                     completionDate: topic.completion_date,
@@ -179,7 +198,7 @@ export default function ManageSyllabusStatusPage() {
             if (filtered.length === 0) {
                 toast({ title: "Info", description: "No syllabus data found for selected criteria" });
             }
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Failed to fetch syllabus data", variant: "destructive" });
         } finally {
             setLoading(false);
@@ -187,6 +206,7 @@ export default function ManageSyllabusStatusPage() {
     };
 
     const toggleStatus = async (topicId: string, currentStatus: boolean) => {
+        setUpdatingId(topicId);
         try {
             const newStatus = !currentStatus;
             const completionDate = newStatus ? new Date().toISOString().split('T')[0] : null;
@@ -208,14 +228,65 @@ export default function ManageSyllabusStatusPage() {
                 }))
             );
 
-            toast({ title: "Success", description: "Status updated successfully" });
-        } catch (error) {
+            toast({ title: "Success", description: newStatus ? "Topic marked as Completed" : "Topic marked as Incomplete" });
+        } catch {
             toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
+    const totalTopics = syllabusData.reduce((acc, l) => acc + (l.topics?.length || 0), 0);
+    const completedTopics = syllabusData.reduce((acc, l) => acc + (l.topics?.filter(t => t.isCompleted).length || 0), 0);
+    const progressPercent = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
+
+    const handleAction = (action: string) => {
+        if (action === 'print') {
+            window.print();
+        } else if (action === 'copy') {
+            navigator.clipboard.writeText(JSON.stringify(syllabusData, null, 2));
+            toast({ title: "Success", description: "Copied to clipboard" });
+        } else if (action === 'excel') {
+            const rows: any[] = [];
+            syllabusData.forEach((l) => {
+                (l.topics || []).forEach((t) => {
+                    rows.push({
+                        "Class": criteria.class_name,
+                        "Section": criteria.section,
+                        "Subject": criteria.subject,
+                        "Lesson": l.lesson,
+                        "Topic": t.name,
+                        "Status": t.isCompleted ? "Completed" : "Incomplete",
+                        "Completion Date": t.completionDate || "—"
+                    });
+                });
+            });
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Syllabus Status");
+            XLSX.writeFile(wb, "syllabus_status.xlsx");
+            toast({ title: "Success", description: "Exported to Excel" });
+        } else if (action === 'pdf') {
+            const doc = new jsPDF();
+            doc.text(`Syllabus Status: ${criteria.subject} (${criteria.class_name} - ${criteria.section})`, 14, 15);
+            const rows: any[] = [];
+            syllabusData.forEach((l, lIdx) => {
+                (l.topics || []).forEach((t) => {
+                    rows.push([`${lIdx + 1}. ${l.lesson}`, t.name, t.isCompleted ? "Completed" : "Incomplete", t.completionDate || "—"]);
+                });
+            });
+            autoTable(doc, {
+                head: [["Lesson", "Topic", "Status", "Completion Date"]],
+                body: rows,
+                startY: 20
+            });
+            doc.save("syllabus_status.pdf");
+            toast({ title: "Success", description: "Exported to PDF" });
         }
     };
 
     return (
-        <div className="space-y-6 p-4 font-sans bg-gray-50/10 min-h-screen">
+        <div className="space-y-6 p-4 sm:p-5 font-sans bg-gray-50/10 min-h-screen">
             {/* Criteria Section */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
@@ -224,13 +295,13 @@ export default function ManageSyllabusStatusPage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose class, section &amp; subject</p>
+                        <p className="text-[11px] text-gray-500 mt-1">Choose class, section, subject group &amp; subject</p>
                     </div>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Class <span className="text-red-500">*</span>
                             </Label>
                             <Select
@@ -243,8 +314,8 @@ export default function ManageSyllabusStatusPage() {
                                     fetchFilteredSubjectGroups(classId, '');
                                 }}
                             >
-                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Class" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
@@ -255,7 +326,7 @@ export default function ManageSyllabusStatusPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Section <span className="text-red-500">*</span>
                             </Label>
                             <Select
@@ -266,8 +337,8 @@ export default function ManageSyllabusStatusPage() {
                                 }}
                                 disabled={!criteria.class_name}
                             >
-                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Section" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => (
@@ -278,12 +349,12 @@ export default function ManageSyllabusStatusPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Subject Group <span className="text-red-500">*</span>
                             </Label>
                             <Select value={criteria.subject_group} onValueChange={(val) => setCriteria({...criteria, subject_group: val})} disabled={!criteria.class_name}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Subject Group" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjectGroups.map(g => (
@@ -294,12 +365,12 @@ export default function ManageSyllabusStatusPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Subject <span className="text-red-500">*</span>
                             </Label>
                             <Select value={criteria.subject} onValueChange={(val) => setCriteria({...criteria, subject: val})}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Subject" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjects.map(s => (
@@ -324,9 +395,40 @@ export default function ManageSyllabusStatusPage() {
 
             {(loading || syllabusData.length > 0) && (
                 <>
+                    {/* Summary Ribbon */}
                     {syllabusData.length > 0 && (
-                        <div className="text-sm font-medium text-gray-700 mt-6 mb-2 flex items-center gap-2">
-                            Syllabus Status For: <span className="font-bold text-indigo-600">{criteria.subject}</span>
+                        <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/70 via-white to-amber-50/50 dark:from-indigo-950/40 dark:via-gray-900 dark:to-gray-900 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-sm">
+                                    <BookOpen className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-gray-400 font-bold uppercase">Syllabus Status For:</span>
+                                        <span className="font-black text-sm text-indigo-700 dark:text-indigo-300">{criteria.subject}</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 font-medium">
+                                        {criteria.class_name} • Section {criteria.section} • {criteria.subject_group}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Live Progress Stats */}
+                            <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                    <div className="text-[10px] uppercase font-bold text-gray-400">Total Completion</div>
+                                    <div className="text-sm font-black text-indigo-600 dark:text-indigo-400">{progressPercent}%</div>
+                                </div>
+                                <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] rounded-full transition-all duration-500"
+                                        style={{ width: `${progressPercent}%` }}
+                                    />
+                                </div>
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold px-2.5 py-1">
+                                    {completedTopics} / {totalTopics} Topics
+                                </Badge>
+                            </div>
                         </div>
                     )}
 
@@ -339,112 +441,179 @@ export default function ManageSyllabusStatusPage() {
                                 </span>
                                 <div>
                                     <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Manage Syllabus Status</CardTitle>
-                                    <p className="text-[11px] text-gray-500 mt-1">{syllabusData.length} lesson{syllabusData.length === 1 ? '' : 's'}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">
+                                        {syllabusData.length} lesson{syllabusData.length === 1 ? '' : 's'} • {totalTopics} topic{totalTopics === 1 ? '' : 's'}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="flex gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 cursor-pointer">
+                            <div className="flex items-center gap-1 text-gray-400">
+                                <Button onClick={() => handleAction('copy')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button onClick={() => handleAction('excel')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 cursor-pointer">
+                                <Button onClick={() => handleAction('pdf')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 cursor-pointer">
+                                <Button onClick={() => handleAction('print')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
                                     <Printer className="h-4 w-4" />
                                 </Button>
                             </div>
                         </CardHeader>
 
                         <CardContent className="p-0">
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr className="bg-gray-50/50 text-[11px] font-bold uppercase text-gray-600 border-b border-gray-100">
-                                            <th className="p-4 text-left w-12">#</th>
-                                            <th className="p-4 text-left">Lesson Topic</th>
-                                            <th className="p-4 text-left">Topic Completion Date</th>
-                                            <th className="p-4 text-left">Status</th>
-                                            <th className="p-4 text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {loading ? (
-                                            <TableSkeleton rows={5} cols={5} />
-                                        ) : syllabusData.length === 0 ? (
-                                            <tr><td colSpan={5} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
-                                        ) : (
-                                            syllabusData.map((lesson, idx) => (
-                                                <tr key={lesson.id} className="group hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50">
-                                                    <td className="p-4 text-[11px] text-gray-400 align-top font-medium">{idx + 1}</td>
-                                                    <td className="p-4 align-top">
-                                                        <div className="space-y-4">
-                                                            <div className="text-[12px] font-bold text-gray-800 uppercase tracking-tight">{lesson.lesson}</div>
-                                                            <div className="pl-4 space-y-3">
-                                                                {lesson.topics.map((topic, tIdx) => (
-                                                                    <div key={topic.id} className="text-[12px] text-gray-500 flex gap-3 items-center">
-                                                                        <span className="w-6 shrink-0 text-[10px] text-gray-300 font-bold">{idx + 1}.{tIdx + 1}</span>
-                                                                        <span className="font-medium">{topic.name}</span>
-                                                                    </div>
-                                                                ))}
+                            {loading ? (
+                                <TableSkeleton rows={4} />
+                            ) : syllabusData.length === 0 ? (
+                                <div className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
+                                    No syllabus data found
+                                </div>
+                            ) : (
+                                <div className="p-5 space-y-6">
+                                    {syllabusData.map((lesson, idx) => {
+                                        const isFirst = idx === 0;
+                                        const isLast = idx === syllabusData.length - 1;
+                                        const lessonCompletedTopics = lesson.topics.filter(t => t.isCompleted).length;
+                                        const lessonTotalTopics = lesson.topics.length;
+                                        const isLessonDone = lessonTotalTopics > 0 && lessonCompletedTopics === lessonTotalTopics;
+
+                                        return (
+                                            <div
+                                                key={lesson.id}
+                                                className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/90 shadow-2xs overflow-hidden"
+                                            >
+                                                {/* Lesson Header Banner */}
+                                                <div className="p-4 bg-gray-50/80 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={cn(
+                                                            "h-7 w-7 rounded-xl flex items-center justify-center font-black text-xs shadow-2xs shrink-0",
+                                                            isLessonDone
+                                                                ? "bg-emerald-500 text-white"
+                                                                : isFirst
+                                                                ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white"
+                                                                : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                                        )}>
+                                                            {isLessonDone ? <Check className="h-4 w-4 stroke-[3]" /> : idx + 1}
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                                                                    Step {idx + 1}
+                                                                </span>
+                                                                {isFirst && (
+                                                                    <span className="text-[8.5px] bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold border border-orange-200 dark:border-orange-800">
+                                                                        Initial
+                                                                    </span>
+                                                                )}
+                                                                {isLast && syllabusData.length > 1 && (
+                                                                    <span className="text-[8.5px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-200 dark:border-emerald-800">
+                                                                        Final Step
+                                                                    </span>
+                                                                )}
                                                             </div>
+                                                            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100 mt-0.5">
+                                                                {lesson.lesson}
+                                                            </h3>
                                                         </div>
-                                                    </td>
-                                                    <td className="p-4 align-top">
-                                                        <div className="space-y-3 mt-8">
-                                                            {lesson.topics.map((topic) => (
-                                                                <div key={topic.id} className="h-6 flex items-center text-[11px] text-gray-400 italic font-medium">
-                                                                    {topic.completionDate || "---"}
-                                                                </div>
-                                                            ))}
+                                                    </div>
+
+                                                    <div className="flex items-center gap-3 self-end sm:self-center">
+                                                        <Badge variant="outline" className="bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold border-gray-200">
+                                                            {lessonCompletedTopics} / {lessonTotalTopics} Completed
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+
+                                                {/* Topics List Table */}
+                                                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                                    {lesson.topics.length === 0 ? (
+                                                        <div className="p-4 text-center text-xs text-gray-400 italic">
+                                                            No topics registered under this lesson
                                                         </div>
-                                                    </td>
-                                                    <td className="p-4 align-top">
-                                                        <div className="space-y-3 mt-8">
-                                                            {lesson.topics.map((topic) => (
-                                                                <div key={topic.id} className="h-6 flex items-center">
-                                                                    <span className={cn(
-                                                                        "px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all duration-300",
+                                                    ) : (
+                                                        lesson.topics.map((topic, tIdx) => (
+                                                            <div
+                                                                key={topic.id}
+                                                                className={cn(
+                                                                    "p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors",
+                                                                    topic.isCompleted
+                                                                        ? "bg-emerald-50/20 hover:bg-emerald-50/40 dark:bg-emerald-950/10"
+                                                                        : "hover:bg-gray-50/50 dark:hover:bg-gray-900/40"
+                                                                )}
+                                                            >
+                                                                {/* Left: Topic Name with Branch line */}
+                                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                                    <span className="text-gray-300 font-bold hidden sm:inline">└──</span>
+                                                                    <div className={cn(
+                                                                        "h-6 w-6 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0",
                                                                         topic.isCompleted
-                                                                            ? "bg-emerald-500 text-white shadow-sm shadow-emerald-100"
-                                                                            : "bg-gray-100 text-gray-400"
+                                                                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                                                                            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                                                                     )}>
+                                                                        {idx + 1}.{tIdx + 1}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                                                                            {topic.name}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Middle: Completion Date & Status Badge */}
+                                                                <div className="flex items-center gap-4 shrink-0 pl-9 sm:pl-0">
+                                                                    {/* Completion Date */}
+                                                                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                                                                        <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                                                                        <span className={topic.completionDate ? "font-semibold text-gray-700 dark:text-gray-300" : "italic text-gray-400"}>
+                                                                            {topic.completionDate || "Not completed"}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* Status Badge */}
+                                                                    <span
+                                                                        className={cn(
+                                                                            "text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-2xs",
+                                                                            topic.isCompleted
+                                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                                                                : "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
+                                                                        )}
+                                                                    >
                                                                         {topic.isCompleted ? "Completed" : "Incomplete"}
                                                                     </span>
+
+                                                                    {/* Action Toggle Switch */}
+                                                                    <div className="flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-gray-700">
+                                                                        <Switch
+                                                                            checked={topic.isCompleted}
+                                                                            disabled={updatingId === topic.id}
+                                                                            onCheckedChange={() => toggleStatus(topic.id, topic.isCompleted)}
+                                                                            className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-200"
+                                                                            title={topic.isCompleted ? "Mark Incomplete" : "Mark Completed"}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                            ))}
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4 align-top text-right">
-                                                        <div className="space-y-3 mt-8 flex flex-col items-end">
-                                                            {lesson.topics.map((topic) => (
-                                                                <div key={topic.id} className="h-6 flex items-center">
-                                                                    <Switch
-                                                                        checked={topic.isCompleted}
-                                                                        onCheckedChange={() => toggleStatus(topic.id, topic.isCompleted)}
-                                                                        className="h-4 w-8 data-[state=checked]:bg-indigo-600 data-[state=unchecked]:bg-gray-200"
-                                                                    />
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </>
             )}
 
             {!loading && syllabusData.length === 0 && (
-                <div className="bg-white rounded-lg border border-dashed border-gray-200 p-20 flex flex-col items-center justify-center text-center">
-                    <div className="bg-gray-50 p-4 rounded-full mb-4">
-                        <Search className="h-8 w-8 text-gray-300" />
+                <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-16 flex flex-col items-center justify-center text-center">
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl mb-4 text-indigo-500">
+                        <Search className="h-8 w-8" />
                     </div>
-                    <h3 className="text-gray-400 text-sm font-medium">Select criteria to view syllabus status</h3>
-                    <p className="text-gray-300 text-[11px] uppercase tracking-widest mt-1">Class, Section, Subject Group, and Subject required</p>
+                    <h3 className="text-gray-600 dark:text-gray-300 text-sm font-bold">Select criteria to view syllabus status</h3>
+                    <p className="text-gray-400 text-xs mt-1">Class, Section, Subject Group, and Subject required</p>
                 </div>
             )}
         </div>

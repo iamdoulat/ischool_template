@@ -653,9 +653,19 @@ export default function AddHomeworkPage() {
                                                     <TableCell className="py-3 text-gray-500">{formatDate(item.homework_date)}</TableCell>
                                                     <TableCell className="py-3 text-gray-500">{formatDate(item.submission_date)}</TableCell>
                                                     <TableCell className="py-3">
-                                                        <Badge className={cn("text-[10px] font-bold border", isUpcoming ? "bg-blue-100 text-blue-700 border-blue-200" : "bg-gray-100 text-gray-600 border-gray-200")}>
-                                                            {isUpcoming ? "Upcoming" : "Closed"}
-                                                        </Badge>
+                                                        {!isUpcoming ? (
+                                                            <Badge className="text-[10px] font-bold border bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300">
+                                                                Completed
+                                                            </Badge>
+                                                        ) : item.evaluation_date ? (
+                                                            <Badge className="text-[10px] font-bold border bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 gap-1">
+                                                                <CheckCircle2 className="h-2.5 w-2.5" /> Evaluated
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge className="text-[10px] font-bold border bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300">
+                                                                Pending
+                                                            </Badge>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell className="py-3 text-gray-500">{item.max_marks !== null && item.max_marks !== undefined ? item.max_marks : "-"}</TableCell>
                                                     <TableCell className="py-3 text-gray-500">{item.creator?.name || "-"}</TableCell>

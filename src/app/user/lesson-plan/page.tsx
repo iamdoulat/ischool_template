@@ -451,29 +451,47 @@ export default function UserLessonPlanPage() {
                                 <div className="border-t border-gray-100 pt-3">
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
-                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{t("lesson_plan")}</span>
+                                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1">
+                                            <span>Curriculum Hierarchy</span>
+                                        </span>
                                         <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                                <FileText className="h-3 w-3 text-indigo-500" />
-                                                {t("lesson")}
-                                            </span>
-                                            <p className="text-sm text-gray-700">{viewPlan.lesson || "—"}</p>
+                                    <div className="relative pl-6 space-y-2.5 before:absolute before:left-[10px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-indigo-400 before:via-violet-400 before:to-emerald-400">
+                                        {/* Step 1: Lesson */}
+                                        <div className="relative flex items-start gap-2.5">
+                                            <div className="absolute -left-6 top-1 h-5 w-5 rounded-full bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white flex items-center justify-center font-black text-[9px] shadow-xs">
+                                                1
+                                            </div>
+                                            <div className="flex-1 bg-indigo-50/40 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900 rounded-xl p-2.5">
+                                                <span className="text-[9.5px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">{t("lesson")}</span>
+                                                <p className="text-xs font-bold text-gray-800 dark:text-gray-100 mt-0.5">{viewPlan.lesson || "—"}</p>
+                                            </div>
                                         </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-                                                <BookOpen className="h-3 w-3 text-indigo-500" />
-                                                {t("topic")}
-                                            </span>
-                                            <p className="text-sm text-gray-700">{viewPlan.topic || "—"}</p>
+
+                                        {/* Step 2: Topic */}
+                                        <div className="relative flex items-start gap-2.5">
+                                            <div className="absolute -left-6 top-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center font-black text-[9px] shadow-xs">
+                                                2
+                                            </div>
+                                            <div className="flex-1 bg-violet-50/40 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900 rounded-xl p-2.5">
+                                                <span className="text-[9.5px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400">{t("topic")}</span>
+                                                <p className="text-xs font-bold text-gray-800 dark:text-gray-100 mt-0.5">{viewPlan.topic || "—"}</p>
+                                            </div>
                                         </div>
-                                        <div className="space-y-1">
-                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">~ {t("sub")}</span>
-                                            <p className="text-sm text-gray-700">{viewPlan.subTopic || "—"}</p>
-                                        </div>
+
+                                        {/* Step 3: Sub Topic */}
+                                        {viewPlan.subTopic && (
+                                            <div className="relative flex items-start gap-2.5">
+                                                <div className="absolute -left-6 top-1 h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-[9px] shadow-xs">
+                                                    3
+                                                </div>
+                                                <div className="flex-1 bg-emerald-50/40 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-xl p-2.5">
+                                                    <span className="text-[9.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">{t("sub")}</span>
+                                                    <p className="text-xs font-bold text-gray-800 dark:text-gray-100 mt-0.5">{viewPlan.subTopic}</p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </>

@@ -11,10 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import {
     Pencil, Trash2, Search, Award, GraduationCap,
     BadgeCheck, Copy, FileSpreadsheet,
-    FileText, Printer, Columns, ChevronLeft, ChevronRight, Plus
+    FileText, Printer, Columns, ChevronLeft, ChevronRight, Plus,
+    Sparkles, Calculator, CheckCircle2
 } from "lucide-react";
 import {
     AlertDialog,
@@ -37,6 +39,7 @@ import {
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { cn } from "@/lib/utils";
 
 interface GradeEntry {
     id: string;
@@ -46,6 +49,56 @@ interface GradeEntry {
     percent_upto: string;
     grade_point: string;
     description: string;
+}
+
+export interface StandardGradeRule {
+    min: number;
+    max: number;
+    name: string;
+    point: number;
+    description: string;
+}
+
+// Standard Education Board Grading Scale (5.00 GPA Scale)
+export const STANDARD_GRADE_SCALE: StandardGradeRule[] = [
+    { min: 80, max: 100, name: "A+", point: 5.00, description: "Outstanding" },
+    { min: 70, max: 79, name: "A", point: 4.00, description: "Very Good" },
+    { min: 60, max: 69, name: "A-", point: 3.50, description: "Good" },
+    { min: 50, max: 59, name: "B", point: 3.00, description: "Satisfactory" },
+    { min: 40, max: 49, name: "C", point: 2.00, description: "Pass" },
+    { min: 33, max: 39, name: "D", point: 1.00, description: "Marginal Pass" },
+    { min: 0, max: 32, name: "F", point: 0.00, description: "Fail" },
+];
+
+/**
+ * Automatically calculate Grade Name, Grade Point, and Description
+ * based on Percent From and Percent Upto inputs.
+ */
+export function calculateGradeFromMarks(from: number | string, upto?: number | string) {
+    const numFrom = typeof from === 'number' ? from : parseFloat(String(from));
+    const numUpto = upto !== undefined && upto !== "" ? (typeof upto === 'number' ? upto : parseFloat(String(upto))) : NaN;
+
+    if (!isNaN(numFrom)) {
+        if (numFrom >= 80) return { name: "A+", grade_point: "5.00", description: "Outstanding" };
+        if (numFrom >= 70) return { name: "A", grade_point: "4.00", description: "Very Good" };
+        if (numFrom >= 60) return { name: "A-", grade_point: "3.50", description: "Good" };
+        if (numFrom >= 50) return { name: "B", grade_point: "3.00", description: "Satisfactory" };
+        if (numFrom >= 40) return { name: "C", grade_point: "2.00", description: "Pass" };
+        if (numFrom >= 33) return { name: "D", grade_point: "1.00", description: "Marginal Pass" };
+        return { name: "F", grade_point: "0.00", description: "Fail" };
+    }
+
+    if (!isNaN(numUpto)) {
+        if (numUpto <= 32.99) return { name: "F", grade_point: "0.00", description: "Fail" };
+        if (numUpto <= 39.99) return { name: "D", grade_point: "1.00", description: "Marginal Pass" };
+        if (numUpto <= 49.99) return { name: "C", grade_point: "2.00", description: "Pass" };
+        if (numUpto <= 59.99) return { name: "B", grade_point: "3.00", description: "Satisfactory" };
+        if (numUpto <= 69.99) return { name: "A-", grade_point: "3.50", description: "Good" };
+        if (numUpto <= 79.99) return { name: "A", grade_point: "4.00", description: "Very Good" };
+        return { name: "A+", grade_point: "5.00", description: "Outstanding" };
+    }
+
+    return null;
 }
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -128,11 +181,10 @@ export default function MarksGradePage() {
             const response = await api.get('/examination/marks-grades', {
                 params: { search: searchTerm }
             });
-            // Defensive unwrapping per AGENTS.md convention
             const result = response.data;
             const list = result?.data?.data || result?.data || result || [];
             setGrades(Array.isArray(list) ? list : []);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_fetch_grades");
             setGrades([]);
         } finally {
@@ -151,7 +203,7 @@ export default function MarksGradePage() {
             const result = response.data;
             const list = result?.data?.data || result?.data || result || [];
             setExamTypes(Array.isArray(list) ? list : []);
-        } catch (error) {
+        } catch {
             setExamTypes([]);
         }
     }, []);
@@ -159,6 +211,50 @@ export default function MarksGradePage() {
     useEffect(() => {
         fetchExamTypes();
     }, [fetchExamTypes]);
+
+    // Auto-calculate grade point and standard fields on Percent From change
+    const handlePercentFromChange = (val: string) => {
+        const calc = calculateGradeFromMarks(val, formData.percent_upto);
+        setFormData(prev => {
+            const isStandardName = prev.name === "" || ["A+", "A", "A-", "B", "C", "D", "F"].includes(prev.name.trim());
+            const isStandardDesc = prev.description === "" || ["Outstanding", "Very Good", "Good", "Satisfactory", "Pass", "Marginal Pass", "Fail"].includes(prev.description.trim());
+            return {
+                ...prev,
+                percent_from: val,
+                grade_point: calc ? calc.grade_point : prev.grade_point,
+                name: isStandardName && calc ? calc.name : prev.name,
+                description: isStandardDesc && calc ? calc.description : prev.description,
+            };
+        });
+    };
+
+    // Auto-calculate grade point on Percent Upto change
+    const handlePercentUptoChange = (val: string) => {
+        const calc = calculateGradeFromMarks(formData.percent_from || val, val);
+        setFormData(prev => {
+            const isStandardName = prev.name === "" || ["A+", "A", "A-", "B", "C", "D", "F"].includes(prev.name.trim());
+            const isStandardDesc = prev.description === "" || ["Outstanding", "Very Good", "Good", "Satisfactory", "Pass", "Marginal Pass", "Fail"].includes(prev.description.trim());
+            return {
+                ...prev,
+                percent_upto: val,
+                grade_point: calc ? calc.grade_point : prev.grade_point,
+                name: isStandardName && calc ? calc.name : prev.name,
+                description: isStandardDesc && calc ? calc.description : prev.description,
+            };
+        });
+    };
+
+    // Quick Preset Click Handler
+    const handleApplyPreset = (preset: StandardGradeRule) => {
+        setFormData(prev => ({
+            ...prev,
+            name: preset.name,
+            percent_from: String(preset.min),
+            percent_upto: String(preset.max),
+            grade_point: preset.point.toFixed(2),
+            description: preset.description,
+        }));
+    };
 
     const handleAddExamType = async () => {
         const name = newExamTypeName.trim();
@@ -191,7 +287,6 @@ export default function MarksGradePage() {
             await api.put(`/examination/exam-types/${editingExamType.id}`, { name: editExamTypeName.trim() });
             tt.success("exam_type_updated_successfully");
             await fetchExamTypes();
-            // If the renamed type was selected in the grade form, update it
             if (formData.exam_type === editingExamType.name) {
                 setFormData(prev => ({ ...prev, exam_type: editExamTypeName.trim() }));
             }
@@ -211,12 +306,11 @@ export default function MarksGradePage() {
             await api.delete(`/examination/exam-types/${deleteExamTypeId}`);
             tt.success("exam_type_deleted_successfully");
             await fetchExamTypes();
-            // If the deleted type was selected in the grade form, clear it
             const deletedType = examTypes.find(t => t.id === deleteExamTypeId);
             if (deletedType && formData.exam_type === deletedType.name) {
                 setFormData(prev => ({ ...prev, exam_type: "" }));
             }
-        } catch (error) {
+        } catch {
             tt.error("failed_to_delete_exam_type");
         } finally {
             setDeleteExamTypeId(null);
@@ -239,7 +333,7 @@ export default function MarksGradePage() {
     }, [grades, searchTerm]);
 
     const totalEntries = filteredGrades.length;
-    const totalPages = Math.ceil(totalEntries / itemsPerPage);
+    const totalPages = Math.ceil(totalEntries / itemsPerPage) || 1;
     const paginatedGrades = useMemo(() => {
         const start = (currentPage - 1) * itemsPerPage;
         return filteredGrades.slice(start, start + itemsPerPage);
@@ -334,13 +428,12 @@ export default function MarksGradePage() {
         try {
             await api.delete(`/examination/marks-grades/${deleteId}`);
             tt.success("grade_deleted_successfully");
-            // Adjust page if needed after delete
             if (filteredGrades.length === 1 && currentPage > 1) {
                 setCurrentPage(prev => prev - 1);
             } else {
                 fetchGrades();
             }
-        } catch (error) {
+        } catch {
             tt.error("failed_to_delete_grade");
         } finally {
             setDeleteId(null);
@@ -393,7 +486,7 @@ export default function MarksGradePage() {
     };
 
     return (
-        <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
+        <div className="space-y-6 font-sans p-3 sm:p-5 lg:p-6 bg-gray-50/10 min-h-screen">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Left Column: Add Marks Grade Form */}
                 <div className="lg:col-span-1">
@@ -409,15 +502,43 @@ export default function MarksGradePage() {
                                 <p className="text-[11px] text-gray-500 mt-1">{t("define_grading_criteria")}</p>
                             </div>
                         </CardHeader>
-                        <CardContent className="px-6 pb-6">
-                            <div className="space-y-5">
-                                <div className="space-y-2">
+                        <CardContent className="px-5 pb-6">
+                            <div className="space-y-4">
+                                {/* Quick Standard Scale Presets */}
+                                <div className="space-y-1.5 pt-1">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                                            <Calculator className="h-3 w-3" /> Quick Presets (5.00 Scale)
+                                        </Label>
+                                        <span className="text-[10px] text-gray-400">1-click fill</span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-1">
+                                        {STANDARD_GRADE_SCALE.map((preset) => (
+                                            <button
+                                                key={preset.name}
+                                                type="button"
+                                                onClick={() => handleApplyPreset(preset)}
+                                                className={cn(
+                                                    "px-2 py-1 text-[10.5px] font-bold rounded-md border transition-all hover:scale-105 active:scale-95",
+                                                    formData.name === preset.name && formData.percent_from === String(preset.min)
+                                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                                                        : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-indigo-300 hover:bg-indigo-50/50"
+                                                )}
+                                                title={`${preset.name}: ${preset.min}%-${preset.max}% (GP: ${preset.point.toFixed(2)})`}
+                                            >
+                                                {preset.name} <span className="text-[9.5px] opacity-75 font-normal">({preset.point.toFixed(1)})</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                         {t("exam_type")} <span className="text-red-500">*</span>
                                     </Label>
                                     <div className="flex gap-2">
                                         <Select value={formData.exam_type} onValueChange={(val) => setFormData({...formData, exam_type: val})}>
-                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none flex-1">
+                                            <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none flex-1">
                                                 <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -430,7 +551,7 @@ export default function MarksGradePage() {
                                             type="button"
                                             size="icon"
                                             variant="outline"
-                                            className="h-11 w-11 shrink-0 rounded-lg border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all"
+                                            className="h-10 w-10 shrink-0 rounded-lg border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all"
                                             onClick={() => setShowExamTypeDialog(true)}
                                             title={t("manage_exam_types")}
                                         >
@@ -439,7 +560,7 @@ export default function MarksGradePage() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                         {t("grade_name")} <span className="text-red-500">*</span>
                                     </Label>
@@ -447,59 +568,66 @@ export default function MarksGradePage() {
                                         value={formData.name}
                                         onChange={(e) => setFormData({...formData, name: e.target.value})}
                                         placeholder="e.g. A+"
-                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
+                                        className="h-10 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                            {t("percent_from")} <span className="text-red-500">*</span>
+                                            {t("percent_from")} (%) <span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="number"
                                             value={formData.percent_from}
-                                            onChange={(e) => setFormData({...formData, percent_from: e.target.value})}
-                                            placeholder="0.00"
+                                            onChange={(e) => handlePercentFromChange(e.target.value)}
+                                            placeholder="e.g. 80"
                                             min="0"
                                             max="100"
-                                            step="0.01"
-                                            className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
+                                            step="any"
+                                            className="h-10 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                            {t("percent_upto")} <span className="text-red-500">*</span>
+                                            {t("percent_upto")} (%) <span className="text-red-500">*</span>
                                         </Label>
                                         <Input
                                             type="number"
                                             value={formData.percent_upto}
-                                            onChange={(e) => setFormData({...formData, percent_upto: e.target.value})}
-                                            placeholder="100.00"
+                                            onChange={(e) => handlePercentUptoChange(e.target.value)}
+                                            placeholder="e.g. 100"
                                             min="0"
                                             max="100"
-                                            step="0.01"
-                                            className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
+                                            step="any"
+                                            className="h-10 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                                        {t("grade_point")} <span className="text-red-500">*</span>
-                                    </Label>
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+                                            {t("grade_point")} <span className="text-red-500">*</span>
+                                        </Label>
+                                        {formData.grade_point && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                                <Sparkles className="h-2.5 w-2.5" /> Auto GP
+                                            </span>
+                                        )}
+                                    </div>
                                     <Input
                                         type="number"
-                                        step="0.1"
+                                        step="0.01"
                                         min="0"
                                         value={formData.grade_point}
                                         onChange={(e) => setFormData({...formData, grade_point: e.target.value})}
-                                        placeholder="e.g. 4.0"
-                                        className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
+                                        placeholder="e.g. 5.00"
+                                        className="h-10 border-gray-200 bg-gray-50/30 text-sm font-bold text-indigo-600 rounded-lg focus:ring-indigo-500 shadow-none"
                                     />
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                         {t("description")}
                                     </Label>
@@ -507,20 +635,20 @@ export default function MarksGradePage() {
                                         value={formData.description}
                                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                                         placeholder={t("enter_grade_description")}
-                                        className="min-h-[100px] border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 p-4"
+                                        className="min-h-[80px] border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 p-3"
                                     />
                                 </div>
 
-                                <div className="flex gap-2 pt-4 justify-end">
+                                <div className="flex gap-2 pt-2 justify-end">
                                     {editMode && (
-                                        <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
+                                        <Button onClick={resetForm} variant="outline" className="h-9 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-4">
                                             {t("cancel")}
                                         </Button>
                                     )}
                                     <Button
                                         onClick={handleSave}
                                         disabled={saving}
-                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
+                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95 shadow-xs"
                                     >
                                         {saving ? t("saving") : editMode ? t("update") : t("save")}
                                     </Button>
@@ -574,7 +702,7 @@ export default function MarksGradePage() {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="px-6 pb-6 space-y-6">
+                        <CardContent className="px-5 pb-6 space-y-4">
                             <div className="flex justify-end">
                                 <div className="relative w-full md:w-72">
                                     <Search className="absolute left-3.5 top-3.5 h-4 w-4 text-gray-400" />
@@ -585,21 +713,21 @@ export default function MarksGradePage() {
                                             setSearchTerm(e.target.value);
                                             setCurrentPage(1);
                                         }}
-                                        className="pl-10 h-11 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                        className="pl-10 h-10 text-sm border-gray-200 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                     />
                                 </div>
                             </div>
 
-                            <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
+                            <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-xs">
                                 <Table>
-                                    <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
-                                        <TableRow className="hover:bg-transparent border-gray-50">
-                                            <TableHead className="py-4 px-6">{t("exam_type")}</TableHead>
-                                            <TableHead className="py-4 px-6">{t("grade_name")}</TableHead>
-                                            <TableHead className="py-4 px-6">{t("percent_from_upto")}</TableHead>
-                                            <TableHead className="py-4 px-6">{t("grade_point")}</TableHead>
-                                            <TableHead className="py-4 px-6">{t("description")}</TableHead>
-                                            <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
+                                    <TableHeader className="bg-gray-50/90 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300">
+                                        <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
+                                            <TableHead className="py-3 px-4">{t("exam_type")}</TableHead>
+                                            <TableHead className="py-3 px-4">{t("grade_name")}</TableHead>
+                                            <TableHead className="py-3 px-4">{t("percent_from_upto")}</TableHead>
+                                            <TableHead className="py-3 px-4 text-center">{t("grade_point")}</TableHead>
+                                            <TableHead className="py-3 px-4">{t("description")}</TableHead>
+                                            <TableHead className="py-3 px-4 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -607,7 +735,7 @@ export default function MarksGradePage() {
                                             <TableSkeleton rows={5} cols={6} />
                                         ) : groupedData.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                <TableCell colSpan={6} className="px-4 py-12 text-center text-[11px] font-bold uppercase tracking-widest text-gray-400">
                                                     {t("no_data_found")}
                                                 </TableCell>
                                             </TableRow>
@@ -615,11 +743,11 @@ export default function MarksGradePage() {
                                             groupedData.map(([type, entries]) => {
                                                 const color = getExamTypeColor(type, allExamTypeNames);
                                                 return entries.map((entry, index) => (
-                                                    <TableRow key={entry.id} className={`text-[13px] border-b last:border-0 border-gray-50 hover:${color.bg} group transition-colors`}>
+                                                    <TableRow key={entry.id} className={cn("text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 hover:bg-indigo-50/20 group transition-colors")}>
                                                         {index === 0 ? (
                                                             <TableCell
                                                                 rowSpan={entries.length}
-                                                                className={`font-bold ${color.text} align-middle border-r border-gray-50 text-[10px] uppercase tracking-tighter w-[150px] ${color.bg} ${color.border}`}
+                                                                className={`font-bold ${color.text} align-middle border-r border-gray-100 dark:border-gray-800 text-[11px] uppercase tracking-tight w-[150px] ${color.bg} ${color.border}`}
                                                             >
                                                                 <div className="flex items-center gap-1.5">
                                                                     <span className={`inline-block w-2 h-2 rounded-full ${color.accent}`} />
@@ -627,34 +755,38 @@ export default function MarksGradePage() {
                                                                 </div>
                                                             </TableCell>
                                                         ) : null}
-                                                        <TableCell className={`py-4 px-6 font-bold ${color.text} tracking-tight`}>{entry.name}</TableCell>
-                                                        <TableCell className={`py-4 px-6 ${color.bg} ${color.border} border-l-2`}>
+                                                        <TableCell className="py-3 px-4 font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+                                                            <span className="inline-flex items-center justify-center min-w-[32px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-black text-xs border border-indigo-200 dark:border-indigo-800">
+                                                                {entry.name}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="py-3 px-4">
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className={`${color.bg} ${color.text} px-2.5 py-0.5 rounded-full font-bold text-[10px] border ${color.border}`}>
+                                                                <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full font-bold text-[11px] border border-gray-200 dark:border-gray-700">
                                                                     {entry.percent_from}%
                                                                 </span>
-                                                                <span className="text-gray-300">→</span>
-                                                                <span className={`${color.bg} ${color.text} px-2.5 py-0.5 rounded-full font-bold text-[10px] border ${color.border}`}>
+                                                                <span className="text-gray-400 text-xs">→</span>
+                                                                <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full font-bold text-[11px] border border-gray-200 dark:border-gray-700">
                                                                     {entry.percent_upto}%
                                                                 </span>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className={`py-4 px-6 font-bold ${color.text}`}>
-                                                            <div className="flex items-center gap-1.5">
-                                                                <Award className={`h-3.5 w-3.5 ${color.text}`} />
-                                                                {entry.grade_point}
+                                                        <TableCell className="py-3 px-4 text-center font-black text-indigo-600 dark:text-indigo-400">
+                                                            <div className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 text-xs">
+                                                                <Award className="h-3 w-3 text-amber-600" />
+                                                                {parseFloat(entry.grade_point).toFixed(2)}
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className={`py-4 px-6 ${color.text} italic text-[11px] max-w-[200px] truncate`}>
-                                                            {entry.description || t("no_description")}
+                                                        <TableCell className="py-3 px-4 text-gray-600 dark:text-gray-400 italic text-[11.5px] max-w-[200px] truncate">
+                                                            {entry.description || "—"}
                                                         </TableCell>
-                                                        <TableCell className={`py-4 px-6 text-right ${color.text}`}>
-                                                            <div className="flex items-center justify-end gap-2">
-                                                                <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md transition-all">
-                                                                    <Pencil className="h-4 w-4" />
+                                                        <TableCell className="py-3 px-4 text-right">
+                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all">
+                                                                    <Pencil className="h-3.5 w-3.5" />
                                                                 </Button>
-                                                                <Button size="icon" variant="ghost" onClick={() => setDeleteId(entry.id)} className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all">
-                                                                    <Trash2 className="h-4 w-4" />
+                                                                <Button size="icon" variant="ghost" onClick={() => setDeleteId(entry.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-xs transition-all">
+                                                                    <Trash2 className="h-3.5 w-3.5" />
                                                                 </Button>
                                                             </div>
                                                         </TableCell>
@@ -675,20 +807,20 @@ export default function MarksGradePage() {
                                             total: totalEntries
                                         })}
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1.5">
                                         <Button
                                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
                                             disabled={currentPage === 1}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
-                                        <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
+                                        <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm">
                                             {currentPage}
                                         </Button>
                                         <Button
                                             onClick={() => setCurrentPage(p => p + 1)}
-                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
                                             disabled={currentPage >= totalPages}
                                         >
                                             <ChevronRight className="h-4 w-4" />
@@ -703,16 +835,16 @@ export default function MarksGradePage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-xl border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_grade")}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800 dark:text-gray-100">{t("delete_grade")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
                             {t("delete_grade_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md">
                             {t("yes_delete_grade")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -728,27 +860,27 @@ export default function MarksGradePage() {
                 }
                 setShowExamTypeDialog(open);
             }}>
-                <DialogContent className="rounded-lg border-0 shadow-2xl max-w-md">
+                <DialogContent className="rounded-xl border-0 shadow-2xl max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-gray-800">{t("manage_exam_types")}</DialogTitle>
-                        <DialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
+                        <DialogTitle className="text-lg font-bold text-gray-800 dark:text-gray-100">{t("manage_exam_types")}</DialogTitle>
+                        <DialogDescription className="text-xs text-gray-500 leading-relaxed mt-1">
                             {t("manage_exam_types_description")}
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-5 py-2">
+                    <div className="space-y-4 py-2">
                         {/* Existing exam types list */}
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                 {t("existing_exam_types")}
                             </Label>
-                            <div className="rounded-lg border border-gray-100 overflow-hidden max-h-[200px] overflow-y-auto">
+                            <div className="rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden max-h-[200px] overflow-y-auto">
                                 {examTypes.length === 0 ? (
                                     <div className="px-4 py-6 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                         {t("no_data_found")}
                                     </div>
                                 ) : (
                                     examTypes.map((type) => (
-                                        <div key={type.id} className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group">
+                                        <div key={type.id} className="flex items-center justify-between px-4 py-2.5 border-b last:border-0 border-gray-50 dark:border-gray-800 hover:bg-indigo-50/40 group transition-colors">
                                             {editingExamType?.id === type.id ? (
                                                 <div className="flex items-center gap-2 flex-1">
                                                     <Input
@@ -766,12 +898,12 @@ export default function MarksGradePage() {
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <span className="text-sm text-gray-700 font-medium">{type.name}</span>
+                                                    <span className="text-sm text-gray-700 dark:text-gray-200 font-medium">{type.name}</span>
                                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <Button size="icon" variant="ghost" onClick={() => startEditExamType(type)} className="h-7 w-7 text-amber-600 hover:bg-amber-50 rounded-md">
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button size="icon" variant="ghost" onClick={() => setDeleteExamTypeId(type.id)} className="h-7 w-7 text-red-500 hover:bg-red-50 rounded-md">
+                                                        <Button size="icon" variant="ghost" onClick={() => setDeleteExamTypeId(type.id)} className="h-7 w-7 text-red-600 hover:bg-red-50 rounded-md">
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
@@ -783,8 +915,8 @@ export default function MarksGradePage() {
                             </div>
                         </div>
 
-                        {/* Add new exam type */}
-                        <div className="space-y-2">
+                        {/* Add new exam type input */}
+                        <div className="space-y-1.5 pt-2 border-t border-gray-100 dark:border-gray-800">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                 {t("add_new_exam_type")}
                             </Label>
@@ -792,32 +924,46 @@ export default function MarksGradePage() {
                                 <Input
                                     value={newExamTypeName}
                                     onChange={(e) => setNewExamTypeName(e.target.value)}
-                                    placeholder={t("enter_exam_type_name")}
-                                    className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddExamType(); }}
+                                    placeholder="e.g. General Purpose (GPA)"
+                                    className="h-10 text-sm border-gray-200 rounded-lg shadow-none"
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleAddExamType();
+                                        }
+                                    }}
                                 />
-                                <Button onClick={handleAddExamType} disabled={addingExamType} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-11 rounded-lg text-[10px] font-bold uppercase tracking-wider px-4 shadow-md shrink-0">
-                                    <Plus className="h-4 w-4" />
+                                <Button
+                                    onClick={handleAddExamType}
+                                    disabled={addingExamType || !newExamTypeName.trim()}
+                                    className="h-10 px-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[11px] font-bold uppercase rounded-lg shadow-none whitespace-nowrap"
+                                >
+                                    {addingExamType ? "..." : t("add")}
                                 </Button>
                             </div>
                         </div>
                     </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowExamTypeDialog(false)} className="h-9 rounded-full text-[11px] font-bold uppercase border-gray-200">
+                            {t("close")}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* Delete Exam Type Confirmation */}
             <AlertDialog open={!!deleteExamTypeId} onOpenChange={(open) => !open && setDeleteExamTypeId(null)}>
-                <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-xl border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_exam_type")}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-lg font-bold text-gray-800">{t("delete_exam_type")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
                             {t("delete_exam_type_confirmation")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDeleteExamType} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            {t("yes_delete")}
+                        <AlertDialogCancel className="h-9 rounded-full text-[11px] font-bold uppercase border-gray-200">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDeleteExamType} className="bg-red-500 hover:bg-red-600 h-9 rounded-full text-[11px] font-bold uppercase border-0 shadow-md">
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

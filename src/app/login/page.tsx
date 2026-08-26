@@ -227,9 +227,9 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        {/* School Description Container (Only shown when school_description is available) */}
+                        {/* School Description Container (Hidden on mobile mode) */}
                         {mounted && settings?.school_description && settings.school_description.trim() !== "" && (
-                            <div className="bg-slate-800/50 border border-white/10 rounded-xl p-3 sm:p-3.5 backdrop-blur-xl space-y-1.5 shadow-xl relative overflow-hidden group hover:border-indigo-500/30 transition-all" suppressHydrationWarning>
+                            <div className="hidden lg:block bg-slate-800/50 border border-white/10 rounded-xl p-3 sm:p-3.5 backdrop-blur-xl space-y-1.5 shadow-xl relative overflow-hidden group hover:border-indigo-500/30 transition-all" suppressHydrationWarning>
                                 <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
                                 <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-[11px] uppercase tracking-wider">
                                     <BookOpen className="w-3.5 h-3.5" />
@@ -241,8 +241,8 @@ export default function LoginPage() {
                             </div>
                         )}
 
-                        {/* Feature Highlights Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {/* Feature Highlights Grid (Hidden on mobile mode) */}
+                        <div className="hidden lg:grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div className="bg-slate-800/30 border border-white/10 rounded-xl p-2.5 backdrop-blur-md flex items-center gap-2.5 hover:bg-slate-800/50 transition-colors">
                                 <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0">
                                     <Users className="w-3.5 h-3.5" />
@@ -264,8 +264,8 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        {/* Announcement / Status Footer */}
-                        <div className="bg-gradient-to-r from-indigo-950/60 via-slate-900/60 to-purple-950/60 border border-indigo-500/20 rounded-xl p-2.5 backdrop-blur-md flex items-center gap-2.5">
+                        {/* Announcement / Status Footer (Hidden on mobile mode) */}
+                        <div className="hidden lg:flex bg-gradient-to-r from-indigo-950/60 via-slate-900/60 to-purple-950/60 border border-indigo-500/20 rounded-xl p-2.5 backdrop-blur-md items-center gap-2.5">
                             <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 shrink-0">
                                 <Zap className="w-3.5 h-3.5" />
                             </div>

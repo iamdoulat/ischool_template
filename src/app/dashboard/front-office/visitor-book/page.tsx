@@ -31,12 +31,16 @@ import {
     Target,
     UserCheck,
     StickyNote,
-    FileEdit
+    FileEdit,
+    BookUser,
+    RefreshCw
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
     Dialog,
@@ -91,8 +95,6 @@ export default function VisitorBookPage() {
     const tt = useTranslateToast();
     const { t } = useTranslation();
 
-    // useTranslateToast() returns a fresh object every render; holding it in a ref
-    // keeps the data-fetching callbacks stable so the auto-fetch effect can't loop.
     const ttRef = useRef(tt);
     ttRef.current = tt;
 
@@ -350,9 +352,31 @@ export default function VisitorBookPage() {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-20">
+        <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen pb-20 animate-in fade-in duration-500">
+            {/* Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <BookUser className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">{t("visitor_book")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("record_visitor_entry") || "Manage and track visitor entries"}</p>
+                    </div>
+                </div>
+                <Button
+                    className="btn-gradient text-white px-5 h-9 text-xs gap-1.5 shadow-md rounded-full font-bold uppercase tracking-wider cursor-pointer"
+                    onClick={() => { setPage(1); fetchVisitors(); }}
+                    disabled={loading}
+                >
+                    <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                    {t("refresh")}
+                </Button>
+            </div>
+
+            {/* Visitor Book Card */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Users className="h-5 w-5" />
@@ -364,11 +388,11 @@ export default function VisitorBookPage() {
                     </div>
                     <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
                         <DialogTrigger asChild>
-                            <Button variant="gradient" size="sm" className="h-9 px-6">
-                                <Plus className="h-4 w-4 mr-2" /> {t("add")}
+                            <Button className="btn-gradient text-white h-9 px-5 text-xs rounded-full font-bold uppercase tracking-wider shadow-md cursor-pointer">
+                                <Plus className="h-4 w-4 mr-1.5" /> {t("add")}
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl sm:!max-w-[80vw] lg:!max-w-[68rem] p-0 overflow-hidden border-none shadow-2xl gap-0">
+                        <DialogContent className="max-w-4xl sm:!max-w-[80vw] lg:!max-w-[68rem] p-0 overflow-hidden border-none shadow-2xl gap-0 rounded-2xl">
                             {/* Gradient header */}
                             <div className="relative bg-gradient-to-r from-[#FF9800] to-[#6366F1] px-6 py-5 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -385,20 +409,20 @@ export default function VisitorBookPage() {
                                 <button
                                     type="button"
                                     onClick={() => setIsDialogOpen(false)}
-                                    className="text-white/80 hover:text-white hover:bg-white/15 rounded-lg p-1.5 transition-colors"
+                                    className="text-white/80 hover:text-white hover:bg-white/15 rounded-lg p-1.5 transition-colors cursor-pointer"
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
 
                             <form onSubmit={handleSave}>
-                                <div className="p-6 space-y-6 bg-white overflow-y-auto max-h-[72vh]">
+                                <div className="p-6 space-y-6 bg-white dark:bg-gray-900 overflow-y-auto max-h-[72vh]">
                                     {/* Section: Visitor Information */}
                                     <ModalSection icon={User} title={t("visitor_information")}>
                                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4">
                                             <Field icon={User} label={t("visitor_name")} required>
                                                 <Input
-                                                    className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={formData.visitor_name}
                                                     onChange={(e) => setFormData({ ...formData, visitor_name: e.target.value })}
                                                     placeholder={t("enter_visitor_name")}
@@ -406,7 +430,7 @@ export default function VisitorBookPage() {
                                             </Field>
                                             <Field icon={Phone} label={t("phone")} required>
                                                 <Input
-                                                    className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={formData.phone}
                                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                                     placeholder={t("enter_phone_number")}
@@ -414,7 +438,7 @@ export default function VisitorBookPage() {
                                             </Field>
                                             <Field icon={CreditCard} label={t("id_card")}>
                                                 <Input
-                                                    className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={formData.id_card || ""}
                                                     onChange={(e) => setFormData({ ...formData, id_card: e.target.value })}
                                                     placeholder={t("id_card_number")}
@@ -437,7 +461,7 @@ export default function VisitorBookPage() {
                                             <Field icon={UserCheck} label={t("meeting_with")} required>
                                                 <Input
                                                     placeholder={t("meeting_with_placeholder")}
-                                                    className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={formData.meeting_with}
                                                     onChange={(e) => setFormData({ ...formData, meeting_with: e.target.value })}
                                                 />
@@ -446,7 +470,7 @@ export default function VisitorBookPage() {
                                                 <Input
                                                     type="number"
                                                     min="1"
-                                                    className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={formData.number_of_person}
                                                     onChange={(e) => setFormData({ ...formData, number_of_person: parseInt(e.target.value) || 1 })}
                                                 />
@@ -470,13 +494,13 @@ export default function VisitorBookPage() {
                                                     value={formData.date || ""}
                                                     onChange={(val) => setFormData({ ...formData, date: val })}
                                                     placeholder={t("select_date")}
-                                                    className="bg-slate-50/50 border-slate-200"
+                                                    className="bg-gray-50/40 border-gray-200"
                                                 />
                                             </Field>
                                             <Field icon={Clock} label={t("in_time")} required>
                                                 <Input
                                                     type="time"
-                                                    className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={formData.in_time}
                                                     onChange={(e) => setFormData({ ...formData, in_time: e.target.value })}
                                                 />
@@ -484,7 +508,7 @@ export default function VisitorBookPage() {
                                             <Field icon={LogOut} label={t("out_time")}>
                                                 <Input
                                                     type="time"
-                                                    className="h-11 rounded-lg border-slate-200 bg-slate-50/50 focus:bg-white transition-all focus:ring-primary/20"
+                                                    className="h-11 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-gray-900 dark:text-gray-100 font-semibold focus:bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={formData.out_time || ""}
                                                     onChange={(e) => setFormData({ ...formData, out_time: e.target.value })}
                                                 />
@@ -498,33 +522,32 @@ export default function VisitorBookPage() {
                                             <Field icon={StickyNote} label={t("note")}>
                                                 <textarea
                                                     rows={3}
-                                                    className="flex w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white resize-none"
+                                                    className="flex w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3 py-2 text-xs font-medium text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all focus:bg-white resize-none"
                                                     value={formData.note || ""}
                                                     onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                                                     placeholder={t("enter_note")}
                                                 />
                                             </Field>
                                             <Field icon={Paperclip} label={t("attachment")}>
-                                                <div className="h-[5.25rem] w-full border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-not-allowed opacity-70">
-                                                    <Paperclip className="h-5 w-5 text-slate-400" />
-                                                    <span className="text-xs text-slate-500 mt-1">{t("attachment_coming_soon")}</span>
+                                                <div className="h-[5.25rem] w-full border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg flex flex-col items-center justify-center bg-gray-50/40 hover:bg-gray-50 transition-colors cursor-not-allowed opacity-70">
+                                                    <Paperclip className="h-5 w-5 text-gray-400" />
+                                                    <span className="text-xs text-gray-500 mt-1">{t("attachment_coming_soon")}</span>
                                                 </div>
                                             </Field>
                                         </div>
                                     </ModalSection>
                                 </div>
 
-                                <div className="bg-slate-50/80 px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
-                                    <Button type="button" variant="outline" className="h-10 px-6 rounded-lg font-semibold" onClick={() => setIsDialogOpen(false)} disabled={saving}>
+                                <div className="bg-gray-50 dark:bg-gray-800 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
+                                    <Button type="button" variant="outline" className="h-9 px-5 rounded-full text-xs font-bold uppercase border-gray-200" onClick={() => setIsDialogOpen(false)} disabled={saving}>
                                         {t("cancel")}
                                     </Button>
                                     <Button
                                         type="submit"
-                                        variant="gradient"
-                                        className="h-10 px-8 rounded-lg font-bold shadow-lg shadow-primary/20"
+                                        className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase shadow-md cursor-pointer"
                                         disabled={saving}
                                     >
-                                        {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                                        {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                                         {currentVisitor ? t("update") : t("save")}
                                     </Button>
                                 </div>
@@ -534,12 +557,12 @@ export default function VisitorBookPage() {
                 </CardHeader>
                 <CardContent className="p-6">
                     {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-                        <div className="relative w-full md:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-5">
+                        <div className="relative w-full md:w-72">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
                                 placeholder={t("search_visitors")}
-                                className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus:ring-2 focus:ring-indigo-500/20"
+                                className="pl-10 h-10 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus-visible:bg-white focus-visible:ring-indigo-500 shadow-none"
                                 value={searchQuery}
                                 onChange={(e) => {
                                     setSearchQuery(e.target.value);
@@ -556,19 +579,19 @@ export default function VisitorBookPage() {
                                         setPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-8 w-16 text-xs border border-muted/50 bg-muted/30 hover:bg-muted/50 transition-colors shadow-none rounded-lg font-semibold text-muted-foreground">
+                                    <SelectTrigger className="h-9 w-20 text-xs border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-xl font-bold text-gray-700 dark:text-gray-200">
                                         <SelectValue placeholder={String(limit)} />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-lg border-muted/50">
+                                    <SelectContent className="rounded-xl border-gray-200">
                                         {[20, 50, 100, 500].map((n) => (
-                                            <SelectItem key={n} value={String(n)} className="font-medium text-slate-700">
+                                            <SelectItem key={n} value={String(n)} className="font-semibold text-xs text-gray-700">
                                                 {n}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="flex gap-1">
+                            <div className="flex gap-1.5 bg-gray-50 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
                                 <IconButton icon={Printer} onClick={handlePrint} title={t("print")} />
                                 <IconButton icon={Copy} onClick={handleCopy} title={t("copy")} />
                                 <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title={t("excel")} />
@@ -580,16 +603,18 @@ export default function VisitorBookPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto rounded-lg border border-muted/50">
+                    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-muted/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            <thead className="bg-gray-50 dark:bg-gray-800 text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                                 <tr>
-                                    <th className="px-4 py-4 w-10">
+                                    <th className="px-3.5 py-3 w-10">
                                         <Checkbox
                                             checked={displayedVisitors.length > 0 && displayedVisitors.every(v => selectedIds.includes(v.id))}
                                             onCheckedChange={toggleSelectAll}
+                                            className="border-gray-300"
                                         />
                                     </th>
+                                    <Th className="w-12">#</Th>
                                     <Th>{t("purpose")}</Th>
                                     <Th>{t("meeting_with")}</Th>
                                     <Th>{t("visitor_name")}</Th>
@@ -600,61 +625,125 @@ export default function VisitorBookPage() {
                                     <Th>{t("in_time")}</Th>
                                     <Th>{t("out_time")}</Th>
                                     <Th>{t("source")}</Th>
-                                    <th className="px-4 py-4 text-right">
-                                        <div className="flex justify-end">
+                                    <th className="px-3.5 py-3 text-right">
+                                        <div className="flex justify-end items-center">
                                             {selectedIds.length > 0 ? (
                                                 <button
                                                     onClick={() => setIsBulkDeleteDialogOpen(true)}
-                                                    className="bg-red-500 hover:bg-red-600 p-1.5 rounded transition-colors"
+                                                    className="bg-rose-500 hover:bg-rose-600 p-1.5 rounded-md transition-colors shadow-2xs cursor-pointer"
+                                                    title={t("delete_selected")}
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5 text-white" />
                                                 </button>
                                             ) : (
-                                                <span className="text-muted-foreground font-bold tracking-wider">{t("action")}</span>
+                                                <span className="font-bold tracking-wider">{t("action")}</span>
                                             )}
                                         </div>
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-muted/30">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
-                                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                                        <td colSpan={13} className="px-4 py-12 text-center text-gray-400">
+                                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-600" />
                                         </td>
                                     </tr>
                                 ) : displayedVisitors.length === 0 ? (
                                     <tr>
-                                        <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">{t("no_visitors_found")}</td>
+                                        <td colSpan={13} className="px-4 py-12 text-center text-xs font-semibold text-gray-400">{t("no_visitors_found")}</td>
                                     </tr>
                                 ) : (
-                                    displayedVisitors.map((visitor) => (
+                                    displayedVisitors.map((visitor, idx) => (
                                         <tr key={visitor.id} className={cn(
-                                            "hover:bg-muted/10 transition-colors group",
-                                            selectedIds.includes(visitor.id) && "bg-muted/30"
+                                            "hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors group",
+                                            selectedIds.includes(visitor.id) && "bg-indigo-50/30 dark:bg-indigo-950/20"
                                         )}>
-                                            <td className="px-4 py-4">
+                                            <td className="px-3.5 py-3">
                                                 <Checkbox
                                                     checked={selectedIds.includes(visitor.id)}
                                                     onCheckedChange={() => toggleSelect(visitor.id)}
+                                                    className="border-gray-300"
                                                 />
                                             </td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.purpose}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.meeting_with}</Td>
-                                            <Td className="text-slate-700 font-semibold whitespace-nowrap">{visitor.visitor_name}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.phone}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.id_card || "-"}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.number_of_person}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.date ? new Date(visitor.date).toLocaleDateString() : "-"}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.in_time}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.out_time || "-"}</Td>
-                                            <Td className="text-slate-600 font-medium whitespace-nowrap">{visitor.source || "-"}</Td>
-                                            <Td className="text-right">
-                                                <div className="flex justify-end gap-1 px-1">
-                                                    <ActionBtn icon={Eye} className="bg-indigo-500" onClick={() => { setSelectedVisitor(visitor); setIsViewDialogOpen(true); }} />
-                                                    {visitor.attachment && <ActionBtn icon={Download} className="bg-indigo-500" />}
-                                                    <ActionBtn icon={Pencil} className="bg-amber-500" onClick={() => openEditModal(visitor)} />
-                                                    <ActionBtn icon={Trash2} className="bg-red-500" onClick={() => { setDeleteId(visitor.id); setIsDeleteDialogOpen(true); }} />
+                                            <Td className="text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                {((page - 1) * limit) + idx + 1}
+                                            </Td>
+                                            <Td className="font-bold text-xs text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                                                <Badge className="bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                                                    {visitor.purpose}
+                                                </Badge>
+                                            </Td>
+                                            <Td className="text-xs font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                                <span className="flex items-center gap-1.5">
+                                                    <UserCheck className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                                    {visitor.meeting_with}
+                                                </span>
+                                            </Td>
+                                            <Td className="whitespace-nowrap">
+                                                <div className="flex items-center gap-2.5">
+                                                    <Avatar className="h-8 w-8 rounded-full border border-indigo-100 dark:border-indigo-900 shadow-2xs shrink-0">
+                                                        <AvatarFallback className="bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 text-indigo-700 font-bold text-[11px]">
+                                                            {visitor.visitor_name ? visitor.visitor_name.substring(0, 2).toUpperCase() : "VI"}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <span className="font-bold text-xs text-gray-900 dark:text-gray-100 hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => openEditModal(visitor)}>
+                                                        {visitor.visitor_name}
+                                                    </span>
+                                                </div>
+                                            </Td>
+                                            <Td className="text-xs font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                                <span className="flex items-center gap-1.5">
+                                                    <Phone className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                                    {visitor.phone}
+                                                </span>
+                                            </Td>
+                                            <Td className="whitespace-nowrap">
+                                                {visitor.id_card ? (
+                                                    <span className="text-[11px] font-mono font-bold text-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/70 border border-indigo-100 px-2 py-0.5 rounded-md">
+                                                        {visitor.id_card}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">-</span>
+                                                )}
+                                            </Td>
+                                            <Td className="whitespace-nowrap">
+                                                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                                    {visitor.number_of_person}
+                                                </span>
+                                            </Td>
+                                            <Td className="text-xs font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                                <span className="flex items-center gap-1.5">
+                                                    <CalendarDays className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                                    {visitor.date ? new Date(visitor.date).toLocaleDateString() : "-"}
+                                                </span>
+                                            </Td>
+                                            <Td className="whitespace-nowrap">
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300">
+                                                    <Clock className="h-3 w-3" />
+                                                    {visitor.in_time}
+                                                </span>
+                                            </Td>
+                                            <Td className="whitespace-nowrap">
+                                                {visitor.out_time ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950 dark:text-rose-300">
+                                                        <LogOut className="h-3 w-3" />
+                                                        {visitor.out_time}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400 italic text-xs font-medium">In premise</span>
+                                                )}
+                                            </Td>
+                                            <Td className="whitespace-nowrap">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300">
+                                                    {visitor.source || "-"}
+                                                </span>
+                                            </Td>
+                                            <Td className="text-right whitespace-nowrap">
+                                                <div className="flex justify-end gap-1.5">
+                                                    <ActionBtn icon={Eye} className="bg-indigo-500 hover:bg-indigo-600" title={t("view")} onClick={() => { setSelectedVisitor(visitor); setIsViewDialogOpen(true); }} />
+                                                    <ActionBtn icon={Pencil} className="bg-amber-500 hover:bg-amber-600" title={t("edit")} onClick={() => openEditModal(visitor)} />
+                                                    <ActionBtn icon={Trash2} className="bg-rose-500 hover:bg-rose-600" title={t("delete")} onClick={() => { setDeleteId(visitor.id); setIsDeleteDialogOpen(true); }} />
                                                 </div>
                                             </Td>
                                         </tr>
@@ -664,15 +753,14 @@ export default function VisitorBookPage() {
                         </table>
                     </div>
 
-                    <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                    <div className="mt-5 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
                             {t("showing_x_to_y_of_z", { from: total > 0 ? (page - 1) * limit + 1 : 0, to: Math.min(page * limit, total), total })}
                         </p>
                         <div className="flex items-center gap-1.5 flex-wrap justify-center">
                             <Button
-                                variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-[10px] border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:scale-95 transition-all bg-white"
+                                className="h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 cursor-pointer shadow-xs"
                                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                                 disabled={page === 1}
                             >
@@ -680,13 +768,16 @@ export default function VisitorBookPage() {
                             </Button>
                             {getPageNumbers(page, lastPage).map((p, idx) =>
                                 p === "…" ? (
-                                    <span key={`gap-${idx}`} className="px-1.5 text-gray-400 text-sm select-none">…</span>
+                                    <span key={`gap-${idx}`} className="px-1.5 text-gray-400 text-xs select-none">…</span>
                                 ) : (
                                     <Button
                                         key={p}
-                                        variant={page === p ? "pagination-active" : "pagination-inactive"}
-                                        size="icon"
-                                        className="h-8 w-8 rounded-[10px] text-xs font-bold"
+                                        className={cn(
+                                            "h-8 w-8 rounded-lg p-0 text-xs font-bold transition-all shadow-xs cursor-pointer",
+                                            page === p
+                                                ? "btn-gradient text-white"
+                                                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                        )}
                                         onClick={() => setPage(p)}
                                     >
                                         {p}
@@ -694,9 +785,8 @@ export default function VisitorBookPage() {
                                 )
                             )}
                             <Button
-                                variant="outline"
                                 size="icon"
-                                className="h-8 w-8 rounded-[10px] border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:scale-95 transition-all bg-white"
+                                className="h-8 w-8 rounded-lg bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-40 cursor-pointer shadow-xs"
                                 onClick={() => setPage(prev => Math.min(prev + 1, lastPage))}
                                 disabled={page === lastPage || lastPage === 0}
                             >
@@ -708,44 +798,44 @@ export default function VisitorBookPage() {
             </Card>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-base font-bold text-gray-900">{t("are_you_sure")}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-gray-600">
                             {t("permanently_delete_visitor_entry")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setDeleteId(null)}>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">{t("delete")}</AlertDialogAction>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-full h-9 text-xs font-bold uppercase" onClick={() => setDeleteId(null)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-rose-600 hover:bg-rose-700 rounded-full h-9 text-xs font-bold uppercase">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>{t("bulk_delete_visitors")}</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-base font-bold text-gray-900">{t("bulk_delete_visitors")}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-gray-600">
                             {t("confirm_bulk_delete_visitors", { count: selectedIds.length })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600">{t("delete_selected")}</AlertDialogAction>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-full h-9 text-xs font-bold uppercase" onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-rose-600 hover:bg-rose-700 rounded-full h-9 text-xs font-bold uppercase">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                <DialogContent className="w-[95vw] max-w-2xl p-0 overflow-hidden border-none shadow-2xl gap-0">
+                <DialogContent className="w-[95vw] max-w-2xl p-0 overflow-hidden border-none shadow-2xl gap-0 rounded-2xl">
                     <DialogHeader className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] p-5 sm:p-6 space-y-0 shrink-0">
                         <DialogTitle className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                             <Eye className="h-5 w-5 shrink-0" />
                             {t("visitor_details")}
                         </DialogTitle>
                     </DialogHeader>
-                    <div className="overflow-y-auto max-h-[70vh] p-5 sm:p-6">
+                    <div className="overflow-y-auto max-h-[70vh] p-5 sm:p-6 bg-white dark:bg-gray-900">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 sm:gap-y-6 sm:gap-x-8">
                             <DetailItem label={t("purpose")} value={selectedVisitor?.purpose} />
                             <DetailItem label={t("source")} value={selectedVisitor?.source} />
@@ -758,8 +848,8 @@ export default function VisitorBookPage() {
                             <DetailItem label={t("in_time")} value={selectedVisitor?.in_time} />
                             <DetailItem label={t("out_time")} value={selectedVisitor?.out_time} />
                             <div className="col-span-1 sm:col-span-2 space-y-1">
-                                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t("note")}</label>
-                                <p className="text-sm text-slate-700 bg-muted/30 p-3 rounded-lg border border-muted/50 min-h-[60px] whitespace-pre-wrap break-words">
+                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{t("note")}</label>
+                                <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 min-h-[60px] whitespace-pre-wrap break-words">
                                     {selectedVisitor?.note || t("no_note_provided")}
                                 </p>
                             </div>
@@ -767,8 +857,7 @@ export default function VisitorBookPage() {
                         <div className="flex justify-end mt-6">
                             <Button
                                 onClick={() => setIsViewDialogOpen(false)}
-                                variant="gradient"
-                                className="px-8 h-10 rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95 text-white"
+                                className="btn-gradient text-white px-8 h-9 text-xs rounded-full font-bold uppercase shadow-md cursor-pointer"
                             >
                                 {t("close")}
                             </Button>
@@ -795,11 +884,11 @@ function getPageNumbers(current: number, last: number): (number | "…")[] {
 
 // Helper Components
 function Th({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <th className={cn("px-4 py-4 border-b border-muted/50 whitespace-nowrap", className)}>{children}</th>;
+    return <th className={cn("px-3.5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200 whitespace-nowrap", className)}>{children}</th>;
 }
 
 function Td({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <td className={cn("px-4 py-4 text-sm", className)}>{children}</td>;
+    return <td className={cn("px-3.5 py-3 text-xs text-gray-900 dark:text-gray-100", className)}>{children}</td>;
 }
 
 function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
@@ -807,21 +896,22 @@ function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, o
         <button
             onClick={onClick}
             title={title}
-            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm"
+            className="p-2 hover:bg-card hover:text-indigo-600 rounded-lg transition-all border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-500 shadow-2xs group active:scale-95 cursor-pointer"
         >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
         </button>
     );
 }
 
-function ActionBtn({ icon: Icon, className, onClick }: { icon: React.ElementType, className?: string, onClick?: () => void }) {
+function ActionBtn({ icon: Icon, className, onClick, title }: { icon: React.ElementType, className?: string, onClick?: () => void, title?: string }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={cn("p-1.5 text-white rounded transition-all hover:shadow-md active:scale-90", className)}
+            title={title}
+            className={cn("p-1.5 text-white rounded-md transition-all shadow-2xs hover:shadow-md active:scale-90 cursor-pointer", className)}
         >
-            <Icon className="h-3 w-3" />
+            <Icon className="h-3.5 w-3.5" />
         </button>
     );
 }
@@ -829,9 +919,9 @@ function ActionBtn({ icon: Icon, className, onClick }: { icon: React.ElementType
 function DetailItem({ label, value }: { label: string, value: string | null | undefined }) {
     return (
         <div className="space-y-1">
-            <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
-            <div className="h-10 flex items-center px-3 bg-muted/30 rounded-lg border border-muted/50">
-                <span className="text-sm font-semibold text-slate-700">{value || "-"}</span>
+            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{label}</label>
+            <div className="h-10 flex items-center px-3.5 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                <span className="text-xs font-bold text-gray-900 dark:text-gray-100">{value || "-"}</span>
             </div>
         </div>
     );
@@ -845,8 +935,8 @@ function ModalSection({ icon: Icon, title, children }: { icon: LucideIcon, title
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 text-indigo-600">
                     <Icon className="h-4 w-4" />
                 </span>
-                <h3 className="text-sm font-bold text-slate-800 tracking-tight">{title}</h3>
-                <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent" />
+                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 tracking-tight">{title}</h3>
+                <div className="flex-1 h-px bg-gradient-to-r from-gray-200 dark:from-gray-700 to-transparent" />
             </div>
             {children}
         </div>
@@ -857,8 +947,8 @@ function ModalSection({ icon: Icon, title, children }: { icon: LucideIcon, title
 function Field({ icon: Icon, label, required, children }: { icon: LucideIcon, label: string, required?: boolean, children: React.ReactNode }) {
     return (
         <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 ml-0.5">
-                <Icon className="h-3.5 w-3.5 text-slate-400" />
+            <label className="flex items-center gap-1.5 text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5">
+                <Icon className="h-3.5 w-3.5 text-gray-400" />
                 {label}
                 {required && <span className="text-destructive">*</span>}
             </label>
@@ -872,16 +962,16 @@ function ModalSelect({ value, onChange, options, placeholder }: { value: string,
     return (
         <div className="relative">
             <select
-                className="flex h-11 w-full rounded-lg border border-slate-200 bg-slate-50/50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white appearance-none cursor-pointer transition-all"
+                className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white dark:focus:bg-gray-800 appearance-none cursor-pointer transition-all"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
             >
-                {placeholder !== undefined && <option value="">{placeholder}</option>}
+                {placeholder !== undefined && <option value="" className="text-gray-400">{placeholder}</option>}
                 {options.map((opt, idx) => (
-                    <option key={`${opt.value}-${idx}`} value={opt.value}>{opt.label}</option>
+                    <option key={`${opt.value}-${idx}`} value={opt.value} className="text-gray-900 font-medium">{opt.label}</option>
                 ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
         </div>
     );
 }

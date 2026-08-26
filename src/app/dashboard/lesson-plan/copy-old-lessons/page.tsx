@@ -13,6 +13,7 @@ import {
     CardHeader,
     CardTitle
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
     Select,
     SelectContent,
@@ -21,7 +22,20 @@ import {
     SelectValue
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Copy, Filter } from "lucide-react";
+import {
+    Search,
+    Copy,
+    Filter,
+    BookOpen,
+    Layers,
+    GraduationCap,
+    Route,
+    CheckSquare,
+    Square,
+    Check,
+    ArrowRight
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Topic {
     id: string;
@@ -61,23 +75,19 @@ interface SubjectGroupFull {
     sections?: { id: string | number; name: string; pivot?: { subject_group_id: number; section_id: number } }[];
 }
 
-function CardSkeleton({ count = 6 }: { count?: number }) {
+function CardSkeleton({ count = 4 }: { count?: number }) {
     return (
-        <>
+        <div className="space-y-3 p-4">
             {Array.from({ length: count }).map((_, i) => (
-                <div key={i} className="rounded-xl border border-muted/30 p-4 space-y-3 bg-card animate-pulse">
+                <div key={i} className="rounded-2xl border border-gray-100 bg-white p-4 space-y-3 animate-pulse">
                     <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-muted/60" />
-                        <div className="space-y-2 flex-1">
-                            <div className="h-3 w-1/2 rounded bg-muted/60" />
-                            <div className="h-3 w-1/3 rounded bg-muted/60" />
-                        </div>
+                        <div className="h-6 w-6 rounded-full bg-muted/60" />
+                        <div className="h-4 w-1/3 rounded bg-muted/60" />
                     </div>
-                    <div className="h-3 w-full rounded bg-muted/60" />
-                    <div className="h-3 w-3/4 rounded bg-muted/60" />
+                    <div className="h-10 bg-muted/30 rounded-xl" />
                 </div>
             ))}
-        </>
+        </div>
     );
 }
 
@@ -170,7 +180,6 @@ export default function CopyOldLessonsPage() {
             const list = Array.isArray(rawData) ? rawData : [];
             if (target === 'from') {
                 setFromSubjectGroups(list);
-                // Also reset from subject and filtered subjects
                 setFromFilteredSubjects([]);
             } else {
                 setToSubjectGroups(list);
@@ -187,7 +196,6 @@ export default function CopyOldLessonsPage() {
         }
     };
 
-    /** Extract subjects belonging to a given subject group name */
     const getSubjectsForGroup = (groupName: string, groups: SubjectGroupFull[]): OptionItem[] => {
         const group = groups.find(
             (g) => g.name === groupName || g.group_name === groupName
@@ -198,7 +206,6 @@ export default function CopyOldLessonsPage() {
                 name: s.name,
             }));
         }
-        // Fallback: show all subjects if the group has no subjects data
         return subjects;
     };
 
@@ -206,7 +213,6 @@ export default function CopyOldLessonsPage() {
         const prev = fromCriteria;
         const updated = { ...prev, [field]: value };
 
-        // Cascade reset dependent fields
         if (field === 'class_name') {
             const cls = classes.find((c) => c.name === value);
             updated.class_id = cls?.id?.toString() ?? '';
@@ -224,7 +230,6 @@ export default function CopyOldLessonsPage() {
 
         setFromCriteria(updated);
 
-        // Side effects (data fetching) after computing new criteria
         if (field === 'class_name') {
             fetchFilteredSubjectGroups(updated.class_id, '', 'from');
         }
@@ -288,7 +293,7 @@ export default function CopyOldLessonsPage() {
             ).map(t => ({
                 id: t.id,
                 name: t.lesson,
-                topics: t.topics.map((topic) => ({
+                topics: (t.topics || []).map((topic) => ({
                     id: topic.id,
                     name: topic.name
                 }))
@@ -299,10 +304,30 @@ export default function CopyOldLessonsPage() {
             if (filtered.length === 0) {
                 toast({ title: "Info", description: "No lessons found for selected criteria" });
             }
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Failed to fetch source lessons", variant: "destructive" });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const allTopicIds = sourceLessons.flatMap(l => l.topics.map(t => t.id));
+
+    const handleSelectAllTopics = () => {
+        setSelectedTopicIds(allTopicIds);
+    };
+
+    const handleDeselectAllTopics = () => {
+        setSelectedTopicIds([]);
+    };
+
+    const toggleLessonAll = (lesson: Lesson) => {
+        const lessonTopicIds = lesson.topics.map(t => t.id);
+        const allSelected = lessonTopicIds.every(id => selectedTopicIds.includes(id));
+        if (allSelected) {
+            setSelectedTopicIds(prev => prev.filter(id => !lessonTopicIds.includes(id)));
+        } else {
+            setSelectedTopicIds(prev => Array.from(new Set([...prev, ...lessonTopicIds])));
         }
     };
 
@@ -319,7 +344,7 @@ export default function CopyOldLessonsPage() {
         }
 
         if (!toCriteria.class_name || !toCriteria.section || !toCriteria.subject_group || !toCriteria.subject) {
-            toast({ title: "Validation Error", description: "Please select all 'To' criteria", variant: "destructive" });
+            toast({ title: "Validation Error", description: "Please select all 'Target' criteria", variant: "destructive" });
             return;
         }
 
@@ -339,7 +364,7 @@ export default function CopyOldLessonsPage() {
 
             toast({ title: "Success", description: "Lessons and topics copied successfully" });
             setSelectedTopicIds([]);
-        } catch (error) {
+        } catch {
             toast({ title: "Error", description: "Failed to copy lessons", variant: "destructive" });
         } finally {
             setCopying(false);
@@ -347,8 +372,8 @@ export default function CopyOldLessonsPage() {
     };
 
     return (
-        <div className="space-y-4 font-sans p-2 bg-transparent min-h-screen">
-            {/* Top Section: Select Old Session Details */}
+        <div className="space-y-6 font-sans p-4 sm:p-5 bg-gray-50/10 min-h-screen">
+            {/* Top Section: Select Source Session Details */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
@@ -356,19 +381,19 @@ export default function CopyOldLessonsPage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Source Session Details</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose the source class &amp; subject to search old lessons</p>
+                        <p className="text-[11px] text-gray-500 mt-1">Choose the source session, class &amp; subject to search old lessons</p>
                     </div>
                 </CardHeader>
 
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <CardContent className="px-5 pb-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Session <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.session} onValueChange={(val) => setFromCriteria({...fromCriteria, session: val})}>
-                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Session" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sessions.map(s => (
@@ -379,12 +404,12 @@ export default function CopyOldLessonsPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Class <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.class_name} onValueChange={(val) => handleFromCriteriaChange('class_name', val)}>
-                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Class" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
@@ -395,12 +420,12 @@ export default function CopyOldLessonsPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Section <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.section} onValueChange={(val) => handleFromCriteriaChange('section', val)} disabled={!fromCriteria.class_name}>
-                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Section" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {allSections.filter(s => String(s.school_class_id) === String(fromCriteria.class_id)).map(s => (
@@ -411,12 +436,12 @@ export default function CopyOldLessonsPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Subject Group <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.subject_group} onValueChange={(val) => handleFromCriteriaChange('subject_group', val)} disabled={!fromCriteria.section}>
-                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Group" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {fromSubjectGroups.map(g => (
@@ -427,12 +452,12 @@ export default function CopyOldLessonsPage() {
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 Subject <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.subject} onValueChange={(val) => handleFromCriteriaChange('subject', val)} disabled={!fromCriteria.subject_group}>
-                                <SelectTrigger className="h-10 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                    <SelectValue placeholder="Select Subject" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {fromFilteredSubjects.length > 0
@@ -448,11 +473,11 @@ export default function CopyOldLessonsPage() {
                         </div>
                     </div>
 
-                    <div className="flex justify-end mt-6">
+                    <div className="flex justify-end mt-5">
                         <Button
                             onClick={handleSearch}
                             disabled={loading}
-                            className="btn-gradient text-white gap-2 h-11 px-10 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
                         >
                             {loading ? "Searching..." : <><Search className="h-4 w-4" /> Search</>}
                         </Button>
@@ -468,70 +493,190 @@ export default function CopyOldLessonsPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Available Lessons &amp; Topics</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Searching for source lessons…</p>
+                            <p className="text-[11px] text-gray-500 mt-1">Loading source lessons…</p>
                         </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <CardSkeleton count={4} />
+                    <CardContent className="p-0">
+                        <CardSkeleton count={3} />
                     </CardContent>
                 </Card>
             ) : sourceLessons.length > 0 ? (
                 <>
-                    <div className="text-sm font-bold text-gray-500 mt-4 mb-2 flex items-center gap-2 uppercase tracking-widest">
-                        Source Lessons For: <span className="text-indigo-600 underline decoration-indigo-200 underline-offset-4">{fromCriteria.subject}</span>
+                    {/* Source Information Ribbon */}
+                    <div className="p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/60 bg-gradient-to-r from-indigo-50/70 via-white to-amber-50/50 dark:from-indigo-950/40 dark:via-gray-900 dark:to-gray-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-sm">
+                                <BookOpen className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-gray-400 font-bold uppercase">Source Lessons For:</span>
+                                    <span className="font-black text-sm text-indigo-700 dark:text-indigo-300">{fromCriteria.subject}</span>
+                                </div>
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                    Session {fromCriteria.session} • {fromCriteria.class_name} • Section {fromCriteria.section} • {fromCriteria.subject_group}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold px-3 py-1">
+                                {sourceLessons.length} Lessons Available
+                            </Badge>
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-bold px-3 py-1">
+                                {selectedTopicIds.length} / {allTopicIds.length} Selected
+                            </Badge>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col lg:flex-row gap-4">
+                    <div className="flex flex-col lg:flex-row gap-6">
                         {/* Left Column: Lesson & Topics Selection */}
                         <div className="w-full lg:w-2/3">
                             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                        <Copy className="h-5 w-5" />
-                                    </span>
-                                    <div>
-                                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Available Lessons &amp; Topics</CardTitle>
-                                        <p className="text-[11px] text-gray-500 mt-1">{sourceLessons.length} lesson{sourceLessons.length === 1 ? '' : 's'} found</p>
+                                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                            <Copy className="h-5 w-5" />
+                                        </span>
+                                        <div>
+                                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Available Lessons &amp; Topics</CardTitle>
+                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                {sourceLessons.length} lesson{sourceLessons.length === 1 ? '' : 's'} • {allTopicIds.length} total topics
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Select all / clear buttons */}
+                                    <div className="flex items-center gap-1.5">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleSelectAllTopics}
+                                            className="h-8 text-[10.5px] font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 rounded-lg"
+                                        >
+                                            Select All
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleDeselectAllTopics}
+                                            className="h-8 text-[10.5px] font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg px-2.5"
+                                        >
+                                            Clear
+                                        </Button>
                                     </div>
                                 </CardHeader>
 
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-gray-50">
-                                        <div className="grid grid-cols-[40px_1fr] bg-gray-100/30 text-[10px] font-bold uppercase text-gray-400 p-3">
-                                            <div>#</div>
-                                            <div>Lesson Topic Structure</div>
-                                        </div>
+                                <CardContent className="p-5 space-y-5">
+                                    {sourceLessons.map((lesson, index) => {
+                                        const isFirst = index === 0;
+                                        const isLast = index === sourceLessons.length - 1;
+                                        const lessonTopicIds = lesson.topics.map(t => t.id);
+                                        const allLessonSelected = lessonTopicIds.length > 0 && lessonTopicIds.every(id => selectedTopicIds.includes(id));
+                                        const someLessonSelected = lessonTopicIds.some(id => selectedTopicIds.includes(id));
 
-                                        {sourceLessons.map((lesson, index) => (
-                                            <div key={lesson.id} className="grid grid-cols-[40px_1fr] p-4 group hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer transition-all border-b border-gray-50">
-                                                <div className="text-[11px] text-gray-400 font-bold">{index + 1}</div>
-                                                <div className="space-y-4">
-                                                    <div className="text-xs font-bold text-gray-800 uppercase tracking-tight flex items-center gap-2">
-                                                        <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                                                        {lesson.name}
-                                                    </div>
-                                                    <div className="pl-6 space-y-3">
-                                                        {lesson.topics.map((topic) => (
-                                                            <div key={topic.id} className="flex items-center gap-3 group/item">
-                                                                <Checkbox
-                                                                    id={topic.id}
-                                                                    checked={selectedTopicIds.includes(topic.id)}
-                                                                    onCheckedChange={() => toggleTopic(topic.id)}
-                                                                    className="h-4 w-4 rounded-md border-gray-200 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 shadow-sm transition-all"
-                                                                />
-                                                                <Label
-                                                                    htmlFor={topic.id}
-                                                                    className="text-[12px] text-gray-500 font-medium cursor-pointer group-hover/item:text-indigo-600 transition-colors"
-                                                                >
-                                                                    {topic.name}
-                                                                </Label>
+                                        return (
+                                            <div
+                                                key={lesson.id}
+                                                className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/90 shadow-2xs overflow-hidden"
+                                            >
+                                                {/* Lesson Header Banner */}
+                                                <div
+                                                    onClick={() => toggleLessonAll(lesson)}
+                                                    className="p-3.5 bg-gray-50/80 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-3 cursor-pointer select-none hover:bg-indigo-50/30 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div
+                                                            className={cn(
+                                                                "h-7 w-7 rounded-xl flex items-center justify-center font-black text-xs shadow-2xs shrink-0",
+                                                                allLessonSelected
+                                                                    ? "bg-emerald-500 text-white"
+                                                                    : isFirst
+                                                                    ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white"
+                                                                    : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                                            )}
+                                                        >
+                                                            {allLessonSelected ? <Check className="h-4 w-4 stroke-[3]" /> : index + 1}
+                                                        </div>
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                                                                    Step {index + 1}
+                                                                </span>
+                                                                {isFirst && (
+                                                                    <span className="text-[8.5px] bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold border border-orange-200 dark:border-orange-800">
+                                                                        Initial
+                                                                    </span>
+                                                                )}
+                                                                {isLast && sourceLessons.length > 1 && (
+                                                                    <span className="text-[8.5px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-200 dark:border-emerald-800">
+                                                                        Final Step
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                        ))}
+                                                            <h4 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 mt-0.5">
+                                                                {lesson.name}
+                                                            </h4>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="text-[10px] font-bold border-gray-200 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                                                            {lesson.topics.filter(t => selectedTopicIds.includes(t.id)).length} / {lesson.topics.length} Selected
+                                                        </Badge>
+                                                        <Checkbox
+                                                            checked={allLessonSelected ? true : someLessonSelected ? "indeterminate" : false}
+                                                            onCheckedChange={() => toggleLessonAll(lesson)}
+                                                            className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600"
+                                                        />
                                                     </div>
                                                 </div>
+
+                                                {/* Topics Branch List */}
+                                                <div className="p-3 sm:p-4 space-y-2">
+                                                    {lesson.topics.length === 0 ? (
+                                                        <div className="py-2 text-center text-xs text-gray-400 italic">
+                                                            No topics under this lesson
+                                                        </div>
+                                                    ) : (
+                                                        <div className="relative pl-4 space-y-2 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-[1.5px] before:border-l before:border-dashed before:border-indigo-200 dark:before:border-indigo-800">
+                                                            {lesson.topics.map((topic, tIdx) => {
+                                                                const isChecked = selectedTopicIds.includes(topic.id);
+                                                                return (
+                                                                    <div
+                                                                        key={topic.id}
+                                                                        onClick={() => toggleTopic(topic.id)}
+                                                                        className={cn(
+                                                                            "relative flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all cursor-pointer select-none",
+                                                                            isChecked
+                                                                                ? "bg-indigo-50/50 border-indigo-300 dark:bg-indigo-950/30 dark:border-indigo-700 shadow-2xs"
+                                                                                : "bg-gray-50/50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-800 hover:border-indigo-200"
+                                                                        )}
+                                                                    >
+                                                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                                            <span className="text-gray-300 font-bold hidden sm:inline">└──</span>
+                                                                            <Checkbox
+                                                                                id={topic.id}
+                                                                                checked={isChecked}
+                                                                                onCheckedChange={() => toggleTopic(topic.id)}
+                                                                                className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600 shadow-2xs"
+                                                                            />
+                                                                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">
+                                                                                <span className="text-gray-400 mr-1 text-[10px]">#{index + 1}.{tIdx + 1}</span>
+                                                                                {topic.name}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </CardContent>
                             </Card>
                         </div>
@@ -541,22 +686,24 @@ export default function CopyOldLessonsPage() {
                             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
                                 <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                        <Copy className="h-5 w-5" />
+                                        <ArrowRight className="h-5 w-5" />
                                     </span>
                                     <div>
                                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Target Selection</CardTitle>
-                                        <p className="text-[11px] text-gray-500 mt-1">{selectedTopicIds.length} topic{selectedTopicIds.length === 1 ? '' : 's'} selected</p>
+                                        <p className="text-[11px] text-gray-500 mt-1">
+                                            {selectedTopicIds.length} topic{selectedTopicIds.length === 1 ? '' : 's'} chosen to copy
+                                        </p>
                                     </div>
                                 </CardHeader>
 
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                            Class <span className="text-red-500">*</span>
+                                <CardContent className="px-5 pb-5 space-y-4">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                            Target Class <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.class_name} onValueChange={(val) => handleToCriteriaChange('class_name', val)}>
-                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                                <SelectValue placeholder="Select" />
+                                            <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                                <SelectValue placeholder="Select Target Class" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {classes.map(c => (
@@ -566,13 +713,13 @@ export default function CopyOldLessonsPage() {
                                         </Select>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                            Section <span className="text-red-500">*</span>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                            Target Section <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.section} onValueChange={(val) => handleToCriteriaChange('section', val)} disabled={!toCriteria.class_name}>
-                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                                <SelectValue placeholder="Select" />
+                                            <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                                <SelectValue placeholder="Select Target Section" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {allSections.filter(s => String(s.school_class_id) === String(toCriteria.class_id)).map(s => (
@@ -582,13 +729,13 @@ export default function CopyOldLessonsPage() {
                                         </Select>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                            Subject Group <span className="text-red-500">*</span>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                            Target Subject Group <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.subject_group} onValueChange={(val) => handleToCriteriaChange('subject_group', val)} disabled={!toCriteria.section}>
-                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                                <SelectValue placeholder="Select" />
+                                            <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                                <SelectValue placeholder="Select Subject Group" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {toSubjectGroups.map(g => (
@@ -598,13 +745,13 @@ export default function CopyOldLessonsPage() {
                                         </Select>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                            Subject <span className="text-red-500">*</span>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                                            Target Subject <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.subject} onValueChange={(val) => handleToCriteriaChange('subject', val)} disabled={!toCriteria.subject_group}>
-                                            <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-xs rounded-lg focus:ring-indigo-500">
-                                                <SelectValue placeholder="Select" />
+                                            <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
+                                                <SelectValue placeholder="Select Target Subject" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {toFilteredSubjects.length > 0
@@ -619,11 +766,11 @@ export default function CopyOldLessonsPage() {
                                         </Select>
                                     </div>
 
-                                    <div className="pt-4">
+                                    <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
                                         <Button
                                             onClick={handleCopy}
                                             disabled={copying || selectedTopicIds.length === 0}
-                                            className="btn-gradient w-full text-white h-12 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center gap-3"
+                                            className="btn-gradient w-full text-white h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center justify-center gap-2"
                                         >
                                             {copying ? "Copying..." : <><Copy className="h-4 w-4" /> Copy Selected ({selectedTopicIds.length})</>}
                                         </Button>
@@ -634,12 +781,12 @@ export default function CopyOldLessonsPage() {
                     </div>
                 </>
             ) : (
-                <div className="bg-transparent rounded-lg border border-dashed border-slate-300 p-20 flex flex-col items-center justify-center text-center mt-6">
-                    <div className="bg-gray-50 p-4 rounded-full mb-4">
-                        <Search className="h-8 w-8 text-gray-300" />
+                <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-16 flex flex-col items-center justify-center text-center">
+                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl mb-4 text-indigo-500">
+                        <Search className="h-8 w-8" />
                     </div>
-                    <h3 className="text-gray-400 text-sm font-bold uppercase tracking-widest">Select source criteria</h3>
-                    <p className="text-gray-300 text-[11px] uppercase tracking-tighter mt-1">Class, Section, Subject Group, and Subject required to search old lessons</p>
+                    <h3 className="text-gray-600 dark:text-gray-300 text-sm font-bold">Select source criteria</h3>
+                    <p className="text-gray-400 text-xs mt-1">Session, Class, Section, Subject Group, and Subject required to search old lessons</p>
                 </div>
             )}
         </div>

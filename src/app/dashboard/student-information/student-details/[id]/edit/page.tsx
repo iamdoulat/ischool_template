@@ -753,7 +753,7 @@ export default function StudentEditPage() {
                                     <input type="file" className="sr-only" onChange={(e) => handleChange("avatar", e.target.files?.[0] || null)} accept="image/*" />
                                 </label>
                             </div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-6">Student Photo</p>
+                            <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mt-6">Student Photo</p>
                         </div>
 
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -864,7 +864,7 @@ export default function StudentEditPage() {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <InputField label="Mother Tongue" value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
                             <div>
-                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">GENERAL BEHAVIOUR:</label>
+                                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-2">GENERAL BEHAVIOUR:</label>
                                 <div className="flex items-center gap-5">
                                     {["Mild", "Normal", "Hyperactive"].map(b => (
                                         <label key={b} className="flex items-center gap-2 cursor-pointer group">
@@ -876,16 +876,16 @@ export default function StudentEditPage() {
                                                     checked={formData.general_behaviour === b}
                                                     onChange={() => handleChange("general_behaviour", b)}
                                                 />
-                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                                <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{b}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">{b}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">SECOND LANGUAGE:</label>
+                                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-2">SECOND LANGUAGE:</label>
                                 <div className="flex items-center gap-5">
                                     {["English", "Arabic", "Others"].map(l => (
                                         <label key={l} className="flex items-center gap-2 cursor-pointer group">
@@ -897,10 +897,10 @@ export default function StudentEditPage() {
                                                     checked={formData.second_language === l}
                                                     onChange={() => handleChange("second_language", l)}
                                                 />
-                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                                <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{l}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">{l}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -913,24 +913,24 @@ export default function StudentEditPage() {
                             <TextAreaField label="Permanent Address" rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
                         </div>
                         <div className="lg:col-span-4 space-y-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Previous Academic Record</label>
-                            <div className="border rounded-xl overflow-hidden overflow-x-auto">
+                            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider ml-0.5">Previous Academic Record</label>
+                            <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden overflow-x-auto shadow-2xs">
                                 <table className="w-full text-sm text-left">
-                                    <thead className="bg-muted text-muted-foreground border-b">
+                                    <thead className="bg-gray-50 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
                                         <tr>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">Name of the previous school &amp; location</th>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">Class</th>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">Year of Study</th>
-                                            <th className="px-3 py-2 font-bold text-[11px]">Percentage/Grade</th>
+                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">Name of the previous school &amp; location</th>
+                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">Class</th>
+                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">Year of Study</th>
+                                            <th className="px-3 py-2.5 font-bold text-[11px] uppercase tracking-wider">Percentage/Grade</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y">
+                                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
                                         {formData.previous_academic_record.map((record: any, index: number) => (
                                             <tr key={index}>
-                                                <td className="p-0 border-r">
+                                                <td className="p-0 border-r border-gray-200 dark:border-gray-700">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3 py-2.5 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.school_name || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -939,10 +939,10 @@ export default function StudentEditPage() {
                                                         }}
                                                     />
                                                 </td>
-                                                <td className="p-0 border-r">
+                                                <td className="p-0 border-r border-gray-200 dark:border-gray-700">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3 py-2.5 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.class || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -951,10 +951,10 @@ export default function StudentEditPage() {
                                                         }}
                                                     />
                                                 </td>
-                                                <td className="p-0 border-r">
+                                                <td className="p-0 border-r border-gray-200 dark:border-gray-700">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3 py-2.5 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.year || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -966,7 +966,7 @@ export default function StudentEditPage() {
                                                 <td className="p-0">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3 py-2.5 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.percentage || ""}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -983,7 +983,7 @@ export default function StudentEditPage() {
                             <button
                                 type="button"
                                 onClick={() => handleChange("previous_academic_record", [...formData.previous_academic_record, { school_name: "", class: "", year: "", percentage: "" }])}
-                                className="text-[11px] font-semibold text-primary hover:underline mt-1"
+                                className="text-[11.5px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline mt-1.5 cursor-pointer"
                             >
                                 + Add Row
                             </button>
@@ -993,9 +993,9 @@ export default function StudentEditPage() {
                             <TextAreaField label="Medical History" rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
                         </div>
                         <div className="lg:col-span-2">
-                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">APPRAISAL ACHIEVEMENT</label>
+                            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-1.5 ml-0.5">APPRAISAL ACHIEVEMENT</label>
                             <textarea
-                                className="w-full min-h-[68px] text-[12px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-white"
+                                className="w-full min-h-[68px] text-xs font-semibold text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 resize-y bg-gray-50/50 dark:bg-gray-800/40 focus:bg-white dark:focus:bg-gray-800 transition-all"
                                 value={formData.appraisal_achievements}
                                 onChange={(e) => handleChange("appraisal_achievements", e.target.value)}
                                 placeholder="Appraisal of your child..."
@@ -1007,22 +1007,22 @@ export default function StudentEditPage() {
                         
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
-                            <div className="bg-[#f8f9fa] border-b border-muted/50 px-4 py-2 flex items-center justify-between">
-                                <span className="text-sm font-medium text-foreground">Sibling</span>
+                            <div className="bg-[#f8f9fa] dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2.5 flex items-center justify-between rounded-t-xl">
+                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Sibling</span>
                                 {selectedSiblings.length > 0 && (
                                     <button 
                                         type="button" 
                                         onClick={() => setSelectedSiblings([])}
-                                        className="bg-primary text-white text-[10px] px-3 py-1 rounded shadow-sm hover:bg-primary/90 transition-colors"
+                                        className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-xs hover:bg-indigo-700 transition-colors"
                                     >
                                         Remove Sibling
                                     </button>
                                 )}
                             </div>
-                            <div className="p-4 bg-white border border-t-0 flex flex-wrap gap-4 min-h-[100px]">
+                            <div className="p-4 bg-white dark:bg-gray-850 border border-t-0 border-gray-200 dark:border-gray-700 rounded-b-xl flex flex-wrap gap-4 min-h-[100px]">
                                 {selectedSiblings.map((sibling) => (
-                                    <div key={sibling.id} className="flex gap-4 p-3 border rounded-md bg-white min-w-[300px] shadow-sm relative group">
-                                        <div className="h-20 w-20 rounded-lg bg-[#e9ecef] overflow-hidden border flex items-center justify-center shrink-0">
+                                    <div key={sibling.id} className="flex gap-4 p-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 min-w-[300px] shadow-2xs relative group">
+                                        <div className="h-20 w-20 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden border border-gray-200 dark:border-gray-600 flex items-center justify-center shrink-0">
                                             {sibling.photo ? (
                                                 <img 
                                                     src={sibling.photo.startsWith('http') ? sibling.photo : getImageUrl(sibling.photo)} 
@@ -1030,28 +1030,28 @@ export default function StudentEditPage() {
                                                     className="h-full w-full object-cover" 
                                                 />
                                             ) : (
-                                                <Users className="h-10 w-10 text-muted-foreground/30" />
+                                                <Users className="h-10 w-10 text-gray-400" />
                                             )}
                                         </div>
                                         <div className="flex flex-col text-[11px] space-y-0.5">
-                                            <span className="text-primary font-bold text-sm mb-1">{sibling.name}</span>
+                                            <span className="text-indigo-600 dark:text-indigo-400 font-bold text-sm mb-1">{sibling.name}</span>
                                             <div className="flex gap-1">
-                                                <span className="font-bold">Admission No:</span>
-                                                <span className="text-muted-foreground">{sibling.admission_no}</span>
+                                                <span className="font-bold text-gray-900 dark:text-gray-100">Admission No:</span>
+                                                <span className="text-gray-600 dark:text-gray-400 font-semibold">{sibling.admission_no}</span>
                                             </div>
                                             <div className="flex gap-1">
-                                                <span className="font-bold">Class:</span>
-                                                <span className="text-muted-foreground">{sibling.class_name}</span>
+                                                <span className="font-bold text-gray-900 dark:text-gray-100">Class:</span>
+                                                <span className="text-gray-600 dark:text-gray-400 font-semibold">{sibling.class_name}</span>
                                             </div>
                                             <div className="flex gap-1">
-                                                <span className="font-bold">Section:</span>
-                                                <span className="text-muted-foreground">{sibling.section_name}</span>
+                                                <span className="font-bold text-gray-900 dark:text-gray-100">Section:</span>
+                                                <span className="text-gray-600 dark:text-gray-400 font-semibold">{sibling.section_name}</span>
                                             </div>
                                         </div>
                                         <button 
                                             type="button" 
                                             onClick={() => setSelectedSiblings(prev => prev.filter(s => s.id !== sibling.id))}
-                                            className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-destructive/10 flex items-center justify-center text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                                            className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-rose-100 dark:hover:bg-rose-950 flex items-center justify-center text-gray-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                                         >
                                             <X className="h-3.5 w-3.5" />
                                         </button>
@@ -1060,10 +1060,10 @@ export default function StudentEditPage() {
                                 <button 
                                     type="button" 
                                     onClick={() => setShowSiblingModal(true)}
-                                    className="h-[106px] w-[300px] border-2 border-dashed border-primary/20 rounded-md text-primary font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/40 transition-all group"
+                                    className="h-[106px] w-[300px] border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl text-indigo-600 dark:text-indigo-400 font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 hover:border-indigo-400 transition-all group cursor-pointer"
                                 >
                                     <Plus className="h-6 w-6 transition-transform group-hover:scale-110" /> 
-                                    <span>Add Sibling</span>
+                                    <span className="uppercase tracking-wider">Add Sibling</span>
                                 </button>
                             </div>
                         </div>
@@ -1075,7 +1075,7 @@ export default function StudentEditPage() {
                 <SectionCard title="Fees Details" icon={Wallet}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredFeeGroups.map((group) => (
-                            <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/fee">
+                            <label key={group.id} className="flex flex-col border border-gray-200 dark:border-gray-700 p-4 rounded-xl cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-gray-800/60 transition-colors group/fee shadow-2xs">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -1090,19 +1090,19 @@ export default function StudentEditPage() {
                                                 }
                                             }}
                                         />
-                                        <div className="h-5 w-5 rounded border-2 border-muted-foreground/30 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                                        <div className="h-5 w-5 rounded-lg border-2 border-gray-300 dark:border-gray-600 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all flex items-center justify-center">
                                             <Check className="h-3 w-3 text-white scale-0 peer-checked:scale-100 transition-transform" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-semibold text-sm group-hover/fee:text-primary transition-colors">{group.name}</span>
-                                        {group.description && <span className="text-xs text-muted-foreground">{group.description}</span>}
+                                        <span className="font-bold text-xs text-gray-900 dark:text-gray-100 group-hover/fee:text-indigo-600 transition-colors">{group.name}</span>
+                                        {group.description && <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{group.description}</span>}
                                     </div>
                                 </div>
                             </label>
                         ))}
                         {filteredFeeGroups.length === 0 && (
-                            <div className="col-span-full py-6 text-center text-muted-foreground text-sm">
+                            <div className="col-span-full py-6 text-center text-gray-500 text-xs font-medium">
                                 No fee groups available.
                             </div>
                         )}
@@ -1113,7 +1113,7 @@ export default function StudentEditPage() {
                 <SectionCard title="Fees Discount Details" icon={Percent}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeDiscounts.map((discount) => (
-                            <label key={discount.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/discount">
+                            <label key={discount.id} className="flex flex-col border border-gray-200 dark:border-gray-700 p-4 rounded-xl cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-gray-800/60 transition-colors group/discount shadow-2xs">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -1128,24 +1128,24 @@ export default function StudentEditPage() {
                                                 }
                                             }}
                                         />
-                                        <div className="h-5 w-5 rounded border-2 border-muted-foreground/30 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                                        <div className="h-5 w-5 rounded-lg border-2 border-gray-300 dark:border-gray-600 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all flex items-center justify-center">
                                             <Check className="h-3 w-3 text-white scale-0 peer-checked:scale-100 transition-transform" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col flex-1">
                                         <div className="flex justify-between items-center w-full">
-                                            <span className="font-semibold text-sm group-hover/discount:text-primary transition-colors">{discount.name}</span>
-                                            <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                            <span className="font-bold text-xs text-gray-900 dark:text-gray-100 group-hover/discount:text-indigo-600 transition-colors">{discount.name}</span>
+                                            <span className="text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
                                                 {discount.type === 'percentage' ? `${discount.percentage}%` : `${symbol}${discount.amount}`}
                                             </span>
                                         </div>
-                                        {discount.code && <span className="text-xs text-muted-foreground mt-0.5">Code: {discount.code}</span>}
+                                        {discount.code && <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Code: {discount.code}</span>}
                                     </div>
                                 </div>
                             </label>
                         ))}
                         {feeDiscounts.length === 0 && (
-                            <div className="col-span-full py-6 text-center text-muted-foreground text-sm">
+                            <div className="col-span-full py-6 text-center text-gray-500 text-xs font-medium">
                                 No fee discounts available.
                             </div>
                         )}
@@ -1176,7 +1176,7 @@ export default function StudentEditPage() {
                         />
 
                         <div className="lg:col-span-4 py-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
+                            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-3">
                                 If Guardian Is <span className="text-destructive">*</span>
                             </label>
                             <div className="flex gap-6">
@@ -1190,10 +1190,10 @@ export default function StudentEditPage() {
                                                 checked={formData.guardian_type === role}
                                                 onChange={() => handleChange("guardian_type", role)}
                                             />
-                                            <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                            <div className="absolute h-2.5 w-2.5 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                            <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                            <div className="absolute h-2.5 w-2.5 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                         </div>
-                                        <span className="text-sm font-semibold group-hover:text-primary transition-colors">{role}</span>
+                                        <span className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{role}</span>
                                     </label>
                                 ))}
                             </div>
@@ -1227,21 +1227,21 @@ export default function StudentEditPage() {
                         />
                         <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
-                    <div className="mt-6 pt-4 border-t border-muted/30">
+                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
                         <button 
                             type="button" 
                             onClick={() => setShowMoreDetails(!showMoreDetails)}
-                            className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors py-2 px-1"
+                            className="w-full flex items-center justify-between text-gray-700 dark:text-gray-300 hover:text-indigo-600 transition-colors py-2 px-1 cursor-pointer"
                         >
-                            <span className="font-bold text-sm">{showMoreDetails ? "Hide More Details" : "Add More Details"}</span>
-                            <Plus className={cn("h-5 w-5 bg-muted rounded-full p-1 transition-transform", showMoreDetails && "rotate-45")} />
+                            <span className="font-bold text-xs uppercase tracking-wider">{showMoreDetails ? "Hide More Details" : "Add More Details"}</span>
+                            <Plus className={cn("h-5 w-5 bg-gray-100 dark:bg-gray-800 rounded-full p-1 transition-transform", showMoreDetails && "rotate-45")} />
                         </button>
                     </div>
 
                     {showMoreDetails && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t border-muted/30 animate-in slide-in-from-top-4 duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-4 duration-300">
                             <div className="lg:col-span-4 mb-2">
-                                <h3 className="text-lg font-bold">Others Information</h3>
+                                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Others Information</h3>
                             </div>
                             
                             <InputField label="Bank Account Number" value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
@@ -1249,7 +1249,7 @@ export default function StudentEditPage() {
                             <InputField label="IFSC Code" value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
                             
                             <div className="py-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
+                                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-3">
                                     RTE
                                 </label>
                                 <div className="flex gap-6">
@@ -1263,10 +1263,10 @@ export default function StudentEditPage() {
                                                     checked={formData.rte === opt}
                                                     onChange={() => handleChange("rte", opt)}
                                                 />
-                                                <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                                <div className="absolute h-2.5 w-2.5 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                                <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                                <div className="absolute h-2.5 w-2.5 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{opt}</span>
+                                            <span className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{opt}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -1313,28 +1313,27 @@ export default function StudentEditPage() {
 
                 <div className="flex justify-end gap-4 pt-6">
                     <Link href="/dashboard/student-information/student-details">
-                        <Button variant="outline" type="button" className="h-12 px-8 rounded-lg font-bold">Cancel</Button>
+                        <Button variant="outline" type="button" className="h-11 px-8 rounded-full font-bold text-xs uppercase tracking-wider border-gray-200 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 cursor-pointer shadow-xs">Cancel</Button>
                     </Link>
                     <Button
-                        variant="gradient"
                         type="submit"
-                        className="h-12 px-12 text-lg rounded-lg shadow-lg shadow-primary/20"
+                        className="btn-gradient text-white h-11 px-10 rounded-full font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
                         disabled={loading}
                     >
-                        {loading ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Save className="h-5 w-5 mr-2" />}
+                        {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                         Update Student
                     </Button>
                 </div>
             </form>
 
             <Dialog open={showSiblingModal} onOpenChange={setShowSiblingModal}>
-                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="px-6 py-4 bg-primary text-primary-foreground flex flex-row items-center justify-between space-y-0">
-                        <DialogTitle className="text-xl font-bold">Add Sibling</DialogTitle>
+                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border border-gray-200/80 dark:border-gray-800 shadow-2xl rounded-3xl bg-white dark:bg-gray-900">
+                    <DialogHeader className="px-6 py-5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850 border-b border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between space-y-0">
+                        <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">Add Sibling</DialogTitle>
                     </DialogHeader>
-                    <div className="p-8 space-y-6">
+                    <div className="p-6 md:p-8 space-y-6">
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">Class</label>
+                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">Class</label>
                             <SelectField
                                 label=""
                                 value={siblingClassId}
@@ -1346,7 +1345,7 @@ export default function StudentEditPage() {
                             />
                         </div>
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">Section</label>
+                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">Section</label>
                             <SelectField
                                 label=""
                                 value={siblingSectionId}
@@ -1358,7 +1357,7 @@ export default function StudentEditPage() {
                             />
                         </div>
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">Student</label>
+                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">Student</label>
                             <SelectField
                                 label=""
                                 value={siblingStudentId}
@@ -1370,11 +1369,11 @@ export default function StudentEditPage() {
                             />
                         </div>
                     </div>
-                    <div className="px-6 py-4 border-t flex justify-end">
+                    <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end bg-gray-50/80 dark:bg-gray-850/80">
                         <Button 
                             onClick={handleAddSibling}
                             disabled={!siblingStudentId || loadingSiblings}
-                            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-lg flex items-center gap-2"
+                            className="btn-gradient text-white px-7 h-10 rounded-full font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md hover:shadow-lg cursor-pointer"
                         >
                             {loadingSiblings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
                             Add
@@ -1389,14 +1388,14 @@ export default function StudentEditPage() {
 // Reuse components from Admission Page
 function SectionCard({ title, icon: Icon, children }: { title: string, icon: any, children: React.ReactNode }) {
     return (
-        <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-card/50 backdrop-blur-sm overflow-hidden rounded-lg">
-            <div className="px-6 py-4 border-b border-muted/50 flex items-center gap-3 bg-muted/20">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                    <Icon className="h-5 w-5 text-primary" />
+        <Card className="border border-gray-200/80 dark:border-gray-800 shadow-sm bg-white dark:bg-gray-900 overflow-hidden rounded-2xl p-0 py-0 gap-0">
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850">
+                <div className="p-2 bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white rounded-xl shadow-xs">
+                    <Icon className="h-4 w-4 text-white" />
                 </div>
-                <h2 className="font-bold text-lg tracking-tight">{title}</h2>
+                <h2 className="font-bold text-base text-gray-900 dark:text-gray-100 tracking-tight">{title}</h2>
             </div>
-            <CardContent className="p-8">
+            <CardContent className="p-6 md:p-8">
                 {children}
             </CardContent>
         </Card>
@@ -1405,10 +1404,12 @@ function SectionCard({ title, icon: Icon, children }: { title: string, icon: any
 
 function DateField({ label, required, value = "", onChange }: { label: string, required?: boolean, value?: string, onChange: (val: string) => void }) {
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
+        <div className="space-y-1.5 group">
+            {label && (
+                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors block">
+                    {label} {required && <span className="text-rose-500 font-bold">*</span>}
+                </label>
+            )}
             <DatePicker 
                 value={value} 
                 onChange={onChange} 
@@ -1419,39 +1420,43 @@ function DateField({ label, required, value = "", onChange }: { label: string, r
 
 function InputField({ label, required, type = "text", value = "", onChange, placeholder = "", readOnly = false, helperText = "" }: { label: string, required?: boolean, type?: string, value?: string, onChange: (val: string) => void, placeholder?: string, readOnly?: boolean, helperText?: string }) {
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
+        <div className="space-y-1.5 group">
+            {label && (
+                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors block">
+                    {label} {required && <span className="text-rose-500 font-bold">*</span>}
+                </label>
+            )}
             <Input
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className={cn(
-                    "h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all",
-                    readOnly && "bg-muted/60 cursor-not-allowed text-muted-foreground"
+                    "h-11 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-900 dark:text-gray-100 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:ring-indigo-500/20 focus-visible:border-indigo-600 transition-all",
+                    readOnly && "bg-gray-100 dark:bg-gray-800 cursor-not-allowed text-gray-600 dark:text-gray-400"
                 )}
                 required={required}
                 readOnly={readOnly}
             />
-            {helperText && <p className="text-[10px] text-indigo-500 font-medium ml-1">{helperText}</p>}
+            {helperText && <p className="text-[10px] text-indigo-600 font-bold ml-1">{helperText}</p>}
         </div>
     );
 }
 
 function SelectField({ label, required, options, value, onChange }: { label: string, required?: boolean, options: { label: string, value: string }[] | string[], value: string, onChange: (val: string) => void }) {
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
+        <div className="space-y-1.5 group">
+            {label && (
+                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors block">
+                    {label} {required && <span className="text-rose-500 font-bold">*</span>}
+                </label>
+            )}
             <div className="relative">
                 <select
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
-                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                    className="flex h-11 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 px-4 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:border-indigo-600 transition-all appearance-none cursor-pointer"
                 >
                     <option value="">Select</option>
                     {options.map(opt => {
@@ -1460,7 +1465,7 @@ function SelectField({ label, required, options, value, onChange }: { label: str
                         return <option key={value} value={value}>{label}</option>
                     })}
                 </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none group-focus-within:text-indigo-600 transition-colors" />
             </div>
         </div>
     );
@@ -1468,16 +1473,18 @@ function SelectField({ label, required, options, value, onChange }: { label: str
 
 function TextAreaField({ label, required, value = "", onChange, rows = 3 }: { label: string, required?: boolean, value?: string, onChange: (val: string) => void, rows?: number }) {
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
+        <div className="space-y-1.5 group">
+            {label && (
+                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 dark:group-focus-within:text-indigo-400 transition-colors block">
+                    {label} {required && <span className="text-rose-500 font-bold">*</span>}
+                </label>
+            )}
             <textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 rows={rows}
-                className="flex w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all resize-y min-h-[80px]"
+                className="flex w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 px-4 py-3 text-xs font-semibold text-gray-900 dark:text-gray-100 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:border-indigo-600 transition-all resize-y min-h-[80px]"
             />
         </div>
     );
@@ -1502,12 +1509,12 @@ function FileUploadField({ label, required, value, onChange, existingPreview }: 
     const showPreview = preview && !imgError;
 
     return (
-        <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
-                {label} {required && <span className="text-destructive">*</span>}
+        <div className="space-y-1.5">
+            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-1">
+                {label} {required && <span className="text-rose-500 font-bold">*</span>}
             </label>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <div className="relative group w-[100px] h-[100px] rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary transition-all overflow-hidden bg-muted/20 flex flex-col items-center justify-center cursor-pointer shrink-0">
+                <div className="relative group w-[100px] h-[100px] rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-600 transition-all overflow-hidden bg-gray-50 dark:bg-gray-800/50 flex flex-col items-center justify-center cursor-pointer shrink-0">
                     <input
                         type="file"
                         accept="image/*"
@@ -1519,7 +1526,7 @@ function FileUploadField({ label, required, value, onChange, existingPreview }: 
                             <img
                                 src={preview}
                                 alt={label}
-                                className="w-full h-full object-cover rounded-md"
+                                className="w-full h-full object-cover rounded-xl"
                                 onError={() => setImgError(true)}
                             />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1 z-10 pointer-events-none">
@@ -1528,18 +1535,18 @@ function FileUploadField({ label, required, value, onChange, existingPreview }: 
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center p-2 text-center text-muted-foreground group-hover:text-primary transition-colors">
-                            <Upload className="h-6 w-6 mb-1 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-                            <span className="text-[10px] font-medium leading-tight">Upload</span>
+                        <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500 group-hover:text-indigo-600 transition-colors">
+                            <Upload className="h-6 w-6 mb-1 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                            <span className="text-[10px] font-bold uppercase leading-tight">Upload</span>
                             <span className="text-[8px] opacity-70">100x100</span>
                         </div>
                     )}
                 </div>
                 <div className="flex flex-col justify-center">
-                    <span className="text-xs font-medium text-foreground">
+                    <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
                         {value instanceof File ? value.name : (showPreview ? "Photo attached" : "No photo chosen")}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">PNG, JPG or WEBP (Max 2MB)</span>
+                    <span className="text-[10px] text-gray-500 font-medium">PNG, JPG or WEBP (Max 2MB)</span>
                 </div>
             </div>
         </div>

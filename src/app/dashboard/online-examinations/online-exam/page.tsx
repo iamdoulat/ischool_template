@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -10,16 +10,19 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
 import { useSettings } from "@/components/providers/settings-provider";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import {
     Plus, Search, Copy, FileSpreadsheet, FileText, Printer, Columns,
     ChevronLeft, ChevronRight, CheckCircle2, XCircle, Eye, Pencil, Trash2,
-    ListOrdered, LayoutGrid, FileSearch, UserCheck, ShieldClose, Calendar, Clock, Laptop, Trophy
+    ListOrdered, LayoutGrid, FileSearch, UserCheck, ShieldClose, Calendar, Clock, Laptop, Trophy,
+    Minus, BookOpen, Layers, CheckSquare, Square
 } from "lucide-react";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
     Dialog,
     DialogContent,
@@ -123,9 +126,86 @@ export default function OnlineExamPage() {
     
     // Assign Questions Dialog state
     const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+    const [assignExam, setAssignExam] = useState<OnlineExam | null>(null);
     const [assignExamId, setAssignExamId] = useState<string | null>(null);
     const [assignQuestions, setAssignQuestions] = useState<{ id: number; marks: number }[]>([]);
     const [assignSearch, setAssignSearch] = useState("");
+    const [assignSubjectFilter, setAssignSubjectFilter] = useState("all");
+    const [assignTypeFilter, setAssignTypeFilter] = useState("all");
+    const [assignLevelFilter, setAssignLevelFilter] = useState("all");
+    const [assignBulkMarks, setAssignBulkMarks] = useState<string>("1");
+    const [savingAssign, setSavingAssign] = useState(false);
+
+    // Distinct metadata for questions
+    const distinctSubjects = useMemo(() => {
+        const set = new Set<string>();
+        availableQuestions.forEach(q => { if (q.subject) set.add(q.subject); });
+        return Array.from(set).sort();
+    }, [availableQuestions]);
+
+    const distinctTypes = useMemo(() => {
+        const set = new Set<string>();
+        availableQuestions.forEach(q => { if (q.question_type) set.add(q.question_type); });
+        return Array.from(set).sort();
+    }, [availableQuestions]);
+
+    const filteredAssignQuestions = useMemo(() => {
+        return availableQuestions.filter(q => {
+            if (assignSearch.trim()) {
+                const term = assignSearch.toLowerCase();
+                const matchesQuestion = q.question?.toLowerCase().includes(term);
+                const matchesSubject = q.subject?.toLowerCase().includes(term);
+                const matchesType = q.question_type?.toLowerCase().includes(term);
+                if (!matchesQuestion && !matchesSubject && !matchesType) return false;
+            }
+            if (assignSubjectFilter !== "all" && q.subject !== assignSubjectFilter) return false;
+            if (assignTypeFilter !== "all" && q.question_type !== assignTypeFilter) return false;
+            if (assignLevelFilter !== "all" && q.level?.toLowerCase() !== assignLevelFilter.toLowerCase()) return false;
+            return true;
+        });
+    }, [availableQuestions, assignSearch, assignSubjectFilter, assignTypeFilter, assignLevelFilter]);
+
+    const totalAssignMarks = useMemo(() => {
+        return assignQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0);
+    }, [assignQuestions]);
+
+    const handleSelectAllFiltered = () => {
+        const currentMap = new Map(assignQuestions.map(q => [q.id, q.marks]));
+        const defaultMarks = Math.max(1, parseInt(assignBulkMarks) || 1);
+        filteredAssignQuestions.forEach(q => {
+            if (!currentMap.has(q.id)) {
+                currentMap.set(q.id, defaultMarks);
+            }
+        });
+        setAssignQuestions(Array.from(currentMap.entries()).map(([id, marks]) => ({ id, marks })));
+    };
+
+    const handleDeselectAllFiltered = () => {
+        const filteredIds = new Set(filteredAssignQuestions.map(q => q.id));
+        setAssignQuestions(prev => prev.filter(q => !filteredIds.has(q.id)));
+    };
+
+    const handleApplyBulkMarks = () => {
+        const marksNum = Math.max(1, parseInt(assignBulkMarks) || 1);
+        setAssignQuestions(prev => prev.map(q => ({ ...q, marks: marksNum })));
+        toast({ title: "Marks Updated", description: `Applied ${marksNum} marks to all ${assignQuestions.length} selected questions.` });
+    };
+
+    const updateQuestionMarks = (id: number, marks: number) => {
+        const validMarks = Math.max(1, marks);
+        setAssignQuestions(prev => prev.map(q => q.id === id ? { ...q, marks: validMarks } : q));
+    };
+
+    const toggleQuestion = (id: number) => {
+        setAssignQuestions(prev => {
+            const exists = prev.some(q => q.id === id);
+            if (exists) {
+                return prev.filter(q => q.id !== id);
+            } else {
+                return [...prev, { id, marks: Math.max(1, parseInt(assignBulkMarks) || 1) }];
+            }
+        });
+    };
     
     // View Exam Details Dialog state
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -261,6 +341,7 @@ export default function OnlineExamPage() {
     };
 
     const openAssignDialog = async (exam: OnlineExam) => {
+        setAssignExam(exam);
         setAssignExamId(exam.id);
         setLoading(true);
         try {
@@ -271,6 +352,9 @@ export default function OnlineExamPage() {
                 marks: q.pivot?.marks || 1
             })));
             setAssignSearch("");
+            setAssignSubjectFilter("all");
+            setAssignTypeFilter("all");
+            setAssignLevelFilter("all");
             setIsAssignDialogOpen(true);
         } catch (error) {
             tt.error("failed_to_load_exam_details");
@@ -281,6 +365,7 @@ export default function OnlineExamPage() {
 
     const handleSaveAssign = async () => {
         if (!assignExamId) return;
+        setSavingAssign(true);
         try {
             await api.post(`/online-examination/online-exams/${assignExamId}/assign-questions`, {
                 questions: assignQuestions
@@ -290,6 +375,8 @@ export default function OnlineExamPage() {
             fetchExams();
         } catch (error) {
             tt.error("failed_to_assign_questions");
+        } finally {
+            setSavingAssign(false);
         }
     };
 
@@ -472,8 +559,8 @@ export default function OnlineExamPage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col gap-1 text-[10px] font-bold">
-                                                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_from?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</span>
-                                                    <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_to?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</span>
+                                                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_from?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</span>
+                                                    <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_to?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
@@ -605,20 +692,18 @@ export default function OnlineExamPage() {
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
                                             <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_from")} <span className="text-red-500">*</span></Label>
-                                            <Input 
-                                                type="datetime-local"
+                                            <DateTimePicker 
                                                 value={formData.exam_from} 
-                                                onChange={(e) => setFormData({...formData, exam_from: e.target.value})}
-                                                className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none text-xs"
+                                                onChange={(val) => setFormData({...formData, exam_from: val})}
+                                                placeholder="DD/MM/YYYY HH:MM"
                                             />
                                         </div>
                                         <div className="space-y-1.5">
                                             <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_to")} <span className="text-red-500">*</span></Label>
-                                            <Input 
-                                                type="datetime-local"
+                                            <DateTimePicker 
                                                 value={formData.exam_to} 
-                                                onChange={(e) => setFormData({...formData, exam_to: e.target.value})}
-                                                className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none text-xs"
+                                                onChange={(val) => setFormData({...formData, exam_to: val})}
+                                                placeholder="DD/MM/YYYY HH:MM"
                                             />
                                         </div>
                                     </div>
@@ -790,100 +875,294 @@ export default function OnlineExamPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* Enhanced Assign Questions to Exam Dialog */}
             <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-                <DialogContent className="w-full sm:max-w-lg rounded-2xl border-0 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 bg-gradient-to-r from-[#F7A148] to-[#7778EC] text-white">
-                        <DialogTitle className="text-lg font-bold flex items-center gap-2">
-                            <Plus className="h-5 w-5" /> Assign Questions to Exam
-                        </DialogTitle>
-                        <p className="text-indigo-100 text-[11px]">Select questions from the question bank and configure their scores</p>
+                <DialogContent className="w-full sm:max-w-4xl lg:max-w-5xl rounded-3xl border-0 shadow-2xl p-0 overflow-hidden max-h-[92vh] flex flex-col">
+                    {/* Header */}
+                    <DialogHeader className="p-6 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shrink-0">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="space-y-1">
+                                <DialogTitle className="text-xl font-black flex items-center gap-2.5 drop-shadow-sm">
+                                    <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                                        <Plus className="h-5 w-5 text-white" />
+                                    </div>
+                                    <span>Assign Questions to Exam</span>
+                                </DialogTitle>
+                                <p className="text-white/80 text-xs font-medium">
+                                    {assignExam?.title ? `Exam: ${assignExam.title}` : "Select questions from the question bank and configure their scores"}
+                                </p>
+                            </div>
+
+                            {/* Live Exam Summary Pills */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/30 text-right">
+                                    <div className="text-[10px] text-white/80 uppercase font-bold tracking-wider">Selected</div>
+                                    <div className="text-sm font-black text-white">{assignQuestions.length} Questions</div>
+                                </div>
+                                <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/30 text-right">
+                                    <div className="text-[10px] text-white/80 uppercase font-bold tracking-wider">Total Marks</div>
+                                    <div className="text-sm font-black text-amber-300">{totalAssignMarks} Marks</div>
+                                </div>
+                            </div>
+                        </div>
                     </DialogHeader>
 
-                    <div className="p-6 space-y-4 bg-gray-50/30">
-                        <Input
-                            placeholder="Search questions..."
-                            value={assignSearch}
-                            onChange={(e) => setAssignSearch(e.target.value)}
-                            className="h-10 text-xs border-gray-200 bg-white shadow-none"
-                        />
+                    {/* Filter & Toolbar Area */}
+                    <div className="p-4 bg-gray-50/90 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shrink-0 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                            {/* Search */}
+                            <div className="sm:col-span-4 relative">
+                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                <Input
+                                    placeholder="Search question, subject..."
+                                    value={assignSearch}
+                                    onChange={(e) => setAssignSearch(e.target.value)}
+                                    className="h-9 pl-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-none"
+                                />
+                            </div>
 
-                        <div className="overflow-y-auto max-h-[350px] border border-gray-100 rounded-xl p-3 bg-white space-y-3 shadow-sm">
-                            {availableQuestions.filter(q => 
-                                q.question?.toLowerCase().includes(assignSearch.toLowerCase()) ||
-                                q.subject?.toLowerCase().includes(assignSearch.toLowerCase())
-                            ).length === 0 ? (
-                                <p className="text-xs text-gray-400 text-center py-16">No questions found in bank</p>
-                            ) : (
-                                availableQuestions.filter(q => 
-                                    q.question?.toLowerCase().includes(assignSearch.toLowerCase()) ||
-                                    q.subject?.toLowerCase().includes(assignSearch.toLowerCase())
-                                ).map((q) => {
-                                    const isChecked = assignQuestions.some((sq: any) => sq.id === q.id);
-                                    const selectedQ = assignQuestions.find((sq: any) => sq.id === q.id);
-                                    const marksValue = selectedQ?.marks || 1;
+                            {/* Subject filter */}
+                            <div className="sm:col-span-3">
+                                <Select value={assignSubjectFilter} onValueChange={setAssignSubjectFilter}>
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg">
+                                        <SelectValue placeholder="All Subjects" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Subjects ({availableQuestions.length})</SelectItem>
+                                        {distinctSubjects.map(sub => (
+                                            <SelectItem key={sub} value={sub}>{sub}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                    return (
-                                        <div key={q.id} className="flex items-start justify-between p-3 rounded-lg bg-gray-50/30 border border-gray-100 hover:border-indigo-100 transition-colors">
-                                            <div className="flex items-start gap-2.5 max-w-[70%]">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={isChecked}
-                                                    onChange={(e) => {
-                                                        let updated = [...assignQuestions];
-                                                        if (e.target.checked) {
-                                                            updated.push({ id: q.id, marks: 1 });
-                                                        } else {
-                                                            updated = updated.filter((sq: any) => sq.id !== q.id);
-                                                        }
-                                                        setAssignQuestions(updated);
-                                                    }}
-                                                    className="mt-1 h-4 w-4 accent-indigo-600 rounded"
-                                                />
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-bold text-gray-700 line-clamp-2">{stripHtml(q.question)}</p>
-                                                    <div className="flex gap-2">
-                                                        <span className="text-[8px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-black uppercase">
-                                                            {q.subject}
-                                                        </span>
-                                                        <span className="text-[8px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-black uppercase">
-                                                            {q.question_type}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                            {/* Type filter */}
+                            <div className="sm:col-span-3">
+                                <Select value={assignTypeFilter} onValueChange={setAssignTypeFilter}>
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg">
+                                        <SelectValue placeholder="All Types" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Types</SelectItem>
+                                        {distinctTypes.map(t => (
+                                            <SelectItem key={t} value={t} className="capitalize">{t.replace('_', ' ')}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                            {isChecked && (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-[10px] text-gray-400 font-bold">Marks:</span>
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        value={marksValue}
-                                                        onChange={(e) => {
-                                                            const val = parseInt(e.target.value) || 1;
-                                                            const updated = assignQuestions.map((sq: any) => 
-                                                                sq.id === q.id ? { ...sq, marks: val } : sq
-                                                            );
-                                                            setAssignQuestions(updated);
-                                                        }}
-                                                        className="w-12 h-8 border border-gray-200 rounded text-center text-xs font-bold focus:outline-indigo-500"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })
-                            )}
+                            {/* Bulk select / deselect */}
+                            <div className="sm:col-span-2 flex gap-1 justify-end">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleSelectAllFiltered}
+                                    className="h-9 text-[10.5px] font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 flex-1"
+                                    title="Select all currently filtered questions"
+                                >
+                                    Select All
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleDeselectAllFiltered}
+                                    className="h-9 text-[10.5px] font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 px-2"
+                                    title="Deselect filtered"
+                                >
+                                    Clear
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Bulk Marks Bar */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-200/60 dark:border-gray-800 text-xs">
+                            <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                                <span>Showing <strong>{filteredAssignQuestions.length}</strong> of <strong>{availableQuestions.length}</strong> questions</span>
+                                {assignQuestions.length > 0 && (
+                                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                                        {assignQuestions.length} Selected
+                                    </Badge>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-bold text-gray-500 uppercase">Set Marks for Selected:</span>
+                                <div className="flex items-center gap-1">
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        value={assignBulkMarks}
+                                        onChange={(e) => setAssignBulkMarks(e.target.value)}
+                                        className="h-7 w-16 text-center text-xs font-bold bg-white dark:bg-gray-800 border-gray-200 p-1"
+                                    />
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={handleApplyBulkMarks}
+                                        disabled={assignQuestions.length === 0}
+                                        className="h-7 text-[10.5px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 rounded-md"
+                                    >
+                                        Apply
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="p-6 bg-gray-50/50 flex justify-end gap-3 border-t border-gray-100">
-                        <Button onClick={() => setIsAssignDialogOpen(false)} variant="outline" className="h-10 px-6 rounded-full text-[11px] font-bold uppercase border-gray-200">
-                            {t("cancel")}
-                        </Button>
-                        <Button onClick={handleSaveAssign} className="btn-gradient text-white h-10 px-8 rounded-full text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50">
-                            Save Changes
-                        </Button>
+                    {/* Question Cards List */}
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 bg-gray-50/40 dark:bg-gray-950">
+                        {filteredAssignQuestions.length === 0 ? (
+                            <div className="py-16 text-center space-y-2">
+                                <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto text-gray-400">
+                                    <Search className="h-6 w-6" />
+                                </div>
+                                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">No questions found</p>
+                                <p className="text-xs text-gray-400">Try adjusting your search query or subject filters.</p>
+                            </div>
+                        ) : (
+                            filteredAssignQuestions.map((q, idx) => {
+                                const isChecked = assignQuestions.some((sq) => sq.id === q.id);
+                                const selectedQ = assignQuestions.find((sq) => sq.id === q.id);
+                                const marksValue = selectedQ?.marks || 1;
+
+                                return (
+                                    <div
+                                        key={q.id}
+                                        onClick={() => toggleQuestion(q.id)}
+                                        className={cn(
+                                            "p-4 rounded-2xl border transition-all cursor-pointer relative group",
+                                            isChecked
+                                                ? "bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-300 dark:border-indigo-700 shadow-sm"
+                                                : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-indigo-200 hover:shadow-xs"
+                                        )}
+                                    >
+                                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                            {/* Left: Checkbox & Question Content */}
+                                            <div className="flex items-start gap-3 flex-1">
+                                                <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() => toggleQuestion(q.id)}
+                                                        className="h-4 w-4 accent-indigo-600 rounded cursor-pointer mt-0.5"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2 flex-1">
+                                                    {/* Question Text */}
+                                                    <div className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 leading-relaxed">
+                                                        <span className="font-bold text-indigo-600 dark:text-indigo-400 mr-1.5">#{idx + 1}.</span>
+                                                        {stripHtml(q.question)}
+                                                    </div>
+
+                                                    {/* Badges */}
+                                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                                        {q.subject && (
+                                                            <span className="text-[9px] bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 rounded-full font-bold uppercase">
+                                                                {q.subject}
+                                                            </span>
+                                                        )}
+                                                        {q.question_type && (
+                                                            <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full font-bold uppercase">
+                                                                {q.question_type.replace('_', ' ')}
+                                                            </span>
+                                                        )}
+                                                        {q.level && (
+                                                            <span className={cn(
+                                                                "text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border",
+                                                                q.level.toLowerCase() === 'easy' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                                                q.level.toLowerCase() === 'hard' ? "bg-rose-50 text-rose-700 border-rose-200" :
+                                                                "bg-amber-50 text-amber-700 border-amber-200"
+                                                            )}>
+                                                                {q.level}
+                                                            </span>
+                                                        )}
+                                                        {q.class_name && (
+                                                            <span className="text-[9px] text-gray-400 font-medium">
+                                                                Class: {q.class_name} {q.section ? `(${q.section})` : ""}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Options Preview (if array) */}
+                                                    {Array.isArray(q.options) && q.options.length > 0 && (
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 text-[11px] text-gray-600 dark:text-gray-400">
+                                                            {q.options.slice(0, 4).map((opt: any, optIdx: number) => (
+                                                                <div key={optIdx} className="bg-gray-50/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-800 truncate">
+                                                                    <span className="font-bold text-gray-500 mr-1">{String.fromCharCode(65 + optIdx)}.</span>
+                                                                    {typeof opt === 'string' ? opt : (opt.option || opt.text || "")}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Right: Marks Stepper */}
+                                            <div
+                                                className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-800"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <span className="text-[10px] uppercase font-bold text-gray-400">Score / Marks</span>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        disabled={!isChecked || marksValue <= 1}
+                                                        onClick={() => updateQuestionMarks(q.id, marksValue - 1)}
+                                                        className="h-7 w-7 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Minus className="h-3 w-3" />
+                                                    </button>
+                                                    <Input
+                                                        type="number"
+                                                        min="1"
+                                                        disabled={!isChecked}
+                                                        value={marksValue}
+                                                        onChange={(e) => updateQuestionMarks(q.id, parseInt(e.target.value) || 1)}
+                                                        className="w-14 h-7 text-center text-xs font-bold border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-md p-1 shadow-none disabled:opacity-50"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        disabled={!isChecked}
+                                                        onClick={() => updateQuestionMarks(q.id, marksValue + 1)}
+                                                        className="h-7 w-7 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Dialog Footer */}
+                    <DialogFooter className="p-4 sm:p-5 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between gap-3 shrink-0">
+                        <div className="text-xs text-gray-500 font-medium">
+                            Total: <strong className="text-indigo-600 dark:text-indigo-400">{assignQuestions.length}</strong> selected (<strong>{totalAssignMarks}</strong> Marks)
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                onClick={() => setIsAssignDialogOpen(false)}
+                                variant="outline"
+                                className="h-9 px-5 rounded-full text-xs font-bold uppercase border-gray-200"
+                            >
+                                {t("cancel")}
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={handleSaveAssign}
+                                disabled={savingAssign}
+                                className="btn-gradient text-white h-9 px-7 rounded-full text-xs font-bold uppercase shadow-lg shadow-orange-200/50"
+                            >
+                                {savingAssign ? "Saving..." : "Save Changes"}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -910,11 +1189,11 @@ export default function OnlineExamPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
                                         <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Exam Period Start</Label>
-                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_from?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</p>
+                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_from?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</p>
                                     </div>
                                     <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
                                         <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Exam Period End</Label>
-                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_to?.replace(" ", "T"), "MMM dd, yyyy h:mm a")}</p>
+                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_to?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</p>
                                     </div>
                                 </div>
 

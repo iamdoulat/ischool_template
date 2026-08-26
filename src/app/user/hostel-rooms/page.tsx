@@ -21,14 +21,27 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-    Copy, FileSpreadsheet, FileDown, Printer, Search, Loader2,
-    ChevronLeft, ChevronRight, BedDouble, Building2, Hotel,
-    DollarSign, CheckCircle2, Tag,
+    Copy,
+    FileSpreadsheet,
+    FileDown,
+    Printer,
+    Search,
+    Loader2,
+    ChevronLeft,
+    ChevronRight,
+    BedDouble,
+    Building2,
+    Hotel,
+    CheckCircle2,
+    Tag,
+    Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useToast } from "@/components/ui/use-toast";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import { useSettings } from "@/components/providers/settings-provider";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -44,16 +57,25 @@ interface HostelRoom {
 }
 
 const PAGE_SIZES = [10, 25, 50, 100];
-const money = (v: number | string) => `$${parseFloat(String(v ?? 0)).toFixed(2)}`;
 
 export default function UserHostelRoomsPage() {
     const { t } = useTranslation();
     const { toast } = useToast();
+    const { settings } = useSettings();
+    const { formatCurrency, symbol } = useCurrencyFormatter();
+    const currencySymbol = symbol || settings?.currency_symbol || "$";
+
     const [rooms, setRooms] = useState<HostelRoom[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [fetching, setFetching] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(50);
+
+    const money = (v: number | string) => {
+        const val = typeof v === "string" ? parseFloat(v) : v;
+        if (isNaN(val)) return `${currencySymbol}0.00`;
+        return `${currencySymbol}${val.toFixed(2)}`;
+    };
 
     const fetchData = async () => {
         setFetching(true);
@@ -62,7 +84,7 @@ export default function UserHostelRoomsPage() {
             if (response.data.success) {
                 setRooms(response.data.data || []);
             }
-        } catch (error) {
+        } catch {
             toast({
                 variant: "destructive",
                 title: t("error"),
@@ -113,10 +135,14 @@ export default function UserHostelRoomsPage() {
         const doc = new jsPDF();
         doc.text(t("hostel_rooms_list"), 14, 15);
         autoTable(doc, {
-            head: [[t("hostel"), t("room_type"), t("room_number_name"), t("no_of_bed"), t("status"), t("cost_per_bed")]],
+            head: [[t("hostel"), t("room_type"), t("room_number_name"), t("no_of_bed"), t("status"), `${t("cost_per_bed")} (${currencySymbol})`]],
             body: filteredRooms.map((r) => [
-                r.hostel || "", r.room_type || "", r.room_number || "",
-                String(r.number_of_bed), r.status || t("available"), money(r.cost_per_bed),
+                r.hostel || "",
+                r.room_type || "",
+                r.room_number || "",
+                String(r.number_of_bed),
+                r.status || t("available"),
+                money(r.cost_per_bed),
             ]),
             startY: 20,
         });
@@ -152,54 +178,67 @@ export default function UserHostelRoomsPage() {
         );
 
     return (
-        <div className="p-4 lg:p-6 animate-in fade-in duration-500">
-            <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+        /* pb-32 sm:pb-16 provides ample bottom spacing so fixed mobile bottom navigation bar never overlaps content */
+        <div className="p-3 sm:p-5 lg:p-6 animate-in fade-in duration-500 max-w-7xl mx-auto space-y-6 pb-32 sm:pb-16">
+            <Card className="shadow-sm border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden p-0 gap-0">
                 {/* ── Header ── */}
-                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3.5 sm:py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Hotel className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("hostel_rooms")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">
+                            <h1 className="text-[16px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none truncate">
+                                {t("hostel_rooms")}
+                            </h1>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
                                 {fetching ? t("loading") : `${rooms.length} room${rooms.length === 1 ? "" : "s"} listed`}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-5 space-y-4">
                     {/* ── Assigned room highlight ── */}
                     {assignedRoom && (
-                        <div className="mb-4 rounded-xl border border-green-200 bg-green-50/60 p-4 print:hidden">
+                        <div className="rounded-xl border border-green-200 dark:border-green-800/80 bg-green-50/70 dark:bg-green-950/30 p-3.5 sm:p-4 print:hidden">
                             <div className="flex items-center gap-2 mb-3">
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                <span className="text-[13px] font-bold text-green-800">{t("your_assigned_room")}</span>
+                                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                <span className="text-[13px] font-bold text-green-800 dark:text-green-300">
+                                    {t("your_assigned_room")}
+                                </span>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px]">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <Building2 className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                    <span className="text-gray-500">{t("hostel")}: <span className="font-semibold text-gray-800">{assignedRoom.hostel}</span></span>
+                                    <Building2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                                    <span className="text-gray-500 dark:text-gray-400">
+                                        {t("hostel")}: <span className="font-semibold text-gray-800 dark:text-gray-200">{assignedRoom.hostel}</span>
+                                    </span>
                                 </div>
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <BedDouble className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                    <span className="text-gray-500">{t("room")}: <span className="font-semibold text-gray-800">{assignedRoom.room_number}</span></span>
+                                    <BedDouble className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                                    <span className="text-gray-500 dark:text-gray-400">
+                                        {t("room")}: <span className="font-semibold text-gray-800 dark:text-gray-200">{assignedRoom.room_number}</span>
+                                    </span>
                                 </div>
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <Tag className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                    <span className="text-gray-500">{t("type")}: <span className="font-semibold text-gray-800">{assignedRoom.room_type}</span></span>
+                                    <Tag className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                                    <span className="text-gray-500 dark:text-gray-400">
+                                        {t("type")}: <span className="font-semibold text-gray-800 dark:text-gray-200">{assignedRoom.room_type}</span>
+                                    </span>
                                 </div>
                                 <div className="flex items-center gap-2 min-w-0">
-                                    <DollarSign className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                                    <span className="text-gray-500">{t("per_bed")}: <span className="font-semibold text-gray-800">{money(assignedRoom.cost_per_bed)}</span></span>
+                                    <Coins className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                                    <span className="text-gray-500 dark:text-gray-400">
+                                        {t("per_bed")}: <span className="font-semibold text-green-700 dark:text-green-300">{money(assignedRoom.cost_per_bed)}</span>
+                                    </span>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {/* Toolbar */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 print:hidden">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 print:hidden">
                         <div className="relative w-full sm:w-72">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
@@ -210,9 +249,9 @@ export default function UserHostelRoomsPage() {
                             />
                         </div>
 
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
                             <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
+                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-[10px]">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -222,7 +261,7 @@ export default function UserHostelRoomsPage() {
                                 </SelectContent>
                             </Select>
 
-                            <div className="flex items-center border border-gray-200 rounded-[10px] overflow-hidden">
+                            <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-[10px] overflow-hidden bg-white dark:bg-gray-800">
                                 {[
                                     { icon: Copy, label: t("copy"), action: copyToClipboard },
                                     { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
@@ -236,11 +275,11 @@ export default function UserHostelRoomsPage() {
                                         title={label}
                                         onClick={action}
                                         className={cn(
-                                            "h-9 w-9 rounded-none hover:bg-gray-100",
-                                            i < arr.length - 1 && "border-r border-gray-200"
+                                            "h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700",
+                                            i < arr.length - 1 && "border-r border-gray-200 dark:border-gray-700"
                                         )}
                                     >
-                                        <Icon className="h-4 w-4 text-gray-500" />
+                                        <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                     </Button>
                                 ))}
                             </div>
@@ -248,16 +287,16 @@ export default function UserHostelRoomsPage() {
                     </div>
 
                     {/* ── Desktop table ── */}
-                    <div className="hidden md:block rounded-md border border-gray-200 overflow-x-auto print:hidden">
+                    <div className="hidden md:block rounded-xl border border-gray-200 dark:border-gray-800 overflow-x-auto print:hidden">
                         <Table className="min-w-[800px]">
                             <TableHeader>
-                                <TableRow className="bg-gray-100 hover:bg-gray-100 border-b border-gray-200">
-                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4">{t("hostel")}</TableHead>
-                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4">{t("room_type")}</TableHead>
-                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4">{t("room_number_name")}</TableHead>
-                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4 text-center">{t("no_of_bed")}</TableHead>
-                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4 text-center">{t("status")}</TableHead>
-                                    <TableHead className="text-[12px] font-bold text-gray-700 py-3 px-4 text-right">{t("cost_per_bed")}</TableHead>
+                                <TableRow className="bg-gray-50/90 dark:bg-gray-800/80 hover:bg-gray-50/90 border-b border-gray-200 dark:border-gray-700">
+                                    <TableHead className="text-[12px] font-bold text-gray-700 dark:text-gray-300 py-3 px-4">{t("hostel")}</TableHead>
+                                    <TableHead className="text-[12px] font-bold text-gray-700 dark:text-gray-300 py-3 px-4">{t("room_type")}</TableHead>
+                                    <TableHead className="text-[12px] font-bold text-gray-700 dark:text-gray-300 py-3 px-4">{t("room_number_name")}</TableHead>
+                                    <TableHead className="text-[12px] font-bold text-gray-700 dark:text-gray-300 py-3 px-4 text-center">{t("no_of_bed")}</TableHead>
+                                    <TableHead className="text-[12px] font-bold text-gray-700 dark:text-gray-300 py-3 px-4 text-center">{t("status")}</TableHead>
+                                    <TableHead className="text-[12px] font-bold text-gray-700 dark:text-gray-300 py-3 px-4 text-right">{t("cost_per_bed")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -265,7 +304,7 @@ export default function UserHostelRoomsPage() {
                                     <TableRow>
                                         <TableCell colSpan={6} className="h-32 text-center">
                                             <div className="flex items-center justify-center gap-2 text-gray-400">
-                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
                                                 <span>{t("loading_hostel_rooms")}</span>
                                             </div>
                                         </TableCell>
@@ -286,27 +325,29 @@ export default function UserHostelRoomsPage() {
                                             <TableRow
                                                 key={room.id}
                                                 className={cn(
-                                                    "text-[13px] text-gray-600 border-b border-gray-100 transition-colors",
-                                                    isAssigned ? "bg-green-50/50 hover:bg-green-50" : "hover:bg-gray-50/60"
+                                                    "text-[13px] text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 transition-colors",
+                                                    isAssigned ? "bg-green-50/50 dark:bg-green-950/20 hover:bg-green-50 dark:hover:bg-green-950/30" : "hover:bg-gray-50/60 dark:hover:bg-gray-800/40"
                                                 )}
                                             >
-                                                <TableCell className="py-3 px-4 font-medium text-gray-800">
+                                                <TableCell className="py-3.5 px-4 font-medium text-gray-800 dark:text-gray-200">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-[#6366F1]">
+                                                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 dark:bg-indigo-950 text-[#6366F1]">
                                                             <Building2 className="h-3.5 w-3.5" />
                                                         </span>
                                                         {room.hostel}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="py-3 px-4">{room.room_type}</TableCell>
-                                                <TableCell className="py-3 px-4 font-medium text-gray-700">{room.room_number}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <span className="inline-flex items-center gap-1 text-gray-600">
+                                                <TableCell className="py-3.5 px-4">{room.room_type}</TableCell>
+                                                <TableCell className="py-3.5 px-4 font-medium text-gray-700 dark:text-gray-300">{room.room_number}</TableCell>
+                                                <TableCell className="py-3.5 px-4 text-center">
+                                                    <span className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400 font-medium">
                                                         <BedDouble className="h-3.5 w-3.5 text-gray-400" /> {room.number_of_bed}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{statusBadge(room.status)}</TableCell>
-                                                <TableCell className="py-3 px-4 text-right font-semibold text-gray-800">{money(room.cost_per_bed)}</TableCell>
+                                                <TableCell className="py-3.5 px-4 text-center">{statusBadge(room.status)}</TableCell>
+                                                <TableCell className="py-3.5 px-4 text-right font-bold text-gray-900 dark:text-gray-100">
+                                                    {money(room.cost_per_bed)}
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     })
@@ -319,7 +360,7 @@ export default function UserHostelRoomsPage() {
                     <div className="md:hidden space-y-3 print:hidden">
                         {fetching ? (
                             <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
-                                <Loader2 className="h-5 w-5 animate-spin" />
+                                <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
                                 <span>{t("loading")}</span>
                             </div>
                         ) : paginatedRooms.length === 0 ? (
@@ -334,35 +375,44 @@ export default function UserHostelRoomsPage() {
                                     <div
                                         key={room.id}
                                         className={cn(
-                                            "rounded-xl border p-3.5 shadow-sm",
-                                            isAssigned ? "border-green-300 bg-green-50/60 ring-1 ring-green-200" : "border-gray-200 bg-white"
+                                            "rounded-xl border p-3.5 shadow-xs transition-all",
+                                            isAssigned
+                                                ? "border-green-300 dark:border-green-800 bg-green-50/60 dark:bg-green-950/30 ring-1 ring-green-200 dark:ring-green-900"
+                                                : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
                                         )}
                                     >
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-center gap-2 min-w-0">
+                                            <div className="flex items-center gap-2.5 min-w-0">
                                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10">
                                                     <BedDouble className="h-4.5 w-4.5 text-[#6366F1]" />
                                                 </span>
                                                 <div className="min-w-0">
-                                                    <p className="text-[13px] font-bold text-gray-800 truncate">{t("room")}{" "}{room.room_number}</p>
-                                                    <p className="text-[11px] text-gray-500 truncate">{room.room_type}</p>
+                                                    <p className="text-[13.5px] font-bold text-gray-800 dark:text-gray-200 truncate">
+                                                        {t("room")} {room.room_number}
+                                                    </p>
+                                                    <p className="text-[11.5px] text-gray-500 dark:text-gray-400 truncate">
+                                                        {room.room_type}
+                                                    </p>
                                                 </div>
                                             </div>
                                             {statusBadge(room.status)}
                                         </div>
 
-                                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-gray-500">
+                                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11.5px] text-gray-500 dark:text-gray-400 bg-gray-50/80 dark:bg-gray-800/40 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800">
                                             <span className="flex items-center gap-1.5 min-w-0">
-                                                <Building2 className="h-3 w-3 text-gray-400 shrink-0" />
+                                                <Building2 className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                                                 <span className="truncate">{room.hostel}</span>
                                             </span>
                                             <span className="flex items-center gap-1.5">
-                                                <BedDouble className="h-3 w-3 text-gray-400 shrink-0" />
+                                                <BedDouble className="h-3.5 w-3.5 text-gray-400 shrink-0" />
                                                 {room.number_of_bed} bed{room.number_of_bed === 1 ? "" : "s"}
                                             </span>
-                                            <span className="flex items-center gap-1.5 col-span-2">
-                                                <DollarSign className="h-3 w-3 text-gray-400 shrink-0" />
-                                                {t("cost_per_bed")}: <span className="font-semibold text-gray-800">{money(room.cost_per_bed)}</span>
+                                            <span className="flex items-center gap-1.5 col-span-2 pt-1 border-t border-gray-200/60 dark:border-gray-700/60">
+                                                <Coins className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+                                                <span>{t("cost_per_bed")}:</span>
+                                                <span className="font-bold text-gray-900 dark:text-gray-100 ml-auto">
+                                                    {money(room.cost_per_bed)}
+                                                </span>
                                             </span>
                                         </div>
                                     </div>
@@ -374,7 +424,7 @@ export default function UserHostelRoomsPage() {
                     {/* Pagination */}
                     {!fetching && (
                         <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3 print:hidden">
-                            <span className="text-[12px] text-gray-500">
+                            <span className="text-[12px] text-gray-500 dark:text-gray-400">
                                 {filteredRooms.length === 0
                                     ? t("no_entries")
                                     : `${t("showing")} ${startIndex + 1} ${t("to")} ${Math.min(startIndex + itemsPerPage, filteredRooms.length)} ${t("of")} ${filteredRooms.length} ${t("entries")}`}
@@ -393,7 +443,7 @@ export default function UserHostelRoomsPage() {
 
                                     {pageNumbers.map((p, i) =>
                                         p === "…" ? (
-                                            <span key={`e-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
+                                             <span key={`e-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
                                         ) : (
                                             <Button
                                                 key={p}
@@ -403,7 +453,7 @@ export default function UserHostelRoomsPage() {
                                                     "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
                                                     currentPage === p
                                                         ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
-                                                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                                        : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50"
                                                 )}
                                             >
                                                 {p}

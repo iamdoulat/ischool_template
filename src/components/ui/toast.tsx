@@ -25,13 +25,13 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[animated=true]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-right-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-2xl border p-4 pr-8 shadow-xl transition-all data-[animated=true]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-right-full backdrop-blur-md",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
+        default: "border-gray-200/80 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 text-foreground shadow-gray-200/50 dark:shadow-none",
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground",
+          "destructive group border-rose-200 dark:border-rose-900 bg-rose-50/95 dark:bg-rose-950/95 text-rose-900 dark:text-rose-100 shadow-rose-500/10",
       },
     },
     defaultVariants: {

@@ -567,20 +567,20 @@ export default function StudentAdmissionPage() {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+        <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen pb-20">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <UserPlus className="h-6 w-6" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <UserPlus className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">{t("student_admission")}</h1>
-                        <p className="text-sm text-muted-foreground">{t("fill_in_the_details_to_admit_a_new_student")}</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">{t("student_admission")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("fill_in_the_details_to_admit_a_new_student")}</p>
                     </div>
                 </div>
                 <Link href="/dashboard/student-information/import-student">
-                    <Button variant="gradient" className="h-10 px-6">
+                    <Button className="btn-gradient text-white px-5 h-9 text-xs gap-1.5 shadow-md rounded-full font-bold uppercase tracking-wider">
                         <Upload className="h-4 w-4" />
                         {t("import_student")}
                     </Button>
@@ -691,7 +691,7 @@ export default function StudentAdmissionPage() {
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <InputField label={t("mother_tongue")} value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
                             <div>
-                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">GENERAL BEHAVIOUR:</label>
+                                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-2 uppercase tracking-wider">GENERAL BEHAVIOUR:</label>
                                 <div className="flex items-center gap-5">
                                     {["Mild", "Normal", "Hyperactive"].map(b => (
                                         <label key={b} className="flex items-center gap-2 cursor-pointer group">
@@ -703,16 +703,16 @@ export default function StudentAdmissionPage() {
                                                     checked={formData.general_behaviour === b}
                                                     onChange={() => handleChange("general_behaviour", b)}
                                                 />
-                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                                <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{b}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{b}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[12px] font-semibold text-gray-700 block mb-2">SECOND LANGUAGE:</label>
+                                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-2 uppercase tracking-wider">SECOND LANGUAGE:</label>
                                 <div className="flex items-center gap-5">
                                     {["English", "Arabic", "Others"].map(l => (
                                         <label key={l} className="flex items-center gap-2 cursor-pointer group">
@@ -724,10 +724,10 @@ export default function StudentAdmissionPage() {
                                                     checked={formData.second_language === l}
                                                     onChange={() => handleChange("second_language", l)}
                                                 />
-                                                <div className="h-4 w-4 rounded border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                                <div className="absolute h-2 w-2 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                                <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                                <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{l}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{l}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -741,24 +741,24 @@ export default function StudentAdmissionPage() {
                             <TextAreaField label={t("permanent_address")} rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
                         </div>
                         <div className="lg:col-span-4 space-y-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("previous_academic_record") || "Previous Academic Record"}</label>
-                            <div className="border rounded-xl overflow-hidden overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="bg-muted text-muted-foreground border-b">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5">{t("previous_academic_record") || "Previous Academic Record"}</label>
+                            <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden overflow-x-auto shadow-2xs">
+                                <table className="w-full text-xs text-left">
+                                    <thead className="bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                                         <tr>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("name_of_previous_school") || "Name of the previous school & location"}</th>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("class") || "Class"}</th>
-                                            <th className="px-3 py-2 font-bold border-r text-[11px]">{t("year_of_study") || "Year of Study"}</th>
-                                            <th className="px-3 py-2 font-bold text-[11px]">{t("percentage_grade") || "Percentage/Grade"}</th>
+                                            <th className="px-3.5 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">{t("name_of_previous_school") || "Name of the previous school & location"}</th>
+                                            <th className="px-3.5 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">{t("class") || "Class"}</th>
+                                            <th className="px-3.5 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">{t("year_of_study") || "Year of Study"}</th>
+                                            <th className="px-3.5 py-2.5 font-bold text-[11px] uppercase tracking-wider">{t("percentage_grade") || "Percentage/Grade"}</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y">
+                                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                         {formData.previous_academic_record.map((record: any, index: number) => (
-                                            <tr key={index}>
-                                                <td className="p-0 border-r">
+                                            <tr key={index} className="bg-white dark:bg-gray-900">
+                                                <td className="p-0 border-r border-gray-100 dark:border-gray-800">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3.5 py-2 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.school_name}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -767,10 +767,10 @@ export default function StudentAdmissionPage() {
                                                         }}
                                                     />
                                                 </td>
-                                                <td className="p-0 border-r">
+                                                <td className="p-0 border-r border-gray-100 dark:border-gray-800">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3.5 py-2 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.class}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -779,10 +779,10 @@ export default function StudentAdmissionPage() {
                                                         }}
                                                     />
                                                 </td>
-                                                <td className="p-0 border-r">
+                                                <td className="p-0 border-r border-gray-100 dark:border-gray-800">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3.5 py-2 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.year}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -794,7 +794,7 @@ export default function StudentAdmissionPage() {
                                                 <td className="p-0">
                                                     <input
                                                         type="text"
-                                                        className="w-full px-3 py-2 bg-transparent outline-none text-xs"
+                                                        className="w-full px-3.5 py-2 bg-transparent outline-none text-xs font-semibold text-gray-900 dark:text-gray-100"
                                                         value={record.percentage}
                                                         onChange={(e) => {
                                                             const newRecords = [...formData.previous_academic_record];
@@ -811,7 +811,7 @@ export default function StudentAdmissionPage() {
                             <button
                                 type="button"
                                 onClick={() => handleChange("previous_academic_record", [...formData.previous_academic_record, { school_name: "", class: "", year: "", percentage: "" }])}
-                                className="text-[11px] font-semibold text-primary hover:underline mt-1"
+                                className="text-xs font-bold text-indigo-600 hover:underline mt-1 cursor-pointer"
                             >
                                 + Add Row
                             </button>
@@ -821,9 +821,9 @@ export default function StudentAdmissionPage() {
                             <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
                         </div>
                         <div className="lg:col-span-2">
-                            <label className="text-[12px] font-semibold text-gray-700 block mb-1.5">APPRAISAL ACHIEVEMENT</label>
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-1.5 uppercase tracking-wider">APPRAISAL ACHIEVEMENT</label>
                             <textarea
-                                className="w-full min-h-[68px] text-[12px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-white"
+                                className="w-full min-h-[68px] text-xs font-medium text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-gray-50/40 dark:bg-gray-800/40 shadow-none"
                                 value={formData.appraisal_achievements}
                                 onChange={(e) => handleChange("appraisal_achievements", e.target.value)}
                                 placeholder={t("enter_achievements") || "Appraisal of your child..."}
@@ -835,22 +835,22 @@ export default function StudentAdmissionPage() {
 
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
-                            <div className="bg-[#f8f9fa] border-b border-muted/50 px-4 py-2 flex items-center justify-between">
-                                <span className="text-sm font-medium text-foreground">{t("sibling")}</span>
+                            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-t-xl px-4 py-2.5 flex items-center justify-between">
+                                <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200">{t("sibling")}</span>
                                 {selectedSiblings.length > 0 && (
                                     <button
                                         type="button"
                                         onClick={() => setSelectedSiblings([])}
-                                        className="bg-primary text-white text-[10px] px-3 py-1 rounded shadow-sm hover:bg-primary/90 transition-colors"
+                                        className="bg-rose-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm hover:bg-rose-600 transition-colors"
                                     >
                                         {t("remove_sibling")}
                                     </button>
                                 )}
                             </div>
-                            <div className="p-4 bg-white border border-t-0 flex flex-wrap gap-4 min-h-[100px]">
+                            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 border-t-0 rounded-b-xl flex flex-wrap gap-4 min-h-[100px]">
                                 {selectedSiblings.map((sibling) => (
-                                    <div key={sibling.id} className="flex gap-4 p-3 border rounded-md bg-white min-w-[300px] shadow-sm relative group">
-                                        <div className="h-20 w-20 rounded-lg bg-[#e9ecef] overflow-hidden border flex items-center justify-center shrink-0">
+                                    <div key={sibling.id} className="flex gap-4 p-3 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 min-w-[300px] shadow-2xs relative group">
+                                        <div className="h-20 w-20 rounded-lg bg-gray-100 dark:bg-gray-700 overflow-hidden border border-gray-200 flex items-center justify-center shrink-0">
                                             {sibling.photo ? (
                                                 <img
                                                     src={sibling.photo.startsWith('http') ? sibling.photo : getImageUrl(sibling.photo)}
@@ -858,28 +858,28 @@ export default function StudentAdmissionPage() {
                                                     className="h-full w-full object-cover"
                                                 />
                                             ) : (
-                                                <Users className="h-10 w-10 text-muted-foreground/30" />
+                                                <Users className="h-10 w-10 text-gray-300" />
                                             )}
                                         </div>
-                                        <div className="flex flex-col text-[11px] space-y-0.5">
-                                            <span className="text-primary font-bold text-sm mb-1">{sibling.name}</span>
-                                            <div className="flex gap-1">
+                                        <div className="flex flex-col text-xs space-y-1">
+                                            <span className="text-indigo-600 font-bold text-sm">{sibling.name}</span>
+                                            <div className="flex gap-1.5 text-gray-800 dark:text-gray-200">
                                                 <span className="font-bold">{t("admission_no")}:</span>
-                                                <span className="text-muted-foreground">{sibling.admission_no}</span>
+                                                <span className="font-semibold text-gray-600 dark:text-gray-400">{sibling.admission_no}</span>
                                             </div>
-                                            <div className="flex gap-1">
+                                            <div className="flex gap-1.5 text-gray-800 dark:text-gray-200">
                                                 <span className="font-bold">{t("class")}:</span>
-                                                <span className="text-muted-foreground">{sibling.class_name}</span>
+                                                <span className="font-semibold text-gray-600 dark:text-gray-400">{sibling.class_name}</span>
                                             </div>
-                                            <div className="flex gap-1">
+                                            <div className="flex gap-1.5 text-gray-800 dark:text-gray-200">
                                                 <span className="font-bold">{t("section")}:</span>
-                                                <span className="text-muted-foreground">{sibling.section_name}</span>
+                                                <span className="font-semibold text-gray-600 dark:text-gray-400">{sibling.section_name}</span>
                                             </div>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => setSelectedSiblings(prev => prev.filter(s => s.id !== sibling.id))}
-                                            className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-destructive/10 flex items-center justify-center text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all"
+                                            className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-rose-100 flex items-center justify-center text-gray-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                                         >
                                             <X className="h-3.5 w-3.5" />
                                         </button>
@@ -888,9 +888,9 @@ export default function StudentAdmissionPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowSiblingModal(true)}
-                                    className="h-[106px] w-[300px] border-2 border-dashed border-primary/20 rounded-md text-primary font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/40 transition-all group"
+                                    className="h-[106px] w-[300px] border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl text-indigo-600 font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all group cursor-pointer"
                                 >
-                                    <Plus className="h-6 w-6 transition-transform group-hover:scale-110" />
+                                    <Plus className="h-6 w-6 transition-transform group-hover:scale-110 text-indigo-500" />
                                     <span>{t("add_sibling")}</span>
                                 </button>
                             </div>
@@ -903,7 +903,7 @@ export default function StudentAdmissionPage() {
                 <SectionCard title={t("fees_details")} icon={Wallet}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredFeeGroups.map((group) => (
-                            <label key={group.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/fee">
+                            <label key={group.id} className="flex flex-col border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 rounded-xl cursor-pointer hover:border-indigo-300 transition-colors group/fee shadow-2xs">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -918,19 +918,19 @@ export default function StudentAdmissionPage() {
                                                 }
                                             }}
                                         />
-                                        <div className="h-5 w-5 rounded border-2 border-muted-foreground/30 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                                        <div className="h-5 w-5 rounded-md border-2 border-gray-300 dark:border-gray-600 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all flex items-center justify-center">
                                             <Check className="h-3 w-3 text-white scale-0 peer-checked:scale-100 transition-transform" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="font-semibold text-sm group-hover/fee:text-primary transition-colors">{group.name}</span>
-                                        {group.description && <span className="text-xs text-muted-foreground">{group.description}</span>}
+                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-100 group-hover/fee:text-indigo-600 transition-colors">{group.name}</span>
+                                        {group.description && <span className="text-xs text-gray-500 font-medium">{group.description}</span>}
                                     </div>
                                 </div>
                             </label>
                         ))}
                         {filteredFeeGroups.length === 0 && (
-                            <div className="col-span-full py-6 text-center text-muted-foreground text-sm">
+                            <div className="col-span-full py-6 text-center text-gray-400 font-bold text-xs uppercase tracking-wider">
                                 {t("no_fee_groups_available")}
                             </div>
                         )}
@@ -941,7 +941,7 @@ export default function StudentAdmissionPage() {
                 <SectionCard title={t("fees_discount_details")} icon={Percent}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeDiscounts.map((discount) => (
-                            <label key={discount.id} className="flex flex-col border border-muted/50 p-4 rounded-lg cursor-pointer hover:bg-muted/20 transition-colors group/discount">
+                            <label key={discount.id} className="flex flex-col border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 rounded-xl cursor-pointer hover:border-indigo-300 transition-colors group/discount shadow-2xs">
                                 <div className="flex items-center gap-3">
                                     <div className="relative flex items-center justify-center">
                                         <input
@@ -956,24 +956,24 @@ export default function StudentAdmissionPage() {
                                                 }
                                             }}
                                         />
-                                        <div className="h-5 w-5 rounded border-2 border-muted-foreground/30 peer-checked:bg-primary peer-checked:border-primary transition-all flex items-center justify-center">
+                                        <div className="h-5 w-5 rounded-md border-2 border-gray-300 dark:border-gray-600 peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all flex items-center justify-center">
                                             <Check className="h-3 w-3 text-white scale-0 peer-checked:scale-100 transition-transform" />
                                         </div>
                                     </div>
                                     <div className="flex flex-col flex-1">
                                         <div className="flex justify-between items-center w-full">
-                                            <span className="font-semibold text-sm group-hover/discount:text-primary transition-colors">{discount.name}</span>
-                                            <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                            <span className="font-bold text-sm text-gray-900 dark:text-gray-100 group-hover/discount:text-indigo-600 transition-colors">{discount.name}</span>
+                                            <span className="text-xs font-black bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-200">
                                                 {discount.type === 'percentage' ? `${discount.percentage}%` : `${symbol}${discount.amount}`}
                                             </span>
                                         </div>
-                                        {discount.code && <span className="text-xs text-muted-foreground mt-0.5">{t("code")}: {discount.code}</span>}
+                                        {discount.code && <span className="text-xs text-gray-500 font-medium mt-0.5">{t("code")}: {discount.code}</span>}
                                     </div>
                                 </div>
                             </label>
                         ))}
                         {feeDiscounts.length === 0 && (
-                            <div className="col-span-full py-6 text-center text-muted-foreground text-sm">
+                            <div className="col-span-full py-6 text-center text-gray-400 font-bold text-xs uppercase tracking-wider">
                                 {t("no_fee_discounts_available")}
                             </div>
                         )}
@@ -1004,7 +1004,7 @@ export default function StudentAdmissionPage() {
                         />
 
                         <div className="lg:col-span-4 py-2">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider block mb-3">
                                 {t("if_guardian_is")} <span className="text-destructive">*</span>
                             </label>
                             <div className="flex gap-6">
@@ -1018,10 +1018,10 @@ export default function StudentAdmissionPage() {
                                                 checked={formData.guardian_type === role}
                                                 onChange={() => handleChange("guardian_type", role)}
                                             />
-                                            <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                            <div className="absolute h-2.5 w-2.5 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                            <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                            <div className="absolute h-2.5 w-2.5 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                         </div>
-                                        <span className="text-sm font-semibold group-hover:text-primary transition-colors">{t(role.toLowerCase())}</span>
+                                        <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{t(role.toLowerCase())}</span>
                                     </label>
                                 ))}
                             </div>
@@ -1055,21 +1055,21 @@ export default function StudentAdmissionPage() {
                         />
                         <TextAreaField label={t("guardian_address")} rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
-                    <div className="mt-6 pt-4 border-t border-muted/30">
+                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
                         <button
                             type="button"
                             onClick={() => setShowMoreDetails(!showMoreDetails)}
-                            className="w-full flex items-center justify-between text-muted-foreground hover:text-foreground transition-colors py-2 px-1"
+                            className="w-full flex items-center justify-between text-gray-700 dark:text-gray-200 hover:text-indigo-600 transition-colors py-2 px-1 cursor-pointer"
                         >
-                            <span className="font-bold text-sm">{showMoreDetails ? t("hide_more_details") : t("add_more_details")}</span>
-                            <Plus className={cn("h-5 w-5 bg-muted rounded-full p-1 transition-transform", showMoreDetails && "rotate-45")} />
+                            <span className="font-bold text-xs uppercase tracking-wider">{showMoreDetails ? t("hide_more_details") : t("add_more_details")}</span>
+                            <Plus className={cn("h-5 w-5 bg-indigo-50 text-indigo-600 rounded-full p-1 transition-transform", showMoreDetails && "rotate-45")} />
                         </button>
                     </div>
 
                     {showMoreDetails && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t border-muted/30 animate-in slide-in-from-top-4 duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-4 duration-300">
                             <div className="lg:col-span-4 mb-2">
-                                <h3 className="text-lg font-bold">{t("others_information")}</h3>
+                                <h3 className="text-base font-bold text-gray-800 dark:text-gray-100">{t("others_information")}</h3>
                             </div>
 
                             <InputField label={t("bank_account_number")} value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
@@ -1077,7 +1077,7 @@ export default function StudentAdmissionPage() {
                             <InputField label={t("ifsc_code")} value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
 
                             <div className="py-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-3">
+                                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider block mb-3">
                                     {t("rte")}
                                 </label>
                                 <div className="flex gap-6">
@@ -1091,17 +1091,17 @@ export default function StudentAdmissionPage() {
                                                     checked={formData.rte === opt}
                                                     onChange={() => handleChange("rte", opt)}
                                                 />
-                                                <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30 peer-checked:border-primary transition-all"></div>
-                                                <div className="absolute h-2.5 w-2.5 rounded-full bg-primary scale-0 peer-checked:scale-100 transition-all"></div>
+                                                <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
+                                                <div className="absolute h-2.5 w-2.5 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-sm font-semibold group-hover:text-primary transition-colors">{t(opt.toLowerCase())}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{t(opt.toLowerCase())}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
 
                             <div className="lg:col-span-4 mt-4 border-t pt-4">
-                                <h4 className="text-sm font-bold text-gray-800 mb-4">{t("general_behaviour_and_language") || "General Behaviour & Language"}</h4>
+                                <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100 mb-4">{t("general_behaviour_and_language") || "General Behaviour & Language"}</h4>
                                 <div className="space-y-6">
                                 </div>
                             </div>
@@ -1159,13 +1159,18 @@ export default function StudentAdmissionPage() {
             </form>
 
             <Dialog open={showSiblingModal} onOpenChange={setShowSiblingModal}>
-                <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border-none shadow-2xl">
-                    <DialogHeader className="px-6 py-4 bg-primary text-primary-foreground flex flex-row items-center justify-between space-y-0">
-                        <DialogTitle className="text-xl font-bold">{t("add_sibling")}</DialogTitle>
+                <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+                    <DialogHeader className="p-5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100 flex flex-row items-center justify-between space-y-0">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Users className="h-4 w-4" />
+                            </span>
+                            <DialogTitle className="text-base font-bold text-gray-800 tracking-tight">{t("add_sibling")}</DialogTitle>
+                        </div>
                     </DialogHeader>
-                    <div className="p-8 space-y-6">
-                        <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">{t("class")}</label>
+                    <div className="p-6 space-y-4">
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-4">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 text-right uppercase tracking-wider">{t("class")}</label>
                             <SelectField
                                 label=""
                                 value={siblingClassId}
@@ -1178,8 +1183,8 @@ export default function StudentAdmissionPage() {
                                 options={classes.map(c => ({ label: c.name, value: c.id.toString() }))}
                             />
                         </div>
-                        <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">{t("section")}</label>
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-4">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 text-right uppercase tracking-wider">{t("section")}</label>
                             <SelectField
                                 label=""
                                 value={siblingSectionId}
@@ -1190,8 +1195,8 @@ export default function StudentAdmissionPage() {
                                 options={siblingSections.map(s => ({ label: s.name, value: s.id.toString() }))}
                             />
                         </div>
-                        <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-sm font-bold text-muted-foreground text-right">{t("student")}</label>
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-4">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 text-right uppercase tracking-wider">{t("student")}</label>
                             <SelectField
                                 label=""
                                 value={siblingStudentId}
@@ -1203,13 +1208,21 @@ export default function StudentAdmissionPage() {
                             />
                         </div>
                     </div>
-                    <div className="px-6 py-4 border-t flex justify-end">
+                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 px-4 rounded-full text-xs font-bold uppercase border-gray-200"
+                            onClick={() => setShowSiblingModal(false)}
+                        >
+                            {t("cancel")}
+                        </Button>
                         <Button
                             onClick={handleAddSibling}
                             disabled={!siblingStudentId || loadingSiblings}
-                            className="bg-primary hover:bg-primary/90 text-white px-6 rounded-lg flex items-center gap-2"
+                            className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase shadow-md flex items-center gap-2 cursor-pointer"
                         >
-                            {loadingSiblings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+                            {loadingSiblings ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Users className="h-3.5 w-3.5" />}
                             {t("add")}
                         </Button>
                     </div>
@@ -1229,7 +1242,7 @@ function SectionCard({ title, icon: Icon, children }: { title: string, icon: Rea
                 </span>
                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{title}</CardTitle>
             </CardHeader>
-            <CardContent className="p-8">
+            <CardContent className="p-6 sm:p-8">
                 {children}
             </CardContent>
         </Card>
@@ -1238,8 +1251,8 @@ function SectionCard({ title, icon: Icon, children }: { title: string, icon: Rea
 
 function DateField({ label, required, value = "", onChange }: { label: string, required?: boolean, value?: string, onChange: (val: string) => void }) {
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+        <div className="space-y-1.5 group">
+            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
             <DatePicker
@@ -1252,8 +1265,8 @@ function DateField({ label, required, value = "", onChange }: { label: string, r
 
 function InputField({ label, required, type = "text", value = "", onChange, placeholder = "", readOnly = false, helperText = "" }: { label: string, required?: boolean, type?: string, value?: string, onChange: (val: string) => void, placeholder?: string, readOnly?: boolean, helperText?: string }) {
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+        <div className="space-y-1.5 group">
+            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
             <Input
@@ -1262,14 +1275,14 @@ function InputField({ label, required, type = "text", value = "", onChange, plac
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 className={cn(
-                    "h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all placeholder:text-muted-foreground/50",
-                    readOnly && "bg-muted/60 cursor-not-allowed text-muted-foreground"
+                    "h-11 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 font-medium text-xs focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:ring-indigo-500 placeholder:text-gray-400 shadow-none transition-all",
+                    readOnly && "bg-gray-100 dark:bg-gray-800/80 cursor-not-allowed text-gray-900 dark:text-gray-100 font-bold border-gray-200"
                 )}
                 required={required}
                 readOnly={readOnly}
             />
             {helperText && (
-                <p className="text-[10px] font-semibold text-primary ml-1">{helperText}</p>
+                <p className="text-[10px] font-bold text-indigo-600 ml-1">{helperText}</p>
             )}
         </div>
     );
@@ -1278,25 +1291,27 @@ function InputField({ label, required, type = "text", value = "", onChange, plac
 function SelectField({ label, required, options, value, onChange }: { label: string, required?: boolean, options: { label: string, value: string }[] | string[], value: string, onChange: (val: string) => void }) {
     const { t } = useTranslation();
     return (
-        <div className="space-y-2 group">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
+        <div className="space-y-1.5 group">
+            {label && (
+                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
+                    {label} {required && <span className="text-destructive">*</span>}
+                </label>
+            )}
             <div className="relative">
                 <select
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
-                    className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer shadow-none"
                 >
-                    <option value="">{t("select")}</option>
+                    <option value="" className="text-gray-400">{t("select")}</option>
                     {options.map(opt => {
                         const label = typeof opt === "string" ? opt : opt.label;
                         const value = typeof opt === "string" ? opt : opt.value;
-                        return <option key={value} value={value}>{label}</option>
+                        return <option key={value} value={value} className="text-gray-900 font-medium">{label}</option>
                     })}
                 </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none group-focus-within:text-indigo-500 transition-colors" />
             </div>
         </div>
     );
@@ -1304,15 +1319,15 @@ function SelectField({ label, required, options, value, onChange }: { label: str
 
 function TextAreaField({ label, required, rows = 3, value, onChange }: { label: string, required?: boolean, rows?: number, value: string, onChange: (val: string) => void }) {
     return (
-        <div className="space-y-2 group h-full">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+        <div className="space-y-1.5 group h-full">
+            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
             <textarea
                 rows={rows}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="flex w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all resize-none placeholder:text-muted-foreground/50"
+                className="flex w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2.5 text-xs text-gray-900 dark:text-gray-100 font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all resize-none placeholder:text-gray-400 shadow-none"
             />
         </div>
     );
@@ -1336,12 +1351,12 @@ function FileUploadField({ label, required, value, onChange, placeholder }: { la
     const showPreview = localPreview && !imgError;
 
     return (
-        <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+        <div className="space-y-1.5">
+            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider block">
                 {label} {required && <span className="text-destructive">*</span>}
             </label>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <div className="relative group w-[100px] h-[100px] rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary transition-all overflow-hidden bg-muted/20 flex flex-col items-center justify-center cursor-pointer shrink-0">
+                <div className="relative group w-[100px] h-[100px] rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-indigo-500 transition-all overflow-hidden bg-gray-50/40 dark:bg-gray-800/40 flex flex-col items-center justify-center cursor-pointer shrink-0">
                     <input
                         type="file"
                         accept="image/*"
@@ -1363,22 +1378,20 @@ function FileUploadField({ label, required, value, onChange, placeholder }: { la
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center p-2 text-center text-muted-foreground group-hover:text-primary transition-colors">
-                            <Upload className="h-6 w-6 mb-1 text-muted-foreground/60 group-hover:text-primary transition-colors" />
-                            <span className="text-[10px] font-medium leading-tight">Upload</span>
+                        <div className="flex flex-col items-center justify-center p-2 text-center text-gray-400 group-hover:text-indigo-600 transition-colors">
+                            <Upload className="h-6 w-6 mb-1 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                            <span className="text-[10px] font-bold leading-tight">Upload</span>
                             <span className="text-[8px] opacity-70">100x100</span>
                         </div>
                     )}
                 </div>
                 <div className="flex flex-col justify-center">
-                    <span className="text-xs font-medium text-foreground">
+                    <span className="text-xs font-semibold text-gray-800 dark:text-gray-100">
                         {value ? value.name : (placeholder || "No file chosen")}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">PNG, JPG or WEBP (Max 2MB)</span>
+                    <span className="text-[10px] text-gray-400 font-medium">PNG, JPG or WEBP (Max 2MB)</span>
                 </div>
             </div>
         </div>
     );
 }
-
-// Trigger rebuild
