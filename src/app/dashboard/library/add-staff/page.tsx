@@ -39,6 +39,12 @@ import {
     Pencil,
     Trash2,
     UserCog,
+    BadgeCheck,
+    CreditCard,
+    User,
+    Mail,
+    Calendar,
+    Phone,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -64,6 +70,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useImageUrl } from "@/lib/image-url";
 import { cn } from "@/lib/utils";
 
 interface StaffMember {
@@ -73,6 +81,14 @@ interface StaffMember {
     dob: string;
     phone: string;
     staff_id: string;
+    avatar?: string;
+    photo?: string;
+    image?: string;
+    user?: {
+        avatar?: string;
+        photo?: string;
+        image?: string;
+    };
     library_member?: {
         id: number;
         member_id: string;
@@ -113,6 +129,7 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 export default function AddStaffLibraryPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const getImageUrl = useImageUrl();
     const [searchTerm, setSearchTerm] = useState("");
     const [staffList, setStaffList] = useState<StaffMember[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -331,17 +348,17 @@ export default function AddStaffLibraryPage() {
                     </div>
 
                     {/* List Table */}
-                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                    <div className="rounded-xl border border-gray-200/80 overflow-x-auto custom-scrollbar shadow-xs bg-white">
                         <Table className="min-w-[1000px]">
-                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] uppercase tracking-wider border-b border-gray-200/80">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("library_card_no")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("staff_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("email")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("date_of_birth")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("phone")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4"><div className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-indigo-500" /> {t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-slate-500" /> {t("library_card_no")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-500" /> {t("staff_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-slate-400" /> {t("email")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400" /> {t("date_of_birth")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-emerald-600" /> {t("phone")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -349,52 +366,148 @@ export default function AddStaffLibraryPage() {
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : staffList.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            {t("no_staff_found")}
+                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <UserCog className="h-8 w-8 text-gray-300 stroke-1" />
+                                                <span>{t("no_staff_found")}</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
-                                ) : staffList.map((staff) => (
-                                    <TableRow
-                                        key={staff.id}
-                                        className={cn(
-                                            "text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap",
-                                            staff.library_member && "bg-[#e8f5e9]/60 hover:bg-[#c8e6c9]/60"
-                                        )}
-                                    >
-                                        <TableCell className="py-3 text-gray-500">{staff.library_member?.member_id || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{staff.library_member?.library_card_no || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-700 font-medium">{staff.name}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{staff.email}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{staff.dob ? formatDate(staff.dob) : "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{staff.phone || "-"}</TableCell>
-                                        <TableCell className="py-3 text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
+                                ) : staffList.map((staff) => {
+                                    const staffName = staff.name || "Staff Member";
+                                    const initials = staffName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+                                    const isMember = !!staff.library_member;
+
+                                    return (
+                                        <TableRow
+                                            key={staff.id}
+                                            className={cn(
+                                                "text-xs border-b border-gray-100 hover:shadow-xs relative transition-all duration-200 whitespace-nowrap group",
+                                                isMember ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "hover:bg-indigo-50/40"
+                                            )}
+                                        >
+                                            {/* Member ID */}
+                                            <TableCell className="py-3 px-4">
+                                                {isMember ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-200/70">
+                                                        {staff.library_member?.member_id}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-gray-400 font-mono text-[10px] bg-gray-100">
+                                                        Not Member
+                                                    </span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Card No */}
+                                            <TableCell className="py-3 px-3">
+                                                {staff.library_member?.library_card_no ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px] border border-slate-200/60 font-medium">
+                                                        <CreditCard className="h-3 w-3 text-slate-500" />
+                                                        {staff.library_member.library_card_no}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300 font-sans">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Staff Name with Avatar */}
+                                            <TableCell className="py-3 px-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <Avatar className="h-8 w-8 rounded-full border border-gray-200 shadow-2xs shrink-0 overflow-hidden">
+                                                        <AvatarImage
+                                                            src={getImageUrl(staff.avatar || staff.photo || staff.image || staff.user?.avatar || staff.user?.photo || staff.user?.image)}
+                                                            alt={staffName}
+                                                            className="object-cover h-full w-full"
+                                                        />
+                                                        <AvatarFallback className={cn(
+                                                            "text-white font-bold text-[11px] flex items-center justify-center h-full w-full",
+                                                            isMember
+                                                                ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+                                                                : "bg-gradient-to-br from-purple-500 to-indigo-600"
+                                                        )}>
+                                                            {initials}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                                                            {staffName}
+                                                        </p>
+                                                        {staff.email && (
+                                                            <p className="text-[10px] text-gray-400 truncate max-w-[180px]">
+                                                                {staff.email}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+
+                                            {/* Email */}
+                                            <TableCell className="py-3 px-3 text-gray-600 font-medium">
+                                                {staff.email ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-gray-700">
+                                                        <Mail className="h-3 w-3 text-slate-400" />
+                                                        {staff.email}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* DOB */}
+                                            <TableCell className="py-3 px-3 text-gray-500 text-[11px]">
+                                                {staff.dob ? formatDate(staff.dob) : <span className="text-gray-300">—</span>}
+                                            </TableCell>
+
+                                            {/* Phone */}
+                                            <TableCell className="py-3 px-3 text-gray-600 font-medium">
+                                                {staff.phone ? (
+                                                    <span className="inline-flex items-center gap-1 text-gray-700">
+                                                        <Phone className="h-3 w-3 text-emerald-500" />
+                                                        {staff.phone}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Action */}
+                                            <TableCell className="py-3 px-4 text-right">
+                                                {isMember ? (
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleEditMembership(staff)}
+                                                            className="h-7 w-7 text-amber-600 bg-amber-50 hover:bg-amber-500 hover:text-white border border-amber-200/70 rounded-md p-0 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                                            title={t("edit")}
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleRevokeClick(staff)}
+                                                            className="h-7 w-7 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white border border-red-200/70 rounded-md p-0 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                                            title={t("revoke")}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleAddMembership(staff)}
+                                                        className="h-7 px-2.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200/80 rounded-md text-[10px] font-bold gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                        <span>{t("add")}</span>
                                                     </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="text-xs">
-                                                    {staff.library_member ? (
-                                                        <>
-                                                            <DropdownMenuItem onClick={() => handleEditMembership(staff)}>
-                                                                <Pencil className="h-3.5 w-3.5 mr-2" /> {t("edit")}
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onClick={() => handleRevokeClick(staff)} className="text-red-500">
-                                                                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t("revoke")}
-                                                            </DropdownMenuItem>
-                                                        </>
-                                                    ) : (
-                                                        <DropdownMenuItem onClick={() => handleAddMembership(staff)}>
-                                                            <Plus className="h-3.5 w-3.5 mr-2" /> {t("add")}
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

@@ -91,11 +91,52 @@ const specificConfigs: Record<string, { fields: { key: string, label: string, ty
     },
     "Paypal": {
         fields: [
-            { key: "username", label: "Paypal Username", type: "text" },
-            { key: "password", label: "Paypal Password", type: "password" },
-            { key: "signature", label: "Paypal Signature", type: "text" },
-            { key: "fee_type", label: "Processing Fees Type", type: "radio", options: [{ value: "none", label: "None" }, { value: "percentage", label: "Percentage (%)" }, { value: "fix", label: "Fix Amount ($)" }] },
-            { key: "fee_amount", label: "Percentage/Fix Amount", type: "text" }
+            {
+                key: "client_id",
+                label: "PayPal Client ID",
+                type: "text",
+                placeholder: "e.g. AXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                help: "Found in PayPal Developer Dashboard -> Apps & Credentials"
+            },
+            {
+                key: "client_secret",
+                label: "PayPal Client Secret",
+                type: "password",
+                placeholder: "e.g. ELxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                help: "Keep this secret safe. Found in PayPal Developer Dashboard"
+            },
+            {
+                key: "mode",
+                label: "Environment Mode",
+                type: "radio",
+                options: [
+                    { value: "sandbox", label: "Sandbox (Testing)" },
+                    { value: "live", label: "Live (Production)" }
+                ]
+            },
+            {
+                key: "currency",
+                label: "Currency Code",
+                type: "text",
+                placeholder: "USD",
+                help: "Standard ISO 3-letter currency code (e.g. USD, EUR, GBP, CAD, AUD)"
+            },
+            {
+                key: "fee_type",
+                label: "Processing Fees Type",
+                type: "radio",
+                options: [
+                    { value: "none", label: "None (0%)" },
+                    { value: "percentage", label: "Percentage (%)" },
+                    { value: "fix", label: "Fix Amount ($)" }
+                ]
+            },
+            {
+                key: "fee_amount",
+                label: "Percentage / Fix Amount",
+                type: "text",
+                placeholder: "0.00"
+            }
         ]
     },
     "Stripe": {
@@ -278,44 +319,78 @@ export default function PaymentMethodsPage() {
         }
     };
 
-    const handleTestUddoktaPayConnection = async () => {
-        const currentData = settingsData.uddoktapay?.config || {};
-        if (!currentData.api_key) {
-            sonnerToast.error("Please enter an API Key first before testing");
-            return;
-        }
-
-        setTestingConnection(true);
+    const handleTestConnection = async () => {
         setTestResult(null);
 
-        try {
-            const res = await api.post('payment/uddoktapay/test-connection', {
-                api_key: currentData.api_key,
-                api_url: currentData.api_url || "https://sandbox.uddoktapay.com/api/checkout-v2"
-            });
-
-            if (res.data?.status === 'success') {
-                setTestResult({ success: true, message: res.data.message || "Connection verified successfully!" });
-                sonnerToast.success("UddoktaPay Connection Verified!");
-            } else {
-                setTestResult({ success: false, message: res.data?.message || "Connection test failed." });
-                sonnerToast.error(res.data?.message || "Connection test failed");
+        if (activeTab === "UddoktaPay") {
+            const currentData = settingsData.uddoktapay?.config || {};
+            if (!currentData.api_key) {
+                sonnerToast.error("Please enter an API Key first before testing");
+                return;
             }
-        } catch (err: any) {
-            const errorMsg = err.response?.data?.message || "Unable to reach UddoktaPay endpoint";
-            setTestResult({ success: false, message: errorMsg });
-            sonnerToast.error(errorMsg);
-        } finally {
-            setTestingConnection(false);
+
+            setTestingConnection(true);
+            try {
+                const res = await api.post('payment/uddoktapay/test-connection', {
+                    api_key: currentData.api_key,
+                    api_url: currentData.api_url || "https://sandbox.uddoktapay.com/api/checkout-v2"
+                });
+
+                if (res.data?.status === 'success') {
+                    setTestResult({ success: true, message: res.data.message || "Connection verified successfully!" });
+                    sonnerToast.success("UddoktaPay Connection Verified!");
+                } else {
+                    setTestResult({ success: false, message: res.data?.message || "Connection test failed." });
+                    sonnerToast.error(res.data?.message || "Connection test failed");
+                }
+            } catch (err: any) {
+                const errorMsg = err.response?.data?.message || "Unable to reach UddoktaPay endpoint";
+                setTestResult({ success: false, message: errorMsg });
+                sonnerToast.error(errorMsg);
+            } finally {
+                setTestingConnection(false);
+            }
+        } else if (activeTab === "Paypal") {
+            const currentData = settingsData.paypal?.config || {};
+            if (!currentData.client_id || !currentData.client_secret) {
+                sonnerToast.error("Please enter both PayPal Client ID & Secret before testing");
+                return;
+            }
+
+            setTestingConnection(true);
+            try {
+                const res = await api.post('payment/paypal/test-connection', {
+                    client_id: currentData.client_id,
+                    client_secret: currentData.client_secret,
+                    mode: currentData.mode || "sandbox"
+                });
+
+                if (res.data?.status === 'success') {
+                    setTestResult({ success: true, message: res.data.message || "PayPal connection verified!" });
+                    sonnerToast.success("PayPal REST API Verified!");
+                } else {
+                    setTestResult({ success: false, message: res.data?.message || "PayPal connection test failed." });
+                    sonnerToast.error(res.data?.message || "PayPal connection failed");
+                }
+            } catch (err: any) {
+                const errorMsg = err.response?.data?.message || "Unable to authenticate with PayPal";
+                setTestResult({ success: false, message: errorMsg });
+                sonnerToast.error(errorMsg);
+            } finally {
+                setTestingConnection(false);
+            }
         }
     };
 
     const getWebhookUrl = () => {
         if (typeof window !== "undefined") {
             const origin = window.location.origin;
+            if (activeTab === "Paypal") {
+                return `${origin}/api/v1/payment/paypal/webhook`;
+            }
             return `${origin}/api/v1/payment/uddoktapay/webhook`;
         }
-        return "https://your-school-domain.com/api/v1/payment/uddoktapay/webhook";
+        return `https://your-school-domain.com/api/v1/payment/${activeTab.toLowerCase()}/webhook`;
     };
 
     const handleCopyWebhook = () => {
@@ -454,6 +529,46 @@ export default function PaymentMethodsPage() {
                                             </div>
                                         )}
 
+                                        {/* PayPal REST API v2 Banner & Presets */}
+                                        {activeTab === "Paypal" && (
+                                            <div className="p-3.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/70 border border-blue-200/60 rounded-lg space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 text-gray-800 text-xs font-semibold">
+                                                        <CreditCard className="h-4 w-4 text-blue-600" />
+                                                        <span>PayPal REST API v2 Checkout & Smart Payments</span>
+                                                    </div>
+                                                    <a
+                                                        href="https://developer.paypal.com/dashboard/applications/sandbox"
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                                    >
+                                                        PayPal Developer Portal <ExternalLink className="h-3 w-3" />
+                                                    </a>
+                                                </div>
+                                                <p className="text-[11px] text-gray-600 leading-relaxed">
+                                                    Official PayPal Orders v2 integration with automated instant capture, multi-currency support (USD, EUR, GBP, etc.), and refund tracking.
+                                                </p>
+                                                <div className="pt-1 flex flex-wrap items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Quick Mode Switch:</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleFieldChange("paypal", "mode", "sandbox")}
+                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                                                    >
+                                                        Sandbox (Testing)
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleFieldChange("paypal", "mode", "live")}
+                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                                                    >
+                                                        Live (Production)
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {currentActiveConfig.fields.map((field) => {
                                             if (field.type === 'radio') {
                                                 return (
@@ -535,8 +650,8 @@ export default function PaymentMethodsPage() {
                                             );
                                         })}
 
-                                        {/* UddoktaPay Webhook (IPN) Section */}
-                                        {activeTab === "UddoktaPay" && (
+                                        {/* IPN / Webhook Section for UddoktaPay & PayPal */}
+                                        {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
                                             <div className="border-t border-dashed border-gray-200 pt-4 space-y-3">
                                                 <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
                                                     <div className="sm:text-right">
@@ -556,14 +671,18 @@ export default function PaymentMethodsPage() {
                                                                 variant="outline"
                                                                 size="sm"
                                                                 onClick={handleCopyWebhook}
-                                                                className="h-8 sm:h-9 px-3 text-xs shrink-0 border-gray-200 hover:bg-indigo-50 hover:text-indigo-600"
+                                                                className="h-8 sm:h-9 px-3 text-xs shrink-0 border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
                                                             >
                                                                 {copiedWebhook ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
                                                                 <span className="ml-1 text-[11px]">{copiedWebhook ? "Copied" : "Copy"}</span>
                                                             </Button>
                                                         </div>
                                                         <p className="text-[10px] text-gray-500">
-                                                            Set this URL in your UddoktaPay merchant panel under <strong>Webhook Settings</strong> to automatically record completed payments.
+                                                            {activeTab === "Paypal" ? (
+                                                                <>Set this Webhook URL in your PayPal Developer Portal under <strong>App Settings &gt; Add Webhook</strong> for event <code>CHECKOUT.ORDER.APPROVED</code> and <code>PAYMENT.CAPTURE.COMPLETED</code>.</>
+                                                            ) : (
+                                                                <>Set this URL in your UddoktaPay merchant panel under <strong>Webhook Settings</strong> to automatically record completed payments.</>
+                                                            )}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -597,6 +716,8 @@ export default function PaymentMethodsPage() {
                                                 <Banknote className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-400" />
                                             ) : activeTab === "UddoktaPay" ? (
                                                 <Zap className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500" />
+                                            ) : activeTab === "Paypal" ? (
+                                                <CreditCard className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500" />
                                             ) : (
                                                 <CreditCard className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-400" />
                                             )}
@@ -613,14 +734,14 @@ export default function PaymentMethodsPage() {
                                             </span>
                                         </div>
 
-                                        {activeTab === "UddoktaPay" && (
+                                        {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
                                             <div className="w-full pt-2">
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    onClick={handleTestUddoktaPayConnection}
+                                                    onClick={handleTestConnection}
                                                     disabled={testingConnection}
-                                                    className="w-full h-8 text-[11px] font-semibold border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                                    className="w-full h-8 text-[11px] font-semibold border-indigo-200 text-indigo-600 hover:bg-indigo-50 cursor-pointer"
                                                 >
                                                     {testingConnection ? (
                                                         <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Verifying...</>
@@ -637,13 +758,13 @@ export default function PaymentMethodsPage() {
 
                         {/* Footer Action Buttons */}
                         <div className="border-t border-gray-100 p-4 sm:p-5 md:p-6 bg-white flex flex-col sm:flex-row items-center justify-center gap-3">
-                            {activeTab === "UddoktaPay" && (
+                            {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={handleTestUddoktaPayConnection}
+                                    onClick={handleTestConnection}
                                     disabled={testingConnection}
-                                    className="h-9 sm:h-10 px-6 text-[11px] sm:text-xs font-bold uppercase rounded-full border-gray-200 hover:bg-gray-50 w-full sm:w-auto"
+                                    className="h-9 sm:h-10 px-6 text-[11px] sm:text-xs font-bold uppercase rounded-full border-gray-200 hover:bg-gray-50 w-full sm:w-auto cursor-pointer"
                                 >
                                     {testingConnection ? (
                                         <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Testing...</>

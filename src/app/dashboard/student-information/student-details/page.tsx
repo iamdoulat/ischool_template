@@ -104,6 +104,11 @@ interface Student {
     phone: string;
     father_name: string;
     avatar?: string;
+    student_photo?: string;
+    photo?: string;
+    image?: string;
+    student_image?: string;
+    user?: { avatar?: string; photo?: string; student_photo?: string; image?: string };
     religion?: string;
     caste?: string;
     blood_group?: string;
@@ -112,6 +117,11 @@ interface Student {
     student_category?: { category_name: string };
     active: boolean;
 }
+
+export const getStudentPhoto = (student: Student | null | undefined): string => {
+    if (!student) return "";
+    return student.avatar || student.student_photo || student.photo || student.image || student.student_image || student.user?.avatar || student.user?.photo || student.user?.student_photo || "";
+};
 
 export default function StudentDetailsPage() {
     const tt = useTranslateToast();
@@ -832,7 +842,7 @@ export default function StudentDetailsPage() {
                                                 </td>
                                                 <td className="px-4 py-3.5">
                                                     <Avatar className="h-9 w-9 border border-gray-200 shadow-2xs">
-                                                        <AvatarImage src={getImageUrl(student.avatar)} />
+                                                        <AvatarImage src={getImageUrl(getStudentPhoto(student))} className="object-cover" />
                                                         <AvatarFallback className="bg-indigo-50 text-indigo-700 text-[10px] font-black">
                                                             {student.name ? student.name.substring(0, 2).toUpperCase() : "ST"}
                                                         </AvatarFallback>
@@ -964,7 +974,7 @@ export default function StudentDetailsPage() {
                                         <div className="p-5 flex flex-col items-center text-center space-y-3.5 flex-1">
                                             <div className="relative cursor-pointer" onClick={() => { setSelectedStudent(student); setViewDialogOpen(true); }}>
                                                 <Avatar className="h-20 w-20 rounded-2xl border-2 border-white dark:border-gray-800 shadow-md ring-2 ring-indigo-100 dark:ring-indigo-900/50">
-                                                    <AvatarImage src={getImageUrl(student.avatar)} className="object-cover" />
+                                                    <AvatarImage src={getImageUrl(getStudentPhoto(student))} className="object-cover" />
                                                     <AvatarFallback className="bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 text-indigo-700 text-xl font-black">
                                                         {student.name ? student.name.substring(0, 2).toUpperCase() : "ST"}
                                                     </AvatarFallback>
@@ -1162,7 +1172,7 @@ export default function StudentDetailsPage() {
                     <DialogHeader className="p-6 md:p-8 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850 border-b border-gray-100 dark:border-gray-800 relative">
                         <div className="flex flex-col sm:flex-row items-center gap-6">
                             <Avatar className="h-24 w-24 md:h-28 md:w-28 rounded-3xl border-4 border-white dark:border-gray-800 shadow-lg relative shrink-0 ring-4 ring-indigo-100/60 dark:ring-indigo-950/40">
-                                <AvatarImage src={getImageUrl(selectedStudent?.avatar)} className="object-cover" />
+                                <AvatarImage src={getImageUrl(getStudentPhoto(selectedStudent))} className="object-cover" />
                                 <AvatarFallback className="bg-gradient-to-br from-[#FF9800]/15 to-[#6366F1]/15 text-indigo-700 text-2xl font-black">
                                     {selectedStudent?.name ? selectedStudent?.name.substring(0, 2).toUpperCase() : "ST"}
                                 </AvatarFallback>

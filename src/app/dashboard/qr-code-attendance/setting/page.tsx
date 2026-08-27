@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
@@ -33,6 +33,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -46,7 +56,8 @@ import {
   Camera, Wifi, Bell, MessageSquare, Phone,
   Search, Network, CheckCircle2, Loader2, Cpu,
   Plus, Edit, Trash2, Copy, Check, Radio, HardDrive,
-  Activity, ArrowDownToLine, Server, ScanFace, Smartphone, Settings
+  Activity, ArrowDownToLine, Server, ScanFace, Smartphone, Settings,
+  Sparkles, CheckCircle, Zap, Globe, Lock, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,52 +70,6 @@ const extractArray = (res: any): any[] => {
     return [];
 };
 
-/* ── Skeletons ─────────────────────────────────────────────── */
-function SectionSkeleton() {
-  return (
-    <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
-      <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-        <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
-        <div className="space-y-1.5">
-          <div className="h-3.5 w-32 rounded bg-gray-200 animate-pulse" />
-          <div className="h-2 w-48 rounded bg-gray-100 animate-pulse" />
-        </div>
-      </CardHeader>
-      <CardContent className="p-4 space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-14 w-full rounded-lg bg-gray-100/60 animate-pulse" />
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div className="border rounded-lg overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-gray-50">
-            {[...Array(4)].map((_, i) => (
-              <TableHead key={i}><div className="h-3 w-16 rounded bg-gray-200 animate-pulse" /></TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {[...Array(4)].map((_, i) => (
-            <TableRow key={i}>
-              {[...Array(4)].map((_, j) => (
-                <TableCell key={j}><div className="h-3 w-20 rounded bg-gray-100 animate-pulse" /></TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-/* ── Component ─────────────────────────────────────────────── */
 export default function QrCodeSettingPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -123,12 +88,22 @@ export default function QrCodeSettingPage() {
     const [pullingDeviceId, setPullingDeviceId] = useState<number | null>(null);
     const [copiedUrl, setCopiedUrl] = useState(false);
 
-    // Smart Attendance Method Toggles State (Moved from smart-attendance-settings)
+    // Delete Device Confirmation
+    const [deleteDeviceOpen, setDeleteDeviceOpen] = useState(false);
+    const [deviceToDelete, setDeviceToDelete] = useState<any>(null);
+
+    // Smart Attendance Method Toggles
     const [smartSettings, setSmartSettings] = useState({
         is_face_enabled: true,
         is_qr_enabled: true,
         is_nfc_enabled: true,
     });
+
+    // Camera Live Test Modal
+    const [cameraTestOpen, setCameraTestOpen] = useState(false);
+    const [cameraTesting, setCameraTesting] = useState(false);
+    const [testingStream, setTestingStream] = useState<MediaStream | null>(null);
+    const previewVideoRef = useRef<HTMLVideoElement | null>(null);
 
     const [deviceForm, setDeviceForm] = useState({
         name: "",
@@ -161,13 +136,7 @@ export default function QrCodeSettingPage() {
 
     const { t } = useTranslation();
 
-    useEffect(() => {
-        fetchSettings();
-        fetchZkDevices();
-        fetchAcademics();
-    }, []);
-
-    const fetchSettings = async () => {
+    const fetchSettings = useCallback(async () => {
         setLoading(true);
         try {
             const [qrRes, smartRes] = await Promise.all([
@@ -176,21 +145,22 @@ export default function QrCodeSettingPage() {
             ]);
 
             if (qrRes.data) {
+                const qd = qrRes.data?.data || qrRes.data;
                 setSettings({
-                    auto_attendance: !!qrRes.data.auto_attendance,
-                    use_sensor_device: !!qrRes.data.use_sensor_device,
-                    use_camera_device: !!qrRes.data.use_camera_device,
-                    camera_type: qrRes.data.camera_type || "primary",
-                    ip_camera_url: qrRes.data.ip_camera_url || "",
-                    ip_camera_brand: qrRes.data.ip_camera_brand || "generic",
-                    ip_camera_rtsp_transport: qrRes.data.ip_camera_rtsp_transport || "auto",
-                    ip_camera_auth_enabled: !!qrRes.data.ip_camera_auth_enabled,
-                    ip_camera_username: qrRes.data.ip_camera_username || "",
-                    ip_camera_password: qrRes.data.ip_camera_password || "",
-                    notify_in: qrRes.data.notify_in !== false,
-                    notify_out: qrRes.data.notify_out !== false,
-                    notify_sms: !!qrRes.data.notify_sms,
-                    notify_whatsapp: !!qrRes.data.notify_whatsapp
+                    auto_attendance: !!qd.auto_attendance,
+                    use_sensor_device: qd.use_sensor_device !== false,
+                    use_camera_device: qd.use_camera_device !== false,
+                    camera_type: qd.camera_type || "primary",
+                    ip_camera_url: qd.ip_camera_url || "",
+                    ip_camera_brand: qd.ip_camera_brand || "generic",
+                    ip_camera_rtsp_transport: qd.ip_camera_rtsp_transport || "auto",
+                    ip_camera_auth_enabled: !!qd.ip_camera_auth_enabled,
+                    ip_camera_username: qd.ip_camera_username || "",
+                    ip_camera_password: qd.ip_camera_password || "",
+                    notify_in: qd.notify_in !== false,
+                    notify_out: qd.notify_out !== false,
+                    notify_sms: !!qd.notify_sms,
+                    notify_whatsapp: !!qd.notify_whatsapp
                 });
             }
 
@@ -205,35 +175,69 @@ export default function QrCodeSettingPage() {
                 }
             }
         } catch {
-            toast.error(t("failed_to_load_settings"));
+            toast.error(t("failed_to_load_settings") || "Failed to load attendance settings");
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
 
-    const fetchZkDevices = async () => {
+    const fetchZkDevices = useCallback(async () => {
         try {
             const response = await api.get('/zkteco/devices');
             setZkDevices(extractArray(response));
-        } catch (error) {
-            console.error("Failed to load ZKTeco devices", error);
+        } catch {
             setZkDevices([]);
         }
-    };
+    }, []);
 
-    const fetchAcademics = async () => {
+    const fetchAcademics = useCallback(async () => {
         try {
             const [classRes, secRes] = await Promise.all([
-                api.get('/academics/classes?no_paginate=true'),
-                api.get('/academics/sections?no_paginate=true')
+                api.get('/academics/classes?no_paginate=true').catch(() => ({ data: { data: [] } })),
+                api.get('/academics/sections?no_paginate=true').catch(() => ({ data: { data: [] } }))
             ]);
             setClasses(extractArray(classRes));
             setSections(extractArray(secRes));
-        } catch (e) {
-            console.error("Failed to fetch classes/sections", e);
+        } catch {
             setClasses([]);
             setSections([]);
         }
+    }, []);
+
+    useEffect(() => {
+        fetchSettings();
+        fetchZkDevices();
+        fetchAcademics();
+    }, [fetchSettings, fetchZkDevices, fetchAcademics]);
+
+    // Live Camera Test
+    const startCameraTest = async () => {
+        setCameraTestOpen(true);
+        setCameraTesting(true);
+        try {
+            const facingMode = settings.camera_type === 'secondary' ? 'user' : 'environment';
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+            setTestingStream(stream);
+            if (previewVideoRef.current) {
+                previewVideoRef.current.srcObject = stream;
+                previewVideoRef.current.play().catch(() => {});
+            }
+        } catch (err: any) {
+            toast.error("Could not access camera: " + (err.message || "Permission denied"));
+        } finally {
+            setCameraTesting(false);
+        }
+    };
+
+    const stopCameraTest = () => {
+        if (testingStream) {
+            testingStream.getTracks().forEach(track => track.stop());
+            setTestingStream(null);
+        }
+        if (previewVideoRef.current) {
+            previewVideoRef.current.srcObject = null;
+        }
+        setCameraTestOpen(false);
     };
 
     const handleOpenDeviceModal = (device?: any) => {
@@ -287,7 +291,7 @@ export default function QrCodeSettingPage() {
                 toast.success("ZKTeco Device updated successfully!");
             } else {
                 await api.post('/zkteco/devices', payload);
-                toast.success("ZKTeco Device added successfully!");
+                toast.success("ZKTeco Device registered successfully!");
             }
 
             setDeviceModalOpen(false);
@@ -299,11 +303,18 @@ export default function QrCodeSettingPage() {
         }
     };
 
-    const handleDeleteDevice = async (id: number) => {
-        if (!confirm("Are you sure you want to remove this ZKTeco device?")) return;
+    const confirmDeleteDevice = (device: any) => {
+        setDeviceToDelete(device);
+        setDeleteDeviceOpen(true);
+    };
+
+    const handleDeleteDevice = async () => {
+        if (!deviceToDelete) return;
         try {
-            await api.delete(`/zkteco/devices/${id}`);
+            await api.delete(`/zkteco/devices/${deviceToDelete.id}`);
             toast.success("ZKTeco Device removed.");
+            setDeleteDeviceOpen(false);
+            setDeviceToDelete(null);
             fetchZkDevices();
         } catch {
             toast.error("Failed to delete device.");
@@ -314,7 +325,7 @@ export default function QrCodeSettingPage() {
         setPullingDeviceId(id);
         try {
             const response = await api.post(`/zkteco/devices/${id}/pull`);
-            toast.success(response.data?.message || "Data pulled successfully!");
+            toast.success(response.data?.message || "Logs synchronized from device!");
             fetchZkDevices();
         } catch {
             toast.error("Failed to pull data from device.");
@@ -324,11 +335,6 @@ export default function QrCodeSettingPage() {
     };
 
     const getAdmsUrl = () => {
-        const envApiUrl = process.env.NEXT_PUBLIC_API_URL || api.defaults.baseURL;
-        if (envApiUrl && /^https?:\/\//i.test(envApiUrl)) {
-            const base = envApiUrl.replace(/\/$/, '');
-            return `${base}/zkteco/cdata`;
-        }
         if (typeof window !== 'undefined') {
             return `${window.location.protocol}//${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}/api/v1/zkteco/cdata`;
         }
@@ -357,12 +363,6 @@ export default function QrCodeSettingPage() {
         }
     };
 
-    const selectCamera = (camera: any) => {
-        setSettings({ ...settings, ip_camera_url: camera.ip, ip_camera_brand: camera.brand === 'generic' ? 'generic' : camera.brand });
-        setScanDialogOpen(false);
-        toast.success(t("selected_camera", { name: camera.name }));
-    };
-
     const handleSave = async () => {
         setSaving(true);
         try {
@@ -370,61 +370,87 @@ export default function QrCodeSettingPage() {
                 api.post('/attendance/qr-settings', settings),
                 api.post('/smart-attendance/settings', smartSettings).catch(() => null)
             ]);
-            toast.success("All Attendance & Device settings saved successfully!");
+            toast.success("All Attendance Protocol & Hardware settings saved successfully!");
         } catch {
-            toast.error(t("failed_to_save_settings"));
+            toast.error(t("failed_to_save_settings") || "Failed to save settings");
         } finally {
             setSaving(false);
         }
     };
 
     const SMART_METHODS = [
-        { key: "is_face_enabled" as const, label: t("face_recognition"), desc: t("face_recognition_desc"), Icon: ScanFace, color: "text-blue-600 bg-blue-50 border-blue-100" },
-        { key: "is_qr_enabled" as const, label: t("qr_code_scan"), desc: t("qr_code_scan_desc"), Icon: ScanLine, color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-        { key: "is_nfc_enabled" as const, label: t("nfc_system"), desc: t("nfc_system_desc"), Icon: Smartphone, color: "text-purple-600 bg-purple-50 border-purple-100" },
+        {
+            key: "is_face_enabled" as const,
+            label: "AI Face Recognition",
+            desc: "SSD MobileNet facial vectors and Visible Light face devices",
+            Icon: ScanFace,
+            color: "text-blue-600 bg-blue-50 border-blue-100"
+        },
+        {
+            key: "is_qr_enabled" as const,
+            label: "High-Speed QR Code",
+            desc: "Encrypted student card QR code scanning with optical lasers",
+            Icon: ScanLine,
+            color: "text-emerald-600 bg-emerald-50 border-emerald-100"
+        },
+        {
+            key: "is_nfc_enabled" as const,
+            label: "NFC & Smart RFID",
+            desc: "13.56MHz MIFARE & 125kHz EM4100 contactless tap cards",
+            Icon: Smartphone,
+            color: "text-purple-600 bg-purple-50 border-purple-100"
+        },
     ];
 
     return (
-        <div className="space-y-6">
-            {/* Page header */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] overflow-hidden p-0 w-full">
-                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <Settings2 className="h-5 w-5" />
+        <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
+            {/* Master Page Header */}
+            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#EFF0FD] to-indigo-50/60">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
+                            <Settings2 className="h-6 w-6" />
                         </span>
-                        <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("qr_attendance_protocol")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Configure Smart Verification Methods & Hardware Interfaces</p>
+                        <div>
+                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
+                                Smart Attendance & Hardware Settings
+                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                                    System Protocols
+                                </span>
+                            </h1>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                Configure biometric verification methods, ZKTeco ADMS push devices, mobile camera lens orientation, and event notifications.
+                            </p>
                         </div>
                     </div>
+
                     <Button
                         onClick={handleSave}
                         disabled={saving || loading}
-                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all self-end sm:self-center"
                     >
-                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t("save")}
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Save All Settings
                     </Button>
-                </CardHeader>
-            </Card>
+                </div>
+            </div>
 
             {loading ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-                    <SectionSkeleton />
-                    <SectionSkeleton />
+                    <div className="h-64 rounded-2xl bg-white border border-slate-200 animate-pulse p-6" />
+                    <div className="h-64 rounded-2xl bg-white border border-slate-200 animate-pulse p-6" />
                 </div>
             ) : (
                 <div className="space-y-6 w-full">
-                    {/* Smart Attendance Verification Methods (Merged Section) */}
-                    <Card className="border-[0.5px] border-indigo-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
-                        <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-purple-50/80 via-indigo-50/60 to-blue-50/50 border-b border-indigo-100">
+                    {/* 1. Smart Attendance Biometric Methods Switcher */}
+                    <Card className="border border-slate-200 shadow-xs rounded-2xl overflow-hidden bg-white">
+                        <CardHeader className="flex flex-row items-center justify-between gap-2.5 px-5 py-4 bg-slate-50/70 border-b border-slate-100">
                             <div className="flex items-center gap-2.5">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                    <Settings className="h-5 w-5" />
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                                    <Sparkles className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("smart_attendance_settings")}</CardTitle>
-                                    <p className="text-[11px] text-slate-500 mt-1">{t("toggle_methods_available")}</p>
+                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">AI & Biometric Verification Methods</CardTitle>
+                                    <p className="text-[11px] text-slate-500 mt-1">Select which authentication modes are accessible on kiosk terminals and mobile scanners</p>
                                 </div>
                             </div>
                         </CardHeader>
@@ -435,12 +461,12 @@ export default function QrCodeSettingPage() {
                                         key={key}
                                         onClick={() => setSmartSettings({ ...smartSettings, [key]: !smartSettings[key] })}
                                         className={cn(
-                                            "flex items-center justify-between border rounded-xl p-4 transition-all duration-300 cursor-pointer select-none",
-                                            smartSettings[key] ? "bg-indigo-50/50 border-indigo-200 shadow-sm" : "bg-slate-50/60 border-slate-200 hover:border-slate-300"
+                                            "flex items-center justify-between border rounded-2xl p-4 transition-all duration-200 cursor-pointer select-none",
+                                            smartSettings[key] ? "bg-indigo-50/40 border-indigo-200 shadow-xs" : "bg-slate-50/60 border-slate-200 hover:border-slate-300"
                                         )}
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className={`p-2.5 rounded-lg border shrink-0 ${color}`}>
+                                            <div className={`p-2.5 rounded-xl border shrink-0 ${color}`}>
                                                 <Icon className="h-5 w-5" />
                                             </div>
                                             <div className="min-w-0">
@@ -459,21 +485,21 @@ export default function QrCodeSettingPage() {
                         </CardContent>
                     </Card>
 
-                    {/* ZKTeco Biometric / NFC Access Control Manager */}
-                    <Card className="border-[0.5px] border-indigo-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
-                        <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-indigo-50/80 via-purple-50/60 to-orange-50/50 border-b border-indigo-100">
+                    {/* 2. ZKTeco Biometric / Visible Light Face Device Manager */}
+                    <Card className="border border-slate-200 shadow-xs rounded-2xl overflow-hidden bg-white">
+                        <CardHeader className="flex flex-row items-center justify-between gap-2.5 px-5 py-4 bg-slate-50/70 border-b border-slate-100">
                             <div className="flex items-center gap-2.5">
-                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#6366F1] text-white shadow-sm">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#6366F1] text-white shadow-xs">
                                     <Cpu className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">ZKTeco Biometric / NFC ADMS System</CardTitle>
-                                    <p className="text-[11px] text-slate-500 mt-1">Register ZKTeco Serial Numbers & ADMS Push data receivers for student attendance</p>
+                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">ZKTeco Biometric & Face Terminal Manager</CardTitle>
+                                    <p className="text-[11px] text-slate-500 mt-1">Register SpeedFace, ProFace, SenseFace, uFace, & MB20 series ADMS hardware devices</p>
                                 </div>
                             </div>
                             <Button
                                 onClick={() => handleOpenDeviceModal()}
-                                className="h-8 px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold gap-1.5 shadow-sm"
+                                className="h-8 px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold gap-1.5 shadow-xs"
                             >
                                 <Plus className="h-3.5 w-3.5" /> Add ZKTeco Device
                             </Button>
@@ -481,22 +507,24 @@ export default function QrCodeSettingPage() {
 
                         <CardContent className="p-5 space-y-5">
                             {/* ADMS Push URL Notice Box */}
-                            <div className="p-3.5 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/60 to-purple-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                                <div className="space-y-0.5 min-w-0">
+                            <div className="p-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/60 to-purple-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                                <div className="space-y-1 min-w-0">
                                     <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
-                                        <Server className="h-3.5 w-3.5 text-indigo-600" />
-                                        <span>ZKTeco ADMS / Push Server Listener Endpoint:</span>
+                                        <Server className="h-4 w-4 text-indigo-600" />
+                                        <span>ZKTeco Cloud ADMS Push Listener Endpoint:</span>
                                     </div>
-                                    <p className="text-[11px] text-slate-600 font-mono break-all">
+                                    <p className="text-xs text-indigo-800 font-mono select-all bg-white/80 px-2 py-1 rounded border border-indigo-200 inline-block">
                                         {getAdmsUrl()}
                                     </p>
-                                    <p className="text-[10px] text-slate-500">Configure this HTTP Push URL in your ZKTeco device ADMS / Cloud settings or ZKBioAccess software.</p>
+                                    <p className="text-[10px] text-slate-500">
+                                        Configure this HTTP endpoint in your ZKTeco device ADMS / Cloud Server menu or ZKBioAccess software.
+                                    </p>
                                 </div>
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={copyAdmsUrl}
-                                    className="h-8 text-[11px] border-indigo-200 text-indigo-700 hover:bg-indigo-100/70 shrink-0 gap-1.5"
+                                    className="h-8 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-100/70 shrink-0 gap-1.5 bg-white"
                                 >
                                     {copiedUrl ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
                                     {copiedUrl ? "Copied!" : "Copy Push URL"}
@@ -514,90 +542,90 @@ export default function QrCodeSettingPage() {
                                         variant="ghost"
                                         size="sm"
                                         onClick={fetchZkDevices}
-                                        className="h-7 text-[10px] text-slate-500 hover:text-indigo-600"
+                                        className="h-7 text-[11px] text-slate-500 hover:text-indigo-600"
                                     >
                                         <RefreshCw className="h-3 w-3 mr-1" /> Refresh List
                                     </Button>
                                 </div>
 
                                 {zkDevices.length === 0 ? (
-                                    <div className="text-center py-8 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                                        <Cpu className="h-8 w-8 mx-auto text-slate-300 mb-2 animate-bounce" />
-                                        <p className="text-xs font-semibold text-slate-600">No ZKTeco hardware devices registered yet</p>
+                                    <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                                        <Cpu className="h-8 w-8 mx-auto text-slate-300 mb-2" />
+                                        <p className="text-xs font-bold text-slate-600">No ZKTeco hardware devices registered yet</p>
                                         <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
-                                            Click &quot;Add ZKTeco Device&quot; to enter your hardware serial number to map attendance to students by Class, Section, and Roll No.
+                                            Register your device serial number to route attendance punches to specific Classes and Sections automatically.
                                         </p>
                                         <Button
                                             onClick={() => handleOpenDeviceModal()}
                                             variant="outline"
-                                            className="mt-3 h-8 text-[11px] border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                            className="mt-3 h-8 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50"
                                         >
                                             <Plus className="h-3.5 w-3.5 mr-1" /> Register First Device
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
                                         <Table>
                                             <TableHeader className="bg-slate-50/80">
                                                 <TableRow className="border-b border-slate-200">
-                                                    <TableHead className="text-[11px] font-bold text-slate-700">Device Name & Serial</TableHead>
-                                                    <TableHead className="text-[11px] font-bold text-slate-700">Type & Location</TableHead>
-                                                    <TableHead className="text-[11px] font-bold text-slate-700">Assigned Class / Sec</TableHead>
-                                                    <TableHead className="text-[11px] font-bold text-slate-700">Status</TableHead>
-                                                    <TableHead className="text-[11px] font-bold text-slate-700">Last Push</TableHead>
-                                                    <TableHead className="text-[11px] font-bold text-slate-700 text-right">Actions</TableHead>
+                                                    <TableHead className="text-xs font-bold text-slate-700 py-3">Device Name & Serial</TableHead>
+                                                    <TableHead className="text-xs font-bold text-slate-700">Type & Location</TableHead>
+                                                    <TableHead className="text-xs font-bold text-slate-700">Assigned Class / Section</TableHead>
+                                                    <TableHead className="text-xs font-bold text-slate-700">Status</TableHead>
+                                                    <TableHead className="text-xs font-bold text-slate-700">Last Push</TableHead>
+                                                    <TableHead className="text-xs font-bold text-slate-700 text-right pr-6">Actions</TableHead>
                                                 </TableRow>
                                             </TableHeader>
-                                            <TableBody>
+                                            <TableBody className="divide-y divide-slate-100">
                                                 {Array.isArray(zkDevices) && zkDevices.map((dev) => (
                                                     <TableRow key={dev.id} className="hover:bg-slate-50/60">
-                                                        <TableCell className="py-2.5">
+                                                        <TableCell className="py-3">
                                                             <div className="flex flex-col">
                                                                 <span className="text-xs font-bold text-slate-800">{dev.name}</span>
-                                                                <span className="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded w-fit mt-0.5">
+                                                                <span className="text-[10px] font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded w-fit mt-0.5 border border-indigo-100">
                                                                     SN: {dev.serial_number}
                                                                 </span>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="py-2.5">
-                                                            <div className="flex flex-col text-[11px] text-slate-600">
+                                                        <TableCell className="py-3">
+                                                            <div className="flex flex-col text-xs text-slate-600">
                                                                 <span className="capitalize font-semibold text-slate-700">
-                                                                    {dev.device_type === 'adms_push' ? 'Biometric ADMS Push' : dev.device_type}
+                                                                    {dev.device_type === 'adms_push' ? 'Visible Light Face / ADMS Push' : dev.device_type}
                                                                 </span>
                                                                 <span className="text-[10px] text-slate-400">
-                                                                    {dev.location || dev.ip_address || "Default Location"}
+                                                                    {dev.location || dev.ip_address || "Entrance Gate"}
                                                                 </span>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="py-2.5">
-                                                            <div className="text-[11px] text-slate-700 font-medium">
+                                                        <TableCell className="py-3">
+                                                            <div className="text-xs text-slate-700 font-medium">
                                                                 {dev.school_class ? (
                                                                     <span>
-                                                                        {dev.school_class.class_name || dev.school_class.name} {dev.section ? `- ${dev.section.section_name || dev.section.name}` : ''}
+                                                                        Class {dev.school_class.class_name || dev.school_class.name} {dev.section ? `(${dev.section.section_name || dev.section.name})` : ''}
                                                                     </span>
                                                                 ) : (
-                                                                    <span className="text-slate-400 italic">All Classes (Global)</span>
+                                                                    <span className="text-slate-400 italic">Global / All Classes</span>
                                                                 )}
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="py-2.5">
+                                                        <TableCell className="py-3">
                                                             <span className={cn(
-                                                                "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full",
+                                                                "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border",
                                                                 dev.is_online
-                                                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                                    : "bg-slate-100 text-slate-600 border border-slate-200"
+                                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                                    : "bg-slate-100 text-slate-600 border-slate-200"
                                                             )}>
                                                                 <span className={cn("h-1.5 w-1.5 rounded-full", dev.is_online ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
                                                                 {dev.is_online ? "ONLINE" : "OFFLINE"}
                                                             </span>
                                                         </TableCell>
-                                                        <TableCell className="py-2.5">
-                                                            <div className="flex flex-col text-[10px] text-slate-500">
-                                                                <span>{dev.last_push_at ? new Date(dev.last_push_at).toLocaleString() : "Never"}</span>
-                                                                <span className="text-[9px] text-slate-400">{dev.push_count || 0} total pushes</span>
+                                                        <TableCell className="py-3">
+                                                            <div className="flex flex-col text-[11px] text-slate-500">
+                                                                <span>{dev.last_push_at ? new Date(dev.last_push_at).toLocaleTimeString() : "Never"}</span>
+                                                                <span className="text-[9px] text-slate-400">{dev.push_count || 0} total logs</span>
                                                             </div>
                                                         </TableCell>
-                                                        <TableCell className="py-2.5 text-right">
+                                                        <TableCell className="py-3 text-right pr-6">
                                                             <div className="flex items-center justify-end gap-1">
                                                                 <Button
                                                                     type="button"
@@ -605,7 +633,7 @@ export default function QrCodeSettingPage() {
                                                                     size="sm"
                                                                     disabled={pullingDeviceId === dev.id}
                                                                     onClick={() => handlePullLogs(dev.id)}
-                                                                    className="h-7 text-[10px] px-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                                                    className="h-7 text-xs px-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                                                                     title="Pull & reprocess device attendance logs"
                                                                 >
                                                                     {pullingDeviceId === dev.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ArrowDownToLine className="h-3 w-3" />}
@@ -623,7 +651,7 @@ export default function QrCodeSettingPage() {
                                                                     type="button"
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    onClick={() => handleDeleteDevice(dev.id)}
+                                                                    onClick={() => confirmDeleteDevice(dev)}
                                                                     className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                                                                 >
                                                                     <Trash2 className="h-3.5 w-3.5" />
@@ -640,174 +668,198 @@ export default function QrCodeSettingPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Hardware Configuration & Processing Cards */}
+                    {/* 3. Camera Source & Notification Settings Split Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Hardware Configuration */}
-                        <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-0">
-                            <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                    <Monitor className="h-4 w-4" />
+                        {/* Camera Source & Lens Orientation */}
+                        <Card className="border border-slate-200 shadow-xs rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="flex flex-row items-center gap-2.5 px-5 py-4 bg-slate-50/70 border-b border-slate-100">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                                    <Camera className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("hardware_configuration")}</CardTitle>
+                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">Camera & Lens Configuration</CardTitle>
+                                    <p className="text-[11px] text-slate-500 mt-1">Configure mobile front/back camera orientation and IP streams</p>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-4 space-y-5">
-                                {/* Devices */}
+
+                            <CardContent className="p-5 space-y-5">
+                                {/* Hardware Toggles */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div
                                         onClick={() => setSettings({ ...settings, use_sensor_device: !settings.use_sensor_device })}
                                         className={cn(
-                                            "p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-2",
-                                            settings.use_sensor_device ? "bg-indigo-50/50 border-indigo-200" : "bg-gray-50 border-gray-100 hover:border-gray-200"
+                                            "p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-2",
+                                            settings.use_sensor_device ? "bg-indigo-50/40 border-indigo-200 shadow-xs" : "bg-slate-50/60 border-slate-200"
                                         )}
                                     >
                                         <div className="flex justify-between items-center">
-                                            <ScanLine className={cn("h-4 w-4", settings.use_sensor_device ? "text-indigo-600" : "text-gray-400")} />
-                                            <Checkbox checked={settings.use_sensor_device} className="data-[state=checked]:bg-indigo-600 h-3 w-3" />
+                                            <ScanLine className={cn("h-4 w-4", settings.use_sensor_device ? "text-indigo-600" : "text-slate-400")} />
+                                            <Checkbox checked={settings.use_sensor_device} className="data-[state=checked]:bg-indigo-600 h-3.5 w-3.5" />
                                         </div>
-                                        <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("hid_nfc_sensor")}</h4>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-800">USB / Sensor Device</h4>
+                                            <p className="text-[10px] text-slate-400">Barcode scanner & RFID cards</p>
+                                        </div>
                                     </div>
 
                                     <div
                                         onClick={() => setSettings({ ...settings, use_camera_device: !settings.use_camera_device })}
                                         className={cn(
-                                            "p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-2",
-                                            settings.use_camera_device ? "bg-indigo-50/50 border-indigo-200" : "bg-gray-50 border-gray-100 hover:border-gray-200"
+                                            "p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-2",
+                                            settings.use_camera_device ? "bg-indigo-50/40 border-indigo-200 shadow-xs" : "bg-slate-50/60 border-slate-200"
                                         )}
                                     >
                                         <div className="flex justify-between items-center">
-                                            <Camera className={cn("h-4 w-4", settings.use_camera_device ? "text-indigo-600" : "text-gray-400")} />
-                                            <Checkbox checked={settings.use_camera_device} className="data-[state=checked]:bg-indigo-600 h-3 w-3" />
+                                            <Camera className={cn("h-4 w-4", settings.use_camera_device ? "text-indigo-600" : "text-slate-400")} />
+                                            <Checkbox checked={settings.use_camera_device} className="data-[state=checked]:bg-indigo-600 h-3.5 w-3.5" />
                                         </div>
-                                        <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("visual_camera")}</h4>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-800">Visual Camera</h4>
+                                            <p className="text-[10px] text-slate-400">Mobile lens & IP cameras</p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Camera Source */}
                                 {settings.use_camera_device && (
-                                    <div className="space-y-3 pt-2 border-t border-gray-100">
-                                        <Label className="text-[10px] font-bold text-gray-600 uppercase">{t("camera_source")}</Label>
-                                        <div className="flex gap-4">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="radio" name="camera_type" value="primary" checked={settings.camera_type === 'primary'} onChange={(e) => setSettings({ ...settings, camera_type: e.target.value })} className="text-indigo-600" />
-                                                <span className="text-[11px] font-medium text-gray-700">{t("back_primary")}</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="radio" name="camera_type" value="secondary" checked={settings.camera_type === 'secondary'} onChange={(e) => setSettings({ ...settings, camera_type: e.target.value })} className="text-indigo-600" />
-                                                <span className="text-[11px] font-medium text-gray-700">{t("front_secondary")}</span>
-                                            </label>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="space-y-1.5">
-                                                <Label className="text-[10px] font-bold text-gray-600 uppercase">{t("camera_manufacturer")}</Label>
-                                                <Select value={settings.ip_camera_brand} onValueChange={(val) => setSettings({ ...settings, ip_camera_brand: val })}>
-                                                    <SelectTrigger className="h-8 text-[11px]">
-                                                        <SelectValue placeholder={t("select_brand")} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="generic">{t("generic_direct_stream")}</SelectItem>
-                                                        <SelectItem value="onvif">{t("onvif_standard")}</SelectItem>
-                                                        <SelectItem value="hikvision">Hikvision</SelectItem>
-                                                        <SelectItem value="dahua">Dahua</SelectItem>
-                                                        <SelectItem value="zk">ZK (ZKTeco)</SelectItem>
-                                                        <SelectItem value="foscam">Foscam</SelectItem>
-                                                        <SelectItem value="esp32cam">ESP32-CAM</SelectItem>
-                                                        <SelectItem value="tplink">TP-Link VIGI</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div className="space-y-1.5">
-                                                <Label className="text-[10px] font-bold text-gray-600 uppercase">{t("rtsp_transport")}</Label>
-                                                <Select value={settings.ip_camera_rtsp_transport} onValueChange={(val) => setSettings({ ...settings, ip_camera_rtsp_transport: val })}>
-                                                    <SelectTrigger className="h-8 text-[11px]">
-                                                        <SelectValue placeholder={t("protocol")} />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="auto">Auto</SelectItem>
-                                                        <SelectItem value="tcp">TCP</SelectItem>
-                                                        <SelectItem value="udp">UDP</SelectItem>
-                                                        <SelectItem value="http">HTTP</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1.5">
-                                                <Wifi className="h-3 w-3 text-gray-400" /> {t("ip_camera_address_url")}
+                                    <div className="space-y-4 pt-3 border-t border-slate-100">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                                                <Smartphone className="h-3.5 w-3.5 text-indigo-600" /> Default Camera Lens
                                             </Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    value={settings.ip_camera_url}
-                                                    onChange={(e) => setSettings({ ...settings, ip_camera_url: e.target.value })}
-                                                    placeholder={t("ip_camera_address_placeholder")}
-                                                    className="h-8 text-[11px] flex-1"
-                                                />
-                                                <Dialog open={scanDialogOpen} onOpenChange={setScanDialogOpen}>
-                                                    <DialogTrigger asChild>
-                                                        <Button type="button" variant="outline" className="h-8 text-[10px] border-indigo-200 text-indigo-600 hover:bg-indigo-50 flex gap-1 items-center px-2">
-                                                            <Network className="h-3 w-3" /> {t("scan")}
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="sm:max-w-lg">
-                                                        <DialogHeader>
-                                                            <DialogTitle className="text-sm flex items-center gap-2">
-                                                                <Search className="h-4 w-4 text-indigo-500" />
-                                                                {t("scan_network_for_ip_cameras")}
-                                                            </DialogTitle>
-                                                            <DialogDescription className="text-[11px]">
-                                                                {t("enter_subnet_to_scan")}
-                                                            </DialogDescription>
-                                                        </DialogHeader>
-                                                        <div className="space-y-3 py-2">
-                                                            <div className="flex items-center gap-2">
-                                                                <Label className="text-[10px] font-bold text-gray-600 whitespace-nowrap">{t("subnet")}:</Label>
-                                                                <Input value={scanSubnet} onChange={(e) => setScanSubnet(e.target.value)} placeholder={t("subnet_placeholder")} className="h-8 text-[11px] flex-1" disabled={scanning} />
-                                                                <Button onClick={handleScanNetwork} disabled={scanning || !scanSubnet} className="h-8 text-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-3 flex gap-1 items-center">
-                                                                    {scanning ? <Loader2 className="h-3 w-3 animate-spin" /> : <Network className="h-3 w-3" />}
-                                                                    {scanning ? t("scanning") : t("start_scan")}
-                                                                </Button>
-                                                            </div>
-                                                            {scanning && (
-                                                                <div className="flex items-center gap-2 text-[11px] text-indigo-600 animate-pulse">
-                                                                    <Loader2 className="h-3 w-3 animate-spin" /> {t("scanning_254_ips")}
-                                                                </div>
-                                                            )}
-                                                            {discoveredCameras.length > 0 ? (
-                                                                <TableSkeleton />
-                                                            ) : !scanning && (
-                                                                <p className="text-[10px] text-gray-400 text-center py-4">{t("no_cameras_found_try_different_subnet")}</p>
-                                                            )}
-                                                        </div>
-                                                        <DialogFooter>
-                                                            <Button variant="outline" onClick={() => setScanDialogOpen(false)} className="h-8 text-[10px]">{t("close")}</Button>
-                                                        </DialogFooter>
-                                                    </DialogContent>
-                                                </Dialog>
-                                            </div>
-                                            <p className="text-[9px] text-gray-400">{t("leave_empty_to_use_local_webcams")}</p>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={startCameraTest}
+                                                className="h-7 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1"
+                                            >
+                                                <Camera className="h-3 w-3" /> Test Camera Feed
+                                            </Button>
                                         </div>
 
-                                        {/* IP Camera Auth */}
-                                        <div className="space-y-2 pt-2 border-t border-gray-100">
-                                            <div className="flex items-center justify-between">
-                                                <Label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1.5">
-                                                    <ShieldCheck className="h-3 w-3 text-gray-400" /> {t("ip_camera_authentication")}
-                                                </Label>
-                                                <Switch checked={settings.ip_camera_auth_enabled} onCheckedChange={(val) => setSettings({ ...settings, ip_camera_auth_enabled: val })} className="data-[state=checked]:bg-indigo-500 scale-75" />
+                                        {/* Camera Lens Orientation Selector */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div
+                                                onClick={() => setSettings({ ...settings, camera_type: 'primary' })}
+                                                className={cn(
+                                                    "p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5",
+                                                    settings.camera_type === 'primary' ? "bg-indigo-50 border-indigo-300 text-indigo-900 shadow-xs" : "bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-slate-100/60"
+                                                )}
+                                            >
+                                                <Smartphone className="h-4 w-4 shrink-0 text-indigo-600" />
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold leading-tight">Back Camera 📷</p>
+                                                    <p className="text-[10px] text-slate-500">For phone scanning student badges</p>
+                                                </div>
                                             </div>
-                                            {settings.ip_camera_auth_enabled && (
-                                                <div className="grid grid-cols-2 gap-2 mt-2">
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-[9px] font-bold text-gray-500 uppercase">{t("username")}</Label>
-                                                        <Input value={settings.ip_camera_username || ''} onChange={(e) => setSettings({ ...settings, ip_camera_username: e.target.value })} placeholder="admin" className="h-7 text-[10px]" />
+
+                                            <div
+                                                onClick={() => setSettings({ ...settings, camera_type: 'secondary' })}
+                                                className={cn(
+                                                    "p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-2.5",
+                                                    settings.camera_type === 'secondary' ? "bg-indigo-50 border-indigo-300 text-indigo-900 shadow-xs" : "bg-slate-50/70 border-slate-200 text-slate-600 hover:bg-slate-100/60"
+                                                )}
+                                            >
+                                                <ScanFace className="h-4 w-4 shrink-0 text-indigo-600" />
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold leading-tight">Front Camera 🤳</p>
+                                                    <p className="text-[10px] text-slate-500">For tablet / iPad desk kiosks</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* IP Camera RTSP / HTTP Stream Option */}
+                                        <div className="space-y-3 pt-3 border-t border-slate-100">
+                                            <div className="space-y-1">
+                                                <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                                    <Wifi className="h-3.5 w-3.5 text-indigo-600" /> External IP Camera Stream URL (Optional)
+                                                </Label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        value={settings.ip_camera_url}
+                                                        onChange={(e) => setSettings({ ...settings, ip_camera_url: e.target.value })}
+                                                        placeholder="Leave empty for device/phone camera or http://192.168.1.100"
+                                                        className="h-9 text-xs flex-1 bg-white border-slate-200"
+                                                    />
+                                                    <Dialog open={scanDialogOpen} onOpenChange={setScanDialogOpen}>
+                                                        <DialogTrigger asChild>
+                                                            <Button type="button" variant="outline" className="h-9 text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50 flex gap-1 items-center px-3">
+                                                                <Network className="h-3.5 w-3.5" /> Scan Network
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent className="sm:max-w-lg rounded-2xl">
+                                                            <DialogHeader>
+                                                                <DialogTitle className="text-sm flex items-center gap-2">
+                                                                    <Search className="h-4 w-4 text-indigo-500" />
+                                                                    Scan Local Subnet for IP Cameras
+                                                                </DialogTitle>
+                                                                <DialogDescription className="text-xs">
+                                                                    Discover ONVIF and RTSP streaming cameras on your local network
+                                                                </DialogDescription>
+                                                            </DialogHeader>
+                                                            <div className="space-y-3 py-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Input
+                                                                        value={scanSubnet}
+                                                                        onChange={(e) => setScanSubnet(e.target.value)}
+                                                                        placeholder="192.168.1"
+                                                                        className="h-8 text-xs flex-1"
+                                                                        disabled={scanning}
+                                                                    />
+                                                                    <Button
+                                                                        onClick={handleScanNetwork}
+                                                                        disabled={scanning || !scanSubnet}
+                                                                        className="h-8 text-xs bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-3.5 flex gap-1"
+                                                                    >
+                                                                        {scanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Network className="h-3.5 w-3.5" />}
+                                                                        {scanning ? "Scanning..." : "Start Scan"}
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                            <DialogFooter>
+                                                                <Button variant="outline" onClick={() => setScanDialogOpen(false)} className="text-xs">Close</Button>
+                                                            </DialogFooter>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                </div>
+                                                <p className="text-[10px] text-emerald-600 font-medium">
+                                                    ✨ Leave empty to automatically use your phone, iPad, or computer webcam.
+                                                </p>
+                                            </div>
+
+                                            {settings.ip_camera_url && (
+                                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Manufacturer Brand</Label>
+                                                        <Select value={settings.ip_camera_brand} onValueChange={(val) => setSettings({ ...settings, ip_camera_brand: val })}>
+                                                            <SelectTrigger className="h-8 text-xs bg-white border-slate-200">
+                                                                <SelectValue placeholder="Brand" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="generic">Generic Direct Stream</SelectItem>
+                                                                <SelectItem value="onvif">ONVIF Standard</SelectItem>
+                                                                <SelectItem value="hikvision">Hikvision</SelectItem>
+                                                                <SelectItem value="dahua">Dahua</SelectItem>
+                                                                <SelectItem value="zk">ZKTeco</SelectItem>
+                                                                <SelectItem value="tplink">TP-Link VIGI</SelectItem>
+                                                                <SelectItem value="esp32cam">ESP32-CAM</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
-                                                    <div className="space-y-1.5">
-                                                        <Label className="text-[9px] font-bold text-gray-500 uppercase">{t("password")}</Label>
-                                                        <Input type="password" value={settings.ip_camera_password || ''} onChange={(e) => setSettings({ ...settings, ip_camera_password: e.target.value })} placeholder="••••••••" className="h-7 text-[10px]" />
+
+                                                    <div className="space-y-1">
+                                                        <Label className="text-[10px] font-bold text-slate-500 uppercase">Transport Protocol</Label>
+                                                        <Select value={settings.ip_camera_rtsp_transport} onValueChange={(val) => setSettings({ ...settings, ip_camera_rtsp_transport: val })}>
+                                                            <SelectTrigger className="h-8 text-xs bg-white border-slate-200">
+                                                                <SelectValue placeholder="Protocol" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="auto">Auto Protocol</SelectItem>
+                                                                <SelectItem value="tcp">TCP Transport</SelectItem>
+                                                                <SelectItem value="udp">UDP Transport</SelectItem>
+                                                                <SelectItem value="http">HTTP Streaming</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
                                                 </div>
                                             )}
@@ -817,75 +869,106 @@ export default function QrCodeSettingPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Processing & Notifications */}
-                        <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                            <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                    <QrCode className="h-4 w-4" />
+                        {/* Automated Entry & Notification Dispatcher */}
+                        <Card className="border border-slate-200 shadow-xs rounded-2xl overflow-hidden bg-white">
+                            <CardHeader className="flex flex-row items-center gap-2.5 px-5 py-4 bg-slate-50/70 border-b border-slate-100">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                                    <Bell className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">{t("processing_notifications")}</CardTitle>
+                                    <CardTitle className="text-sm font-bold text-slate-800 leading-none">Automated Entry & Notifications</CardTitle>
+                                    <p className="text-[11px] text-slate-500 mt-1">Configure auto attendance recording and parent/staff alerts</p>
                                 </div>
                             </CardHeader>
-                            <CardContent className="p-4 space-y-6">
-                                {/* Auto Attendance */}
-                                <div className="flex items-center justify-between p-3 rounded-lg border border-gray-100 bg-gray-50/30">
+
+                            <CardContent className="p-5 space-y-5">
+                                {/* Auto Attendance Card */}
+                                <div className="flex items-center justify-between p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
                                     <div className="flex flex-col">
-                                        <span className="text-[11px] font-bold text-gray-700 uppercase">{t("automated_entry")}</span>
-                                        <span className="text-[10px] text-gray-400">{t("auto_submit_without_manual_click")}</span>
+                                        <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <Zap className="h-3.5 w-3.5 text-amber-500" /> Automated Auto-Entry Recording
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 mt-0.5">
+                                            Auto-submit and log attendance immediately upon card swipe or face recognition without manual clicks
+                                        </span>
                                     </div>
-                                    <Switch checked={settings.auto_attendance} onCheckedChange={(val) => setSettings({ ...settings, auto_attendance: val })} className="data-[state=checked]:bg-indigo-500" />
+                                    <Switch
+                                        checked={settings.auto_attendance}
+                                        onCheckedChange={(val) => setSettings({ ...settings, auto_attendance: val })}
+                                        className="data-[state=checked]:bg-indigo-600"
+                                    />
                                 </div>
 
-                                {/* Notification Triggers */}
-                                <div className="space-y-3">
-                                    <Label className="text-[10px] font-bold text-gray-600 uppercase flex items-center gap-1.5 border-b border-gray-100 pb-2">
-                                        <Bell className="h-3 w-3 text-indigo-500" /> {t("notification_triggers")}
+                                {/* Event Triggers */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                                        <Bell className="h-3.5 w-3.5 text-indigo-500" /> Notification Event Triggers
                                     </Label>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
-                                            <Checkbox checked={settings.notify_in} onCheckedChange={(val) => setSettings({ ...settings, notify_in: !!val })} className="data-[state=checked]:bg-indigo-600" />
-                                            <span className="text-[11px] font-medium text-gray-700">{t("attendance_in")}</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <label className="flex items-center gap-2.5 cursor-pointer p-3 bg-slate-50/70 hover:bg-slate-100/60 rounded-xl border border-slate-200 transition-all">
+                                            <Checkbox
+                                                checked={settings.notify_in}
+                                                onCheckedChange={(val) => setSettings({ ...settings, notify_in: !!val })}
+                                                className="data-[state=checked]:bg-indigo-600"
+                                            />
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-800">Check-in (In Event)</p>
+                                                <p className="text-[10px] text-slate-400">Notify upon arrival</p>
+                                            </div>
                                         </label>
-                                        <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
-                                            <Checkbox checked={settings.notify_out} onCheckedChange={(val) => setSettings({ ...settings, notify_out: !!val })} className="data-[state=checked]:bg-indigo-600" />
-                                            <span className="text-[11px] font-medium text-gray-700">{t("attendance_out")}</span>
+
+                                        <label className="flex items-center gap-2.5 cursor-pointer p-3 bg-slate-50/70 hover:bg-slate-100/60 rounded-xl border border-slate-200 transition-all">
+                                            <Checkbox
+                                                checked={settings.notify_out}
+                                                onCheckedChange={(val) => setSettings({ ...settings, notify_out: !!val })}
+                                                className="data-[state=checked]:bg-indigo-600"
+                                            />
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-800">Check-out (Out Event)</p>
+                                                <p className="text-[10px] text-slate-400">Notify upon departure</p>
+                                            </div>
                                         </label>
                                     </div>
                                 </div>
 
                                 {/* Action Channels */}
-                                <div className="space-y-3">
-                                    <Label className="text-[10px] font-bold text-gray-600 uppercase border-b border-gray-100 pb-2 flex items-center gap-1.5">
-                                        <MessageSquare className="h-3 w-3 text-emerald-500" /> {t("action_channels")}
+                                <div className="space-y-2 pt-2 border-t border-slate-100">
+                                    <Label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                                        <MessageSquare className="h-3.5 w-3.5 text-emerald-500" /> Alert Delivery Channels
                                     </Label>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div
                                             onClick={() => setSettings({ ...settings, notify_sms: !settings.notify_sms })}
                                             className={cn(
-                                                "p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-2",
-                                                settings.notify_sms ? "bg-indigo-50/50 border-indigo-200" : "bg-gray-50 border-gray-100 hover:border-gray-200"
+                                                "p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between",
+                                                settings.notify_sms ? "bg-indigo-50/50 border-indigo-200 shadow-xs" : "bg-slate-50/70 border-slate-200"
                                             )}
                                         >
-                                            <div className="flex justify-between items-center">
-                                                <MessageSquare className={cn("h-4 w-4", settings.notify_sms ? "text-indigo-600" : "text-gray-400")} />
-                                                <Checkbox checked={settings.notify_sms} className="data-[state=checked]:bg-indigo-600 h-3 w-3" />
+                                            <div className="flex items-center gap-2">
+                                                <Phone className={cn("h-4 w-4", settings.notify_sms ? "text-indigo-600" : "text-slate-400")} />
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">SMS Gateway</p>
+                                                    <p className="text-[10px] text-slate-400">Direct mobile text</p>
+                                                </div>
                                             </div>
-                                            <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("send_sms")}</h4>
+                                            <Checkbox checked={settings.notify_sms} className="data-[state=checked]:bg-indigo-600 h-3.5 w-3.5" />
                                         </div>
 
                                         <div
                                             onClick={() => setSettings({ ...settings, notify_whatsapp: !settings.notify_whatsapp })}
                                             className={cn(
-                                                "p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-2",
-                                                settings.notify_whatsapp ? "bg-emerald-50/50 border-emerald-200" : "bg-gray-50 border-gray-100 hover:border-gray-200"
+                                                "p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between",
+                                                settings.notify_whatsapp ? "bg-indigo-50/50 border-indigo-200 shadow-xs" : "bg-slate-50/70 border-slate-200"
                                             )}
                                         >
-                                            <div className="flex justify-between items-center">
-                                                <Phone className={cn("h-4 w-4", settings.notify_whatsapp ? "text-emerald-600" : "text-gray-400")} />
-                                                <Checkbox checked={settings.notify_whatsapp} className="data-[state=checked]:bg-emerald-600 h-3 w-3" />
+                                            <div className="flex items-center gap-2">
+                                                <MessageSquare className={cn("h-4 w-4", settings.notify_whatsapp ? "text-emerald-600" : "text-slate-400")} />
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800">WhatsApp Alert</p>
+                                                    <p className="text-[10px] text-slate-400">Instant parent message</p>
+                                                </div>
                                             </div>
-                                            <h4 className="text-[10px] font-bold uppercase text-gray-800">{t("whatsapp_alert")}</h4>
+                                            <Checkbox checked={settings.notify_whatsapp} className="data-[state=checked]:bg-indigo-600 h-3.5 w-3.5" />
                                         </div>
                                     </div>
                                 </div>
@@ -895,16 +978,16 @@ export default function QrCodeSettingPage() {
                 </div>
             )}
 
-            {/* Modal Dialog to Register / Edit ZKTeco Device */}
+            {/* ZKTeco Device Registration & Edit Modal */}
             <Dialog open={deviceModalOpen} onOpenChange={setDeviceModalOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="max-w-md rounded-2xl p-6">
                     <DialogHeader>
-                        <DialogTitle className="text-sm font-bold flex items-center gap-2 text-indigo-900">
-                            <Cpu className="h-4 w-4 text-indigo-600" />
-                            {editingDevice ? "Edit ZKTeco Device" : "Register New ZKTeco Device"}
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                            <Cpu className="h-5 w-5 text-indigo-600" />
+                            {editingDevice ? "Edit ZKTeco Hardware Terminal" : "Register New ZKTeco Device"}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-slate-500">
-                            Enter the hardware Serial Number to collect fingerprint/NFC attendance and map to students by Class & Section.
+                            Enter the hardware serial number to bind attendance push records from this terminal.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -912,80 +995,59 @@ export default function QrCodeSettingPage() {
                         <div className="space-y-1">
                             <Label className="text-xs font-bold text-slate-700">Device Name <span className="text-rose-500">*</span></Label>
                             <Input
+                                placeholder="e.g. Main Gate SpeedFace V5L"
                                 value={deviceForm.name}
                                 onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })}
-                                placeholder="e.g. Main Gate Biometric Terminal"
-                                className="h-8 text-xs"
+                                className="h-8 text-xs bg-white border-slate-200"
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <Label className="text-xs font-bold text-slate-700">Serial Number (SN) <span className="text-rose-500">*</span></Label>
-                                <Input
-                                    value={deviceForm.serial_number}
-                                    onChange={(e) => setDeviceForm({ ...deviceForm, serial_number: e.target.value })}
-                                    placeholder="e.g. C26690330012"
-                                    className="h-8 text-xs font-mono"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label className="text-xs font-bold text-slate-700">Protocol Type</Label>
-                                <Select
-                                    value={deviceForm.device_type}
-                                    onValueChange={(val) => setDeviceForm({ ...deviceForm, device_type: val })}
-                                >
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="adms_push">ZK ADMS Push Protocol</SelectItem>
-                                        <SelectItem value="fingerprint">Fingerprint Biometric</SelectItem>
-                                        <SelectItem value="nfc">NFC / RFID Card</SelectItem>
-                                        <SelectItem value="face_nfc">Face + NFC Combo</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-bold text-slate-700">Serial Number (SN) <span className="text-rose-500">*</span></Label>
+                            <Input
+                                placeholder="e.g. BKT7194600123"
+                                value={deviceForm.serial_number}
+                                onChange={(e) => setDeviceForm({ ...deviceForm, serial_number: e.target.value.trim() })}
+                                className="h-8 text-xs font-mono uppercase bg-white border-slate-200"
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                                 <Label className="text-xs font-bold text-slate-700">IP Address (Optional)</Label>
                                 <Input
+                                    placeholder="192.168.1.201"
                                     value={deviceForm.ip_address}
                                     onChange={(e) => setDeviceForm({ ...deviceForm, ip_address: e.target.value })}
-                                    placeholder="e.g. 192.168.1.201"
-                                    className="h-8 text-xs"
+                                    className="h-8 text-xs bg-white border-slate-200"
                                 />
                             </div>
-
                             <div className="space-y-1">
-                                <Label className="text-xs font-bold text-slate-700">Location / Room</Label>
+                                <Label className="text-xs font-bold text-slate-700">Port</Label>
                                 <Input
-                                    value={deviceForm.location}
-                                    onChange={(e) => setDeviceForm({ ...deviceForm, location: e.target.value })}
-                                    placeholder="e.g. Front Gate / Academic Block A"
-                                    className="h-8 text-xs"
+                                    placeholder="4370"
+                                    value={deviceForm.port}
+                                    onChange={(e) => setDeviceForm({ ...deviceForm, port: e.target.value })}
+                                    className="h-8 text-xs bg-white border-slate-200"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label className="text-xs font-bold text-slate-700">Map to Class (Optional)</Label>
+                                <Label className="text-xs font-bold text-slate-700">Assigned Class</Label>
                                 <Select
-                                    value={deviceForm.school_class_id}
+                                    value={deviceForm.school_class_id || "all"}
                                     onValueChange={(val) => setDeviceForm({ ...deviceForm, school_class_id: val })}
                                 >
-                                    <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="All Classes (Global)" />
+                                    <SelectTrigger className="h-8 text-xs bg-white border-slate-200">
+                                        <SelectValue placeholder="All Classes" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Classes (Global)</SelectItem>
-                                        {Array.isArray(classes) && classes.map((cls: any) => (
-                                            <SelectItem key={cls.id} value={String(cls.id)}>
-                                                {cls.class_name || cls.name}
+                                        {classes.map((c: any) => (
+                                            <SelectItem key={c.id} value={String(c.id)}>
+                                                {c.class_name || c.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -993,19 +1055,19 @@ export default function QrCodeSettingPage() {
                             </div>
 
                             <div className="space-y-1">
-                                <Label className="text-xs font-bold text-slate-700">Map to Section (Optional)</Label>
+                                <Label className="text-xs font-bold text-slate-700">Assigned Section</Label>
                                 <Select
-                                    value={deviceForm.section_id}
+                                    value={deviceForm.section_id || "all"}
                                     onValueChange={(val) => setDeviceForm({ ...deviceForm, section_id: val })}
                                 >
-                                    <SelectTrigger className="h-8 text-xs">
+                                    <SelectTrigger className="h-8 text-xs bg-white border-slate-200">
                                         <SelectValue placeholder="All Sections" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Sections</SelectItem>
-                                        {Array.isArray(sections) && sections.map((sec: any) => (
-                                            <SelectItem key={sec.id} value={String(sec.id)}>
-                                                {sec.section_name || sec.name}
+                                        {sections.map((s: any) => (
+                                            <SelectItem key={s.id} value={String(s.id)}>
+                                                {s.section_name || s.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1014,37 +1076,96 @@ export default function QrCodeSettingPage() {
                         </div>
 
                         <div className="space-y-1">
-                            <Label className="text-xs font-bold text-slate-700">Notes / Setup Info</Label>
-                            <Textarea
-                                value={deviceForm.notes}
-                                onChange={(e) => setDeviceForm({ ...deviceForm, notes: e.target.value })}
-                                placeholder="Device location or configuration notes..."
-                                className="h-16 text-xs resize-none"
+                            <Label className="text-xs font-bold text-slate-700">Physical Location</Label>
+                            <Input
+                                placeholder="e.g. Entrance Gate A / Science Lab"
+                                value={deviceForm.location}
+                                onChange={(e) => setDeviceForm({ ...deviceForm, location: e.target.value })}
+                                className="h-8 text-xs bg-white border-slate-200"
                             />
                         </div>
                     </div>
 
-                    <DialogFooter className="gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setDeviceModalOpen(false)}
-                            className="h-8 text-xs"
-                        >
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={() => setDeviceModalOpen(false)} className="text-xs">
                             Cancel
                         </Button>
                         <Button
-                            type="button"
                             onClick={handleSaveDevice}
-                            disabled={savingDevice}
-                            className="h-8 text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4"
+                            disabled={savingDevice || !deviceForm.name || !deviceForm.serial_number}
+                            className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
                         >
                             {savingDevice ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-                            {editingDevice ? "Update Device" : "Save ZKTeco Device"}
+                            {editingDevice ? "Update Device" : "Register Device"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Live Camera Testing Modal */}
+            <Dialog open={cameraTestOpen} onOpenChange={(open) => { if (!open) stopCameraTest(); }}>
+                <DialogContent className="max-w-md rounded-2xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                            <Camera className="h-5 w-5 text-indigo-600" />
+                            Live Camera Source Test
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-slate-500">
+                            Verifying live video feed from {settings.camera_type === 'secondary' ? 'Front / Selfie Camera' : 'Back / Rear Camera'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="relative aspect-video bg-slate-950 rounded-2xl overflow-hidden flex items-center justify-center my-2 border border-slate-800">
+                        {cameraTesting ? (
+                            <div className="flex flex-col items-center gap-2 text-white text-xs">
+                                <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                                Initializing video stream...
+                            </div>
+                        ) : (
+                            <video
+                                ref={previewVideoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className={cn("w-full h-full object-cover", settings.camera_type === 'secondary' && "scale-x-[-1]")}
+                            />
+                        )}
+                        <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                            {settings.camera_type === 'secondary' ? 'Front / Selfie Lens 🤳' : 'Back / Rear Lens 📷'}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button onClick={stopCameraTest} className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white w-full">
+                            Close Camera Preview
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Device Confirmation Dialog */}
+            <AlertDialog open={deleteDeviceOpen} onOpenChange={setDeleteDeviceOpen}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-base font-bold text-slate-800">
+                            Delete ZKTeco Device?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-slate-500">
+                            Are you sure you want to remove <strong>{deviceToDelete?.name}</strong> (SN: <code>{deviceToDelete?.serial_number}</code>)? The server will stop processing automated push logs from this terminal.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="text-xs">Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteDevice}
+                            className="text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white"
+                        >
+                            Delete Device
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -287,11 +287,14 @@ export default function CollectStudentFeesPage({ params }: { params: Promise<{ i
         try {
             const fullName = [studentData?.name, studentData?.last_name].filter(Boolean).join(" ") || "Student";
             const email = studentData?.email || "student@example.com";
+            const activeOnline = paymentSettings.find(s => s.status && s.provider !== 'offline')?.provider || 'uddoktapay';
+            const endpoint = activeOnline === 'paypal' ? '/payment/paypal/initiate' : '/payment/uddoktapay/initiate';
 
-            const res = await api.post('/payment/uddoktapay/initiate', {
+            const res = await api.post(endpoint, {
                 amount: amountVal + (parseFloat(paymentData.fine) || 0) - (parseFloat(paymentData.discount) || 0),
                 full_name: fullName,
                 email: email,
+                description: `${selectedFee.fee_master?.fee_type?.name || 'Fee'} Payment for ${fullName}`,
                 metadata: {
                     student_id: id,
                     student_fee_master_id: !selectedFee.is_transport ? selectedFee.id : undefined,
@@ -303,7 +306,7 @@ export default function CollectStudentFeesPage({ params }: { params: Promise<{ i
             });
 
             if (res.data?.status === 'success' && res.data?.payment_url) {
-                sonnerToast.success("Redirecting to UddoktaPay Checkout...");
+                sonnerToast.success(`Redirecting to ${activeOnline === 'paypal' ? 'PayPal' : 'UddoktaPay'} Checkout...`);
                 window.open(res.data.payment_url, '_blank');
             } else {
                 sonnerToast.error(res.data?.message || "Failed to initiate online checkout");

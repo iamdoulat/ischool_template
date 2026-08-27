@@ -40,6 +40,12 @@ import {
     Trash2,
     ArrowUpDown,
     Library,
+    BookOpen,
+    Barcode,
+    User,
+    Tag,
+    MapPin,
+    Calendar,
 } from "lucide-react";
 import {
     Select,
@@ -337,23 +343,22 @@ export default function BookListPage() {
                     </div>
 
                     {/* Table */}
-                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
-                        <Table className="min-w-[1200px]">
-                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                    <div className="rounded-xl border border-gray-200/80 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                        <Table className="min-w-[1250px]">
+                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] uppercase tracking-wider border-b border-gray-200/80">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("book_title")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("description")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("book_number")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("isbn_number")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("publisher")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("author")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("subject")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("rack_number")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("qty")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("available")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("book_price")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("post_date")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right sticky right-0 bg-gray-50 shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">{t("action")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4"><div className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5 text-indigo-500" /> {t("book_title")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Barcode className="h-3.5 w-3.5 text-slate-500" /> {t("book_number")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3">{t("isbn_number")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3">{t("publisher")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-500" /> {t("author")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Tag className="h-3.5 w-3.5 text-indigo-500" /> {t("subject")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-amber-600" /> {t("rack_number")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3 text-center">{t("qty")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3 text-center">{t("available")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3">{t("book_price")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400" /> {t("post_date")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4 text-right sticky right-0 bg-gray-50/95 shadow-[-4px_0_10px_rgba(0,0,0,0.03)]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -361,41 +366,138 @@ export default function BookListPage() {
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : books.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            {t("no_books_found")}
+                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <Library className="h-8 w-8 text-gray-300 stroke-1" />
+                                                <span>{t("no_books_found")}</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : books.map((book) => (
-                                    <TableRow key={book.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap group">
-                                        <TableCell className="py-3 text-gray-700 font-medium">{book.title}</TableCell>
-                                        <TableCell className="py-3 text-gray-400 max-w-[200px] truncate" title={book.description}>{book.description || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.book_number}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.isbn_number || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.publisher || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.author || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.subject || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.rack_number || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.qty}</TableCell>
-                                        <TableCell className="py-3 font-bold text-indigo-600">{book.available}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.price ? `${currencySymbol}${book.price}` : "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{book.post_date ? formatDate(book.post_date) : "-"}</TableCell>
-                                        <TableCell className="py-3 text-right sticky right-0 bg-white group-hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer shadow-[-4px_0_10px_rgba(0,0,0,0.02)]">
-                                            <div className="flex items-center justify-end gap-1">
+                                    <TableRow key={book.id} className="text-xs hover:bg-indigo-50/40 border-b border-gray-100 hover:shadow-xs relative transition-all duration-200 whitespace-nowrap group">
+                                        {/* Book Title & Description */}
+                                        <TableCell className="py-3 px-4 text-gray-800">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-9 w-9 rounded-lg bg-indigo-50/80 border border-indigo-100/80 flex items-center justify-center shrink-0 text-indigo-600 group-hover:scale-105 transition-transform">
+                                                    <BookOpen className="h-4 w-4" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                                                        {book.title}
+                                                    </p>
+                                                    {book.description && (
+                                                        <p className="text-[11px] text-gray-400 truncate max-w-[220px] mt-0.5" title={book.description}>
+                                                            {book.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </TableCell>
+
+                                        {/* Book Number */}
+                                        <TableCell className="py-3 px-3">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono font-bold text-[11px] border border-slate-200/70">
+                                                #{book.book_number}
+                                            </span>
+                                        </TableCell>
+
+                                        {/* ISBN Number */}
+                                        <TableCell className="py-3 px-3 text-gray-600 font-mono text-[11px]">
+                                            {book.isbn_number ? (
+                                                <span className="text-gray-700">{book.isbn_number}</span>
+                                            ) : (
+                                                <span className="text-gray-300 font-sans">—</span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Publisher */}
+                                        <TableCell className="py-3 px-3 text-gray-600 font-medium">
+                                            {book.publisher || <span className="text-gray-300 font-normal">—</span>}
+                                        </TableCell>
+
+                                        {/* Author */}
+                                        <TableCell className="py-3 px-3 text-gray-700 font-medium">
+                                            {book.author ? (
+                                                <span className="inline-flex items-center gap-1">
+                                                    <span>{book.author}</span>
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-300 font-normal">—</span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Subject */}
+                                        <TableCell className="py-3 px-3">
+                                            {book.subject ? (
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-200/60">
+                                                    {book.subject}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-300">—</span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Rack Number */}
+                                        <TableCell className="py-3 px-3">
+                                            {book.rack_number ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-mono font-semibold text-[10px] border border-amber-200/60">
+                                                    <MapPin className="h-2.5 w-2.5 text-amber-600" />
+                                                    Rack {book.rack_number}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-300">—</span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Quantity */}
+                                        <TableCell className="py-3 px-3 text-center font-bold text-gray-700">
+                                            {book.qty}
+                                        </TableCell>
+
+                                        {/* Available */}
+                                        <TableCell className="py-3 px-3 text-center">
+                                            {book.available > 0 ? (
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200/70 shadow-2xs">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                    {book.available} Available
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 font-bold text-[10px] border border-rose-200/70">
+                                                    Out of Stock
+                                                </span>
+                                            )}
+                                        </TableCell>
+
+                                        {/* Book Price */}
+                                        <TableCell className="py-3 px-3 font-bold text-gray-800">
+                                            {book.price ? `${currencySymbol}${book.price}` : <span className="text-gray-300 font-normal font-sans">—</span>}
+                                        </TableCell>
+
+                                        {/* Post Date */}
+                                        <TableCell className="py-3 px-3 text-gray-500 text-[11px]">
+                                            {book.post_date ? formatDate(book.post_date) : <span className="text-gray-300">—</span>}
+                                        </TableCell>
+
+                                        {/* Action Buttons */}
+                                        <TableCell className="py-3 px-4 text-right sticky right-0 bg-white group-hover:bg-indigo-50/40 shadow-[-4px_0_10px_rgba(0,0,0,0.03)]">
+                                            <div className="flex items-center justify-end gap-1.5">
                                                 <Button
                                                     size="sm"
+                                                    variant="ghost"
                                                     onClick={() => handleEditClick(book)}
-                                                    className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                    className="h-7 w-7 text-amber-600 bg-amber-50 hover:bg-amber-500 hover:text-white border border-amber-200/70 rounded-md p-0 shadow-2xs active:scale-95 transition-all cursor-pointer"
                                                     title={t("edit")}
                                                 >
-                                                    <Pencil className="h-4 w-4" />
+                                                    <Pencil className="h-3.5 w-3.5" />
                                                 </Button>
                                                 <Button
                                                     size="sm"
+                                                    variant="ghost"
                                                     onClick={() => handleDeleteClick(book.id)}
-                                                    className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                    className="h-7 w-7 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white border border-red-200/70 rounded-md p-0 shadow-2xs active:scale-95 transition-all cursor-pointer"
                                                     title={t("delete")}
                                                 >
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         </TableCell>

@@ -40,6 +40,11 @@ import {
     Trash2,
     GraduationCap,
     SlidersHorizontal,
+    BadgeCheck,
+    CreditCard,
+    User,
+    Calendar,
+    Phone,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -65,6 +70,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useImageUrl } from "@/lib/image-url";
 import { cn } from "@/lib/utils";
 
 interface StudentMember {
@@ -75,6 +82,16 @@ interface StudentMember {
     dob: string;
     gender: string;
     phone: string;
+    email?: string;
+    avatar?: string;
+    student_photo?: string;
+    photo?: string;
+    image?: string;
+    user?: {
+        avatar?: string;
+        photo?: string;
+        student_photo?: string;
+    };
     school_class?: { name: string };
     section?: { name: string };
     library_member?: {
@@ -117,6 +134,7 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 export default function AddStudentLibraryPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const getImageUrl = useImageUrl();
     const [searchTerm, setSearchTerm] = useState("");
     const [students, setStudents] = useState<StudentMember[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -412,20 +430,20 @@ export default function AddStudentLibraryPage() {
                         </div>
                     </div>
 
-                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                    <div className="rounded-xl border border-gray-200/80 overflow-x-auto custom-scrollbar shadow-xs bg-white">
                         <Table className="min-w-[1200px]">
-                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] uppercase tracking-wider border-b border-gray-200/80">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("library_card_no")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("admission_no")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("student_name")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("class")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("father_name")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("date_of_birth")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("gender")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("mobile_number")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4"><div className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-indigo-500" /> {t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-slate-500" /> {t("library_card_no")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3">{t("admission_no")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-500" /> {t("student_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-indigo-500" /> {t("class")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3">{t("father_name")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400" /> {t("date_of_birth")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3 text-center">{t("gender")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-emerald-600" /> {t("mobile_number")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -433,55 +451,170 @@ export default function AddStudentLibraryPage() {
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : students.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            {t("no_students_found")}
+                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <GraduationCap className="h-8 w-8 text-gray-300 stroke-1" />
+                                                <span>{t("no_students_found")}</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
-                                ) : students.map((student) => (
-                                    <TableRow
-                                        key={student.id}
-                                        className={cn(
-                                            "text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap",
-                                            student.library_member && "bg-[#e8f5e9]/60 hover:bg-[#c8e6c9]/60"
-                                        )}
-                                    >
-                                        <TableCell className="py-3 text-gray-500">{student.library_member?.member_id || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.library_member?.library_card_no || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.admission_no}</TableCell>
-                                        <TableCell className="py-3 text-gray-700 font-medium">{student.name}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.school_class?.name} ({student.section?.name})</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.father_name}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.dob ? formatDate(student.dob) : "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.gender}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{student.phone || "-"}</TableCell>
-                                        <TableCell className="py-3 text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
+                                ) : students.map((student) => {
+                                    const studentName = student.name || "Student";
+                                    const initials = studentName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+                                    const isMember = !!student.library_member;
+
+                                    return (
+                                        <TableRow
+                                            key={student.id}
+                                            className={cn(
+                                                "text-xs border-b border-gray-100 hover:shadow-xs relative transition-all duration-200 whitespace-nowrap group",
+                                                isMember ? "bg-emerald-50/30 hover:bg-emerald-50/60" : "hover:bg-indigo-50/40"
+                                            )}
+                                        >
+                                            {/* Member ID */}
+                                            <TableCell className="py-3 px-4">
+                                                {isMember ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-200/70">
+                                                        {student.library_member?.member_id}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-gray-400 font-mono text-[10px] bg-gray-100">
+                                                        Not Member
+                                                    </span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Card No */}
+                                            <TableCell className="py-3 px-3">
+                                                {student.library_member?.library_card_no ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px] border border-slate-200/60 font-medium">
+                                                        <CreditCard className="h-3 w-3 text-slate-500" />
+                                                        {student.library_member.library_card_no}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300 font-sans">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Admission No */}
+                                            <TableCell className="py-3 px-3">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-mono font-medium text-[11px]">
+                                                    {student.admission_no}
+                                                </span>
+                                            </TableCell>
+
+                                            {/* Student Name with Avatar */}
+                                            <TableCell className="py-3 px-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <Avatar className="h-8 w-8 rounded-full border border-gray-200 shadow-2xs shrink-0 overflow-hidden">
+                                                        <AvatarImage
+                                                            src={getImageUrl(student.avatar || student.student_photo || student.photo || student.image || student.user?.avatar || student.user?.photo)}
+                                                            alt={studentName}
+                                                            className="object-cover h-full w-full"
+                                                        />
+                                                        <AvatarFallback className={cn(
+                                                            "text-white font-bold text-[11px] flex items-center justify-center h-full w-full",
+                                                            isMember
+                                                                ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+                                                                : "bg-gradient-to-br from-indigo-500 to-purple-600"
+                                                        )}>
+                                                            {initials}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                                                            {studentName}
+                                                        </p>
+                                                        {student.email && (
+                                                            <p className="text-[10px] text-gray-400 truncate max-w-[160px]">
+                                                                {student.email}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+
+                                            {/* Class & Section */}
+                                            <TableCell className="py-3 px-3">
+                                                {student.school_class?.name ? (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-200/60">
+                                                        {student.school_class.name} {student.section?.name && `(${student.section.name})`}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Father Name */}
+                                            <TableCell className="py-3 px-3 text-gray-600">
+                                                {student.father_name || <span className="text-gray-300">—</span>}
+                                            </TableCell>
+
+                                            {/* DOB */}
+                                            <TableCell className="py-3 px-3 text-gray-500 text-[11px]">
+                                                {student.dob ? formatDate(student.dob) : <span className="text-gray-300">—</span>}
+                                            </TableCell>
+
+                                            {/* Gender */}
+                                            <TableCell className="py-3 px-3 text-center">
+                                                {student.gender ? (
+                                                    <span className="inline-block capitalize text-gray-600 font-medium">
+                                                        {student.gender}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Phone */}
+                                            <TableCell className="py-3 px-3 text-gray-600 font-medium">
+                                                {student.phone ? (
+                                                    <span className="inline-flex items-center gap-1 text-gray-700">
+                                                        <Phone className="h-3 w-3 text-emerald-500" />
+                                                        {student.phone}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Action */}
+                                            <TableCell className="py-3 px-4 text-right">
+                                                {isMember ? (
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleEditMembership(student)}
+                                                            className="h-7 w-7 text-amber-600 bg-amber-50 hover:bg-amber-500 hover:text-white border border-amber-200/70 rounded-md p-0 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                                            title={t("edit")}
+                                                        >
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => handleRevokeClick(student)}
+                                                            className="h-7 w-7 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white border border-red-200/70 rounded-md p-0 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                                            title={t("revoke")}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleAddMembership(student)}
+                                                        className="h-7 px-2.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white border border-indigo-200/80 rounded-md text-[10px] font-bold gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                                                    >
+                                                        <Plus className="h-3 w-3" />
+                                                        <span>{t("add")}</span>
                                                     </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="text-xs">
-                                                    {student.library_member ? (
-                                                        <>
-                                                            <DropdownMenuItem onClick={() => handleEditMembership(student)}>
-                                                                <Pencil className="h-3.5 w-3.5 mr-2" /> {t("edit")}
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem onClick={() => handleRevokeClick(student)} className="text-red-500">
-                                                                <Trash2 className="h-3.5 w-3.5 mr-2" /> {t("revoke")}
-                                                            </DropdownMenuItem>
-                                                        </>
-                                                    ) : (
-                                                        <DropdownMenuItem onClick={() => handleAddMembership(student)}>
-                                                            <Plus className="h-3.5 w-3.5 mr-2" /> {t("add")}
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

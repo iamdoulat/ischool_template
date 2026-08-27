@@ -55,7 +55,9 @@ import {
     Trash2,
     KeyRound,
     CheckCircle,
-    Ban
+    Ban,
+    QrCode,
+    Printer
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -70,6 +72,8 @@ interface Staff {
     phone: string;
     department?: string;
     avatar?: string;
+    qr_code?: string;
+    nfc_uid?: string;
     active?: boolean | number;
 }
 
@@ -278,6 +282,68 @@ export default function StaffDirectoryPage() {
             });
             setStatusDialogOpen(false);
         }
+    };
+
+    const handlePrintStaffBadge = (person: Staff) => {
+        const win = window.open("", "_blank");
+        if (!win) return;
+        const rawQr = person.qr_code || person.staff_id || String(person.id);
+        const data = JSON.stringify({ qr_code: rawQr });
+        const imgSrc = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(data)}`;
+        const avatarSrc = person.avatar ? person.avatar : "";
+
+        win.document.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Staff ID Badge - ${person.name}</title>
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+                        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f1f5f9; padding: 20px; }
+                        .badge-card {
+                            width: 320px; height: 490px; background: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                            border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; text-align: center;
+                            padding: 24px; position: relative; overflow: hidden;
+                        }
+                        .header-banner {
+                            position: absolute; top: 0; left: 0; right: 0; height: 80px;
+                            background: linear-gradient(135deg, #FF9800, #6366F1);
+                        }
+                        .avatar {
+                            width: 76px; height: 76px; border-radius: 50%; border: 4px solid white; object-fit: cover;
+                            margin-top: 24px; position: relative; z-index: 10; background: #e0e7ff;
+                        }
+                        .name { font-size: 16px; font-weight: 800; color: #1e293b; margin-top: 10px; }
+                        .role { font-size: 11px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 1px; }
+                        .details { font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500; }
+                        .qr-container { margin-top: 14px; padding: 8px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; }
+                        .qr-img { width: 140px; height: 140px; }
+                        .footer-text { font-size: 10px; color: #94a3b8; margin-top: auto; font-family: monospace; }
+                        @media print {
+                            body { background: white; padding: 0; }
+                            .badge-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="badge-card">
+                        <div class="header-banner"></div>
+                        ${avatarSrc ? `<img src="${avatarSrc}" class="avatar" alt="" />` : `<div class="avatar" style="display:flex;align-items:center;justify-content:center;font-weight:bold;color:#4f46e5;font-size:24px;">${person.name?.charAt(0)}</div>`}
+                        <h2 class="name">${person.name}</h2>
+                        <p class="role">${person.role || "STAFF"}</p>
+                        <p class="details">Staff ID: ${person.staff_id || "N/A"} | Dept: ${person.department || "General"}</p>
+                        <div class="qr-container">
+                            <img src="${imgSrc}" class="qr-img" alt="QR Code" />
+                        </div>
+                        <p class="footer-text">SMART ATTENDANCE & ACCESS</p>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        win.document.close();
     };
 
     // Premium gradient button style - Orange to Purple
@@ -493,6 +559,13 @@ export default function StaffDirectoryPage() {
                                                                 )}
                                                             </DropdownMenuItem>
                                                         )}
+                                                        <DropdownMenuItem
+                                                            onClick={() => handlePrintStaffBadge(person)}
+                                                            className="cursor-pointer text-indigo-600 focus:text-indigo-600"
+                                                        >
+                                                            <QrCode className="h-4 w-4 mr-2" />
+                                                            Print ID Badge / QR
+                                                        </DropdownMenuItem>
                                                         {hasPerm("human-resource.staff.edit") && (
                                                             <DropdownMenuItem
                                                                 onClick={() => handleEdit(person.staff_id || person.id)}
@@ -623,6 +696,13 @@ export default function StaffDirectoryPage() {
                                                                             )}
                                                                         </DropdownMenuItem>
                                                                     )}
+                                                                    <DropdownMenuItem
+                                                                        onClick={() => handlePrintStaffBadge(person)}
+                                                                        className="cursor-pointer text-indigo-600 focus:text-indigo-600"
+                                                                    >
+                                                                        <QrCode className="h-4 w-4 mr-2" />
+                                                                        Print ID Badge / QR
+                                                                    </DropdownMenuItem>
                                                                     {hasPerm("human-resource.staff.edit") && (
                                                                         <DropdownMenuItem
                                                                             onClick={() => handleEdit(person.staff_id || person.id)}

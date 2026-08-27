@@ -39,6 +39,10 @@ import {
     Users,
     BookPlus,
     Loader2,
+    BadgeCheck,
+    CreditCard,
+    User,
+    Phone,
 } from "lucide-react";
 import {
     Select,
@@ -47,6 +51,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useImageUrl } from "@/lib/image-url";
 import { cn } from "@/lib/utils";
 
 interface LibraryMember {
@@ -59,6 +65,11 @@ interface LibraryMember {
         name: string;
         admission_no?: string;
         phone?: string;
+        email?: string;
+        avatar?: string;
+        student_photo?: string;
+        photo?: string;
+        image?: string;
         staff_id?: string;
         school_class_id?: number;
         section_id?: number;
@@ -157,6 +168,7 @@ function getMemberCardInfo(m: any): string {
 export default function LibraryMembersPage() {
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const getImageUrl = useImageUrl();
     const [searchTerm, setSearchTerm] = useState("");
     const [members, setMembers] = useState<LibraryMember[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -453,17 +465,17 @@ export default function LibraryMembersPage() {
                     </div>
 
                     {/* Members Table */}
-                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
-                        <Table className="min-w-[800px]">
-                            <TableHeader className="bg-gray-50 text-xs uppercase">
+                    <div className="rounded-xl border border-gray-200/80 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                        <Table className="min-w-[900px]">
+                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] uppercase tracking-wider border-b border-gray-200/80">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("library_card_no")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("admission_no")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("member_type")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600"><div className="flex items-center gap-1">{t("phone")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4"><div className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-indigo-500" /> {t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-slate-500" /> {t("library_card_no")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3">{t("admission_no")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-500" /> {t("name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3 text-center">{t("member_type")}</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-emerald-600" /> {t("phone")}</div></TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3.5 px-4 text-right">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -471,36 +483,128 @@ export default function LibraryMembersPage() {
                                     <SkeletonRows rows={6} cols={TABLE_COLS} />
                                 ) : members.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                                            {t("no_members_found")}
+                                        <TableCell colSpan={TABLE_COLS} className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <Users className="h-8 w-8 text-gray-300 stroke-1" />
+                                                <span>{t("no_members_found")}</span>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
-                                ) : members.map((member) => (
-                                    <TableRow key={member.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                        <TableCell className="py-3 text-gray-500">{member.member_id}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{member.library_card_no || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{member.user?.admission_no || member.user?.staff_id || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-700 font-medium">{member.user?.name}</TableCell>
-                                        <TableCell className="py-3 text-gray-500 capitalize">{member.member_type}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{member.user?.phone || "-"}</TableCell>
-                                        <TableCell className="py-3 text-right flex justify-end gap-1.5">
-                                            <Button
-                                                size="sm"
-                                                onClick={() => openIssueModal(member)}
-                                                className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all text-[10px] font-bold gap-1"
-                                                title={t("issue_books")}
-                                            >
-                                                <BookPlus className="h-3.5 w-3.5" />
-                                                <span>{t("issue_books")}</span>
-                                            </Button>
-                                            <Link href={`/dashboard/library/member/issue/${member.member_id}`}>
-                                                <Button size="sm" variant="outline" className="h-7 w-7 rounded p-0 shadow-sm active:scale-95 transition-all" title={t("view_issued_books")}>
-                                                    <ArrowRightSquare className="h-4 w-4" />
-                                                </Button>
-                                            </Link>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                ) : members.map((member) => {
+                                    const memberName = member.user?.name || "Member";
+                                    const initials = memberName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+                                    const isStudent = member.member_type?.toLowerCase() === "student";
+
+                                    return (
+                                        <TableRow key={member.id} className="text-xs hover:bg-indigo-50/40 border-b border-gray-100 hover:shadow-xs relative transition-all duration-200 whitespace-nowrap group">
+                                            {/* Member ID */}
+                                            <TableCell className="py-3 px-4">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-200/70">
+                                                    {member.member_id}
+                                                </span>
+                                            </TableCell>
+
+                                            {/* Library Card No */}
+                                            <TableCell className="py-3 px-3">
+                                                {member.library_card_no ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px] border border-slate-200/60 font-medium">
+                                                        <CreditCard className="h-3 w-3 text-slate-500" />
+                                                        {member.library_card_no}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300 font-sans">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Admission / Staff ID */}
+                                            <TableCell className="py-3 px-3">
+                                                {member.user?.admission_no || member.user?.staff_id ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-mono text-[11px]">
+                                                        {member.user?.admission_no || member.user?.staff_id}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Member Name with Avatar */}
+                                            <TableCell className="py-3 px-3">
+                                                <div className="flex items-center gap-2.5">
+                                                    <Avatar className="h-8 w-8 rounded-full border border-gray-200 shadow-2xs shrink-0 overflow-hidden">
+                                                        <AvatarImage
+                                                            src={getImageUrl(member.user?.avatar || member.user?.student_photo || member.user?.photo || member.user?.image)}
+                                                            alt={memberName}
+                                                            className="object-cover h-full w-full"
+                                                        />
+                                                        <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold text-[11px] flex items-center justify-center h-full w-full">
+                                                            {initials}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">
+                                                            {memberName}
+                                                        </p>
+                                                        {member.user?.email && (
+                                                            <p className="text-[10px] text-gray-400 truncate max-w-[180px]">
+                                                                {member.user.email}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+
+                                            {/* Member Type */}
+                                            <TableCell className="py-3 px-3 text-center">
+                                                <span className={cn(
+                                                    "inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-[10px] capitalize border shadow-2xs",
+                                                    isStudent
+                                                        ? "bg-blue-50 text-blue-700 border-blue-200/70"
+                                                        : "bg-purple-50 text-purple-700 border-purple-200/70"
+                                                )}>
+                                                    {member.member_type}
+                                                </span>
+                                            </TableCell>
+
+                                            {/* Phone */}
+                                            <TableCell className="py-3 px-3 text-gray-600 font-medium">
+                                                {member.user?.phone ? (
+                                                    <span className="inline-flex items-center gap-1.5 text-gray-700">
+                                                        <Phone className="h-3 w-3 text-emerald-500" />
+                                                        {member.user.phone}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
+                                            </TableCell>
+
+                                            {/* Actions */}
+                                            <TableCell className="py-3 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => openIssueModal(member)}
+                                                        className="h-7 px-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded-lg shadow-2xs active:scale-95 transition-all text-[10px] font-bold gap-1.5 cursor-pointer"
+                                                        title={t("issue_books")}
+                                                    >
+                                                        <BookPlus className="h-3.5 w-3.5" />
+                                                        <span>{t("issue_books")}</span>
+                                                    </Button>
+                                                    <Link href={`/dashboard/library/member/issue/${member.member_id}`}>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 px-2.5 rounded-lg border-gray-200 bg-white hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 text-gray-700 shadow-2xs active:scale-95 transition-all text-[10px] font-bold gap-1 cursor-pointer"
+                                                            title={t("view_issued_books")}
+                                                        >
+                                                            <span>Details</span>
+                                                            <ArrowRightSquare className="h-3.5 w-3.5 text-indigo-500" />
+                                                        </Button>
+                                                    </Link>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </div>

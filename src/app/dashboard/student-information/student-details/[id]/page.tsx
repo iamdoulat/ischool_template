@@ -7,7 +7,8 @@ import {
     Heart, Banknote, Users, AlertCircle, ArrowLeft, Edit, Printer,
     BadgeCheck, BadgeX, Home, Globe, Hash, Droplets,
     Ruler, Weight, Shield, FileText, ChevronRight, Loader2,
-    School, BookMarked, Award, Activity
+    School, BookMarked, Award, Activity, QrCode, Download,
+    CheckCircle2, Sparkles, Smartphone, Zap, Eye, CreditCard
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import api from "@/lib/api";
+import { toast } from "sonner";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { getImageUrl } from "@/lib/image-url";
 
@@ -22,6 +24,11 @@ const formatDate = (d?: string | null) => {
     if (!d) return "—";
     const date = new Date(d);
     return isNaN(date.getTime()) ? d : date.toLocaleDateString("en-GB");
+};
+
+const getQrImageUrl = (qrCode: string, size = 200): string => {
+    const data = JSON.stringify({ qr_code: qrCode });
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`;
 };
 
 function InfoRow({ icon: Icon, label, value }: { icon?: React.ElementType; label: string; value?: string | null | number }) {
@@ -63,6 +70,7 @@ export default function StudentProfilePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [student, setStudent] = useState<Record<string, any> | null>(null);
     const [loading, setLoading] = useState(true);
+    const [generatingQr, setGeneratingQr] = useState(false);
     const [activeTab, setActiveTab] = useState("personal");
 
     useEffect(() => {
@@ -82,6 +90,94 @@ export default function StudentProfilePage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleGenerateQr = async () => {
+        if (!student) return;
+        setGeneratingQr(true);
+        try {
+            const res = await api.post("/smart-attendance/generate-qr", { user_id: student.id });
+            if (res.data?.success) {
+                toast.success(res.data.message || "Attendance QR code generated successfully!");
+                fetchStudent();
+            }
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to generate attendance QR code");
+        } finally {
+            setGeneratingQr(false);
+        }
+    };
+
+    const handleDownloadQr = () => {
+        if (!student?.qr_code) return;
+        const url = getQrImageUrl(student.qr_code, 500);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `qr-${student.name || "student"}-${student.admission_no || student.id}.png`;
+        a.click();
+        toast.success("QR Code downloaded!");
+    };
+
+    const handlePrintBadge = () => {
+        if (!student) return;
+        const win = window.open("", "_blank");
+        if (!win) return;
+        const rawQr = student.qr_code || student.admission_no || String(student.id);
+        const imgSrc = getQrImageUrl(rawQr, 260);
+        const avatarSrc = (student.avatar || student.student_photo) ? getImageUrl(student.avatar || student.student_photo) : "";
+
+        win.document.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>Student ID Badge - ${student.name}</title>
+                    <style>
+                        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+                        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #f1f5f9; padding: 20px; }
+                        .badge-card {
+                            width: 320px; height: 490px; background: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                            border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; text-align: center;
+                            padding: 24px; position: relative; overflow: hidden;
+                        }
+                        .header-banner {
+                            position: absolute; top: 0; left: 0; right: 0; height: 80px;
+                            background: linear-gradient(135deg, #FF9800, #6366F1);
+                        }
+                        .avatar {
+                            width: 76px; height: 76px; border-radius: 50%; border: 4px solid white; object-fit: cover;
+                            margin-top: 24px; position: relative; z-index: 10; background: #e0e7ff;
+                        }
+                        .name { font-size: 16px; font-weight: 800; color: #1e293b; margin-top: 10px; }
+                        .role { font-size: 11px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 1px; }
+                        .details { font-size: 12px; color: #64748b; margin-top: 4px; font-weight: 500; }
+                        .qr-container { margin-top: 14px; padding: 8px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; }
+                        .qr-img { width: 140px; height: 140px; }
+                        .footer-text { font-size: 10px; color: #94a3b8; margin-top: auto; font-family: monospace; }
+                        @media print {
+                            body { background: white; padding: 0; }
+                            .badge-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="badge-card">
+                        <div class="header-banner"></div>
+                        ${avatarSrc ? `<img src="${avatarSrc}" class="avatar" alt="" />` : `<div class="avatar" style="display:flex;align-items:center;justify-content:center;font-weight:bold;color:#4f46e5;font-size:24px;">${student.name?.charAt(0)}</div>`}
+                        <h2 class="name">${student.name} ${student.last_name || ""}</h2>
+                        <p class="role">STUDENT</p>
+                        <p class="details">Adm No: ${student.admission_no || "N/A"} | Class: ${student.school_class?.name || "N/A"}</p>
+                        <div class="qr-container">
+                            <img src="${imgSrc}" class="qr-img" alt="QR Code" />
+                        </div>
+                        <p class="footer-text">SMART ATTENDANCE BADGE</p>
+                    </div>
+                    <script>
+                        window.onload = function() { window.print(); }
+                    </script>
+                </body>
+            </html>
+        `);
+        win.document.close();
     };
 
     if (loading) {
@@ -150,6 +246,11 @@ export default function StudentProfilePage() {
                                         <><BadgeX className="h-3 w-3 mr-1" />Inactive</>
                                     )}
                                 </Badge>
+                                {student.qr_code && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                        <QrCode className="h-3 w-3 text-emerald-600" /> QR Badge Ready
+                                    </span>
+                                )}
                             </div>
                             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1.5">
@@ -172,7 +273,15 @@ export default function StudentProfilePage() {
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 shrink-0 pb-1">
+                        <div className="flex items-center gap-2 shrink-0 pb-1 flex-wrap">
+                            <Button
+                                onClick={handlePrintBadge}
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 h-9 rounded-lg font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                            >
+                                <QrCode className="h-3.5 w-3.5 text-indigo-600" /> Print ID Badge
+                            </Button>
                             <Button
                                 onClick={() => router.push(`/dashboard/student-information/student-details/${id}/edit`)}
                                 className="gap-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-bold h-9 rounded-lg shadow-md hover:opacity-90 transition-opacity"
@@ -208,9 +317,10 @@ export default function StudentProfilePage() {
 
             {/* Tabbed Details */}
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid grid-cols-4 w-full lg:w-fit gap-1 bg-muted/40 p-1 rounded-xl h-auto">
+                <TabsList className="grid grid-cols-5 w-full lg:w-fit gap-1 bg-muted/40 p-1 rounded-xl h-auto">
                     {[
                         { value: "personal", label: "Personal", icon: User },
+                        { value: "smart_attendance", label: "QR & Smart Attendance", icon: QrCode },
                         { value: "guardian", label: "Guardian", icon: Users },
                         { value: "academic", label: "Academic", icon: GraduationCap },
                         { value: "medical", label: "Medical", icon: Heart },
@@ -225,6 +335,94 @@ export default function StudentProfilePage() {
                         </TabsTrigger>
                     ))}
                 </TabsList>
+
+                {/* Smart Attendance & QR Credentials Tab */}
+                <TabsContent value="smart_attendance" className="mt-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <SectionCard title="Attendance QR Credential" icon={QrCode}>
+                            <div className="p-4 flex flex-col sm:flex-row items-center gap-5">
+                                {student.qr_code ? (
+                                    <>
+                                        <div className="p-2.5 bg-white border-2 border-indigo-200 rounded-2xl shadow-sm">
+                                            <img
+                                                src={getQrImageUrl(student.qr_code, 160)}
+                                                alt="Student QR Code"
+                                                className="w-32 h-32 object-contain"
+                                            />
+                                        </div>
+                                        <div className="space-y-2 flex-1 text-center sm:text-left">
+                                            <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                                <span className="text-xs font-bold text-slate-800">Active Optical QR Code</span>
+                                            </div>
+                                            <p className="text-[11px] font-mono text-slate-500 bg-slate-50 p-1.5 rounded border border-slate-200 break-all select-all">
+                                                {student.qr_code}
+                                            </p>
+                                            <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={handleDownloadQr}
+                                                    className="h-7 text-xs gap-1 border-slate-200"
+                                                >
+                                                    <Download className="h-3 w-3 text-indigo-600" /> Download PNG
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    onClick={handlePrintBadge}
+                                                    className="h-7 text-xs gap-1 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                                >
+                                                    <Printer className="h-3 w-3" /> Print Badge
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-6 w-full space-y-3">
+                                        <QrCode className="h-12 w-12 mx-auto text-slate-300 animate-pulse" />
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-700">No Attendance QR Code Generated</p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                                Generate an encrypted attendance credential to enable student badging and terminal scanning.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleGenerateQr}
+                                            disabled={generatingQr}
+                                            className="h-8 text-xs font-bold gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                        >
+                                            {generatingQr ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                                            Generate Student QR Code Now
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </SectionCard>
+
+                        <SectionCard title="Contactless Smart Cards & Biometrics" icon={Smartphone}>
+                            <InfoRow
+                                icon={CreditCard}
+                                label="NFC / RFID Card UID"
+                                value={student.nfc_uid ? student.nfc_uid : "No RFID Tag Linked"}
+                            />
+                            <InfoRow
+                                icon={User}
+                                label="Face Biometric Vector"
+                                value={student.face_descriptor ? "Registered (Enrolled)" : "Not Enrolled"}
+                            />
+                            <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100 text-[11px] text-indigo-900 mt-3 space-y-1">
+                                <p className="font-bold flex items-center gap-1">
+                                    <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                                    Automated Terminal Compatibility
+                                </p>
+                                <p className="text-slate-600">
+                                    This QR credential works across AI Smart Terminals, Mobile Cameras, Optical USB Laser Scanners, and ZKTeco ADMS devices.
+                                </p>
+                            </div>
+                        </SectionCard>
+                    </div>
+                </TabsContent>
 
                 {/* Personal Tab */}
                 <TabsContent value="personal" className="mt-4 space-y-4">

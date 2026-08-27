@@ -20,10 +20,13 @@ export function getImageUrl(
     ? (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}:8000` : "http://localhost:8000")
     : (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "");
 
+  const isRemotePlaceholder = baseUrl && (
+    baseUrl.includes("ischool.mddoulat.com") ||
+    baseUrl.includes("example.com")
+  );
+
   let domain = (
-    baseUrl ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    defaultDomain
+    (isLocalHost && isRemotePlaceholder ? defaultDomain : (baseUrl || process.env.NEXT_PUBLIC_API_URL || defaultDomain))
   )
     .replace(/\/+$/, "")
     .replace(/\/api\/v1\/?$/, "");
