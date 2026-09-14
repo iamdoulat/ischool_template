@@ -32,7 +32,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateDesignationName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -62,7 +62,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function DesignationPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [designations, setDesignations] = useState<Designation[]>([]);
@@ -232,7 +233,7 @@ export default function DesignationPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("designation_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredDesignations.length} {t("designations")}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(filteredDesignations.length, shortCode)} {t("designations")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -259,9 +260,9 @@ export default function DesignationPage() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="10">{toLocaleNumber(10, shortCode)}</SelectItem>
+                                            <SelectItem value="25">{toLocaleNumber(25, shortCode)}</SelectItem>
+                                            <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -303,13 +304,13 @@ export default function DesignationPage() {
                                     ) : (
                                         paginatedData.map((des) => (
                                             <TableRow key={des.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                                <TableCell className="py-3.5 text-[12px] text-gray-700 font-medium">{des.name}</TableCell>
+                                                <TableCell className="py-3.5 text-[12px] text-gray-700 font-medium">{translateDesignationName(des.name, shortCode)}</TableCell>
                                                 <TableCell className="py-3.5 text-right">
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                        <Button onClick={() => handleEdit(des)} size="icon" variant="ghost" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Button onClick={() => handleEdit(des)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-xs active:scale-95 transition-all">
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button onClick={() => handleDelete(des.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Button onClick={() => handleDelete(des.id)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all">
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
@@ -344,7 +345,7 @@ export default function DesignationPage() {
                                             : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
                                     )}
                                 >
-                                    {page}
+                                    {toLocaleNumber(page, shortCode)}
                                 </Button>
                             ))}
 

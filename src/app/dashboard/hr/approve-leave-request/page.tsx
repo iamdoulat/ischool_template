@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, toLocaleNumber } from "@/lib/utils";
+import { cn, toLocaleNumber, translateLeaveTypeName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -216,7 +216,7 @@ export default function ApproveLeaveRequestPage() {
                                 {t("approve_leave_request")}
                             </CardTitle>
                             <p className="text-[10.5px] text-gray-500 mt-0.5">
-                                {shortCode === "bn" ? "স্টাফদের ছুটির আবেদন পর্যালোচনা ও অনুমোদন করুন" : "Review and approve staff leave applications"}
+                                {t("approve_leave_description")}
                             </p>
                         </div>
                     </div>
@@ -310,7 +310,7 @@ export default function ApproveLeaveRequestPage() {
                                 ) : requests.map((req) => (
                                     <TableRow key={req.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
                                         <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{req.staff}</TableCell>
-                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveType}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{translateLeaveTypeName(req.leaveType, shortCode)}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.halfDay}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveDate}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{toLocaleNumber(req.days, shortCode)}</TableCell>
@@ -330,7 +330,7 @@ export default function ApproveLeaveRequestPage() {
                                                 <Button
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors shadow-sm"
+                                                    className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs active:scale-95 transition-all"
                                                     title={t("view_and_approve")}
                                                     onClick={() => {
                                                         setSelectedRequest(req);
@@ -402,7 +402,7 @@ export default function ApproveLeaveRequestPage() {
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("leave_type")}</span>
-                                    <span className="text-gray-800 font-semibold">{selectedRequest.leaveType}</span>
+                                    <span className="text-gray-800 font-semibold">{translateLeaveTypeName(selectedRequest.leaveType, shortCode)}</span>
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("leave_date")}</span>
@@ -410,7 +410,7 @@ export default function ApproveLeaveRequestPage() {
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("days")}</span>
-                                    <span className="text-gray-800 font-bold text-indigo-600">{selectedRequest.days}</span>
+                                    <span className="text-gray-800 font-bold text-indigo-600">{toLocaleNumber(selectedRequest.days, shortCode)}</span>
                                 </div>
                                 <div className="col-span-2 space-y-1.5">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("current_status")}</span>

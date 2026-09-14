@@ -71,6 +71,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
+import { toLocaleNumber, translateDepartmentName } from "@/lib/utils";
 import {
     StaffRequisition,
     StaffRequisitionDialog,
@@ -83,7 +84,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function StaffRequisitionPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const pathname = usePathname() || "";
 
     // Sub-branch detection
@@ -312,7 +314,7 @@ export default function StaffRequisitionPage() {
                     <div className="flex items-center justify-between relative z-10">
                         <div>
                             <p className="text-[11px] font-extrabold text-indigo-100 uppercase tracking-wider">{t("total_requisitions") || "TOTAL REQUISITIONS"}</p>
-                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{totalCount}</h3>
+                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{toLocaleNumber(totalCount, shortCode)}</h3>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-inner">
                             <Briefcase className="h-6 w-6" />
@@ -326,7 +328,7 @@ export default function StaffRequisitionPage() {
                     <div className="flex items-center justify-between relative z-10">
                         <div>
                             <p className="text-[11px] font-extrabold text-amber-100 uppercase tracking-wider">{t("pending_requisitions") || "PENDING REQUISITIONS"}</p>
-                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{pendingCount}</h3>
+                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{toLocaleNumber(pendingCount, shortCode)}</h3>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-inner">
                             <Clock className="h-6 w-6" />
@@ -340,7 +342,7 @@ export default function StaffRequisitionPage() {
                     <div className="flex items-center justify-between relative z-10">
                         <div>
                             <p className="text-[11px] font-extrabold text-emerald-100 uppercase tracking-wider">{t("approved_requisitions") || "APPROVED REQUISITIONS"}</p>
-                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{approvedCount}</h3>
+                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{toLocaleNumber(approvedCount, shortCode)}</h3>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-inner">
                             <CheckCircle className="h-6 w-6" />
@@ -354,7 +356,7 @@ export default function StaffRequisitionPage() {
                     <div className="flex items-center justify-between relative z-10">
                         <div>
                             <p className="text-[11px] font-extrabold text-rose-100 uppercase tracking-wider">{t("rejected_requisitions") || "REJECTED REQUISITIONS"}</p>
-                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{rejectedCount}</h3>
+                            <h3 className="text-3xl font-black text-white mt-1.5 drop-shadow-xs">{toLocaleNumber(rejectedCount, shortCode)}</h3>
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center border border-white/30 shadow-inner">
                             <XCircle className="h-6 w-6" />
@@ -375,7 +377,7 @@ export default function StaffRequisitionPage() {
                                 {t("requisition_list") || "Requisition List"}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {filteredRequisitions.length} {t("staff_requisition") || "Requisitions"}
+                                {toLocaleNumber(filteredRequisitions.length, shortCode)} {t("requisitions") || t("staff_requisition")}
                             </p>
                         </div>
                     </div>
@@ -478,7 +480,7 @@ export default function StaffRequisitionPage() {
                             {loading ? (
                                 <TableRow>
                                     <TableCell colSpan={10} className="py-12 text-center text-gray-400 text-xs font-semibold">
-                                        Loading requisitions...
+                                        {t("loading_requisitions") || "Loading requisitions..."}
                                     </TableCell>
                                 </TableRow>
                             ) : filteredRequisitions.length === 0 ? (
@@ -486,7 +488,7 @@ export default function StaffRequisitionPage() {
                                     <TableCell colSpan={10} className="py-16 text-center">
                                         <Briefcase className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                                         <p className="text-sm font-semibold text-gray-500">{t("no_data_found") || "No requisitions found"}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">Click &quot;New Requisition&quot; to submit a staff hiring request.</p>
+                                        <p className="text-xs text-gray-400 mt-0.5">{t("click_new_requisition_desc") || 'Click "New Requisition" to submit a staff hiring request.'}</p>
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -519,22 +521,12 @@ export default function StaffRequisitionPage() {
                                         </TableCell>
 
                                         <TableCell className="text-xs text-gray-600 font-medium">
-                                            {req.department === "Academic"
-                                                ? (t("academic_teaching") || "Academic")
-                                                : req.department === "Administration"
-                                                ? (t("administration") || "Administration")
-                                                : req.department === "Accounts & Finance"
-                                                ? (t("accounts_finance") || "Accounts & Finance")
-                                                : req.department === "IT & Technical"
-                                                ? (t("it_technical") || "IT & Technical")
-                                                : req.department === "Support Staff"
-                                                ? (t("support_staff") || "Support Staff")
-                                                : req.department}
+                                            {translateDepartmentName(req.department, shortCode)}
                                         </TableCell>
 
                                         <TableCell className="text-center font-bold text-xs text-gray-800">
                                             <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] text-white text-xs font-bold shadow-xs">
-                                                {req.vacancies}
+                                                {toLocaleNumber(req.vacancies, shortCode)}
                                             </span>
                                         </TableCell>
 

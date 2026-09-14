@@ -299,7 +299,7 @@ export function StaffRequisitionDialog({
                         </div>
                         <div>
                             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-                                {editingRequisition ? (t("edit_requisition") || "Edit Staff Requisition") : (t("submit_requisition") || "Staff Requisition Form")}
+                                {editingRequisition ? (t("edit_requisition") || "Edit Staff Requisition") : (t("new_requisition") || t("staff_requisition") || "New Staff Requisition")}
                             </DialogTitle>
                             <DialogDescription className="text-white/80 text-xs mt-0.5">
                                 {t("submit_requisition_to_main_branch_desc") || "Submit a new staff requirement / hiring request to Main Branch Central HR"}

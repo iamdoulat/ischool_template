@@ -24,7 +24,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Search, Save, Loader2, AlertCircle, History, CalendarDays, UserCheck, ClipboardCheck, Filter, Copy, FileSpreadsheet, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateRoleName } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { StaffCsvImportDialog } from "@/components/attendance/StaffCsvImportDialog";
@@ -84,35 +84,7 @@ export default function StaffAttendancePage() {
 
     const getLocalizedRoleName = (roleName?: string) => {
         if (!roleName) return "";
-        const key = roleName.toLowerCase().replace(/[\s-]+/g, "_");
-        const trans = t(key);
-        if (trans && trans !== key) return trans;
-        const roleMapBn: Record<string, string> = {
-            super_admin: "সুপার অ্যাডমিন",
-            superadmin: "সুপার অ্যাডমিন",
-            admin: "অ্যাডমিন",
-            teacher: "শিক্ষক",
-            accountant: "হিসাবরক্ষক",
-            librarian: "গ্রন্থাগারিক",
-            receptionist: "রিসেপশনিস্ট",
-            driver: "ড্রাইভার",
-            staff: "স্টাফ",
-            branch_admin: "ব্রাঞ্চ অ্যাডমিন",
-            principal: "অধ্যক্ষ",
-            vice_principal: "উপাধ্যক্ষ",
-            headmaster: "প্রধান শিক্ষক",
-            head_master: "প্রধান শিক্ষক",
-            assistant_teacher: "সহকারী শিক্ষক",
-            security_guard: "নিরাপত্তা প্রহরী",
-            cleaner: "পরিচ্ছন্নতাকর্মী",
-            clerk: "অফিস সহকারী",
-            student: "শিক্ষার্থী",
-            parent: "অভিভাবক",
-        };
-        if (shortCode === "bn" && roleMapBn[key]) {
-            return roleMapBn[key];
-        }
-        return trans || roleName;
+        return translateRoleName(roleName, shortCode);
     };
 
     const attendanceOptions = [
@@ -273,7 +245,7 @@ export default function StaffAttendancePage() {
                                 {t("staff_attendance")}
                             </CardTitle>
                             <p className="text-[10.5px] text-gray-500 mt-0.5">
-                                {shortCode === "bn" ? "স্টাফদের দৈনিক উপস্থিতি চিহ্নিত ও পরিচালনা করুন" : "Mark and manage daily staff attendance"}
+                                {t("staff_attendance_description")}
                             </p>
                         </div>
                     </div>
@@ -382,14 +354,14 @@ export default function StaffAttendancePage() {
                                 }}
                             >
                                 <SelectTrigger className="h-8 w-[80px] text-[11px] border-gray-200 bg-white rounded-lg focus:ring-indigo-500">
-                                    <SelectValue placeholder="20" />
+                                    <SelectValue placeholder={toLocaleNumber(20, shortCode)}>{toLocaleNumber(itemsPerPage, shortCode)}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-100">
-                                    <SelectItem value="20">20</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                    <SelectItem value="200">200</SelectItem>
-                                    <SelectItem value="500">500</SelectItem>
+                                    <SelectItem value="20">{toLocaleNumber(20, shortCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, shortCode)}</SelectItem>
+                                    <SelectItem value="200">{toLocaleNumber(200, shortCode)}</SelectItem>
+                                    <SelectItem value="500">{toLocaleNumber(500, shortCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -471,11 +443,11 @@ export default function StaffAttendancePage() {
                                             </TableRow>
                                         ) : paginatedData.map((staff, idx) => (
                                             <TableRow key={staff.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs relative transition-all duration-200 cursor-pointer bg-white">
-                                                <TableCell className="py-4 pl-4 text-center text-gray-400 font-mono text-[10px]">{startIndex + idx + 1}</TableCell>
+                                                <TableCell className="py-4 pl-4 text-center text-gray-400 font-mono text-[10px]">{toLocaleNumber(startIndex + idx + 1, shortCode)}</TableCell>
                                                 <TableCell className="py-4 whitespace-nowrap">
                                                     <div className="flex flex-col">
                                                         <span className="text-[11px] font-bold text-gray-800 uppercase tracking-tight">{staff.name}</span>
-                                                        <span className="text-[9px] text-gray-400 font-mono">{staff.staff_id}</span>
+                                                        <span className="text-[9px] text-gray-400 font-mono">{toLocaleNumber(staff.staff_id, shortCode)}</span>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="py-4 whitespace-nowrap">
@@ -551,12 +523,12 @@ export default function StaffAttendancePage() {
                             {/* Pagination */}
                             {attendanceData.length > 0 && (
                                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-4 px-2">
-                                    <div>{t("showing_x_to_y_of_z", { from: attendanceData.length === 0 ? 0 : startIndex + 1, to: Math.min(startIndex + itemsPerPage, attendanceData.length), total: attendanceData.length })}</div>
+                                    <div>{t("showing_x_to_y_of_z", { from: toLocaleNumber(attendanceData.length === 0 ? 0 : startIndex + 1, shortCode), to: toLocaleNumber(Math.min(startIndex + itemsPerPage, attendanceData.length), shortCode), total: toLocaleNumber(attendanceData.length, shortCode) })}</div>
                                     {totalPages > 1 && (
                                         <div className="flex gap-1 items-center">
                                             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                                             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                                <Button key={page} size="sm" onClick={() => setCurrentPage(page)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", currentPage === page ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{page}</Button>
+                                                <Button key={page} size="sm" onClick={() => setCurrentPage(page)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", currentPage === page ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{toLocaleNumber(page, shortCode)}</Button>
                                             ))}
                                             <Button variant="outline" size="sm" disabled={currentPage === totalPages || totalPages === 0} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
                                         </div>

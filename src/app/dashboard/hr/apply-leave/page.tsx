@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, toLocaleNumber } from "@/lib/utils";
+import { cn, toLocaleNumber, translateLeaveTypeName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -293,7 +293,7 @@ export default function ApplyLeavePage() {
                                 {t("apply_leave")}
                             </CardTitle>
                             <p className="text-[10.5px] text-gray-500 mt-0.5">
-                                {shortCode === "bn" ? "ছুটির আবেদন জমা দিন এবং পূর্ববর্তী আবেদনসমূহ দেখুন" : "Submit leave applications and view past requests"}
+                                {t("apply_leave_description")}
                             </p>
                         </div>
                     </div>
@@ -387,7 +387,7 @@ export default function ApplyLeavePage() {
                                 ) : requests.map((req) => (
                                     <TableRow key={req.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
                                         <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{req.staff}</TableCell>
-                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveType}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{translateLeaveTypeName(req.leaveType, shortCode)}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.halfDay}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveDate}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{toLocaleNumber(req.days, shortCode)}</TableCell>
@@ -404,10 +404,10 @@ export default function ApplyLeavePage() {
                                         </TableCell>
                                         <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
                                             <div className="flex items-center justify-end gap-1.5">
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md transition-colors shadow-sm" title={t("view_details")} onClick={() => { setSelectedRequest(req); setIsViewOpen(true); }}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs active:scale-95 transition-all" title={t("view_details")} onClick={() => { setSelectedRequest(req); setIsViewOpen(true); }}>
                                                     <List className="h-3.5 w-3.5" />
                                                 </Button>
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm" title={t("cancel_request")} onClick={() => handleDelete(req.id)}>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white shadow-xs active:scale-95 transition-all" title={t("cancel_request")} onClick={() => handleDelete(req.id)}>
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
@@ -498,7 +498,7 @@ export default function ApplyLeavePage() {
                                 <Select value={addForm.leave_type_id} onValueChange={v => setAddForm({ ...addForm, leave_type_id: v })}>
                                     <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500"><SelectValue placeholder={t("select")} /></SelectTrigger>
                                     <SelectContent>
-                                        {leaveTypes.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                                        {leaveTypes.map(lt => <SelectItem key={lt.id} value={String(lt.id)}>{translateLeaveTypeName(lt.name, shortCode)}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -583,7 +583,7 @@ export default function ApplyLeavePage() {
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("leave_type")}</span>
-                                    <span className="text-gray-800 font-semibold">{selectedRequest.leaveType}</span>
+                                    <span className="text-gray-800 font-semibold">{translateLeaveTypeName(selectedRequest.leaveType, shortCode)}</span>
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("leave_date")}</span>
@@ -595,7 +595,7 @@ export default function ApplyLeavePage() {
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("days")}</span>
-                                    <span className="text-gray-800 font-bold text-indigo-600">{selectedRequest.days}</span>
+                                    <span className="text-gray-800 font-bold text-indigo-600">{toLocaleNumber(selectedRequest.days, shortCode)}</span>
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("half_day")}</span>

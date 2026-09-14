@@ -49,7 +49,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PrintHeader } from "@/components/layout/PrintHeader";
 import api from "@/lib/api";
-import { cn, toLocaleNumber } from "@/lib/utils";
+import { cn, toLocaleNumber, translateRoleName, translateDepartmentName, translateDesignationName } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
@@ -148,12 +148,13 @@ const statusColors: Record<string, string> = {
 
 // ─── Payslip Component ───────────────────────────────────────────────────────
 
-function Payslip({ row, month, year, school, t }: {
+function Payslip({ row, month, year, school, t, shortCode }: {
     row: PayrollRow;
     month: number;
     year: number;
     school: SchoolInfo;
     t: (key: string, params?: Record<string, string | number>) => string;
+    shortCode: string;
 }) {
     const MONTHS = [
         { label: "january", value: 1 },
@@ -215,16 +216,16 @@ function Payslip({ row, month, year, school, t }: {
             {/* Staff info */}
             <div className="grid grid-cols-3 gap-y-3 gap-x-6 mb-6 mt-4 bg-gray-50/50 p-4 rounded-lg border border-gray-100">
                 <div className="space-y-1">
-                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">SALARY PERIOD</span>
-                    <span className="text-gray-800 font-semibold">{monthName} {year}</span>
+                    <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("salary_period")}</span>
+                    <span className="text-gray-800 font-semibold">{monthName} {toLocaleNumber(year, shortCode)}</span>
                 </div>
                 <div className="space-y-1">
                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("payslip_id")}</span>
-                    <span className="text-gray-800 font-semibold">#{row.payroll_id ?? "—"}</span>
+                    <span className="text-gray-800 font-semibold">#{row.payroll_id ? toLocaleNumber(row.payroll_id, shortCode) : "—"}</span>
                 </div>
                 <div className="space-y-1">
                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("staff_id")}</span>
-                    <span className="text-gray-800 font-semibold">{row.staff_id}</span>
+                    <span className="text-gray-800 font-semibold">{toLocaleNumber(row.staff_id, shortCode)}</span>
                 </div>
                 <div className="space-y-1">
                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("name")}</span>
@@ -232,11 +233,11 @@ function Payslip({ row, month, year, school, t }: {
                 </div>
                 <div className="space-y-1">
                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("department_name")}</span>
-                    <span className="text-gray-800">{row.department || "—"}</span>
+                    <span className="text-gray-800">{translateDepartmentName(row.department, shortCode) || "—"}</span>
                 </div>
                 <div className="space-y-1">
                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("designation")}</span>
-                    <span className="text-gray-800">{row.designation || "—"}</span>
+                    <span className="text-gray-800">{translateDesignationName(row.designation, shortCode) || "—"}</span>
                 </div>
             </div>
 
@@ -252,19 +253,19 @@ function Payslip({ row, month, year, school, t }: {
                         {row.allowances > 0 && (
                             <>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">House Rent</span>
+                                    <span className="text-gray-600">{t("house_rent")}</span>
                                     <span className="font-semibold text-green-600">+{cur}{houseRent.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Medical Allowance</span>
+                                    <span className="text-gray-600">{t("medical_allowance")}</span>
                                     <span className="font-semibold text-green-600">+{cur}{medical.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Conveyance Allowance</span>
+                                    <span className="text-gray-600">{t("conveyance_allowance")}</span>
                                     <span className="font-semibold text-green-600">+{cur}{conveyance.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Food Allowance</span>
+                                    <span className="text-gray-600">{t("food_allowance")}</span>
                                     <span className="font-semibold text-green-600">+{cur}{food.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                                 </div>
                             </>
@@ -337,55 +338,27 @@ export default function PayrollPage() {
 
     const getLocalizedRoleName = (roleName?: string) => {
         if (!roleName) return "";
-        const key = roleName.toLowerCase().replace(/[\s-]+/g, "_");
-        const trans = t(key);
-        if (trans && trans !== key) return trans;
-        const roleMapBn: Record<string, string> = {
-            super_admin: "সুপার অ্যাডমিন",
-            superadmin: "সুপার অ্যাডমিন",
-            admin: "অ্যাডমিন",
-            teacher: "শিক্ষক",
-            accountant: "হিসাবরক্ষক",
-            librarian: "গ্রন্থাগারিক",
-            receptionist: "রিসেপশনিস্ট",
-            driver: "ড্রাইভার",
-            staff: "স্টাফ",
-            branch_admin: "ব্রাঞ্চ অ্যাডমিন",
-            principal: "অধ্যক্ষ",
-            vice_principal: "উপাধ্যক্ষ",
-            headmaster: "প্রধান শিক্ষক",
-            head_master: "প্রধান শিক্ষক",
-            assistant_teacher: "সহকারী শিক্ষক",
-            security_guard: "নিরাপত্তা প্রহরী",
-            cleaner: "পরিচ্ছন্নতাকর্মী",
-            clerk: "অফিস সহকারী",
-            student: "শিক্ষার্থী",
-            parent: "অভিভাবক",
-        };
-        if (shortCode === "bn" && roleMapBn[key]) {
-            return roleMapBn[key];
-        }
-        return trans || roleName;
+        return translateRoleName(roleName, shortCode);
     };
 
     const getLocalizedMonthName = (mValue: number) => {
         const monthBn: Record<number, string> = {
-            1: "জানুয়ারি",
-            2: "ফেব্রুয়ারি",
-            3: "মার্চ",
-            4: "এপ্রিল",
-            5: "মে",
-            6: "জুন",
-            7: "জুলাই",
-            8: "আগস্ট",
-            9: "সেপ্টেম্বর",
-            10: "অক্টোবর",
-            11: "নভেম্বর",
-            12: "ডিসেম্বর",
+            1: "জানুয়ারি", 2: "ফেব্রুয়ারি", 3: "মার্চ", 4: "এপ্রিল", 5: "মে", 6: "জুন",
+            7: "জুলাই", 8: "আগস্ট", 9: "সেপ্টেম্বর", 10: "অক্টোবর", 11: "নভেম্বর", 12: "ডিসেম্বর",
+        };
+        const monthAr: Record<number, string> = {
+            1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل", 5: "مايو", 6: "يونيو",
+            7: "يوليو", 8: "أغسطس", 9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر",
+        };
+        const monthHi: Record<number, string> = {
+            1: "जनवरी", 2: "फ़रवरी", 3: "मार्च", 4: "अप्रैल", 5: "मई", 6: "जून",
+            7: "जुलाई", 8: "अगस्त", 9: "सितंबर", 10: "अक्टूबर", 11: "नवंबर", 12: "दिसंबर",
         };
         if (shortCode === "bn" && monthBn[mValue]) return monthBn[mValue];
+        if (shortCode === "ar" && monthAr[mValue]) return monthAr[mValue];
+        if (shortCode === "hi" && monthHi[mValue]) return monthHi[mValue];
         const m = MONTHS.find(item => item.value === mValue);
-        return m ? t(m.label) : String(mValue);
+        return m ? t(m.label) : toLocaleNumber(mValue, shortCode);
     };
 
     // Table
@@ -940,8 +913,8 @@ export default function PayrollPage() {
                                             <TableCell className="py-3.5 px-4 text-gray-500 font-mono whitespace-nowrap">{toLocaleNumber(row.staff_id, shortCode)}</TableCell>
                                             <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{row.name}</TableCell>
                                             <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{getLocalizedRoleName(row.role)}</TableCell>
-                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{row.department || "—"}</TableCell>
-                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{row.designation || "—"}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{translateDepartmentName(row.department, shortCode) || "—"}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{translateDesignationName(row.designation, shortCode) || "—"}</TableCell>
                                             <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{toLocaleNumber(row.phone, shortCode) || "—"}</TableCell>
                                             <TableCell className="py-3.5 px-4 whitespace-nowrap">
                                                 {row.status ? (
@@ -961,7 +934,7 @@ export default function PayrollPage() {
                                                         size="icon"
                                                         variant="ghost"
                                                         onClick={() => openGenerate(row)}
-                                                        className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded transition-colors shadow-sm"
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-xs active:scale-95 transition-all"
                                                         title={row.status ? t("edit_payroll") : t("generate_payroll")}
                                                     >
                                                         <Pencil className="h-3.5 w-3.5" />
@@ -973,7 +946,7 @@ export default function PayrollPage() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 onClick={() => setSlipRow(row)}
-                                                                className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded transition-colors shadow-sm"
+                                                                className="h-7 w-7 rounded-lg bg-gradient-to-r from-[#6366f1] to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white shadow-xs active:scale-95 transition-all"
                                                                 title={t("view_payslip")}
                                                             >
                                                                 <Eye className="h-3.5 w-3.5" />
@@ -982,8 +955,8 @@ export default function PayrollPage() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 onClick={() => handleDownloadPdfDirect(row)}
-                                                                className="h-7 w-7 bg-emerald-600 hover:bg-emerald-700 text-white rounded transition-colors shadow-sm"
-                                                                title="Download PDF Payslip"
+                                                                className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs active:scale-95 transition-all"
+                                                                title={t("download_pdf_payslip")}
                                                             >
                                                                 <Download className="h-3.5 w-3.5" />
                                                             </Button>
@@ -993,7 +966,7 @@ export default function PayrollPage() {
                                                     <Button
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-7 w-7 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded transition-colors"
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white shadow-xs active:scale-95 transition-all"
                                                         title={t("payroll_history")}
                                                         onClick={() => openHistory(row)}
                                                     >
@@ -1286,6 +1259,7 @@ export default function PayrollPage() {
                                 year={year}
                                 school={school}
                                 t={t}
+                                shortCode={shortCode}
                             />
                         )}
                     </div>
@@ -1300,7 +1274,7 @@ export default function PayrollPage() {
                                 className="h-10 px-6 text-[11px] font-bold uppercase tracking-widest rounded-lg gap-2 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
                             >
                                 <Download className="h-4 w-4" />
-                                Download PDF
+                                {t("download_pdf_payslip")}
                             </Button>
                             <Button
                                 onClick={handlePrint}

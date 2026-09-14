@@ -32,7 +32,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { cn, toLocaleNumber } from "@/lib/utils";
+import { cn, toLocaleNumber, translateLeaveTypeName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -311,13 +311,13 @@ export default function LeaveTypePage() {
                                             paginatedData.map((lt, idx) => (
                                                 <TableRow key={lt.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
                                                     <TableCell className="py-3.5 px-4 text-gray-500 font-medium text-center whitespace-nowrap">{toLocaleNumber(startIndex + idx + 1, shortCode)}</TableCell>
-                                                    <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{lt.name}</TableCell>
+                                                    <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{translateLeaveTypeName(lt.name, shortCode)}</TableCell>
                                                     <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
                                                         <div className="flex items-center justify-end gap-1.5">
-                                                            <Button onClick={() => handleEdit(lt)} size="icon" variant="ghost" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors shadow-sm cursor-pointer">
+                                                            <Button onClick={() => handleEdit(lt)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer">
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
-                                                            <Button onClick={() => handleDelete(lt.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm cursor-pointer">
+                                                            <Button onClick={() => handleDelete(lt.id)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer">
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </div>

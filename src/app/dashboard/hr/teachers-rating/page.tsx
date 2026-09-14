@@ -279,7 +279,7 @@ export default function TeachersRatingPage() {
                                                     {item.status === "Pending" && (
                                                         <Button
                                                             onClick={() => handleApprove(item.id)}
-                                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-7 px-3 text-[10px] font-bold uppercase rounded-full shadow-sm flex items-center gap-1 cursor-pointer border-0"
+                                                            className="h-7 px-3 text-[10px] font-bold uppercase rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer border-0"
                                                         >
                                                             <CheckCircle className="h-3 w-3" />
                                                             {t("approve")}
@@ -289,7 +289,7 @@ export default function TeachersRatingPage() {
                                                         onClick={() => handleDelete(item.id)}
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm cursor-pointer"
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer"
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>

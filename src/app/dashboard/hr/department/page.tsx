@@ -32,7 +32,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateDepartmentName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -62,7 +62,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function DepartmentPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -238,7 +239,7 @@ export default function DepartmentPage() {
                                 {t("department_list")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {filteredDepartments.length} {t("departments")}
+                                {toLocaleNumber(filteredDepartments.length, shortCode)} {t("departments")}
                             </p>
                         </div>
                     </CardHeader>
@@ -266,9 +267,9 @@ export default function DepartmentPage() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="10">{toLocaleNumber(10, shortCode)}</SelectItem>
+                                            <SelectItem value="25">{toLocaleNumber(25, shortCode)}</SelectItem>
+                                            <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -310,13 +311,13 @@ export default function DepartmentPage() {
                                     ) : (
                                         paginatedData.map((dept) => (
                                             <TableRow key={dept.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                                <TableCell className="py-3.5 text-gray-700 font-medium">{dept.name}</TableCell>
+                                                <TableCell className="py-3.5 text-gray-700 font-medium">{translateDepartmentName(dept.name, shortCode)}</TableCell>
                                                 <TableCell className="py-3.5 text-right">
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                        <Button onClick={() => handleEdit(dept)} size="icon" variant="ghost" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Button onClick={() => handleEdit(dept)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-xs active:scale-95 transition-all">
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button onClick={() => handleDelete(dept.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm">
+                                                        <Button onClick={() => handleDelete(dept.id)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all">
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
@@ -351,7 +352,7 @@ export default function DepartmentPage() {
                                             : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
                                     )}
                                 >
-                                    {page}
+                                    {toLocaleNumber(page, shortCode)}
                                 </Button>
                             ))}
 

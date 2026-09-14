@@ -1386,6 +1386,256 @@ export function translateRoleName(role: string, langCode?: string): string {
 /**
  * Translates standard language names (English, Bengali, Arabic, Hindi, etc.) based on active language code.
  */
+
+/**
+ * Translates academic and school department names across supported languages.
+ */
+export function translateDepartmentName(name?: string | null, langCode: string = "en"): string {
+  if (!name) return "";
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (langCode === "bn") {
+    const bnMap: Record<string, string> = {
+      "management": "ব্যবস্থাপনা",
+      "academic": "একাডেমিক",
+      "academics": "একাডেমিক",
+      "sports": "খেলাধুলা ও শরীরচর্চা",
+      "library": "গ্রন্থাগার",
+      "finance": "অর্থ ও হিসাব",
+      "accounts": "হিসাব বিভাগ",
+      "accounts & finance": "হিসাব ও অর্থ",
+      "commerce": "বাণিজ্য",
+      "arts": "মানবিক",
+      "science": "বিজ্ঞান",
+      "admin": "প্রশাসন",
+      "administration": "প্রশাসন",
+      "it": "তথ্য প্রযুক্তি",
+      "it & technical": "আইটি ও কারিগরি",
+      "technical": "কারিগরি",
+      "operations & maintenance": "অপারেশন ও রক্ষণাবেক্ষণ",
+      "support staff": "সহায়ক কর্মী",
+      "human resource": "মানব সম্পদ",
+      "hr": "মানব সম্পদ",
+      "transport": "পরিবহন",
+      "security": "নিরাপত্তা"
+    };
+    if (bnMap[lower]) return bnMap[lower];
+  }
+
+  if (langCode === "ar") {
+    const arMap: Record<string, string> = {
+      "management": "الإدارة",
+      "academic": "الشؤون الأكاديمية",
+      "academics": "الشؤون الأكاديمية",
+      "sports": "التربية الرياضية",
+      "library": "المكتبة",
+      "finance": "الشؤون المالية",
+      "accounts": "الحسابات",
+      "accounts & finance": "الحسابات والمالية",
+      "commerce": "التجارة",
+      "arts": "الآداب والعلوم الإنسانية",
+      "science": "العلوم",
+      "admin": "الإدارة العامة",
+      "administration": "الإدارة العامة",
+      "it": "تقنية المعلومات",
+      "it & technical": "تقنية المعلومات والجانب التقني",
+      "technical": "القسم التقني",
+      "operations & maintenance": "العمليات والصيانة",
+      "support staff": "طاقم الدعم المساند",
+      "human resource": "الموارد البشرية",
+      "hr": "الموارد البشرية",
+      "transport": "النقل والمواصلات",
+      "security": "الأمن والسلامة"
+    };
+    if (arMap[lower]) return arMap[lower];
+  }
+
+  if (langCode === "hi") {
+    const hiMap: Record<string, string> = {
+      "management": "प्रबंधन",
+      "academic": "अकादमिक",
+      "academics": "अकादमिक",
+      "sports": "खेलकूद",
+      "library": "पुस्तकालय",
+      "finance": "वित्त",
+      "accounts": "लेखा विभाग",
+      "accounts & finance": "लेखा और वित्त",
+      "commerce": "वाणिज्य",
+      "arts": "कला (मानविकी)",
+      "science": "विज्ञान",
+      "admin": "प्रशासन",
+      "administration": "प्रशासन",
+      "it": "सूचना प्रौद्योगिकी (आईटी)",
+      "it & technical": "आईटी और तकनीकी",
+      "technical": "तकनीकी विभाग",
+      "operations & maintenance": "संचालन और रखरखाव",
+      "support staff": "सहायक कर्मचारी",
+      "human resource": "मानव संसाधन",
+      "hr": "मानव संसाधन",
+      "transport": "परिवहन",
+      "security": "सुरक्षा"
+    };
+    if (hiMap[lower]) return hiMap[lower];
+  }
+
+  return trimmed;
+}
+
+/**
+ * Translates staff designation titles across supported languages.
+ */
+export function translateDesignationName(name?: string | null, langCode: string = "en"): string {
+  if (!name) return "";
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (langCode === "bn") {
+    const bnMap: Record<string, string> = {
+      "faculty": "অনুষদ / শিক্ষক মণ্ডলী",
+      "accountant": "হিসাবরক্ষক",
+      "admin": "অ্যাডমিন",
+      "administrator": "প্রশাসক",
+      "receptionist": "অভ্যর্থনাকারী",
+      "principal": "অধ্যক্ষ",
+      "vice principal": "উপাধ্যক্ষ",
+      "director": "পরিচালক",
+      "librarian": "গ্রন্থাগারিক",
+      "technical head": "কারিগরি প্রধান",
+      "headmaster": "প্রধান শিক্ষক",
+      "assistant teacher": "সহকারী শিক্ষক",
+      "senior teacher": "সিনিয়র শিক্ষক",
+      "lecturer": "প্রভাষক",
+      "subject teacher": "বিষয় শিক্ষক",
+      "driver": "চালক",
+      "security guard": "নিরাপত্তা প্রহরী",
+      "cleaner": "পরিচ্ছন্নতাকর্মী",
+      "peon": "পিয়ন / অফিস সহায়ক",
+      "office assistant": "অফিস সহকারী",
+      "lab assistant": "ল্যাব সহকারী"
+    };
+    if (bnMap[lower]) return bnMap[lower];
+  }
+
+  if (langCode === "ar") {
+    const arMap: Record<string, string> = {
+      "faculty": "عضو هيئة تدريس",
+      "accountant": "محاسب",
+      "admin": "مسؤول",
+      "administrator": "مسؤول إداري",
+      "receptionist": "موظف استقبال",
+      "principal": "المدير العام",
+      "vice principal": "نائب المدير",
+      "director": "مدير تنفيذي",
+      "librarian": "أمين مكتبة",
+      "technical head": "رئيس القسم التقني",
+      "headmaster": "ناظر المدرسة",
+      "assistant teacher": "معلم مساعد",
+      "senior teacher": "معلم أول",
+      "lecturer": "محاضر",
+      "subject teacher": "معلم مادة",
+      "driver": "سائق",
+      "security guard": "حارس أمن",
+      "cleaner": "عامل نظافة",
+      "peon": "مستخدم",
+      "office assistant": "مساعد إداري",
+      "lab assistant": "فني مختبر"
+    };
+    if (arMap[lower]) return arMap[lower];
+  }
+
+  if (langCode === "hi") {
+    const hiMap: Record<string, string> = {
+      "faculty": "संकाय (शिक्षक)",
+      "accountant": "लेखाकार",
+      "admin": "व्यवस्थापक",
+      "administrator": "प्रशासक",
+      "receptionist": "रिसेप्शनिस्ट",
+      "principal": "प्रधानाचार्य",
+      "vice principal": "उप-प्रधानाचार्य",
+      "director": "निदेशक",
+      "librarian": "पुस्तकालय अध्यक्ष",
+      "technical head": "तकनीकी प्रमुख",
+      "headmaster": "प्रधानाध्यापक",
+      "assistant teacher": "सहायक शिक्षक",
+      "senior teacher": "वरिष्ठ शिक्षक",
+      "lecturer": "व्याख्याता",
+      "subject teacher": "विषय शिक्षक",
+      "driver": "चालक",
+      "security guard": "सुरक्षा गार्ड",
+      "cleaner": "सफाई कर्मचारी",
+      "peon": "चपरासी",
+      "office assistant": "कार्यालय सहायक",
+      "lab assistant": "प्रयोगशाला सहायक"
+    };
+    if (hiMap[lower]) return hiMap[lower];
+  }
+
+  return trimmed;
+}
+
+/**
+ * Translates leave type names across supported languages.
+ */
+export function translateLeaveTypeName(name?: string | null, langCode: string = "en"): string {
+  if (!name) return "";
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (langCode === "bn") {
+    const bnMap: Record<string, string> = {
+      "sick leave": "অসুস্থতাজনিত ছুটি",
+      "medical leave": "চিকিৎসাজনিত ছুটি",
+      "casual leave": "নৈমিত্তিক ছুটি",
+      "maternity leave": "মাতৃত্বকালীন ছুটি",
+      "paternity leave": "পিতৃত্বকালীন ছুটি",
+      "earned leave": "অর্জিত ছুটি",
+      "annual leave": "বার্ষিক ছুটি",
+      "unpaid leave": "অবৈতনিক ছুটি",
+      "leave without pay": "বিনা বেতনে ছুটি",
+      "half day": "অর্ধ দিবস ছুটি",
+      "half day leave": "অর্ধ দিবস ছুটি"
+    };
+    if (bnMap[lower]) return bnMap[lower];
+  }
+
+  if (langCode === "ar") {
+    const arMap: Record<string, string> = {
+      "sick leave": "إجازة مرضية",
+      "medical leave": "إجازة طبية",
+      "casual leave": "إجازة عارضة",
+      "maternity leave": "إجازة أمومة",
+      "paternity leave": "إجازة أبوة",
+      "earned leave": "إجازة مكتسبة",
+      "annual leave": "إجازة سنوية",
+      "unpaid leave": "إجازة بدون راتب",
+      "leave without pay": "إجازة غير مدفوعة",
+      "half day": "إجازة نصف يوم",
+      "half day leave": "إجازة نصف يوم"
+    };
+    if (arMap[lower]) return arMap[lower];
+  }
+
+  if (langCode === "hi") {
+    const hiMap: Record<string, string> = {
+      "sick leave": "बीमारी की छुट्टी",
+      "medical leave": "चिकित्सा अवकाश",
+      "casual leave": "आकस्मिक अवकाश",
+      "maternity leave": "मातृत्व अवकाश",
+      "paternity leave": "पितृत्व अवकाश",
+      "earned leave": "अर्जित अवकाश",
+      "annual leave": "वार्षिक अवकाश",
+      "unpaid leave": "अवैतनिक अवकाश",
+      "leave without pay": "बिना वेतन अवकाश",
+      "half day": "आधे दिन की छुट्टी",
+      "half day leave": "आधे दिन का अवकाश"
+    };
+    if (hiMap[lower]) return hiMap[lower];
+  }
+
+  return trimmed;
+}
+
 export function translateLanguageName(name?: string | null, langCode: string = "en"): string {
   if (!name) return "";
   const trimmed = name.trim();
