@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   },
   productionBrowserSourceMaps: false,
   experimental: {
+    webpackMemoryOptimizations: true,
     optimizePackageImports: [
       "lucide-react",
       "date-fns",
@@ -37,24 +38,13 @@ const nextConfig: NextConfig = {
       "tailwind-merge",
     ],
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
       path: false,
       os: false,
     };
-    if (!isServer) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          ...config.optimization?.splitChunks,
-          chunks: "all",
-          maxInitialRequests: 20,
-          minSize: 20000,
-        },
-      };
-    }
     return config;
   },
   images: {
