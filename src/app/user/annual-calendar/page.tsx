@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import {
     CalendarRange,
     Calendar,
@@ -141,7 +141,7 @@ function getCategoryStyle(typeName?: string) {
 }
 
 export default function UserAnnualCalendarPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const now = new Date();
     const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
@@ -454,7 +454,7 @@ export default function UserAnnualCalendarPage() {
                                     {t("this_month") || "This Month"}:
                                 </span>
                                 <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white shadow-2xs bg-gradient-to-r from-blue-600 to-indigo-600">
-                                    {stats.monthEventsCount} {t("events") || "Events"}
+                                    {toLocaleNumber(stats.monthEventsCount, language?.short_code)} {t("events") || "Events"}
                                 </span>
                             </div>
 
@@ -509,7 +509,7 @@ export default function UserAnnualCalendarPage() {
                                             {card.label}
                                         </p>
                                         <p className={cn("mt-1 text-xl font-bold", card.text)}>
-                                            {card.count}
+                                            {toLocaleNumber(card.count, language?.short_code)}
                                         </p>
                                     </div>
                                 </div>
@@ -538,7 +538,7 @@ export default function UserAnnualCalendarPage() {
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <div className="font-bold text-[15px] text-gray-800 min-w-[160px] text-center">
-                                {monthNames[currentMonth - 1]} {currentYear}
+                                {t(monthNames[currentMonth - 1].toLowerCase())} {toLocaleNumber(currentYear, language?.short_code)}
                             </div>
                             <Button
                                 onClick={goToNextMonth}
@@ -551,7 +551,7 @@ export default function UserAnnualCalendarPage() {
 
                         <div className="text-xs text-gray-500 font-medium hidden sm:block">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                {currentMonthEntries.length} {t("events_in_month") || "Events in this month"}
+                                {toLocaleNumber(currentMonthEntries.length, language?.short_code)} {t("events_in_month") || "Events in this month"}
                             </span>
                         </div>
                     </div>
@@ -578,8 +578,8 @@ export default function UserAnnualCalendarPage() {
                                                 isWeekendHeader ? "text-red-600 bg-red-50/60" : "text-gray-600"
                                             )}
                                         >
-                                            <span className="sm:hidden">{day.charAt(0)}</span>
-                                            <span className="hidden sm:inline">{day}</span>
+                                            <span className="sm:hidden">{(t(day.toLowerCase()) || day).charAt(0)}</span>
+                                            <span className="hidden sm:inline">{t(day.toLowerCase()) || day}</span>
                                         </div>
                                     );
                                 })}
@@ -631,7 +631,7 @@ export default function UserAnnualCalendarPage() {
                                                                 {t("today") || "TODAY"}
                                                             </span>
                                                         )}
-                                                        <span>{day}</span>
+                                                        <span>{toLocaleNumber(day, language?.short_code)}</span>
                                                     </div>
 
                                                     {/* Event & Holiday & Leave Badges */}

@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { Loader2, MessageCircle, Send, RefreshCw, Smartphone, ExternalLink, Sliders, CheckCircle2, XCircle, Clock, Save } from "lucide-react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
@@ -17,9 +17,11 @@ import { QueueMonitorCard } from "@/components/queue/queue-monitor-card";
 
 interface GatewayFieldDef {
     key: string;
-    label: string;
+    labelKey: string;
+    fallbackLabel: string;
     type: string;
     options?: string[];
+    optionLabelKeys?: Record<string, string>;
     optionLabels?: Record<string, string>;
 }
 
@@ -35,28 +37,36 @@ const gatewaysConfig: Record<string, GatewayConfigDef> = {
         providerName: "whatsapp_bipsms",
         guideUrl: "https://app.bipsms.com",
         fields: [
-            { key: "secret", label: "API Secret", type: "password" },
-            { key: "account", label: "WhatsApp Account ID", type: "password" },
-            { key: "priority", label: "Priority", type: "select", options: ["1", "2"], optionLabels: { "1": "Yes (send immediately)", "2": "No (queue)" } },
+            { key: "secret", labelKey: "api_secret", fallbackLabel: "API Secret", type: "password" },
+            { key: "account", labelKey: "whatsapp_account_id", fallbackLabel: "WhatsApp Account ID", type: "password" },
+            { 
+                key: "priority", 
+                labelKey: "priority", 
+                fallbackLabel: "Priority", 
+                type: "select", 
+                options: ["1", "2"], 
+                optionLabelKeys: { "1": "priority_immediate", "2": "priority_queue" },
+                optionLabels: { "1": "Yes (send immediately)", "2": "No (queue)" } 
+            },
         ]
     },
     "Meta WhatsApp Official": {
         providerName: "whatsapp_meta",
         guideUrl: "https://business.facebook.com/",
         fields: [
-            { key: "access_token", label: "Access Token", type: "password" },
-            { key: "phone_number_id", label: "Phone Number ID", type: "text" },
-            { key: "phone_number", label: "Registered Phone Number", type: "text" },
-            { key: "language", label: "Language", type: "text" },
+            { key: "access_token", labelKey: "access_token", fallbackLabel: "Access Token", type: "password" },
+            { key: "phone_number_id", labelKey: "phone_number_id", fallbackLabel: "Phone Number ID", type: "text" },
+            { key: "phone_number", labelKey: "registered_phone_number", fallbackLabel: "Registered Phone Number", type: "text" },
+            { key: "language", labelKey: "language", fallbackLabel: "Language", type: "text" },
         ]
     },
     "Twilio": {
         providerName: "whatsapp_twilio",
         guideUrl: "https://www.twilio.com/console",
         fields: [
-            { key: "account_sid", label: "Account SID", type: "text" },
-            { key: "auth_token", label: "Auth Token", type: "password" },
-            { key: "sender_phone", label: "Sender Phone Number", type: "text" },
+            { key: "account_sid", labelKey: "account_sid", fallbackLabel: "Account SID", type: "text" },
+            { key: "auth_token", labelKey: "auth_token", fallbackLabel: "Auth Token", type: "password" },
+            { key: "sender_phone", labelKey: "sender_phone_number", fallbackLabel: "Sender Phone Number", type: "text" },
         ]
     }
 };
@@ -85,7 +95,7 @@ function FormSkeleton() {
 }
 
 export default function WhatsappMessagingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
 
     const [activeTab, setActiveTab] = useState<string>("BipSMS");
     const [loading, setLoading] = useState<boolean>(true);
@@ -178,7 +188,7 @@ export default function WhatsappMessagingPage() {
             };
             const res = await api.post('/system-setting/sms-gateways/interval', payload);
             if (res.data?.status === 'success') {
-                sonnerToast.success(res.data.message || "WhatsApp interval settings saved successfully");
+                sonnerToast.success(t("whatsapp_interval_saved_successfully") || res.data.message || "WhatsApp interval settings saved successfully");
                 if (res.data.data) {
                     setIntervalConfig({
                         mode: res.data.data.mode || "random",
@@ -188,10 +198,10 @@ export default function WhatsappMessagingPage() {
                     });
                 }
             } else {
-                sonnerToast.error(res.data?.message || "Failed to save interval settings");
+                sonnerToast.error(t("failed_to_save_interval_settings") || res.data?.message || "Failed to save interval settings");
             }
         } catch {
-            sonnerToast.error("Failed to save interval settings");
+            sonnerToast.error(t("failed_to_save_interval_settings") || "Failed to save interval settings");
         } finally {
             setSavingInterval(false);
         }
@@ -233,7 +243,8 @@ export default function WhatsappMessagingPage() {
 
             const res = await api.post('/system-setting/sms-gateways', payload);
             if (res.data?.status === 'success') {
-                sonnerToast.success(`${activeTab} WhatsApp configuration saved successfully!`);
+                const successMsg = t("whatsapp_config_saved_successfully", { provider: activeTab }) || `${activeTab} WhatsApp configuration saved successfully!`;
+                sonnerToast.success(successMsg);
                 if (res.data.data) {
                     setSettingsData(prev => ({
                         ...prev,
@@ -245,11 +256,13 @@ export default function WhatsappMessagingPage() {
                     }));
                 }
             } else {
-                sonnerToast.error(res.data?.message || `Failed to save ${activeTab} configuration`);
+                const errMsg = t("failed_to_save_configuration", { provider: activeTab }) || res.data?.message || `Failed to save ${activeTab} configuration`;
+                sonnerToast.error(errMsg);
             }
         } catch (err: unknown) {
             const errRes = err as { response?: { data?: { message?: string } } };
-            sonnerToast.error(errRes.response?.data?.message || `Failed to save ${activeTab} configuration`);
+            const errMsg = errRes.response?.data?.message || t("failed_to_save_configuration", { provider: activeTab }) || `Failed to save ${activeTab} configuration`;
+            sonnerToast.error(errMsg);
         } finally {
             setSavingTab(false);
         }
@@ -269,13 +282,13 @@ export default function WhatsappMessagingPage() {
                 }));
 
                 if (newStatus) {
-                    sonnerToast.success(`${tabLabel} activated`);
+                    sonnerToast.success(t("provider_activated", { provider: tabLabel }) || `${tabLabel} activated`);
                 } else {
-                    sonnerToast.info(`${tabLabel} deactivated`);
+                    sonnerToast.info(t("provider_deactivated", { provider: tabLabel }) || `${tabLabel} deactivated`);
                 }
             }
         } catch {
-            sonnerToast.error(`Failed to toggle ${tabLabel}`);
+            sonnerToast.error(t("failed_to_toggle_provider", { provider: tabLabel }) || `Failed to toggle ${tabLabel}`);
         }
     };
 
@@ -286,13 +299,13 @@ export default function WhatsappMessagingPage() {
                 const newStatus = res.data.data.round_robin_enabled;
                 setRoundRobinEnabled(newStatus);
                 if (newStatus) {
-                    sonnerToast.success("WhatsApp Round Robin load balancing activated!");
+                    sonnerToast.success(t("round_robin_activated") || "WhatsApp Round Robin load balancing activated!");
                 } else {
-                    sonnerToast.info("WhatsApp Round Robin load balancing deactivated");
+                    sonnerToast.info(t("round_robin_deactivated") || "WhatsApp Round Robin load balancing deactivated");
                 }
             }
         } catch {
-            sonnerToast.error("Failed to toggle WhatsApp Round Robin load balancing");
+            sonnerToast.error(t("failed_to_toggle_round_robin") || "Failed to toggle WhatsApp Round Robin load balancing");
         }
     };
 
@@ -312,15 +325,17 @@ export default function WhatsappMessagingPage() {
             });
 
             if (res.data?.status === 'success') {
-                setTestResult({ ok: true, message: res.data?.message || "Test WhatsApp message sent successfully" });
-                sonnerToast.success(res.data?.message || "Test WhatsApp message sent successfully");
+                const msg = res.data?.message || t("test_whatsapp_message_sent_successfully") || "Test WhatsApp message sent successfully";
+                setTestResult({ ok: true, message: msg });
+                sonnerToast.success(msg);
             } else {
-                setTestResult({ ok: false, message: res.data?.message || "Test WhatsApp message failed" });
-                sonnerToast.error(res.data?.message || "Test WhatsApp message failed");
+                const msg = res.data?.message || t("test_whatsapp_message_failed") || "Test WhatsApp message failed";
+                setTestResult({ ok: false, message: msg });
+                sonnerToast.error(msg);
             }
         } catch (err: unknown) {
             const errRes = err as { response?: { data?: { message?: string } } };
-            const msg = errRes.response?.data?.message || "Failed to send test WhatsApp message";
+            const msg = errRes.response?.data?.message || t("test_whatsapp_message_failed") || "Failed to send test WhatsApp message";
             setTestResult({ ok: false, message: msg });
             sonnerToast.error(msg);
         } finally {
@@ -332,6 +347,27 @@ export default function WhatsappMessagingPage() {
         const pKey = gatewaysConfig[tabKey].providerName;
         return settingsData[pKey]?.status;
     }).length;
+
+    const getFieldLabel = (field: GatewayFieldDef) => {
+        return t(field.labelKey) || field.fallbackLabel;
+    };
+
+    const getProviderTabLabel = (tabKey: string) => {
+        const keyMap: Record<string, string> = {
+            "BipSMS": "bipsms",
+            "Meta WhatsApp Official": "meta_whatsapp_official",
+            "Twilio": "twilio",
+        };
+        const transKey = keyMap[tabKey];
+        if (transKey && t(transKey)) return t(transKey);
+        return tabKey;
+    };
+
+    const getOptionLabel = (field: GatewayFieldDef, opt: string) => {
+        const optKey = field.optionLabelKeys?.[opt];
+        if (optKey && t(optKey)) return t(optKey);
+        return field.optionLabels?.[opt] || opt.charAt(0).toUpperCase() + opt.slice(1);
+    };
 
     return (
         <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6 bg-gray-50/10 min-h-screen font-sans flex flex-col lg:flex-row gap-4 sm:gap-6">
@@ -363,12 +399,12 @@ export default function WhatsappMessagingPage() {
                             <div className="sm:hidden px-3 py-2">
                                 <Select value={activeTab} onValueChange={(val) => { setActiveTab(val); setTestResult(null); }}>
                                     <SelectTrigger className="h-9 text-[12px] border-gray-200 shadow-none rounded">
-                                        <SelectValue placeholder="Select WhatsApp Provider" />
+                                        <SelectValue placeholder={t("select_whatsapp_provider") || "Select WhatsApp Provider"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {gatewayTabKeys.map((tabKey) => (
                                             <SelectItem key={tabKey} value={tabKey} className="text-[12px]">
-                                                {tabKey}
+                                                {getProviderTabLabel(tabKey)}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -388,14 +424,14 @@ export default function WhatsappMessagingPage() {
                                                 key={tabKey}
                                                 onClick={() => { setActiveTab(tabKey); setTestResult(null); }}
                                                 className={cn(
-                                                    "px-3 xl:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 mx-0.5 sm:mx-1 flex items-center gap-1.5",
+                                                    "px-3 xl:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] font-bold transition-all whitespace-nowrap border-b-2 mx-0.5 sm:mx-1 flex items-center gap-1.5",
                                                     activeTab === tabKey
                                                         ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
                                                         : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
                                                 )}
                                             >
                                                 <Smartphone className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                                <span>{tabKey}</span>
+                                                <span>{getProviderTabLabel(tabKey)}</span>
                                                 {gwEnabled && (
                                                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
                                                 )}
@@ -415,46 +451,49 @@ export default function WhatsappMessagingPage() {
                                     <div className="flex-1 min-w-0 space-y-4 sm:space-y-5">
                                         
                                         {/* Dynamic Fields per Gateway */}
-                                        {currentTabDef.fields.map((field) => (
-                                            <div key={field.key} className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                    {field.label} <span className="text-red-500">*</span>
-                                                </Label>
-                                                <div className="sm:col-span-3">
-                                                    {field.type === "select" && field.options ? (
-                                                        <Select
-                                                            value={currentItem.config[field.key] || ""}
-                                                            onValueChange={(val) => handleFieldChange(field.key, val)}
-                                                        >
-                                                            <SelectTrigger className="h-8 sm:h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
-                                                                <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {field.options.map((opt) => (
-                                                                    <SelectItem key={opt} value={opt} className="text-[11px]">
-                                                                        {field.optionLabels?.[opt] || opt.charAt(0).toUpperCase() + opt.slice(1)}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    ) : (
-                                                        <Input
-                                                            type={field.type}
-                                                            value={currentItem.config[field.key] || ""}
-                                                            onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                                                            placeholder={`Enter ${field.label.toLowerCase()}`}
-                                                            className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                        />
-                                                    )}
+                                        {currentTabDef.fields.map((field) => {
+                                            const labelText = getFieldLabel(field);
+                                            return (
+                                                <div key={field.key} className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                    <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                        {labelText} <span className="text-red-500">*</span>
+                                                    </Label>
+                                                    <div className="sm:col-span-3">
+                                                        {field.type === "select" && field.options ? (
+                                                            <Select
+                                                                value={String(currentItem.config[field.key] || "")}
+                                                                onValueChange={(val) => handleFieldChange(field.key, val)}
+                                                            >
+                                                                <SelectTrigger className="h-8 sm:h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
+                                                                    <SelectValue placeholder={t("select_field_value", { field: labelText }) || `Select ${labelText}`} />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {field.options.map((opt) => (
+                                                                        <SelectItem key={opt} value={opt} className="text-[11px]">
+                                                                            {getOptionLabel(field, opt)}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        ) : (
+                                                            <Input
+                                                                type={field.type}
+                                                                value={String(currentItem.config[field.key] || "")}
+                                                                onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                                                                placeholder={t("enter_field_value", { field: labelText }) || `Enter ${labelText}`}
+                                                                className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                            />
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
 
                                         {/* Send Limit per Round Field for Round Robin */}
                                         <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4 pt-2 border-t border-dashed border-gray-200">
                                             <Label className="text-[11px] font-bold text-indigo-700 sm:text-right uppercase flex items-center gap-1 justify-end">
                                                 <RefreshCw className="h-3 w-3 text-indigo-600" />
-                                                Send Limit per Round
+                                                {t("send_limit_per_round") || "Send Limit per Round"}
                                             </Label>
                                             <div className="sm:col-span-3 space-y-1">
                                                 <Input
@@ -464,10 +503,10 @@ export default function WhatsappMessagingPage() {
                                                     value={currentItem.config.wa_limit || 100}
                                                     onChange={(e) => handleFieldChange("wa_limit", Math.max(1, Number(e.target.value)))}
                                                     className="h-8 sm:h-9 text-[11px] border-indigo-200 focus:ring-indigo-500 shadow-none rounded w-full sm:w-44"
-                                                    placeholder="100 Messages"
+                                                    placeholder={t("messages_count_placeholder") || "100 Messages"}
                                                 />
                                                 <p className="text-[10px] text-gray-400">
-                                                    Number of WhatsApp messages sent via this gateway before Round Robin rotates to the next active WhatsApp provider.
+                                                    {t("send_limit_per_round_desc") || "Number of WhatsApp messages sent via this gateway before Round Robin rotates to the next active WhatsApp provider."}
                                                 </p>
                                             </div>
                                         </div>
@@ -476,7 +515,7 @@ export default function WhatsappMessagingPage() {
                                         <div className="pt-4 border-t border-gray-100">
                                             <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3">
                                                 <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                    Test Phone Number
+                                                    {t("test_phone_number") || "Test Phone Number"}
                                                 </Label>
                                                 <div className="sm:col-span-3 space-y-2">
                                                     <div className="flex gap-2">
@@ -494,9 +533,9 @@ export default function WhatsappMessagingPage() {
                                                             className="h-8 sm:h-9 border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-[11px] font-bold uppercase shrink-0 px-3"
                                                         >
                                                             {testing ? (
-                                                                <><Loader2 className="h-3 w-3 animate-spin mr-1.5" /> Testing...</>
+                                                                <><Loader2 className="h-3 w-3 animate-spin mr-1.5" /> {t("testing") || "Testing..."}</>
                                                             ) : (
-                                                                <><Send className="h-3 w-3 mr-1.5 text-indigo-600" /> Send Test</>
+                                                                <><Send className="h-3 w-3 mr-1.5 text-indigo-600" /> {t("send_test") || "Send Test"}</>
                                                             )}
                                                         </Button>
                                                     </div>
@@ -521,14 +560,14 @@ export default function WhatsappMessagingPage() {
                                             <MessageCircle className="h-8 w-8 sm:h-10 sm:w-10 text-emerald-600" />
                                         </div>
                                         <div className="text-center space-y-1.5">
-                                            <p className="text-[11px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">
-                                                Configure {activeTab}
+                                            <p className="text-[11px] sm:text-xs text-gray-500 font-bold tracking-wider">
+                                                {t("configure_provider", { provider: getProviderTabLabel(activeTab) }) || `Configure ${getProviderTabLabel(activeTab)}`}
                                             </p>
                                             <span className={cn(
                                                 "text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block",
                                                 currentItem.status ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
                                             )}>
-                                                {currentItem.status ? "● Active Provider" : "○ Disabled"}
+                                                {currentItem.status ? (t("active_provider") || "● Active Provider") : (t("disabled_provider") || "○ Disabled")}
                                             </span>
                                             {currentTabDef.guideUrl && (
                                                 <a
@@ -537,7 +576,7 @@ export default function WhatsappMessagingPage() {
                                                     rel="noopener noreferrer"
                                                     className="text-[11px] text-indigo-600 hover:underline flex items-center justify-center gap-1 font-medium transition-colors pt-1"
                                                 >
-                                                    Documentation <ExternalLink className="h-3 w-3" />
+                                                    {t("documentation") || "Documentation"} <ExternalLink className="h-3 w-3" />
                                                 </a>
                                             )}
                                         </div>
@@ -553,7 +592,7 @@ export default function WhatsappMessagingPage() {
                                 disabled={savingTab}
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 sm:px-10 h-9 sm:h-10 text-[11px] sm:text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 w-full sm:w-auto"
                             >
-                                {savingTab ? <><Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" /> {t("saving")}</> : t("save")}
+                                {savingTab ? <><Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" /> {t("saving") || "Saving..."}</> : (t("save") || "Save")}
                             </Button>
                         </div>
                     </CardContent>
@@ -571,10 +610,10 @@ export default function WhatsappMessagingPage() {
                         </span>
                         <div className="min-w-0">
                             <h2 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">
-                                WhatsApp Round Robin
+                                {t("whatsapp_round_robin") || "WhatsApp Round Robin"}
                             </h2>
                             <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
-                                Auto rotate across WhatsApp gateways
+                                {t("auto_rotate_across_whatsapp_gateways") || "Auto rotate across WhatsApp gateways"}
                             </p>
                         </div>
                     </div>
@@ -583,13 +622,15 @@ export default function WhatsappMessagingPage() {
                         <div className="flex items-center justify-between py-1 bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100">
                             <div className="space-y-0.5">
                                 <Label className="text-[11px] font-bold text-gray-700 block">
-                                    Round Robin Mode
+                                    {t("round_robin_mode") || "Round Robin Mode"}
                                 </Label>
                                 <span className={cn(
                                     "text-[10px] font-semibold block",
                                     roundRobinEnabled ? "text-indigo-600" : "text-gray-400"
                                 )}>
-                                    {roundRobinEnabled ? `Active (${activeCount} Providers)` : "Disabled"}
+                                    {roundRobinEnabled 
+                                        ? (t("active_count_providers", { count: toLocaleNumber(activeCount, language?.short_code) }) || `Active (${toLocaleNumber(activeCount, language?.short_code)} Providers)`)
+                                        : (t("disabled") || "Disabled")}
                                 </span>
                             </div>
                             <Switch
@@ -600,7 +641,7 @@ export default function WhatsappMessagingPage() {
                         </div>
 
                         <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 p-2.5 rounded border border-gray-100">
-                            💡 When enabled, outgoing WhatsApp messages will rotate across active providers based on each provider&apos;s send limit per round.
+                            {t("round_robin_note") || "💡 When enabled, outgoing WhatsApp messages will rotate across active providers based on each provider's send limit per round."}
                         </p>
                     </CardContent>
                 </Card>
@@ -613,27 +654,27 @@ export default function WhatsappMessagingPage() {
                         </span>
                         <div className="min-w-0">
                             <h2 className="text-[12px] sm:text-[13px] font-bold text-gray-800 tracking-tight leading-none">
-                                Sending Interval & Anti-Ban
+                                {t("sending_interval_and_anti_ban") || "Sending Interval & Anti-Ban"}
                             </h2>
                             <p className="text-[10px] text-gray-500 mt-0.5">
-                                Queue delay between messages
+                                {t("queue_delay_between_messages") || "Queue delay between messages"}
                             </p>
                         </div>
                     </div>
 
                     <CardContent className="p-3.5 sm:p-4 space-y-3">
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-bold text-gray-700">Interval Mode</Label>
+                            <Label className="text-[11px] font-bold text-gray-700">{t("interval_mode") || "Interval Mode"}</Label>
                             <Select 
                                 value={intervalConfig.mode || "random"} 
                                 onValueChange={(val) => setIntervalConfig(prev => ({ ...prev, mode: val }))}
                             >
                                 <SelectTrigger className="h-8 text-[11px] border-gray-200">
-                                    <SelectValue placeholder="Select interval mode" />
+                                    <SelectValue placeholder={t("select_interval_mode") || "Select interval mode"} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="random" className="text-[11px]">Random Delay (Anti-Ban)</SelectItem>
-                                    <SelectItem value="fixed" className="text-[11px]">Fixed Interval</SelectItem>
+                                    <SelectItem value="random" className="text-[11px]">{t("random_delay_anti_ban") || "Random Delay (Anti-Ban)"}</SelectItem>
+                                    <SelectItem value="fixed" className="text-[11px]">{t("fixed_interval") || "Fixed Interval"}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -641,7 +682,7 @@ export default function WhatsappMessagingPage() {
                         {(intervalConfig.mode || "random") === "random" ? (
                             <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1">
-                                    <Label className="text-[10px] font-bold text-gray-600">From (Sec)</Label>
+                                    <Label className="text-[10px] font-bold text-gray-600">{t("from_sec") || "From (Sec)"}</Label>
                                     <Input
                                         type="number"
                                         min={1}
@@ -655,7 +696,7 @@ export default function WhatsappMessagingPage() {
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-[10px] font-bold text-gray-600">To (Sec)</Label>
+                                    <Label className="text-[10px] font-bold text-gray-600">{t("to_sec") || "To (Sec)"}</Label>
                                     <Input
                                         type="number"
                                         min={1}
@@ -671,7 +712,7 @@ export default function WhatsappMessagingPage() {
                             </div>
                         ) : (
                             <div className="space-y-1">
-                                <Label className="text-[10px] font-bold text-gray-600">Interval (Seconds)</Label>
+                                <Label className="text-[10px] font-bold text-gray-600">{t("interval_seconds") || "Interval (Seconds)"}</Label>
                                 <Input
                                     type="number"
                                     min={1}
@@ -693,13 +734,13 @@ export default function WhatsappMessagingPage() {
                             className="w-full h-8 text-[11px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white"
                         >
                             {savingInterval ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
-                            Save Interval
+                            {t("save_interval") || "Save Interval"}
                         </Button>
                     </CardContent>
                 </Card>
 
                 {/* Live Queue Monitor & Emergency Cancellation */}
-                <QueueMonitorCard channelFilter="whatsapp" title="WhatsApp Queue & Emergency Stop" />
+                <QueueMonitorCard channelFilter="whatsapp" title={t("whatsapp_queue_emergency_stop") || "WhatsApp Queue & Emergency Stop"} />
 
                 {/* Active Gateways Toggle List Sidebar */}
                 <Card className="pt-0 overflow-hidden">
@@ -709,10 +750,10 @@ export default function WhatsappMessagingPage() {
                         </span>
                         <div className="min-w-0">
                             <h2 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">
-                                Active Gateways
+                                {t("active_gateways") || "Active Gateways"}
                             </h2>
                             <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
-                                Toggle to enable or disable
+                                {t("toggle_to_enable_or_disable") || "Toggle to enable or disable"}
                             </p>
                         </div>
                     </div>
@@ -725,6 +766,7 @@ export default function WhatsappMessagingPage() {
                                     const item = settingsData[gwProviderKey];
                                     const isEnabled = item?.status || false;
                                     const isSelected = activeTab === tabKey;
+                                    const limitVal = toLocaleNumber(item?.config?.wa_limit || 100, language?.short_code);
 
                                     return (
                                         <div
@@ -741,10 +783,12 @@ export default function WhatsappMessagingPage() {
                                                 onClick={() => { setActiveTab(tabKey); setTestResult(null); }}
                                             >
                                                 <Label className="text-[11px] font-bold text-gray-700 cursor-pointer block truncate hover:text-indigo-600">
-                                                    {tabKey}
+                                                    {getProviderTabLabel(tabKey)}
                                                 </Label>
                                                 <span className="text-[9px] text-gray-400 block truncate">
-                                                    {isEnabled ? `Limit: ${item?.config?.wa_limit || 100} / round` : "Inactive"}
+                                                    {isEnabled 
+                                                        ? (t("limit_per_round", { limit: limitVal }) || `Limit: ${limitVal} / round`) 
+                                                        : (t("inactive") || "Inactive")}
                                                 </span>
                                             </div>
 

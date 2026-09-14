@@ -31,7 +31,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName, translateSubjectName, toLocaleNumber } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
 
 const DEFAULT_DAYS = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -51,7 +51,7 @@ interface DayData {
 
 export default function AddClassTimetablePage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const { settings } = useSettings();
 
@@ -353,6 +353,11 @@ export default function AddClassTimetablePage() {
         }
     };
 
+    const getDayLabel = (day: string) => {
+        const lower = day.toLowerCase();
+        return t(lower) || day;
+    };
+
     const currentDayRows = dayData[currentDay] || [];
 
     return (
@@ -373,7 +378,7 @@ export default function AddClassTimetablePage() {
                     </div>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                         {/* Class */}
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
@@ -393,7 +398,7 @@ export default function AddClassTimetablePage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                        <SelectItem key={c.id} value={c.id.toString()}>{translateClassName(c.name, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -414,7 +419,7 @@ export default function AddClassTimetablePage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => (
-                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.id.toString()}>{translateSectionName(s.name, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -437,22 +442,23 @@ export default function AddClassTimetablePage() {
                                     {subjectGroups
                                         .filter(sg => !selectedClassId || sg.school_class_id.toString() === selectedClassId)
                                         .map(sg => (
-                                            <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
+                                            <SelectItem key={sg.id} value={sg.id.toString()}>{translateSubjectName(sg.name, language?.short_code)}</SelectItem>
                                         ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
 
-                    <div className="flex justify-end mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
-                        <Button
-                            onClick={handleSearch}
-                            disabled={searching || loading}
-                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
-                        >
-                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            {t("search")}
-                        </Button>
+                        {/* Search Button in same line */}
+                        <div>
+                            <Button
+                                onClick={handleSearch}
+                                disabled={searching || loading}
+                                className="w-full btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full cursor-pointer"
+                            >
+                                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -469,7 +475,7 @@ export default function AddClassTimetablePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-indigo-500" /> Period Start Time *
+                            <Clock className="h-3 w-3 text-indigo-500" /> {t("period_start_time")} *
                         </Label>
                         <Input
                             type="time"
@@ -481,7 +487,7 @@ export default function AddClassTimetablePage() {
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                            Duration (Minutes) *
+                            {t("duration_minutes")} *
                         </Label>
                         <Input
                             type="number"
@@ -493,7 +499,7 @@ export default function AddClassTimetablePage() {
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                            Interval / Break (Min) *
+                            {t("interval_break_min")} *
                         </Label>
                         <Input
                             type="number"
@@ -505,13 +511,13 @@ export default function AddClassTimetablePage() {
 
                     <div className="space-y-1.5">
                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                            Default Room No.
+                            {t("default_room_no")}
                         </Label>
                         <Input
                             value={quickParams.room}
                             onChange={(e) => setQuickParams({ ...quickParams, room: e.target.value })}
                             className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-none"
-                            placeholder="e.g. 101"
+                            placeholder={t("eg_101") || "e.g. 101"}
                         />
                     </div>
 
@@ -521,7 +527,7 @@ export default function AddClassTimetablePage() {
                         className="h-9 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                     >
                         <Wand2 className="h-3.5 w-3.5" />
-                        Apply Timing
+                        {t("apply_timing")}
                     </Button>
                 </div>
             </div>
@@ -535,6 +541,7 @@ export default function AddClassTimetablePage() {
                         {orderedDays.map((day) => {
                             const count = dayData[day]?.length || 0;
                             const isActive = currentDay === day;
+                            const localizedDay = getDayLabel(day);
                             return (
                                 <button
                                     key={day}
@@ -547,7 +554,7 @@ export default function AddClassTimetablePage() {
                                             : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 border border-gray-200 dark:border-gray-700"
                                     )}
                                 >
-                                    {day}
+                                    <span>{localizedDay}</span>
                                     {count > 0 && (
                                         <span className={cn(
                                             "px-1.5 py-0.2 rounded-full text-[10px] font-black",
@@ -568,19 +575,19 @@ export default function AddClassTimetablePage() {
                                 type="button"
                                 onClick={copyCurrentDayToAllDays}
                                 variant="outline"
-                                className="h-8 px-3 rounded-lg text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1"
+                                className="h-8 px-3 rounded-lg text-xs font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 flex items-center gap-1 cursor-pointer"
                             >
                                 <Copy className="h-3.5 w-3.5 text-indigo-500" />
-                                Copy to All Days
+                                {t("copy_to_all_days") || "Copy to All Days"}
                             </Button>
                         )}
                         <Button
                             type="button"
                             onClick={() => addRow(currentDay)}
-                            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm"
+                            className="h-8 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm cursor-pointer"
                         >
                             <Plus className="h-4 w-4" />
-                            Add Period
+                            {t("add_period") || "Add Period"}
                         </Button>
                     </div>
                 </div>
@@ -590,7 +597,7 @@ export default function AddClassTimetablePage() {
                         <Table>
                             <TableHeader className="bg-gray-50/90 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300">
                                 <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
-                                    <TableHead className="py-3 px-4 w-[90px]">Period</TableHead>
+                                    <TableHead className="py-3 px-4 w-[90px]">{t("period") || "Period"}</TableHead>
                                     <TableHead className="py-3 px-4 min-w-[200px]">{t("subject")}</TableHead>
                                     <TableHead className="py-3 px-4 w-[150px]">{t("time_from")} *</TableHead>
                                     <TableHead className="py-3 px-4 w-[150px]">{t("time_to")} *</TableHead>
@@ -608,7 +615,7 @@ export default function AddClassTimetablePage() {
                                                     <Clock className="h-7 w-7" />
                                                 </div>
                                                 <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                                                    No schedule periods added for {currentDay}
+                                                    {t("no_schedule_periods_added_for_day", { day: getDayLabel(currentDay) })}
                                                 </p>
                                                 <Button
                                                     type="button"
@@ -616,7 +623,7 @@ export default function AddClassTimetablePage() {
                                                     variant="outline"
                                                     className="h-8 px-4 rounded-full text-xs font-bold text-indigo-600 border-indigo-200 mt-2"
                                                 >
-                                                    <Plus className="h-3.5 w-3.5 mr-1" /> Add 1st Period
+                                                    <Plus className="h-3.5 w-3.5 mr-1" /> {t("add_1st_period")}
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -630,7 +637,7 @@ export default function AddClassTimetablePage() {
                                             {/* Period Number */}
                                             <TableCell className="py-3 px-4">
                                                 <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800">
-                                                    #{idx + 1}
+                                                    #{toLocaleNumber(idx + 1, language?.short_code)}
                                                 </span>
                                             </TableCell>
 
@@ -646,7 +653,7 @@ export default function AddClassTimetablePage() {
                                                     <SelectContent>
                                                         {filteredSubjects.map((s: any) => (
                                                             <SelectItem key={s.id} value={s.id.toString()}>
-                                                                {s.name} {s.code ? `(${s.code})` : ""}
+                                                                {translateSubjectName(s.name, language?.short_code)} {s.code ? `(${toLocaleNumber(s.code, language?.short_code)})` : ""}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -689,7 +696,7 @@ export default function AddClassTimetablePage() {
                                                     <SelectContent>
                                                         {filteredTeachers.map((s: any) => (
                                                             <SelectItem key={s.id} value={s.id.toString()}>
-                                                                {s.name} {s.staff_id ? `(${s.staff_id})` : ""}
+                                                                {s.name} {s.staff_id ? `(${toLocaleNumber(s.staff_id, language?.short_code)})` : ""}
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -702,7 +709,7 @@ export default function AddClassTimetablePage() {
                                                     value={row.room}
                                                     onChange={(e) => updateRow(currentDay, row.id, "room", e.target.value)}
                                                     className="h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg shadow-none"
-                                                    placeholder="Room No"
+                                                    placeholder={t("room_no") || "Room No"}
                                                 />
                                             </TableCell>
 
@@ -729,7 +736,7 @@ export default function AddClassTimetablePage() {
                     {/* Bottom Save Bar */}
                     <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="text-xs text-gray-500 font-bold">
-                            {currentDay}: {currentDayRows.length} Scheduled Periods
+                            {getDayLabel(currentDay)}: {t("x_scheduled_periods", { count: toLocaleNumber(currentDayRows.length, language?.short_code) })}
                         </div>
                         <Button
                             onClick={handleSave}

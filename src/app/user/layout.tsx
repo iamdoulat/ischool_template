@@ -9,7 +9,7 @@ import { CurrencyProvider } from "@/components/providers/currency-provider";
 import { useTranslation } from "@/hooks/use-translation";
 
 import { useTheme } from "next-themes";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { PageGuard } from "@/components/auth/page-guard";
 import { getPageTitleFromPathname, formatDocumentTitle } from "@/lib/page-title";
 import { MobileNavbar } from "@/components/layout/mobile-navbar";
@@ -23,7 +23,7 @@ function UserLayoutContent({
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const { settings, loading } = useSettings();
     const { setTheme } = useTheme();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
 
     // Set PWA Manifest start_url to Student Portal
     useEffect(() => {
@@ -115,7 +115,7 @@ function UserLayoutContent({
                 <footer className="hidden md:flex h-14 flex-shrink-0 border-t bg-background items-center justify-between px-4 md:px-8 z-20 w-full max-w-full">
                     <div className="flex items-center gap-4 hidden md:flex">
                         <p className="text-[12px] text-muted-foreground/60 font-medium">
-                            Version {settings?.app_version || "1.0.0"}
+                            {t("version_x", { version: toLocaleNumber(settings?.app_version || "1.0.0", language?.short_code) })}
                         </p>
                     </div>
                     <p className="text-[12px] text-muted-foreground font-medium">

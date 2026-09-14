@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Filter, ChevronDown, UserCircle, Calendar, Wallet, CheckCircle2, AlertCircle, FileText, Download, Loader2 } from "lucide-react";
+import { Search, Filter, ChevronDown, Calendar, Wallet, CheckCircle2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
+import { translateClassName, translateSectionName, translateClassSection } from "@/lib/utils";
 import api from "@/lib/api";
 import {
     Table,
@@ -49,7 +50,7 @@ interface StudentDueFee {
 }
 
 export default function SearchDueFeesPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const { symbol } = useCurrencyFormatter();
 
@@ -75,7 +76,7 @@ export default function SearchDueFeesPage() {
             setClasses(classRes.data?.data?.data || classRes.data?.data || []);
             setSections(sectionRes.data?.data?.data || sectionRes.data?.data || []);
             setFeesGroups(feesGroupRes.data?.data?.data || feesGroupRes.data?.data || []);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_load_dropdowns");
         }
     }, [tt]);
@@ -104,7 +105,7 @@ export default function SearchDueFeesPage() {
             const filteredData = data.filter((student: StudentDueFee) => parseFloat(student.totalBalance) > 0);
             setResults(filteredData);
             setSearched(true);
-        } catch (error) {
+        } catch {
             tt.error("search_failed");
         } finally {
             setLoading(false);
@@ -137,7 +138,7 @@ export default function SearchDueFeesPage() {
                                     onChange={(e) => setSelectedFeesGroup(e.target.value)}
                                 >
                                     <option value="">{t("select")}</option>
-                                    <option value="all">All Fees Groups</option>
+                                    <option value="all">{t("all_fees_groups")}</option>
                                     {feesGroups.map(fg => (
                                         <option key={fg.id} value={fg.id}>{fg.name}</option>
                                     ))}
@@ -158,7 +159,7 @@ export default function SearchDueFeesPage() {
                                 >
                                     <option value="">{t("select")}</option>
                                     {classes.map(c => (
-                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                        <option key={c.id} value={c.id}>{translateClassName(c.name, language?.short_code)}</option>
                                     ))}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
@@ -177,7 +178,7 @@ export default function SearchDueFeesPage() {
                                 >
                                     <option value="">{t("select")}</option>
                                     {sections.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                        <option key={s.id} value={s.id}>{translateSectionName(s.name, language?.short_code)}</option>
                                     ))}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none transition-transform group-focus-within:rotate-180" />
@@ -206,8 +207,8 @@ export default function SearchDueFeesPage() {
                                 <Wallet className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Due Fees List</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{results.length} student{results.length === 1 ? '' : 's'} with dues</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("due_fees_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{results.length} {results.length === 1 ? t("student_with_dues") : t("students_with_dues")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0 overflow-x-auto">
@@ -216,18 +217,18 @@ export default function SearchDueFeesPage() {
                                     <div className="h-20 w-20 rounded-full bg-muted/30 flex items-center justify-center mx-auto">
                                         <CheckCircle2 className="h-10 w-10 text-emerald-500/50" />
                                     </div>
-                                    <p className="text-muted-foreground font-medium">No pending fees found for the selected criteria.</p>
+                                    <p className="text-muted-foreground font-medium">{t("no_pending_fees_found_for_the_selected_criteria")}</p>
                                 </div>
                             ) : (
                                 <Table className="w-full">
                                     <TableHeader>
                                         <TableRow className="bg-muted/30 border-b border-muted/50 hover:bg-muted/30">
-                                            <TableHead className="font-bold text-slate-800 py-5 pl-8">Student</TableHead>
-                                            <TableHead className="font-bold text-slate-800 py-5">Due Details</TableHead>
-                                            <TableHead className="font-bold text-slate-800 py-5 text-right">Amount ({symbol})</TableHead>
-                                            <TableHead className="font-bold text-slate-800 py-5 text-right">Discount ({symbol})</TableHead>
-                                            <TableHead className="font-bold text-slate-800 py-5 text-right">Fine ({symbol})</TableHead>
-                                            <TableHead className="font-bold text-slate-800 py-5 text-right pr-8">Balance ({symbol})</TableHead>
+                                            <TableHead className="font-bold text-slate-800 py-5 pl-8">{t("student")}</TableHead>
+                                            <TableHead className="font-bold text-slate-800 py-5">{t("due_details")}</TableHead>
+                                            <TableHead className="font-bold text-slate-800 py-5 text-right">{t("amount")} ({symbol})</TableHead>
+                                            <TableHead className="font-bold text-slate-800 py-5 text-right">{t("discount")} ({symbol})</TableHead>
+                                            <TableHead className="font-bold text-slate-800 py-5 text-right">{t("fine")} ({symbol})</TableHead>
+                                            <TableHead className="font-bold text-slate-800 py-5 text-right pr-8">{t("balance")} ({symbol})</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -240,7 +241,7 @@ export default function SearchDueFeesPage() {
                                                         </div>
                                                         <div className="space-y-0.5">
                                                             <p className="font-bold text-sm text-slate-800 truncate">{student.name}</p>
-                                                            <p className="text-[11px] text-slate-500 font-medium">Class: <span className="font-bold text-slate-700">{student.classSection}</span></p>
+                                                            <p className="text-[11px] text-slate-500 font-medium">{t("class")}: <span className="font-bold text-slate-700">{translateClassSection(student.classSection, language?.short_code)}</span></p>
                                                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{student.admissionNo}</p>
                                                         </div>
                                                     </div>
@@ -253,14 +254,14 @@ export default function SearchDueFeesPage() {
                                                                     <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-bold px-2 py-0.5 rounded text-[10px]">
                                                                         {fee.group}
                                                                     </Badge>
-                                                                    <span className="text-xs font-black text-destructive">{symbol}{fee.balance} Due</span>
+                                                                    <span className="text-xs font-black text-destructive">{symbol}{fee.balance} {t("due")}</span>
                                                                 </div>
                                                                 <div className="flex items-center justify-between">
                                                                     <code className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-mono text-slate-600">
                                                                         {fee.code}
                                                                     </code>
                                                                     <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500">
-                                                                        <Calendar className="h-3 w-3" /> Due: {fee.dueDate}
+                                                                        <Calendar className="h-3 w-3" /> {t("due_date")}: {fee.dueDate}
                                                                     </div>
                                                                 </div>
                                                             </div>

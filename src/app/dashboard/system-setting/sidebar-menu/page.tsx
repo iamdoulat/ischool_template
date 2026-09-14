@@ -10,7 +10,12 @@ import {
     ChevronRight,
     ChevronDown,
     ChevronUp,
-    Menu
+    Menu,
+    LayoutGrid,
+    CheckCircle2,
+    List,
+    SlidersHorizontal,
+    Info
 } from "lucide-react";
 import {
     DragDropContext,
@@ -23,6 +28,7 @@ import {
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { cn, toLocaleNumber } from "@/lib/utils";
 
 const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     dashboard: [],
@@ -313,15 +319,18 @@ interface MenuItem {
     submenus: SubmenuItem[];
 }
 
+type TabMode = "all" | "selected" | "available";
+
 export default function SidebarMenuPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const [availableItems, setAvailableItems] = useState<MenuItem[]>([]);
     const [selectedItems, setSelectedItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [expandedAvailable, setExpandedAvailable] = useState<Set<string>>(new Set());
     const [expandedSelected, setExpandedSelected] = useState<Set<string>>(new Set());
+    const [activeTab, setActiveTab] = useState<TabMode>("all");
 
     const toggleExpand = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, name: string) => {
         setter(prev => {
@@ -367,7 +376,7 @@ export default function SidebarMenuPage() {
         } finally {
             setLoading(false);
         }
-    }, [toast]);
+    }, [toast, t]);
 
     useEffect(() => {
         fetchData();
@@ -396,7 +405,7 @@ export default function SidebarMenuPage() {
             });
 
             if (response.data.success) {
-                toast("success", t("updated_successfully"));
+                toast("success", t("sidebar_menu_saved_success") || t("updated_successfully"));
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(new Event("sidebar-menu-updated"));
                 }
@@ -485,9 +494,9 @@ export default function SidebarMenuPage() {
     const renderSubmenuItem = (sub: SubmenuItem, subIndex: number, subLength: number, moduleId: number, palette: { dot: string }) => {
         const dotText = palette.dot.replace('bg-', 'text-');
         return (
-        <div
-            key={sub.name}
-            className="flex items-center justify-between px-3 py-2 pl-10 text-[12px] text-gray-500 border-b border-gray-100 last:border-b-0 hover:bg-white/60 transition-all duration-200 group/sub"
+            <div
+                key={sub.name}
+                className="flex items-center justify-between px-3 py-2 pl-10 text-[12px] text-gray-500 border-b border-gray-100 last:border-b-0 hover:bg-white/60 transition-all duration-200 group/sub"
             >
                 <div className="flex items-center gap-2">
                     <GripVertical className={`h-3 w-3 ${dotText} opacity-40 cursor-grab active:cursor-grabbing`} />
@@ -498,14 +507,16 @@ export default function SidebarMenuPage() {
                     <button
                         onClick={() => moveSubUp(moduleId, subIndex)}
                         disabled={subIndex === 0}
-                        className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={t("move_submenu_up")}
+                        className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                     >
                         <ChevronUp className="h-3 w-3" />
                     </button>
                     <button
                         onClick={() => moveSubDown(moduleId, subIndex, subLength)}
                         disabled={subIndex === subLength - 1}
-                        className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={t("move_submenu_down")}
+                        className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                     >
                         <ChevronDown className="h-3 w-3" />
                     </button>
@@ -520,7 +531,7 @@ export default function SidebarMenuPage() {
 
         return (
             <div
-                className="rounded-md overflow-hidden border-l-4 border-gray-300 border-t border-r border-b border-gray-200 bg-white transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 group/mod"
+                className="rounded-md overflow-hidden border-l-4 border-gray-300 border-t border-r border-b border-gray-200 bg-white transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group/mod"
             >
                 <div
                     className="flex items-center justify-between p-3 cursor-pointer bg-gray-50/30 hover:bg-white/60 transition-all duration-300"
@@ -529,14 +540,20 @@ export default function SidebarMenuPage() {
                     <div className="flex items-center gap-2 min-w-0">
                         {hasSubmenus && (
                             <span className="text-gray-500 shrink-0 transition-transform duration-300">
-                                {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4 -rotate-90" />}
+                                {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </span>
                         )}
                         {!hasSubmenus && <span className="w-4 shrink-0" />}
                         <span className="text-[13px] font-semibold text-gray-700 truncate">{t(item.name) || item.label}</span>
+                        {hasSubmenus && (
+                            <span className="text-[10px] text-gray-400 font-normal">
+                                ({toLocaleNumber(item.submenus.length, language?.short_code)})
+                            </span>
+                        )}
                     </div>
                     <div
-                        className="h-7 w-7 flex items-center justify-center rounded-full transition-all duration-200 shrink-0 text-gray-500 hover:bg-white hover:shadow-md hover:scale-110 cursor-pointer"
+                        className="h-7 w-7 flex items-center justify-center rounded-full transition-all duration-200 shrink-0 text-gray-500 hover:bg-white hover:text-emerald-600 hover:shadow-md hover:scale-110 cursor-pointer"
+                        title={t("add_to_sidebar")}
                         onClick={(e) => { e.stopPropagation(); moveToSelected(item); }}
                     >
                         <Plus className="h-4 w-4 transition-transform duration-300 group-hover/mod:rotate-90" />
@@ -553,196 +570,290 @@ export default function SidebarMenuPage() {
         );
     };
 
-    return (
-        <div className="p-4 bg-gray-50/10 font-sans space-y-4">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col h-full">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <Menu className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("sidebar_menu")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("organize_sidebar_menu_items")}</p>
-                        </div>
+    const renderAvailableColumn = () => (
+        <div className="flex flex-col h-full border border-gray-200 rounded-xl bg-white shadow-xs">
+            <div className="p-3.5 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+                <h2 className="text-[13px] font-semibold text-gray-700">{t("menu_list")}</h2>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                    {toLocaleNumber(availableItems.length, language?.short_code)}
+                </span>
+            </div>
+            <div className="p-4 flex-1 space-y-2.5 overflow-y-auto max-h-[700px] custom-scrollbar">
+                {loading ? (
+                    <div className="space-y-2">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={i} className="h-10 rounded-md bg-gray-200/50 animate-pulse" />
+                        ))}
                     </div>
-                </div>
+                ) : (
+                    <>
+                        {availableItems.map((item) => (
+                            <div key={item.id}>
+                                {renderAvailableItem(item)}
+                            </div>
+                        ))}
+                        {availableItems.length === 0 && (
+                            <div className="text-center py-12 text-gray-400 text-[12px] italic">
+                                {t("no_items_available")}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
 
-                <div className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
-                        {/* Left Column: Menu List (Available) */}
-                        <div className="flex flex-col h-full border border-gray-200 rounded-md bg-white">
-                            <div className="p-3 border-b border-gray-200 bg-gray-50/50">
-                                <h2 className="text-[13px] font-semibold text-gray-600">{t("menu_list")}</h2>
+    const renderSelectedColumn = () => (
+        <DragDropContext onDragEnd={onModuleDragEnd}>
+            <Droppable droppableId="selected">
+                {(provided: DroppableProvided) => (
+                    <div
+                        className="flex flex-col h-full border border-gray-200 rounded-xl bg-white shadow-xs"
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                    >
+                        <div className="p-3.5 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-[13px] font-semibold text-emerald-800">{t("selected_sidebar_menus")}</h2>
+                                <p className="text-[11px] text-gray-400 mt-0.5">{t("drag_to_reorder_menus")}</p>
                             </div>
-                            <div className="p-4 flex-1 space-y-2 overflow-y-auto max-h-[700px]">
-                                {loading ? (
-                                    <div className="space-y-2">
-                                        {Array.from({ length: 8 }).map((_, i) => (
-                                            <div key={i} className="h-9 rounded-md bg-gray-200/50 animate-pulse" />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <>
-                                        {availableItems.map((item) => (
-                                            <div key={item.id}>
-                                                {renderAvailableItem(item)}
-                                            </div>
-                                        ))}
-                                        {availableItems.length === 0 && (
-                                            <div className="text-center py-8 text-gray-400 text-[12px]">
-                                                {t("no_items_available")}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                {toLocaleNumber(selectedItems.length, language?.short_code)}
+                            </span>
                         </div>
-
-                        {/* Right Column: Selected Sidebar Menus */}
-                        <DragDropContext onDragEnd={onModuleDragEnd}>
-                            <Droppable droppableId="selected">
-                                {(provided: DroppableProvided) => (
-                                    <div
-                                        className="flex flex-col h-full border border-gray-200 rounded-md bg-white"
-                                        ref={provided.innerRef}
-                                        {...provided.droppableProps}
-                                    >
-                                        <div className="p-3 border-b border-gray-200 bg-gray-50/50">
-                                            <h2 className="text-[13px] font-semibold text-gray-600">{t("selected_sidebar_menus")}</h2>
-                                        </div>
-                                        <div className="p-4 flex-1 space-y-3 overflow-y-auto max-h-[700px]">
-                                            {loading ? (
-                                                <div className="space-y-3">
-                                                    {Array.from({ length: 8 }).map((_, i) => (
-                                                        <div key={i} className="h-10 rounded-md bg-gray-200/50 animate-pulse" />
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    {selectedItems.map((item, index) => (
-                                                        <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
-                                                            {(providedSnapshot: DraggableProvided) => (
-                                                                <div
-                                                                    ref={providedSnapshot.innerRef}
-                                                                    {...providedSnapshot.draggableProps}
-                                                                    className="rounded-md overflow-hidden border-l-4 border-emerald-400 border-t border-r border-b border-gray-200 bg-white transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 group/mod"
-                                                                >
+                        <div className="p-4 flex-1 space-y-3 overflow-y-auto max-h-[700px] custom-scrollbar">
+                            {loading ? (
+                                <div className="space-y-3">
+                                    {Array.from({ length: 8 }).map((_, i) => (
+                                        <div key={i} className="h-11 rounded-md bg-gray-200/50 animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : (
+                                <>
+                                    {selectedItems.map((item, index) => (
+                                        <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
+                                            {(providedSnapshot: DraggableProvided) => (
+                                                <div
+                                                    ref={providedSnapshot.innerRef}
+                                                    {...providedSnapshot.draggableProps}
+                                                    className="rounded-md overflow-hidden border-l-4 border-emerald-400 border-t border-r border-b border-gray-200 bg-white transition-all duration-300 hover:shadow-md hover:-translate-y-0.5 group/mod"
+                                                >
+                                                    <div
+                                                        className="flex items-center justify-between p-3 cursor-pointer bg-emerald-50/50 hover:bg-white/60 transition-all duration-300"
+                                                        onClick={() => item.submenus.length > 0 && toggleExpand(setExpandedSelected, item.name)}
+                                                    >
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <div
+                                                                {...providedSnapshot.dragHandleProps}
+                                                                className="cursor-grab active:cursor-grabbing p-1"
+                                                            >
+                                                                <GripVertical className="h-4 w-4 text-emerald-600 opacity-40 hover:opacity-100 transition-opacity duration-200" />
+                                                            </div>
+                                                            {item.submenus.length > 0 && (
+                                                                <span className="text-emerald-600 shrink-0 transition-transform duration-300">
+                                                                    {expandedSelected.has(item.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                                </span>
+                                                            )}
+                                                            {item.submenus.length === 0 && <span className="w-4 shrink-0" />}
+                                                            <span className="text-[10px] font-bold text-gray-400 w-4 text-center">
+                                                                {toLocaleNumber(index + 1, language?.short_code)}
+                                                            </span>
+                                                            <span className="text-[13px] font-semibold text-emerald-800 truncate">{t(item.name) || item.label}</span>
+                                                            {item.submenus.length > 0 && (
+                                                                <span className="text-[10px] text-emerald-600/80 font-normal">
+                                                                    ({toLocaleNumber(item.submenus.length, language?.short_code)})
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div
+                                                            className="h-7 w-7 flex items-center justify-center rounded-full transition-all duration-300 shrink-0 text-gray-400 hover:text-red-500 hover:bg-red-50 hover:shadow-md hover:scale-110 cursor-pointer"
+                                                            title={t("remove_from_sidebar")}
+                                                            onClick={(e) => { e.stopPropagation(); moveToAvailable(item); }}
+                                                        >
+                                                            <Minus className="h-4 w-4 transition-transform duration-300 group-hover/mod:rotate-90" />
+                                                        </div>
+                                                    </div>
+                                                    {item.submenus.length > 0 && expandedSelected.has(item.name) && (
+                                                        <DragDropContext onDragEnd={(result) => onSubmenuDragEnd(item.id, result)}>
+                                                            <Droppable droppableId={`submenu-${item.id}`}>
+                                                                {(subProvided: DroppableProvided) => (
                                                                     <div
-                                                                        className="flex items-center justify-between p-3 cursor-pointer bg-emerald-50/50 hover:bg-white/60 transition-all duration-300"
-                                                                        onClick={() => item.submenus.length > 0 && toggleExpand(setExpandedSelected, item.name)}
+                                                                        ref={subProvided.innerRef}
+                                                                        {...subProvided.droppableProps}
+                                                                        className="border-t border-emerald-200 bg-emerald-50/50"
                                                                     >
-                                                                        <div className="flex items-center gap-2 min-w-0">
-                                                                            <div
-                                                                                {...providedSnapshot.dragHandleProps}
-                                                                                className="cursor-grab active:cursor-grabbing p-1"
+                                                                        {item.submenus.map((sub, subIndex) => (
+                                                                            <Draggable
+                                                                                key={`${item.id}-${sub.name}`}
+                                                                                draggableId={`${item.id}-${sub.name}`}
+                                                                                index={subIndex}
                                                                             >
-                                                                                <GripVertical className="h-4 w-4 text-emerald-600 opacity-40 hover:opacity-100 transition-opacity duration-200" />
-                                                                            </div>
-                                                                            {item.submenus.length > 0 && (
-                                                                                <span className="text-emerald-600 shrink-0 transition-transform duration-300">
-                                                                                    {expandedSelected.has(item.name) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                                                                </span>
-                                                                            )}
-                                                                            {item.submenus.length === 0 && <span className="w-4 shrink-0" />}
-                                                                            <span className="text-[13px] font-semibold text-emerald-700 truncate">{t(item.name) || item.label}</span>
-                                                                        </div>
-                                                                        <div
-                                                                            className="h-7 w-7 flex items-center justify-center rounded-full transition-all duration-300 shrink-0 text-gray-400 hover:text-red-500 hover:bg-red-50 hover:shadow-md hover:scale-110 cursor-pointer"
-                                                                            onClick={(e) => { e.stopPropagation(); moveToAvailable(item); }}
-                                                                        >
-                                                                            <Minus className="h-4 w-4 transition-transform duration-300 group-hover/mod:rotate-90" />
-                                                                        </div>
-                                                                    </div>
-                                                                    {item.submenus.length > 0 && expandedSelected.has(item.name) && (
-                                                                        <DragDropContext onDragEnd={(result) => onSubmenuDragEnd(item.id, result)}>
-                                                                            <Droppable droppableId={`submenu-${item.id}`}>
-                                                                                {(subProvided: DroppableProvided) => (
+                                                                                {(subProvidedSnapshot: DraggableProvided) => (
                                                                                     <div
-                                                                                        ref={subProvided.innerRef}
-                                                                                        {...subProvided.droppableProps}
-                                                                                        className="border-t border-emerald-200 bg-emerald-50/50"
+                                                                                        ref={subProvidedSnapshot.innerRef}
+                                                                                        {...subProvidedSnapshot.draggableProps}
                                                                                     >
-                                                                                        {item.submenus.map((sub, subIndex) => (
-                                                                                            <Draggable
-                                                                                                key={`${item.id}-${sub.name}`}
-                                                                                                draggableId={`${item.id}-${sub.name}`}
-                                                                                                index={subIndex}
-                                                                                            >
-                                                                                                {(subProvidedSnapshot: DraggableProvided) => (
-                                                                                                    <div
-                                                                                                        ref={subProvidedSnapshot.innerRef}
-                                                                                                        {...subProvidedSnapshot.draggableProps}
-                                                                                                    >
-                                                                                                        <div className="flex items-center justify-between px-3 py-2 pl-10 text-[12px] text-gray-500 border-b border-gray-100 last:border-b-0 hover:bg-white/60 transition-all duration-200 group/sub">
-                                                                                                            <div className="flex items-center gap-2">
-                                                                                                                <div
-                                                                                                                    {...subProvidedSnapshot.dragHandleProps}
-                                                                                                                    className="cursor-grab active:cursor-grabbing"
-                                                                                                                >
-                                                                                                                    <GripVertical className="h-3 w-3 text-emerald-400 opacity-40" />
-                                                                                                                </div>
-                                                                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                                                                                                <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{t(sub.name) || sub.label}</span>
-                                                                                                            </div>
-                                                                                                            <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all duration-200">
-                                                                                                                <button
-                                                                                                                    onClick={() => moveSubUp(item.id, subIndex)}
-                                                                                                                    disabled={subIndex === 0}
-                                                                                                                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                                                                                >
-                                                                                                                    <ChevronUp className="h-3 w-3" />
-                                                                                                                </button>
-                                                                                                                <button
-                                                                                                                    onClick={() => moveSubDown(item.id, subIndex, item.submenus.length)}
-                                                                                                                    disabled={subIndex === item.submenus.length - 1}
-                                                                                                                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                                                                                >
-                                                                                                                    <ChevronDown className="h-3 w-3" />
-                                                                                                                </button>
-                                                                                                            </div>
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                )}
-                                                                                            </Draggable>
-                                                                                        ))}
-                                                                                        {subProvided.placeholder}
+                                                                                        <div className="flex items-center justify-between px-3 py-2 pl-10 text-[12px] text-gray-500 border-b border-gray-100 last:border-b-0 hover:bg-white/60 transition-all duration-200 group/sub">
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <div
+                                                                                                    {...subProvidedSnapshot.dragHandleProps}
+                                                                                                    className="cursor-grab active:cursor-grabbing"
+                                                                                                >
+                                                                                                    <GripVertical className="h-3 w-3 text-emerald-400 opacity-40" />
+                                                                                                </div>
+                                                                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                                                                                                <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{t(sub.name) || sub.label}</span>
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all duration-200">
+                                                                                                <button
+                                                                                                    onClick={() => moveSubUp(item.id, subIndex)}
+                                                                                                    disabled={subIndex === 0}
+                                                                                                    title={t("move_submenu_up")}
+                                                                                                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                                                                                >
+                                                                                                    <ChevronUp className="h-3 w-3" />
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    onClick={() => moveSubDown(item.id, subIndex, item.submenus.length)}
+                                                                                                    disabled={subIndex === item.submenus.length - 1}
+                                                                                                    title={t("move_submenu_down")}
+                                                                                                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                                                                                >
+                                                                                                    <ChevronDown className="h-3 w-3" />
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
                                                                                     </div>
                                                                                 )}
-                                                                            </Droppable>
-                                                                        </DragDropContext>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </Draggable>
-                                                    ))}
-                                                    {provided.placeholder}
-                                                    {selectedItems.length === 0 && (
-                                                        <div className="text-center py-8 text-gray-400 text-[12px]">
-                                                            {t("no_items_selected")}
-                                                        </div>
+                                                                            </Draggable>
+                                                                        ))}
+                                                                        {subProvided.placeholder}
+                                                                    </div>
+                                                                )}
+                                                            </Droppable>
+                                                        </DragDropContext>
                                                     )}
-                                                </>
+                                                </div>
                                             )}
+                                        </Draggable>
+                                    ))}
+                                    {provided.placeholder}
+                                    {selectedItems.length === 0 && (
+                                        <div className="text-center py-12 text-gray-400 text-[12px] italic">
+                                            {t("no_items_selected")}
                                         </div>
-                                    </div>
-                                )}
-                            </Droppable>
-                        </DragDropContext>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
+                )}
+            </Droppable>
+        </DragDropContext>
+    );
 
-                    <div className="flex justify-end pt-6 mt-4 border-t border-gray-50">
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="bg-gradient-to-r from-[#FF8C42] to-[#6D5BFE] hover:opacity-90 text-white px-8 h-9 text-[12px] font-bold uppercase transition-all rounded-full shadow-lg border-none min-w-[120px]"
-                        >
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            {t("save")}
-                        </Button>
+    return (
+        <div className="p-4 md:p-6 bg-gray-50/30 font-sans space-y-6">
+            {/* Standalone Edge-to-Edge Page Header Banner per AGENTS.md rule */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F3F4FE] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Menu className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">{t("sidebar_menu")}</h1>
+                        <p className="text-xs text-gray-500 mt-1">{t("organize_sidebar_menu_items")}</p>
                     </div>
                 </div>
+
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-6 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none min-w-[120px] active:scale-95"
+                    >
+                        {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        {t("save_sidebar_menu") || t("save")}
+                    </Button>
+                </div>
             </div>
+
+            {/* High-Contrast Segmented Navigation Tabs */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-gray-100/90 dark:bg-gray-800/90 rounded-xl border border-gray-200 dark:border-gray-700 w-full sm:w-fit overflow-x-auto">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("all")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap cursor-pointer",
+                        activeTab === "all"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    <span>{t("tab_menu_configuration")}</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("selected")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap cursor-pointer",
+                        activeTab === "selected"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>{t("tab_selected_menus")}</span>
+                    <span className={cn(
+                        "ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                        activeTab === "selected" ? "bg-white/30 text-white" : "bg-emerald-100 text-emerald-800"
+                    )}>
+                        {toLocaleNumber(selectedItems.length, language?.short_code)}
+                    </span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("available")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap cursor-pointer",
+                        activeTab === "available"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <List className="h-3.5 w-3.5" />
+                    <span>{t("tab_available_menus")}</span>
+                    <span className={cn(
+                        "ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                        activeTab === "available" ? "bg-white/30 text-white" : "bg-gray-200 text-gray-700"
+                    )}>
+                        {toLocaleNumber(availableItems.length, language?.short_code)}
+                    </span>
+                </button>
+            </div>
+
+            {/* Tab 1: Both Columns Configuration (Side by Side) */}
+            {activeTab === "all" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in-50 duration-200">
+                    {renderAvailableColumn()}
+                    {renderSelectedColumn()}
+                </div>
+            )}
+
+            {/* Tab 2: Focused Selected Sidebar Menus */}
+            {activeTab === "selected" && (
+                <div className="max-w-3xl mx-auto animate-in fade-in-50 duration-200">
+                    {renderSelectedColumn()}
+                </div>
+            )}
+
+            {/* Tab 3: Focused Available Hidden Menus */}
+            {activeTab === "available" && (
+                <div className="max-w-3xl mx-auto animate-in fade-in-50 duration-200">
+                    {renderAvailableColumn()}
+                </div>
+            )}
         </div>
     );
 }

@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName } from "@/lib/utils";
 
 interface LibraryMember {
     id: number;
@@ -166,7 +166,7 @@ function getMemberCardInfo(m: any): string {
 }
 
 export default function LibraryMembersPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const getImageUrl = useImageUrl();
     const [searchTerm, setSearchTerm] = useState("");
@@ -390,11 +390,11 @@ export default function LibraryMembersPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") || "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") || "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") || "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") || "Print" },
+        { Icon: Columns, onClick: () => {}, title: t("columns") || "Columns" },
     ];
 
     return (
@@ -405,9 +405,9 @@ export default function LibraryMembersPage() {
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Users className="h-5 w-5" />
                         </span>
-                        <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("library_members")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("members_registered_count", { count: pagination?.total ?? members.length })}</p>
+                        <div className="min-w-0 py-0.5">
+                            <h1 className="text-[16px] font-bold text-gray-800 leading-snug">{t("library_members")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-0.5">{t("members_registered_count")}: {toLocaleNumber(pagination?.total ?? members.length, language?.short_code)}</p>
                         </div>
                     </div>
                     <Button
@@ -438,13 +438,15 @@ export default function LibraryMembersPage() {
                         <div className="flex items-center gap-2">
                             <Select value={limit} onValueChange={setLimit}>
                                 <SelectTrigger className="w-[70px] h-9 text-xs">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber(50, language?.short_code)}>
+                                        {toLocaleNumber(limit, language?.short_code)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
@@ -509,7 +511,7 @@ export default function LibraryMembersPage() {
                                                 {member.library_card_no ? (
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px] border border-slate-200/60 font-medium">
                                                         <CreditCard className="h-3 w-3 text-slate-500" />
-                                                        {member.library_card_no}
+                                                        {toLocaleNumber(member.library_card_no, language?.short_code)}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-300 font-sans">—</span>
@@ -561,7 +563,7 @@ export default function LibraryMembersPage() {
                                                         ? "bg-blue-50 text-blue-700 border-blue-200/70"
                                                         : "bg-purple-50 text-purple-700 border-purple-200/70"
                                                 )}>
-                                                    {member.member_type}
+                                                    {t(member.member_type?.toLowerCase()) || member.member_type}
                                                 </span>
                                             </TableCell>
 
@@ -596,7 +598,7 @@ export default function LibraryMembersPage() {
                                                             className="h-7 px-2.5 rounded-lg border-gray-200 bg-white hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 text-gray-700 shadow-2xs active:scale-95 transition-all text-[10px] font-bold gap-1 cursor-pointer"
                                                             title={t("view_issued_books")}
                                                         >
-                                                            <span>Details</span>
+                                                            <span>{t("details") || "Details"}</span>
                                                             <ArrowRightSquare className="h-3.5 w-3.5 text-indigo-500" />
                                                         </Button>
                                                     </Link>
@@ -612,7 +614,11 @@ export default function LibraryMembersPage() {
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}
+                            {t("showing_x_to_y_of_z", {
+                                from: toLocaleNumber(pagination?.from || 0, language?.short_code),
+                                to: toLocaleNumber(pagination?.to || 0, language?.short_code),
+                                total: toLocaleNumber(pagination?.total || 0, language?.short_code)
+                            })}
                         </div>
                         <div className="flex gap-1 items-center">
                             <Button
@@ -636,7 +642,7 @@ export default function LibraryMembersPage() {
                                             : "bg-white text-gray-600 border border-gray-200"
                                     )}
                                 >
-                                    {i + 1}
+                                    {toLocaleNumber(i + 1, language?.short_code)}
                                 </Button>
                             ))}
                             <Button
@@ -685,7 +691,7 @@ export default function LibraryMembersPage() {
                                             <SelectItem value="all">{t("all_classes")}</SelectItem>
                                             {classes.map((cls) => (
                                                 <SelectItem key={cls.id} value={String(cls.id)}>
-                                                    {cls.name}
+                                                    {translateClassName(cls.name, language?.short_code)}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -749,7 +755,7 @@ export default function LibraryMembersPage() {
                                         ) : (
                                             availableBooks.map((b) => (
                                                 <SelectItem key={b.id} value={String(b.id)}>
-                                                    {b.title} (#{b.book_number}) — Available: {b.available ?? 1}
+                                                    {b.title} (#{b.book_number}) — {t("available") || "Available"}: {toLocaleNumber(b.available ?? 1, language?.short_code)}
                                                 </SelectItem>
                                             ))
                                         )}

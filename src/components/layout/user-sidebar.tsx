@@ -45,7 +45,7 @@ import {
     CalendarRange
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Popover,
@@ -122,7 +122,7 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
                 ]
             },
             { name: "attendance", label: "Attendance", icon: Calendar, href: "/user/attendance", submenus: [], color: "orange" },
-            { name: "behaviour", label: "Behaviour Records", icon: ShieldCheck, href: "/user/behaviour", submenus: [], color: "rose" },
+            { name: "behaviour_records", label: "Behaviour Records", icon: ShieldCheck, href: "/user/behaviour", submenus: [], color: "rose" },
             {
                 name: "cbse_examination", label: "CBSE Examination", icon: FileText, href: "#", color: "violet",
                 submenus: [
@@ -194,7 +194,17 @@ export function UserSidebar({
     const pathname = usePathname();
     const { settings, loading: settingsLoading } = useSettings();
     const getImageUrl = useImageUrl();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+
+    const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : null;
+    const branchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
+    const branchPrefix = (branchSlug && branchSlug !== "main") ? `/br/${branchSlug}` : "";
+
+    const toBranchHref = (href?: string) => {
+        if (!href || href === "#" || href.startsWith("http")) return href || "#";
+        if (href.startsWith("/br/")) return href;
+        return branchPrefix ? `${branchPrefix}${href}` : href;
+    };
 
     const [mounted, setMounted] = useState(false);
 interface SessionItem {
@@ -382,11 +392,12 @@ interface SessionItem {
                                 <div className="space-y-1">
                                     {group.items.map((item) => {
                                         const colors = sidebarColorMap[item.color as keyof typeof sidebarColorMap] || sidebarColorMap.blue;
-                                        const isItemActive = pathname === item.href || (item.submenus && item.submenus.some(s => pathname === s.href));
+                                        const itemTargetHref = toBranchHref(item.href);
+                                        const isItemActive = pathname === itemTargetHref || pathname === item.href || (item.submenus && item.submenus.some(s => pathname === toBranchHref(s.href) || pathname === s.href));
 
                                         const getItemLabel = () => {
-                                            if (item.name === "id_card" || item.name === "my_id_card") return "My ID Card";
-                                            if (item.name === "my_qr_pass") return "My QR Pass";
+                                            if (item.name === "id_card" || item.name === "my_id_card") return t("my_id_card") || "My ID Card";
+                                            if (item.name === "my_qr_pass") return t("my_qr_pass") || "My QR Pass";
                                             const translated = t(item.name);
                                             return translated && translated !== item.name ? translated : item.label;
                                         };
@@ -395,7 +406,7 @@ interface SessionItem {
                                         const menuItem = (
                                             <Link
                                                 key={item.name}
-                                                href={item.href}
+                                                href={itemTargetHref}
                                                 onClick={() => {
                                                     if (window.innerWidth < 768 && onClose) onClose();
                                                 }}
@@ -456,42 +467,46 @@ interface SessionItem {
                                                         className="w-56 p-2 bg-popover/95 backdrop-blur-xl border-none shadow-2xl rounded-2xl animate-in fade-in zoom-in-95 duration-200"
                                                     >
                                                         <div className="space-y-1">
-                                                            <div className="px-3 py-2 border-b border-muted/20 mb-1">
+                                                             <div className="px-3 py-2 border-b border-muted/20 mb-1">
                                                                 <p className={cn("text-xs font-bold uppercase tracking-widest", colors.icon)}>
                                                                     {displayLabel}
                                                                 </p>
                                                             </div>
                                                             <Link
-                                                                href={item.href}
+                                                                href={itemTargetHref}
                                                                 onClick={() => {
                                                                     if (window.innerWidth < 768 && onClose) onClose();
                                                                 }}
                                                                 className={cn(
                                                                     "block px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                                                                    pathname === item.href ? `${colors.bg} ${colors.icon} font-bold` : "hover:bg-muted"
+                                                                    pathname === itemTargetHref || pathname === item.href ? `${colors.bg} ${colors.icon} font-bold` : "hover:bg-muted"
                                                                 )}
                                                             >
                                                                 {t("overview")}
                                                             </Link>
                                                             {item.submenus && item.submenus.length > 0 && (
                                                                 <div className="pt-1 space-y-0.5">
-                                                                    {item.submenus.map((submenu) => (
-                                                                        <Link
-                                                                            key={submenu.name}
-                                                                            href={submenu.href}
-                                                                            onClick={() => {
-                                                                                if (window.innerWidth < 768 && onClose) onClose();
-                                                                            }}
-                                                                            className={cn(
-                                                                                "block px-3 py-1.5 text-xs rounded-md transition-all",
-                                                                                pathname === submenu.href
-                                                                                    ? `${colors.icon} font-bold ${colors.bg}`
-                                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                                                            )}
-                                                                        >
-                                                                            {t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)}
-                                                                        </Link>
-                                                                    ))}
+                                                                    {item.submenus.map((submenu) => {
+                                                                        const subHref = toBranchHref(submenu.href);
+                                                                        const isSubActive = pathname === subHref || pathname === submenu.href;
+                                                                        return (
+                                                                            <Link
+                                                                                key={submenu.name}
+                                                                                href={subHref}
+                                                                                onClick={() => {
+                                                                                    if (window.innerWidth < 768 && onClose) onClose();
+                                                                                }}
+                                                                                className={cn(
+                                                                                    "block px-3 py-1.5 text-xs rounded-md transition-all",
+                                                                                    isSubActive
+                                                                                        ? `${colors.icon} font-bold ${colors.bg}`
+                                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                                                )}
+                                                                            >
+                                                                                {t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)}
+                                                                            </Link>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -504,58 +519,59 @@ interface SessionItem {
                                             return (
                                                 <Accordion type="single" collapsible key={item.name} className="w-full">
                                                     <AccordionItem value={item.name} className="border-none">
-                                                        <AccordionTrigger
-                                                            className={cn(
-                                                                "flex items-center justify-start transition-all group hover:no-underline py-0 cursor-pointer",
-                                                                "gap-3 px-2 py-2.5 rounded-xl mb-1",
-                                                                isItemActive
-                                                                    ? `${colors.active} text-white shadow-lg`
-                                                                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                                                                "text-sm font-semibold text-start"
-                                                            )}
-                                                        >
-                                                            <div className="flex items-center gap-3 w-full">
-                                                                <div className={cn(
-                                                                    "p-1.5 rounded-lg transition-all duration-300",
-                                                                    isItemActive ? "bg-white/20 backdrop-blur-sm border border-white/10" : `bg-muted group-hover:scale-110 ${colors.icon}`
-                                                                )}>
-                                                                    <item.icon className={cn(
-                                                                        "h-4 w-4",
-                                                                        isItemActive ? "text-white" : "transition-colors"
-                                                                    )} />
-                                                                </div>
-                                                                <span className="flex-1 text-start">
-                                                                    {t(item.name) !== item.name ? t(item.name) : item.label}
-                                                                </span>
-                                                            </div>
-                                                        </AccordionTrigger>
-                                                        <AccordionContent className="pb-2 pt-1 pl-4 pr-1 rtl:pl-1 rtl:pr-4">
-                                                            <div className={cn("flex flex-col gap-1 border-l-2 rtl:border-l-0 rtl:border-r-2 ml-3 rtl:ml-0 rtl:mr-3 pl-3 rtl:pl-0 rtl:pr-3 animate-in slide-in-from-top-2 duration-300 items-start", isItemActive ? `border-orange-500/20` : "border-primary/10")}>
-                                                                {item.submenus.map((submenu) => {
-                                                                    const isSubActive = pathname === submenu.href;
-                                                                    return (
-                                                                        <Link
-                                                                            key={submenu.name}
-                                                                            href={submenu.href}
-                                                                            onClick={() => {
-                                                                                if (window.innerWidth < 768 && onClose) onClose();
-                                                                            }}
-                                                                            className={cn(
-                                                                                "relative py-2.5 text-xs font-bold rounded-xl transition-all duration-300 px-3 flex items-center justify-start text-start w-full group/sub",
-                                                                                isSubActive
-                                                                                    ? `${colors.active} text-white shadow-md shadow-orange-200/20 tracking-tight`
-                                                                                    : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
-                                                                            )}
-                                                                        >
-                                                                            <span className="flex-1">{t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)}</span>
-                                                                            {isSubActive && (
-                                                                                <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
-                                                                            )}
-                                                                        </Link>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        </AccordionContent>
+                                                         <AccordionTrigger
+                                                             className={cn(
+                                                                 "flex items-center justify-start transition-all group hover:no-underline py-0 cursor-pointer",
+                                                                 "gap-3 px-2 py-2.5 rounded-xl mb-1",
+                                                                 isItemActive
+                                                                     ? `${colors.active} text-white shadow-lg`
+                                                                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                                                                 "text-sm font-semibold text-start"
+                                                             )}
+                                                         >
+                                                             <div className="flex items-center gap-3 w-full">
+                                                                 <div className={cn(
+                                                                     "p-1.5 rounded-lg transition-all duration-300",
+                                                                     isItemActive ? "bg-white/20 backdrop-blur-sm border border-white/10" : `bg-muted group-hover:scale-110 ${colors.icon}`
+                                                                 )}>
+                                                                     <item.icon className={cn(
+                                                                         "h-4 w-4",
+                                                                         isItemActive ? "text-white" : "transition-colors"
+                                                                     )} />
+                                                                 </div>
+                                                                 <span className="flex-1 text-start">
+                                                                     {t(item.name) !== item.name ? t(item.name) : item.label}
+                                                                 </span>
+                                                             </div>
+                                                         </AccordionTrigger>
+                                                         <AccordionContent className="pb-2 pt-1 pl-4 pr-1 rtl:pl-1 rtl:pr-4">
+                                                             <div className={cn("flex flex-col gap-1 border-l-2 rtl:border-l-0 rtl:border-r-2 ml-3 rtl:ml-0 rtl:mr-3 pl-3 rtl:pl-0 rtl:pr-3 animate-in slide-in-from-top-2 duration-300 items-start", isItemActive ? `border-orange-500/20` : "border-primary/10")}>
+                                                                 {item.submenus.map((submenu) => {
+                                                                     const subHref = toBranchHref(submenu.href);
+                                                                     const isSubActive = pathname === subHref || pathname === submenu.href;
+                                                                     return (
+                                                                         <Link
+                                                                             key={submenu.name}
+                                                                             href={subHref}
+                                                                             onClick={() => {
+                                                                                 if (window.innerWidth < 768 && onClose) onClose();
+                                                                             }}
+                                                                             className={cn(
+                                                                                 "relative py-2.5 text-xs font-bold rounded-xl transition-all duration-300 px-3 flex items-center justify-start text-start w-full group/sub",
+                                                                                 isSubActive
+                                                                                     ? `${colors.active} text-white shadow-md shadow-orange-200/20 tracking-tight`
+                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
+                                                                             )}
+                                                                         >
+                                                                             <span className="flex-1">{t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)}</span>
+                                                                             {isSubActive && (
+                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
+                                                                             )}
+                                                                         </Link>
+                                                                     );
+                                                                 })}
+                                                             </div>
+                                                         </AccordionContent>
                                                     </AccordionItem>
                                                 </Accordion>
                                             );
@@ -576,14 +592,14 @@ interface SessionItem {
                 )}>
                     {mounted ? (collapsed ? (
                         <div className="h-10 w-10 flex flex-col items-center justify-center text-muted-foreground bg-muted/10 rounded-xl border border-muted/20">
-                            <span className="text-[10px] font-bold text-foreground/70">{activeSession?.session?.substring(2, 4) || ""}</span>
-                            <span className="text-[8px] font-bold text-muted-foreground/50">{activeSession?.session?.substring(5, 7) || ""}</span>
+                            <span className="text-[10px] font-bold text-foreground/70">{toLocaleNumber(activeSession?.session?.substring(2, 4) || "", language?.short_code)}</span>
+                            <span className="text-[8px] font-bold text-muted-foreground/50">{toLocaleNumber(activeSession?.session?.substring(5, 7) || "", language?.short_code)}</span>
                         </div>
                     ) : (
                         <div className="flex flex-col justify-center w-full py-1">
                             <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.15em] font-black leading-tight mb-0.5">{t("session")}</p>
                             <p className="text-sm font-extrabold text-foreground/90 tracking-tight">
-                                {fetchingSessions ? t("loading") : (activeSession?.session || t("not_set"))}
+                                {fetchingSessions ? t("loading") : (activeSession?.session ? toLocaleNumber(activeSession.session, language?.short_code) : t("not_set"))}
                             </p>
                         </div>
                     )) : (

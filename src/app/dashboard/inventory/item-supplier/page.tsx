@@ -26,6 +26,7 @@ import {
     Copy,
     FileSpreadsheet,
     FileText,
+    FileCode,
     Printer,
     Columns,
     ChevronLeft,
@@ -43,7 +44,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -54,6 +55,10 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import { toast } from "sonner";
 
 interface Supplier {
     id: number;
@@ -99,7 +104,8 @@ const EMPTY_FORM = {
 };
 
 export default function ItemSupplierPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -119,11 +125,11 @@ export default function ItemSupplierPage() {
             const response = await api.get(`/inventory/item-suppliers?page=${page}&search=${searchTerm}&limit=${limit}`);
             setSuppliers(response.data.data ?? response.data ?? []);
             setPagination({
-                current_page: response.data.current_page,
-                last_page: response.data.last_page,
-                total: response.data.total,
-                from: response.data.from,
-                to: response.data.to
+                current_page: response.data.current_page || 1,
+                last_page: response.data.last_page || 1,
+                total: response.data.total || 0,
+                from: response.data.from || 0,
+                to: response.data.to || 0
             });
         } catch (error) {
             console.error("Error fetching suppliers:", error);
@@ -196,17 +202,44 @@ export default function ItemSupplierPage() {
         }
     };
 
+    const exportData = suppliers.map(s => ({
+        [t("item_supplier")]: s.item_supplier || "—",
+        [t("phone")]: s.phone || "—",
+        [t("email")]: s.email || "—",
+        [t("contact_person")]: s.contact_person_name || "—",
+        [t("address")]: s.address || "—"
+    }));
+
     const handleCopy = () => {
-        const text = suppliers.map(s => `${s.item_supplier}\t${s.contact_person_name}\t${s.address}`).join('\n');
+        if (suppliers.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const text = suppliers.map(s => `${s.item_supplier}\t${s.contact_person_name}\t${s.phone || ""}\t${s.email || ""}\t${s.address || ""}`).join('\n');
         navigator.clipboard.writeText(text);
-        tt.success("data_copied_to_clipboard");
+        toast.success(t("data_copied_to_clipboard"));
+    };
+
+    const handleExportExcel = () => {
+        if (suppliers.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, t("suppliers") || "Suppliers");
+        XLSX.writeFile(wb, "item_suppliers.xlsx");
+        toast.success(t("exported_to_excel"));
     };
 
     const handleExportCSV = () => {
-        const headers = [t("item_supplier"), t("contact_person"), t("address")];
-        const rows = suppliers.map(s => [s.item_supplier, s.contact_person_name, s.address]);
-        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        if (suppliers.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
@@ -215,108 +248,140 @@ export default function ItemSupplierPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        toast.success(t("exported_to_csv"));
+    };
+
+    const handleExportPDF = () => {
+        if (suppliers.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const doc = new jsPDF();
+        doc.text(t("item_supplier_list"), 14, 15);
+        autoTable(doc, {
+            head: [[t("item_supplier"), t("contact_person"), t("address")]],
+            body: suppliers.map(s => [
+                s.item_supplier || "—",
+                s.contact_person_name || "—",
+                s.address || "—"
+            ]),
+            startY: 20,
+        });
+        doc.save("item_suppliers.pdf");
+        toast.success(t("exported_to_pdf"));
     };
 
     const toolbarActions = [
         { Icon: Copy, onClick: handleCopy, title: t("copy") },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileSpreadsheet, onClick: handleExportExcel, title: t("excel") },
         { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: FileCode, onClick: handleExportPDF, title: t("pdf") || "PDF" },
         { Icon: Printer, onClick: () => window.print(), title: t("print") },
         { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
+
+    const totalCount = pagination?.total ?? suppliers.length;
 
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left: Add Form */}
-                <Card className="h-fit border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <Card className="h-fit border-[0.5px] border-gray-300 dark:border-zinc-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 dark:border-b dark:border-zinc-800">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Truck className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{isEditing ? t("edit_item_supplier") : t("add_item_supplier")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{isEditing ? t("update_selected_supplier") : t("create_new_supplier")}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-100 leading-none">{isEditing ? t("edit_item_supplier") : t("add_item_supplier")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{isEditing ? t("update_selected_supplier") : t("create_new_supplier")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("name")} <span className="text-red-500">*</span></Label>
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("name")} <span className="text-red-500">*</span></Label>
                             <Input value={formData.item_supplier} onChange={e => setFormData({ ...formData, item_supplier: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("phone")}</Label>
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("phone")}</Label>
                             <Input value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("email")}</Label>
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("email")}</Label>
                             <Input value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("address")}</Label>
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("address")}</Label>
                             <Textarea className="resize-none min-h-[60px]" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("contact_person_name")}</Label>
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("contact_person_name")}</Label>
                             <Input value={formData.contact_person_name} onChange={e => setFormData({ ...formData, contact_person_name: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("contact_person_phone")}</Label>
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("contact_person_phone")}</Label>
                             <Input value={formData.contact_person_phone} onChange={e => setFormData({ ...formData, contact_person_phone: e.target.value })} />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs font-semibold text-gray-600">{t("contact_person_email")}</Label>
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("contact_person_email")}</Label>
                             <Input value={formData.contact_person_email} onChange={e => setFormData({ ...formData, contact_person_email: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("description")}</Label>
+                            <Textarea className="resize-none min-h-[60px]" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
                         </div>
                         <div className="flex justify-end pt-2 gap-2">
                             {isEditing && <Button variant="outline" onClick={resetForm} className="h-9 px-6 rounded-full text-xs font-bold">{t("cancel")}</Button>}
                             <Button onClick={handleSave} disabled={saving} className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all">
-                                <Save className="h-4 w-4" /> {isEditing ? t("update") : t("add")}
+                                <Save className="h-4 w-4" /> {isEditing ? t("update") : t("save")}
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Right: List */}
-                <Card className="lg:col-span-2 border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <Card className="lg:col-span-2 border-[0.5px] border-gray-300 dark:border-zinc-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 dark:border-b dark:border-zinc-800">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Truck className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("item_supplier_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? suppliers.length} {t("suppliers")}</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-100 leading-none">{t("item_supplier_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{toLocaleNumber(totalCount, shortCode)} {t("suppliers")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                             <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
-                                <Input placeholder={t("search_placeholder")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
+                                <Input placeholder={t("search_placeholder") || t("search")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
                                 <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
                                     <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </form>
                             <div className="flex items-center gap-2">
                                 <Select value={limit} onValueChange={setLimit}>
-                                    <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue placeholder="50" /></SelectTrigger>
+                                    <SelectTrigger className="w-[72px] h-9 text-xs bg-white border border-gray-200">
+                                        <SelectValue placeholder={toLocaleNumber("50", shortCode)}>
+                                            {toLocaleNumber(limit, shortCode)}
+                                        </SelectValue>
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="10">{toLocaleNumber("10", shortCode)}</SelectItem>
+                                        <SelectItem value="25">{toLocaleNumber("25", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
+                                <div className="flex items-center border rounded-md p-0.5 bg-white/90 border-gray-200 shadow-xs text-gray-500">
                                     {toolbarActions.map((action, i) => (
-                                        <Button key={i} variant="ghost" size="icon" onClick={action.onClick} title={action.title} className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
-                                            <action.Icon className="h-4 w-4" />
+                                        <Button key={i} variant="ghost" size="icon" onClick={action.onClick} title={action.title} className="h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded">
+                                            <action.Icon className="h-3.5 w-3.5" />
                                         </Button>
                                     ))}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                        <div className="rounded-md border overflow-x-auto custom-scrollbar min-h-[300px]">
                             <Table className="min-w-[900px]">
                                 <TableHeader className="bg-gray-50 text-xs uppercase">
                                     <TableRow className="hover:bg-transparent whitespace-nowrap">
@@ -336,14 +401,14 @@ export default function ItemSupplierPage() {
                                             <TableCell className="py-4">
                                                 <div className="space-y-1.5 min-w-[200px]">
                                                     <div className="font-semibold text-gray-700">{s.item_supplier}</div>
-                                                    <div className="flex items-center gap-1.5 text-gray-500"><Phone className="h-3 w-3 text-indigo-400 shrink-0" /><span>{s.phone || "—"}</span></div>
+                                                    <div className="flex items-center gap-1.5 text-gray-500"><Phone className="h-3 w-3 text-indigo-400 shrink-0" /><span>{s.phone ? toLocaleNumber(s.phone, shortCode) : "—"}</span></div>
                                                     <div className="flex items-center gap-1.5 text-gray-500"><Mail className="h-3 w-3 text-emerald-400 shrink-0" /><span>{s.email || "—"}</span></div>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4">
                                                 <div className="space-y-1.5 min-w-[200px]">
                                                     <div className="flex items-center gap-1.5 font-semibold text-gray-700"><User className="h-3 w-3 text-amber-500" />{s.contact_person_name || "—"}</div>
-                                                    <div className="flex items-center gap-1.5 text-gray-500"><Phone className="h-3 w-3 text-indigo-400 shrink-0" /><span>{s.contact_person_phone || "—"}</span></div>
+                                                    <div className="flex items-center gap-1.5 text-gray-500"><Phone className="h-3 w-3 text-indigo-400 shrink-0" /><span>{s.contact_person_phone ? toLocaleNumber(s.contact_person_phone, shortCode) : "—"}</span></div>
                                                     <div className="flex items-center gap-1.5 text-gray-500"><Mail className="h-3 w-3 text-emerald-400 shrink-0" /><span>{s.contact_person_email || "—"}</span></div>
                                                 </div>
                                             </TableCell>
@@ -362,14 +427,48 @@ export default function ItemSupplierPage() {
                             </Table>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                            <div>{t("showing_x_to_y_of_z", { from: (pagination?.from || 0).toString(), to: (pagination?.to || 0).toString(), total: (pagination?.total || 0).toString() })}</div>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2 border-t">
+                            <div>
+                                {t("showing_x_to_y_of_z", {
+                                    from: toLocaleNumber(pagination?.from || (totalCount > 0 ? 1 : 0), shortCode),
+                                    to: toLocaleNumber(pagination?.to || totalCount, shortCode),
+                                    total: toLocaleNumber(totalCount, shortCode)
+                                })}
+                            </div>
                             <div className="flex gap-1 items-center">
-                                <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === 1} onClick={() => fetchSuppliers(pagination!.current_page - 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
-                                {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                                    <Button key={i + 1} size="sm" onClick={() => fetchSuppliers(i + 1)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", pagination?.current_page === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{i + 1}</Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!pagination || pagination.current_page === 1}
+                                    onClick={() => fetchSuppliers(pagination!.current_page - 1)}
+                                    className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                {Array.from({ length: pagination?.last_page || 1 }).map((_, i) => (
+                                    <Button
+                                        key={i + 1}
+                                        size="sm"
+                                        onClick={() => fetchSuppliers(i + 1)}
+                                        className={cn(
+                                            "h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all",
+                                            (pagination?.current_page || 1) === i + 1
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md"
+                                                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                                        )}
+                                    >
+                                        {toLocaleNumber(i + 1, shortCode)}
+                                    </Button>
                                 ))}
-                                <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === pagination.last_page} onClick={() => fetchSuppliers(pagination!.current_page + 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!pagination || pagination.current_page === pagination.last_page}
+                                    onClick={() => fetchSuppliers(pagination!.current_page + 1)}
+                                    className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     </CardContent>

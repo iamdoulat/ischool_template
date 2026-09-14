@@ -29,14 +29,12 @@ import {
     Search,
     Layers,
     Sparkles,
-    CheckCircle2,
-    Hash
+    CheckCircle2
 } from "lucide-react";
 import api from "@/lib/api";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
@@ -49,7 +47,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateSectionName } from "@/lib/utils";
 
 interface Section {
     id: number;
@@ -57,7 +55,18 @@ interface Section {
     created_at?: string;
 }
 
-const SECTION_PRESETS = ["A", "B", "C", "D", "Rose", "Lotus", "Lily", "Science", "Commerce", "Arts"];
+const SECTION_PRESETS = [
+    { name: "A", key: "section_a" },
+    { name: "B", key: "section_b" },
+    { name: "C", key: "section_c" },
+    { name: "D", key: "section_d" },
+    { name: "Rose", key: "rose" },
+    { name: "Lotus", key: "lotus" },
+    { name: "Lily", key: "lily" },
+    { name: "Science", key: "science" },
+    { name: "Commerce", key: "commerce" },
+    { name: "Arts", key: "arts" }
+];
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -86,8 +95,8 @@ export default function SectionsPage() {
 
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [idToDelete, setIdToDelete] = useState<number | null>(null);
-    const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
 
     // Pagination state
@@ -186,8 +195,13 @@ export default function SectionsPage() {
         }
     };
 
+    const handlePresetSelect = (preset: typeof SECTION_PRESETS[0]) => {
+        const translatedName = t(preset.key);
+        setSectionName(translatedName && translatedName !== preset.key ? translatedName : preset.name);
+    };
+
     const exportToCopy = () => {
-        const text = sections.map((s, idx) => `${idx + 1}. Section ${s.name}`).join("\n");
+        const text = sections.map((s, idx) => `${idx + 1}. ${translateSectionName(s.name, shortCode)}`).join("\n");
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
     };
@@ -195,8 +209,8 @@ export default function SectionsPage() {
     const exportToExcel = () => {
         const worksheet = XLSX.utils.json_to_sheet(sections.map((s, idx) => ({
             "#": idx + 1,
-            "Section Name": `Section ${s.name}`,
-            "Status": "Active"
+            [t("section_name")]: translateSectionName(s.name, shortCode),
+            [t("status")]: t("active")
         })));
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Sections");
@@ -205,10 +219,10 @@ export default function SectionsPage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Section List", 14, 15);
+        doc.text(t("section_list") || "Section List", 14, 15);
         autoTable(doc, {
-            head: [["#", "Section Name", "Status"]],
-            body: sections.map((s, idx) => [idx + 1, `Section ${s.name}`, "Active"]),
+            head: [["#", t("section_name"), t("status")]],
+            body: sections.map((s, idx) => [idx + 1, translateSectionName(s.name, shortCode), t("active")]),
             startY: 20
         });
         doc.save("sections.pdf");
@@ -243,7 +257,7 @@ export default function SectionsPage() {
                             </Label>
                             <Input
                                 id="sectionName"
-                                placeholder="e.g. A, B, Rose, Science..."
+                                placeholder={t("section_name_placeholder") || "e.g. A, B, Rose, Science..."}
                                 className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
                                 value={sectionName}
                                 onChange={(e) => setSectionName(e.target.value)}
@@ -254,24 +268,28 @@ export default function SectionsPage() {
                         {/* Quick Presets Bar */}
                         <div className="space-y-1.5 pt-1">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                                <Sparkles className="h-3 w-3 text-amber-500" /> Quick Section Presets
+                                <Sparkles className="h-3 w-3 text-amber-500" /> {t("quick_section_presets") || "Quick Section Presets"}
                             </Label>
                             <div className="flex flex-wrap gap-1.5">
-                                {SECTION_PRESETS.map((preset) => (
-                                    <button
-                                        key={preset}
-                                        type="button"
-                                        onClick={() => setSectionName(preset)}
-                                        className={cn(
-                                            "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
-                                            sectionName === preset
-                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                                : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
-                                        )}
-                                    >
-                                        {preset}
-                                    </button>
-                                ))}
+                                {SECTION_PRESETS.map((preset) => {
+                                    const presetLabel = t(preset.key) !== preset.key ? t(preset.key) : preset.name;
+                                    const isSelected = sectionName === preset.name || sectionName === presetLabel;
+                                    return (
+                                        <button
+                                            key={preset.name}
+                                            type="button"
+                                            onClick={() => handlePresetSelect(preset)}
+                                            className={cn(
+                                                "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
+                                                isSelected
+                                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                                                    : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
+                                            )}
+                                        >
+                                            {presetLabel}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -309,7 +327,7 @@ export default function SectionsPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("section_list")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: toLocaleNumber(total, shortCode) })}</p>
                             </div>
                         </div>
 
@@ -319,27 +337,27 @@ export default function SectionsPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, shortCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, shortCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, shortCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
 
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
+                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("copy")}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
+                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("excel")}>
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
+                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("pdf")}>
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={printTable} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
+                                <Button onClick={printTable} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("print")}>
                                     <Printer className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Columns">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("columns")}>
                                     <Columns className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -352,7 +370,7 @@ export default function SectionsPage() {
                             <div className="relative w-full md:w-72">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search sections..."
+                                    placeholder={t("search_sections") || "Search sections..."}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
@@ -362,7 +380,7 @@ export default function SectionsPage() {
                             {sections.length > 0 && (
                                 <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
                                     <Layers className="h-3 w-3 mr-1" />
-                                    {total} Academic Sections
+                                    {t("x_academic_sections", { count: toLocaleNumber(total, shortCode) })}
                                 </Badge>
                             )}
                         </div>
@@ -374,8 +392,8 @@ export default function SectionsPage() {
                                     <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
                                         <TableHead className="py-3 px-4 w-[60px]">#</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[200px]">{t("section")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[160px]">Display Badge</TableHead>
-                                        <TableHead className="py-3 px-4 w-[140px]">Status</TableHead>
+                                        <TableHead className="py-3 px-4 w-[160px]">{t("display_badge") || "Display Badge"}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[140px]">{t("status")}</TableHead>
                                         <TableHead className="py-3 px-4 text-right w-[100px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -389,74 +407,79 @@ export default function SectionsPage() {
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        sections.map((sec, idx) => (
-                                            <TableRow
-                                                key={sec.id}
-                                                className="text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 hover:bg-indigo-50/25 transition-colors group"
-                                            >
-                                                {/* Serial Number */}
-                                                <TableCell className="py-3.5 px-4 font-bold text-gray-400 text-xs">
-                                                    {(currentPage - 1) * itemsPerPage + idx + 1}
-                                                </TableCell>
+                                        sections.map((sec, idx) => {
+                                            const cleanSecName = sec.name.replace(/^Section\s+/i, "");
+                                            const displayName = translateSectionName(sec.name, shortCode);
 
-                                                {/* Section Name with Monogram */}
-                                                <TableCell className="py-3.5 px-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center font-black text-xs shadow-2xs shrink-0">
-                                                            {sec.name.slice(0, 2).toUpperCase()}
+                                            return (
+                                                <TableRow
+                                                    key={sec.id}
+                                                    className="text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 hover:bg-indigo-50/25 transition-colors group"
+                                                >
+                                                    {/* Serial Number */}
+                                                    <TableCell className="py-3.5 px-4 font-bold text-gray-400 text-xs">
+                                                        {toLocaleNumber((currentPage - 1) * itemsPerPage + idx + 1, shortCode)}
+                                                    </TableCell>
+
+                                                    {/* Section Name with Monogram */}
+                                                    <TableCell className="py-3.5 px-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center font-black text-xs shadow-2xs shrink-0">
+                                                                {cleanSecName.slice(0, 2).toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
+                                                                    {displayName}
+                                                                </p>
+                                                                <p className="text-[11px] text-gray-400 font-medium">
+                                                                    {t("code") || "Code"}: SEC-{toLocaleNumber(cleanSecName.toUpperCase(), shortCode)}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                                                                Section {sec.name}
-                                                            </p>
-                                                            <p className="text-[11px] text-gray-400 font-medium">
-                                                                Code: SEC-{sec.name.toUpperCase()}
-                                                            </p>
+                                                    </TableCell>
+
+                                                    {/* Display Badge */}
+                                                    <TableCell className="py-3.5 px-4">
+                                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs">
+                                                            <LayoutGrid className="h-3 w-3 text-indigo-500" />
+                                                            {displayName}
+                                                        </span>
+                                                    </TableCell>
+
+                                                    {/* Status */}
+                                                    <TableCell className="py-3.5 px-4">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
+                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                                            {t("active")}
+                                                        </span>
+                                                    </TableCell>
+
+                                                    {/* Actions */}
+                                                    <TableCell className="py-3.5 px-4 text-right">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <Button
+                                                                onClick={() => handleEdit(sec)}
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
+                                                                title={t("edit_section") || "Edit Section"}
+                                                            >
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                onClick={() => confirmDelete(sec.id)}
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
+                                                                title={t("delete_section") || "Delete Section"}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
                                                         </div>
-                                                    </div>
-                                                </TableCell>
-
-                                                {/* Display Badge */}
-                                                <TableCell className="py-3.5 px-4">
-                                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs">
-                                                        <LayoutGrid className="h-3 w-3 text-indigo-500" />
-                                                        {sec.name}
-                                                    </span>
-                                                </TableCell>
-
-                                                {/* Status */}
-                                                <TableCell className="py-3.5 px-4">
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
-                                                        <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                        Active
-                                                    </span>
-                                                </TableCell>
-
-                                                {/* Actions */}
-                                                <TableCell className="py-3.5 px-4 text-right">
-                                                    <div className="flex items-center justify-end gap-1.5">
-                                                        <Button
-                                                            onClick={() => handleEdit(sec)}
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Edit Section"
-                                                        >
-                                                            <Pencil className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                            onClick={() => confirmDelete(sec.id)}
-                                                            size="icon"
-                                                            variant="ghost"
-                                                            className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Delete Section"
-                                                        >
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })
                                     )}
                                 </TableBody>
                             </Table>
@@ -466,7 +489,7 @@ export default function SectionsPage() {
                         {total > 0 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
                                 <div>
-                                    {t("showing_x_to_y_of_z", { from, to, total })}
+                                    {t("showing_x_to_y_of_z", { from: toLocaleNumber(from, shortCode), to: toLocaleNumber(to, shortCode), total: toLocaleNumber(total, shortCode) })}
                                 </div>
                                 <div className="flex gap-1.5">
                                     <Button
@@ -489,7 +512,7 @@ export default function SectionsPage() {
                                             )}
                                             onClick={() => fetchSections(page)}
                                         >
-                                            {page}
+                                            {toLocaleNumber(page, shortCode)}
                                         </Button>
                                     ))}
                                     <Button

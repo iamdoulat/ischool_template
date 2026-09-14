@@ -30,12 +30,10 @@ import {
     GraduationCap,
     LayoutGrid,
     Search,
-    Layers,
     Sparkles,
     CheckCircle2,
     Plus
 } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
@@ -52,7 +50,7 @@ import api from "@/lib/api";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 
 interface Section {
     id: number;
@@ -66,9 +64,19 @@ interface ClassData {
 }
 
 const CLASS_PRESETS = [
-    "Class 1", "Class 2", "Class 3", "Class 4", "Class 5",
-    "Class 6", "Class 7", "Class 8", "Class 9", "Class 10",
-    "Playgroup", "Nursery", "KG"
+    { name: "Class 1", key: "class_1" },
+    { name: "Class 2", key: "class_2" },
+    { name: "Class 3", key: "class_3" },
+    { name: "Class 4", key: "class_4" },
+    { name: "Class 5", key: "class_5" },
+    { name: "Class 6", key: "class_6" },
+    { name: "Class 7", key: "class_7" },
+    { name: "Class 8", key: "class_8" },
+    { name: "Class 9", key: "class_9" },
+    { name: "Class 10", key: "class_10" },
+    { name: "Playgroup", key: "playgroup" },
+    { name: "Nursery", key: "nursery" },
+    { name: "KG", key: "kg" }
 ];
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -99,8 +107,8 @@ export default function ClassPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [idToDelete, setIdToDelete] = useState<number | null>(null);
-    const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
 
     // Pagination state
@@ -237,6 +245,12 @@ export default function ClassPage() {
         }
     };
 
+    const handlePresetSelect = (preset: typeof CLASS_PRESETS[0]) => {
+        const translatedName = t(preset.key);
+        setClassName(translatedName && translatedName !== preset.key ? translatedName : preset.name);
+    };
+
+    // Export functions
     const exportToCopy = () => {
         const text = classes.map((c, idx) => `${idx + 1}. ${c.name} - Sections: ${c.sections.map(s => s.name).join(", ")}`).join("\n");
         navigator.clipboard.writeText(text);
@@ -246,10 +260,10 @@ export default function ClassPage() {
     const exportToExcel = () => {
         const data = classes.map((c, idx) => ({
             "#": idx + 1,
-            [t("class")]: c.name,
-            [t("sections")]: c.sections.map(s => s.name).join(", "),
-            "Total Sections": c.sections.length,
-            "Status": "Active"
+            [t("class")]: translateClassName(c.name, shortCode),
+            [t("sections")]: c.sections.map(s => translateSectionName(s.name, shortCode)).join(", "),
+            [t("total_sections")]: c.sections.length,
+            [t("status")]: t("active")
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
@@ -259,10 +273,10 @@ export default function ClassPage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Class List", 14, 15);
+        doc.text(t("class_list") || "Class List", 14, 15);
         autoTable(doc, {
-            head: [["#", t("class"), t("sections"), "Status"]],
-            body: classes.map((c, idx) => [idx + 1, c.name, c.sections.map(s => s.name).join(", "), "Active"]),
+            head: [["#", t("class"), t("sections"), t("status")]],
+            body: classes.map((c, idx) => [idx + 1, translateClassName(c.name, shortCode), c.sections.map(s => translateSectionName(s.name, shortCode)).join(", "), t("active")]),
             startY: 20
         });
         doc.save("classes.pdf");
@@ -301,7 +315,7 @@ export default function ClassPage() {
                                 className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
                                 value={className}
                                 onChange={(e) => setClassName(e.target.value)}
-                                placeholder="e.g. Class 1, Grade 5..."
+                                placeholder={t("class_name_placeholder") || "e.g. Class 1, Grade 5..."}
                                 required
                             />
                         </div>
@@ -309,24 +323,28 @@ export default function ClassPage() {
                         {/* Quick Class Presets */}
                         <div className="space-y-1.5 pt-1">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                                <Sparkles className="h-3 w-3 text-amber-500" /> Quick Class Presets
+                                <Sparkles className="h-3 w-3 text-amber-500" /> {t("quick_class_presets") || "Quick Class Presets"}
                             </Label>
                             <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto pr-1">
-                                {CLASS_PRESETS.map((preset) => (
-                                    <button
-                                        key={preset}
-                                        type="button"
-                                        onClick={() => setClassName(preset)}
-                                        className={cn(
-                                            "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
-                                            className === preset
-                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                                : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
-                                        )}
-                                    >
-                                        {preset}
-                                    </button>
-                                ))}
+                                {CLASS_PRESETS.map((preset) => {
+                                    const presetLabel = t(preset.key) !== preset.key ? t(preset.key) : preset.name;
+                                    const isSelected = className === preset.name || className === presetLabel;
+                                    return (
+                                        <button
+                                            key={preset.name}
+                                            type="button"
+                                            onClick={() => handlePresetSelect(preset)}
+                                            className={cn(
+                                                "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
+                                                isSelected
+                                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                                                    : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
+                                            )}
+                                        >
+                                            {presetLabel}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -335,7 +353,7 @@ export default function ClassPage() {
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("sections")} <span className="text-red-500">*</span>
                             </Label>
-                            <p className="text-[11px] text-gray-400">Select or toggle sections to attach</p>
+                            <p className="text-[11px] text-gray-400">{t("select_or_toggle_sections_to_attach") || "Select or toggle sections to attach"}</p>
 
                             {/* Section Quick Toggle Pills */}
                             {availableSections.length > 0 && (
@@ -355,7 +373,7 @@ export default function ClassPage() {
                                                 )}
                                             >
                                                 {isSelected ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                                                Sec {sec.name}
+                                                {translateSectionName(sec.name, shortCode)}
                                             </button>
                                         );
                                     })}
@@ -364,7 +382,7 @@ export default function ClassPage() {
 
                             <Select onValueChange={addSectionTag}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder={t("select_section_to_add")} />
+                                    <SelectValue placeholder={t("select_section_to_add") || "Select section to add..."} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {availableSections.length === 0 && (
@@ -372,7 +390,7 @@ export default function ClassPage() {
                                     )}
                                     {availableSections.map((sec) => (
                                         <SelectItem key={sec.id} value={sec.name} disabled={sectionTags.includes(sec.name)}>
-                                            Section {sec.name}
+                                            {translateSectionName(sec.name, shortCode)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -386,7 +404,7 @@ export default function ClassPage() {
                                             key={tag}
                                             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shadow-2xs"
                                         >
-                                            Section {tag}
+                                            {translateSectionName(tag, shortCode)}
                                             <button
                                                 type="button"
                                                 onClick={() => removeSectionTag(tag)}
@@ -434,7 +452,7 @@ export default function ClassPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("class_list")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: toLocaleNumber(total, shortCode) })}</p>
                             </div>
                         </div>
 
@@ -444,10 +462,10 @@ export default function ClassPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, shortCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, shortCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, shortCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -477,7 +495,7 @@ export default function ClassPage() {
                             <div className="relative w-full md:w-72">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search classes..."
+                                    placeholder={t("search_classes") || "Search classes..."}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
@@ -487,7 +505,7 @@ export default function ClassPage() {
                             {classes.length > 0 && (
                                 <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
                                     <School className="h-3 w-3 mr-1" />
-                                    {total} Academic Classes
+                                    {t("x_academic_classes", { count: toLocaleNumber(total, shortCode) })}
                                 </Badge>
                             )}
                         </div>
@@ -500,7 +518,7 @@ export default function ClassPage() {
                                         <TableHead className="py-3 px-4 w-[60px]">#</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[200px]">{t("class")}</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[260px]">{t("sections")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[140px]">Status</TableHead>
+                                        <TableHead className="py-3 px-4 w-[140px]">{t("status")}</TableHead>
                                         <TableHead className="py-3 px-4 text-right w-[100px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -521,7 +539,7 @@ export default function ClassPage() {
                                             >
                                                 {/* Serial Number */}
                                                 <TableCell className="py-3.5 px-4 font-bold text-gray-400 text-xs">
-                                                    {(currentPage - 1) * itemsPerPage + idx + 1}
+                                                    {toLocaleNumber((currentPage - 1) * itemsPerPage + idx + 1, shortCode)}
                                                 </TableCell>
 
                                                 {/* Class Name & Monogram */}
@@ -532,10 +550,10 @@ export default function ClassPage() {
                                                         </div>
                                                         <div>
                                                             <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                                                                {cls.name}
+                                                                {translateClassName(cls.name, shortCode)}
                                                             </p>
                                                             <p className="text-[11px] text-gray-400 font-medium">
-                                                                {cls.sections.length} Section{cls.sections.length === 1 ? '' : 's'} assigned
+                                                                {t("x_sections_assigned", { count: toLocaleNumber(cls.sections.length, shortCode) })}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -551,7 +569,7 @@ export default function ClassPage() {
                                                                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs"
                                                                 >
                                                                     <LayoutGrid className="h-3 w-3 text-indigo-500" />
-                                                                    Section {section.name}
+                                                                    {translateSectionName(section.name, shortCode)}
                                                                 </span>
                                                             ))
                                                         ) : (
@@ -564,7 +582,7 @@ export default function ClassPage() {
                                                 <TableCell className="py-3.5 px-4">
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
                                                         <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                        Active
+                                                        {t("active")}
                                                     </span>
                                                 </TableCell>
 
@@ -576,7 +594,7 @@ export default function ClassPage() {
                                                             size="icon"
                                                             variant="ghost"
                                                             className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Edit Class"
+                                                            title={t("edit_class") || "Edit Class"}
                                                         >
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
@@ -585,7 +603,7 @@ export default function ClassPage() {
                                                             size="icon"
                                                             variant="ghost"
                                                             className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Delete Class"
+                                                            title={t("delete_class") || "Delete Class"}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
@@ -601,7 +619,7 @@ export default function ClassPage() {
                         {/* Pagination */}
                         {total > 0 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
-                                <div>{t("showing_x_to_y_of_z", { from, to, total })}</div>
+                                <div>{t("showing_x_to_y_of_z", { from: toLocaleNumber(from, shortCode), to: toLocaleNumber(to, shortCode), total: toLocaleNumber(total, shortCode) })}</div>
                                 <div className="flex gap-1.5">
                                     <Button
                                         size="sm"
@@ -623,7 +641,7 @@ export default function ClassPage() {
                                             )}
                                             onClick={() => fetchClasses(page)}
                                         >
-                                            {page}
+                                            {toLocaleNumber(page, shortCode)}
                                         </Button>
                                     ))}
                                     <Button

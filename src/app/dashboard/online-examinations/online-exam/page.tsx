@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
-import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,14 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import { renderPdfHeader, renderPdfFooter } from "@/lib/pdf-utils";
 import { useSettings } from "@/components/providers/settings-provider";
-import { formatDate, cn } from "@/lib/utils";
+import { formatDate, cn, toLocaleNumber } from "@/lib/utils";
 import {
-    Plus, Search, Copy, FileSpreadsheet, FileText, Printer, Columns,
+    Plus, Search, Copy, FileSpreadsheet, FileText, Printer,
     ChevronLeft, ChevronRight, CheckCircle2, XCircle, Eye, Pencil, Trash2,
-    ListOrdered, LayoutGrid, FileSearch, UserCheck, ShieldClose, Calendar, Clock, Laptop, Trophy,
-    Minus, BookOpen, Layers, CheckSquare, Square
+    ListOrdered, FileSearch, Calendar, Clock, Laptop, Trophy,
+    Minus
 } from "lucide-react";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
@@ -59,6 +59,33 @@ interface OnlineExam {
     description: string;
 }
 
+interface QuestionOption {
+    option?: string;
+    text?: string;
+}
+
+interface QuestionItem {
+    id: number;
+    question: string;
+    subject?: string;
+    question_type?: string;
+    level?: string;
+    class_name?: string;
+    section?: string;
+    options?: (string | QuestionOption)[];
+    pivot?: { marks?: number };
+}
+
+interface OnlineExamDetails extends OnlineExam {
+    passing_percentage?: number;
+    questions?: QuestionItem[];
+}
+
+interface InvoicePrintSetting {
+    type?: string;
+    footer_content?: string;
+}
+
 const stripHtml = (html: string) => {
     if (!html) return "";
     return html
@@ -73,9 +100,9 @@ const stripHtml = (html: string) => {
 };
 
 export default function OnlineExamPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
-    const { toast } = useToast();
     const { settings } = useSettings();
     const [searchTerm, setSearchTerm] = useState("");
     const [statusTab, setStatusTab] = useState("upcoming");
@@ -121,7 +148,7 @@ export default function OnlineExamPage() {
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
     // Questions states
-    const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
+    const [availableQuestions, setAvailableQuestions] = useState<QuestionItem[]>([]);
     const [questionSearch, setQuestionSearch] = useState("");
     
     // Assign Questions Dialog state
@@ -132,7 +159,6 @@ export default function OnlineExamPage() {
     const [assignSearch, setAssignSearch] = useState("");
     const [assignSubjectFilter, setAssignSubjectFilter] = useState("all");
     const [assignTypeFilter, setAssignTypeFilter] = useState("all");
-    const [assignLevelFilter, setAssignLevelFilter] = useState("all");
     const [assignBulkMarks, setAssignBulkMarks] = useState<string>("1");
     const [savingAssign, setSavingAssign] = useState(false);
 
@@ -160,10 +186,9 @@ export default function OnlineExamPage() {
             }
             if (assignSubjectFilter !== "all" && q.subject !== assignSubjectFilter) return false;
             if (assignTypeFilter !== "all" && q.question_type !== assignTypeFilter) return false;
-            if (assignLevelFilter !== "all" && q.level?.toLowerCase() !== assignLevelFilter.toLowerCase()) return false;
             return true;
         });
-    }, [availableQuestions, assignSearch, assignSubjectFilter, assignTypeFilter, assignLevelFilter]);
+    }, [availableQuestions, assignSearch, assignSubjectFilter, assignTypeFilter]);
 
     const totalAssignMarks = useMemo(() => {
         return assignQuestions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0);
@@ -209,7 +234,7 @@ export default function OnlineExamPage() {
     
     // View Exam Details Dialog state
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-    const [viewExamDetails, setViewExamDetails] = useState<any>(null);
+    const [viewExamDetails, setViewExamDetails] = useState<OnlineExamDetails | null>(null);
 
     const fetchAvailableQuestions = async () => {
         try {
@@ -222,14 +247,6 @@ export default function OnlineExamPage() {
             console.error("Failed to fetch questions", error);
         }
     };
-
-    useEffect(() => {
-        fetchExams();
-    }, [currentPage, itemsPerPage, searchTerm, statusTab]);
-
-    useEffect(() => {
-        fetchAvailableQuestions();
-    }, []);
 
     const fetchExams = async () => {
         setLoading(true);
@@ -244,12 +261,20 @@ export default function OnlineExamPage() {
             });
             setExams(response.data.data || []);
             setTotalEntries(response.data.total || 0);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_fetch_exams");
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchExams();
+    }, [currentPage, itemsPerPage, searchTerm, statusTab]);
+
+    useEffect(() => {
+        fetchAvailableQuestions();
+    }, []);
 
     const handleSave = async () => {
         if (!formData.title || !formData.exam_from || !formData.exam_to) {
@@ -273,7 +298,7 @@ export default function OnlineExamPage() {
             }
             setIsDialogOpen(false);
             fetchExams();
-        } catch (error) {
+        } catch {
             tt.error("failed_to_save_exam");
         }
     };
@@ -296,13 +321,13 @@ export default function OnlineExamPage() {
                 is_published: !!examDetails.is_published,
                 is_result_published: !!examDetails.is_result_published,
                 description: examDetails.description || "",
-                questions: (examDetails.questions || []).map((q: any) => ({
+                questions: (examDetails.questions || []).map((q: QuestionItem) => ({
                     id: q.id,
                     marks: q.pivot?.marks || 1
                 }))
             });
             setIsDialogOpen(true);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_load_exam_details");
         } finally {
             setLoading(false);
@@ -315,7 +340,7 @@ export default function OnlineExamPage() {
             await api.delete(`/online-examination/online-exams/${deleteId}`);
             tt.success("exam_deleted_successfully");
             fetchExams();
-        } catch (error) {
+        } catch {
             tt.error("failed_to_delete_exam");
         } finally {
             setDeleteId(null);
@@ -347,16 +372,15 @@ export default function OnlineExamPage() {
         try {
             const response = await api.get(`/online-examination/online-exams/${exam.id}`);
             const examDetails = response.data;
-            setAssignQuestions((examDetails.questions || []).map((q: any) => ({
+            setAssignQuestions((examDetails.questions || []).map((q: QuestionItem) => ({
                 id: q.id,
                 marks: q.pivot?.marks || 1
             })));
             setAssignSearch("");
             setAssignSubjectFilter("all");
             setAssignTypeFilter("all");
-            setAssignLevelFilter("all");
             setIsAssignDialogOpen(true);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_load_exam_details");
         } finally {
             setLoading(false);
@@ -373,7 +397,7 @@ export default function OnlineExamPage() {
             tt.success("questions_assigned_successfully");
             setIsAssignDialogOpen(false);
             fetchExams();
-        } catch (error) {
+        } catch {
             tt.error("failed_to_assign_questions");
         } finally {
             setSavingAssign(false);
@@ -386,11 +410,41 @@ export default function OnlineExamPage() {
             const response = await api.get(`/online-examination/online-exams/${exam.id}`);
             setViewExamDetails(response.data);
             setIsViewDialogOpen(true);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_load_exam_details");
         } finally {
             setLoading(false);
         }
+    };
+
+    const copyToClipboard = () => {
+        if (exams.length === 0) {
+            tt.error("no_data_to_export");
+            return;
+        }
+        const text = exams.map(e => `${e.title}\t${e.is_quiz ? t("yes") : t("no")}\t${e.questions_count}\t${e.attempt}\t${e.exam_from}\t${e.exam_to}\t${e.duration}\t${e.is_published ? t("yes") : t("no")}`).join('\n');
+        navigator.clipboard.writeText(text);
+        tt.success("data_copied_to_clipboard");
+    };
+
+    const exportToExcel = () => {
+        if (exams.length === 0) {
+            tt.error("no_data_to_export");
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exams.map(e => ({
+            [t("exam_title")]: e.title,
+            [t("quiz")]: e.is_quiz ? t("yes") : t("no"),
+            [t("questions")]: e.questions_count,
+            [t("attempt")]: e.attempt,
+            [t("exam_from")]: e.exam_from,
+            [t("exam_to")]: e.exam_to,
+            [t("duration")]: e.duration,
+            [t("published")]: e.is_published ? t("yes") : t("no")
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, t("online_examinations"));
+        XLSX.writeFile(wb, "online_exams.xlsx");
     };
 
     const exportToPDF = async () => {
@@ -398,11 +452,11 @@ export default function OnlineExamPage() {
             tt.error("no_data_to_export");
             return;
         }
-        let invoicePrintSettings = {};
+        let invoicePrintSettings: InvoicePrintSetting = {};
         try {
             const res = await api.get("system-setting/print-settings");
             if (res.data?.status === "success") {
-                invoicePrintSettings = (res.data.data || []).find((s: any) => s.type === "Online Exam") || {};
+                invoicePrintSettings = (res.data.data || []).find((s: InvoicePrintSetting) => s.type === "Online Exam") || {};
             }
         } catch (err) {
             console.error("Could not fetch print settings", err);
@@ -426,8 +480,9 @@ export default function OnlineExamPage() {
             styles: { fontSize: 8 },
             headStyles: { fillColor: [99, 102, 241] },
         });
-        const finalY = (doc as any).lastAutoTable.finalY + 10;
-        renderPdfFooter(doc, (invoicePrintSettings as any).footer_content || "", finalY);
+        const lastTable = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable;
+        const finalY = (lastTable?.finalY || 0) + 10;
+        renderPdfFooter(doc, invoicePrintSettings.footer_content || "", finalY);
         doc.save("online_exams.pdf");
         tt.success("pdf_file_downloaded");
     };
@@ -482,26 +537,29 @@ export default function OnlineExamPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5 mr-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                                <span className="text-[11px] text-gray-400 font-bold uppercase tracking-tighter">{t("rows")}:</span>
-                                <span className="text-xs text-indigo-600 font-bold">50</span>
-                                <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
-                            </div>
+                            <Select value={String(itemsPerPage)} onValueChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}>
+                                <SelectTrigger className="w-[68px] h-8 text-xs font-bold border-gray-200 rounded-lg bg-white cursor-pointer">
+                                    <SelectValue placeholder={toLocaleNumber(itemsPerPage, shortCode)} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="20">{toLocaleNumber(20, shortCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, shortCode)}</SelectItem>
+                                    <SelectItem value="500">{toLocaleNumber(500, shortCode)}</SelectItem>
+                                </SelectContent>
+                            </Select>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                <Button variant="ghost" size="icon" onClick={copyToClipboard} title={t("copy")} className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                     <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                <Button variant="ghost" size="icon" onClick={exportToExcel} title={t("export_excel")} className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={exportToPDF} title="Export PDF" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                <Button variant="ghost" size="icon" onClick={exportToPDF} title={t("export_pdf")} className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                <Button variant="ghost" size="icon" onClick={() => window.print()} title={t("print")} className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                     <Printer className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                    <Columns className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
@@ -550,21 +608,21 @@ export default function OnlineExamPage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className="font-bold text-indigo-600 flex items-center gap-1.5"><ListOrdered className="h-3 w-3" /> {exam.questions_count} {t("total")}</span>
-                                                    <span className="text-[9px] text-gray-400 font-bold uppercase flex items-center gap-1.5"><FileSearch className="h-3 w-3" /> {exam.descriptive_questions_count} {t("descriptive")}</span>
+                                                    <span className="font-bold text-indigo-600 flex items-center gap-1.5"><ListOrdered className="h-3 w-3" /> {toLocaleNumber(exam.questions_count, shortCode)} {t("total")}</span>
+                                                    <span className="text-[9px] text-gray-400 font-bold uppercase flex items-center gap-1.5"><FileSearch className="h-3 w-3" /> {toLocaleNumber(exam.descriptive_questions_count, shortCode)} {t("descriptive")}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-center py-4 px-6">
-                                                <span className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-bold">{exam.attempt}</span>
+                                                <span className="bg-gray-100 px-2 py-1 rounded text-gray-700 font-bold">{toLocaleNumber(exam.attempt, shortCode)}</span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col gap-1 text-[10px] font-bold">
-                                                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_from?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</span>
-                                                    <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {formatDate(exam.exam_to?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</span>
+                                                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {toLocaleNumber(formatDate(exam.exam_from?.replace(" ", "T"), "dd/MM/yyyy h:mm a"), shortCode)}</span>
+                                                    <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-100 flex items-center gap-1.5 w-fit"><Calendar className="h-3 w-3" /> {toLocaleNumber(formatDate(exam.exam_to?.replace(" ", "T"), "dd/MM/yyyy h:mm a"), shortCode)}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
-                                                <span className="flex items-center gap-1.5 font-bold text-gray-700"><Clock className="h-3.5 w-3.5 text-indigo-400" /> {exam.duration}</span>
+                                                <span className="flex items-center gap-1.5 font-bold text-gray-700"><Clock className="h-3.5 w-3.5 text-indigo-400" /> {toLocaleNumber(exam.duration, shortCode)}</span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
                                                 <div className="flex flex-col items-center gap-2">
@@ -580,16 +638,16 @@ export default function OnlineExamPage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1.5 flex-wrap max-w-[200px] ml-auto">
-                                                    <Button size="icon" variant="ghost" title={t("assign_questions")} onClick={() => openAssignDialog(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("assign_questions")} onClick={() => openAssignDialog(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md cursor-pointer">
                                                         <Plus className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("edit")} onClick={() => handleEdit(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("edit")} onClick={() => handleEdit(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md cursor-pointer">
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("view")} onClick={() => openViewDialog(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("view")} onClick={() => openViewDialog(exam)} className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md cursor-pointer">
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button size="icon" variant="ghost" title={t("delete")} onClick={() => setDeleteId(exam.id)} className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-md">
+                                                    <Button size="icon" variant="ghost" title={t("delete")} onClick={() => setDeleteId(exam.id)} className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg shadow-md cursor-pointer">
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
@@ -604,25 +662,25 @@ export default function OnlineExamPage() {
                     <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                         <div>
                             {t("showing_x_to_y_of_z", {
-                                from: ((currentPage - 1) * itemsPerPage) + 1,
-                                to: Math.min(currentPage * itemsPerPage, totalEntries),
-                                total: totalEntries
+                                from: toLocaleNumber(((currentPage - 1) * itemsPerPage) + (totalEntries > 0 ? 1 : 0), shortCode),
+                                to: toLocaleNumber(Math.min(currentPage * itemsPerPage, totalEntries), shortCode),
+                                total: toLocaleNumber(totalEntries, shortCode)
                             })}
                         </div>
                         <div className="flex gap-2">
                             <Button 
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600" 
+                                variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer" 
                                 disabled={currentPage === 1}
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <Button variant="default" size="sm" className="h-8 w-8 p-0 btn-gradient text-white border-0 rounded-lg shadow-md">
-                                {currentPage}
+                                {toLocaleNumber(currentPage, shortCode)}
                             </Button>
                             <Button 
                                 onClick={() => setCurrentPage(p => p + 1)}
-                                variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600" 
+                                variant="outline" size="sm" className="h-8 w-8 p-0 border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer" 
                                 disabled={exams.length < itemsPerPage}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -661,7 +719,7 @@ export default function OnlineExamPage() {
                                 <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="h-5 w-1 rounded-full bg-indigo-500"></div>
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Basic Info</h3>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("basic_info")}</h3>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
@@ -687,7 +745,7 @@ export default function OnlineExamPage() {
                                 <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="h-5 w-1 rounded-full bg-orange-400"></div>
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Timing</h3>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("timing")}</h3>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
@@ -726,7 +784,7 @@ export default function OnlineExamPage() {
                                             />
                                         </div>
                                         <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-gray-400 uppercase">Pass %</Label>
+                                            <Label className="text-[9px] font-bold text-gray-400 uppercase">{t("pass_percentage_short")}</Label>
                                             <Input 
                                                 type="number"
                                                 value={formData.passing_percentage} 
@@ -743,7 +801,7 @@ export default function OnlineExamPage() {
                                 <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <div className="h-5 w-1 rounded-full bg-emerald-500"></div>
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Settings</h3>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("settings")}</h3>
                                     </div>
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between p-3 bg-emerald-50/30 hover:bg-emerald-50 transition-colors rounded-xl border border-emerald-100/50 shadow-sm h-10">
@@ -782,15 +840,15 @@ export default function OnlineExamPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <div className="h-5 w-1 rounded-full bg-indigo-500"></div>
-                                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Assign Questions</h3>
+                                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("assign_questions")}</h3>
                                         </div>
                                         <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full">
-                                            {(formData.questions || []).length} {t("selected")}
+                                            {toLocaleNumber((formData.questions || []).length, shortCode)} {t("selected")}
                                         </span>
                                     </div>
 
                                     <Input
-                                        placeholder="Search questions..."
+                                        placeholder={t("search_questions")}
                                         value={questionSearch}
                                         onChange={(e) => setQuestionSearch(e.target.value)}
                                         className="h-9 text-xs border-gray-100 bg-gray-50/50 shadow-none focus:ring-indigo-500"
@@ -801,14 +859,14 @@ export default function OnlineExamPage() {
                                             q.question?.toLowerCase().includes(questionSearch.toLowerCase()) ||
                                             q.subject?.toLowerCase().includes(questionSearch.toLowerCase())
                                         ).length === 0 ? (
-                                            <p className="text-[10px] text-gray-400 text-center py-12">No questions available</p>
+                                            <p className="text-[10px] text-gray-400 text-center py-12">{t("no_questions_available")}</p>
                                         ) : (
                                             availableQuestions.filter(q => 
                                                 q.question?.toLowerCase().includes(questionSearch.toLowerCase()) ||
                                                 q.subject?.toLowerCase().includes(questionSearch.toLowerCase())
                                             ).map((q) => {
-                                                const isChecked = (formData.questions || []).some((sq: any) => sq.id === q.id);
-                                                const selectedQ = (formData.questions || []).find((sq: any) => sq.id === q.id);
+                                                const isChecked = (formData.questions || []).some((sq: { id: number; marks: number }) => sq.id === q.id);
+                                                const selectedQ = (formData.questions || []).find((sq: { id: number; marks: number }) => sq.id === q.id);
                                                 const marksValue = selectedQ?.marks || 1;
 
                                                 return (
@@ -822,7 +880,7 @@ export default function OnlineExamPage() {
                                                                     if (e.target.checked) {
                                                                         updated.push({ id: q.id, marks: 1 });
                                                                     } else {
-                                                                        updated = updated.filter((sq: any) => sq.id !== q.id);
+                                                                        updated = updated.filter((sq: { id: number; marks: number }) => sq.id !== q.id);
                                                                     }
                                                                     setFormData({ ...formData, questions: updated });
                                                                 }}
@@ -838,14 +896,14 @@ export default function OnlineExamPage() {
 
                                                         {isChecked && (
                                                             <div className="flex items-center gap-1">
-                                                                <span className="text-[9px] text-gray-400 font-bold">Marks:</span>
+                                                                <span className="text-[9px] text-gray-400 font-bold">{t("marks")}:</span>
                                                                 <input
                                                                     type="number"
                                                                     min="1"
                                                                     value={marksValue}
                                                                     onChange={(e) => {
                                                                         const val = parseInt(e.target.value) || 1;
-                                                                        const updated = (formData.questions || []).map((sq: any) => 
+                                                                        const updated = (formData.questions || []).map((sq: { id: number; marks: number }) => 
                                                                             sq.id === q.id ? { ...sq, marks: val } : sq
                                                                         );
                                                                         setFormData({ ...formData, questions: updated });
@@ -886,22 +944,22 @@ export default function OnlineExamPage() {
                                     <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
                                         <Plus className="h-5 w-5 text-white" />
                                     </div>
-                                    <span>Assign Questions to Exam</span>
+                                    <span>{t("assign_questions_to_exam")}</span>
                                 </DialogTitle>
                                 <p className="text-white/80 text-xs font-medium">
-                                    {assignExam?.title ? `Exam: ${assignExam.title}` : "Select questions from the question bank and configure their scores"}
+                                    {assignExam?.title ? `${t("exam")}: ${assignExam.title}` : t("assign_questions_description")}
                                 </p>
                             </div>
 
                             {/* Live Exam Summary Pills */}
                             <div className="flex items-center gap-2 flex-wrap">
                                 <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/30 text-right">
-                                    <div className="text-[10px] text-white/80 uppercase font-bold tracking-wider">Selected</div>
-                                    <div className="text-sm font-black text-white">{assignQuestions.length} Questions</div>
+                                    <div className="text-[10px] text-white/80 uppercase font-bold tracking-wider">{t("selected")}</div>
+                                    <div className="text-sm font-black text-white">{t("x_questions", { count: toLocaleNumber(assignQuestions.length, shortCode) })}</div>
                                 </div>
                                 <div className="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/30 text-right">
-                                    <div className="text-[10px] text-white/80 uppercase font-bold tracking-wider">Total Marks</div>
-                                    <div className="text-sm font-black text-amber-300">{totalAssignMarks} Marks</div>
+                                    <div className="text-[10px] text-white/80 uppercase font-bold tracking-wider">{t("total_marks")}</div>
+                                    <div className="text-sm font-black text-amber-300">{t("x_marks", { count: toLocaleNumber(totalAssignMarks, shortCode) })}</div>
                                 </div>
                             </div>
                         </div>
@@ -914,7 +972,7 @@ export default function OnlineExamPage() {
                             <div className="sm:col-span-4 relative">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search question, subject..."
+                                    placeholder={t("search_question_or_subject")}
                                     value={assignSearch}
                                     onChange={(e) => setAssignSearch(e.target.value)}
                                     className="h-9 pl-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg shadow-none"
@@ -924,11 +982,11 @@ export default function OnlineExamPage() {
                             {/* Subject filter */}
                             <div className="sm:col-span-3">
                                 <Select value={assignSubjectFilter} onValueChange={setAssignSubjectFilter}>
-                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg">
-                                        <SelectValue placeholder="All Subjects" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg cursor-pointer">
+                                        <SelectValue placeholder={t("all_subjects")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Subjects ({availableQuestions.length})</SelectItem>
+                                        <SelectItem value="all">{t("all_subjects")} ({toLocaleNumber(availableQuestions.length, shortCode)})</SelectItem>
                                         {distinctSubjects.map(sub => (
                                             <SelectItem key={sub} value={sub}>{sub}</SelectItem>
                                         ))}
@@ -939,13 +997,13 @@ export default function OnlineExamPage() {
                             {/* Type filter */}
                             <div className="sm:col-span-3">
                                 <Select value={assignTypeFilter} onValueChange={setAssignTypeFilter}>
-                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg">
-                                        <SelectValue placeholder="All Types" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 bg-white dark:bg-gray-800 rounded-lg cursor-pointer">
+                                        <SelectValue placeholder={t("all_types")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Types</SelectItem>
-                                        {distinctTypes.map(t => (
-                                            <SelectItem key={t} value={t} className="capitalize">{t.replace('_', ' ')}</SelectItem>
+                                        <SelectItem value="all">{t("all_types")}</SelectItem>
+                                        {distinctTypes.map(typ => (
+                                            <SelectItem key={typ} value={typ} className="capitalize">{typ.replace('_', ' ')}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -958,20 +1016,20 @@ export default function OnlineExamPage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={handleSelectAllFiltered}
-                                    className="h-9 text-[10.5px] font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 flex-1"
-                                    title="Select all currently filtered questions"
+                                    className="h-9 text-[10.5px] font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 flex-1 cursor-pointer"
+                                    title={t("select_all")}
                                 >
-                                    Select All
+                                    {t("select_all")}
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     onClick={handleDeselectAllFiltered}
-                                    className="h-9 text-[10.5px] font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 px-2"
-                                    title="Deselect filtered"
+                                    className="h-9 text-[10.5px] font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 px-2 cursor-pointer"
+                                    title={t("clear")}
                                 >
-                                    Clear
+                                    {t("clear")}
                                 </Button>
                             </div>
                         </div>
@@ -979,16 +1037,16 @@ export default function OnlineExamPage() {
                         {/* Bulk Marks Bar */}
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-200/60 dark:border-gray-800 text-xs">
                             <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                                <span>Showing <strong>{filteredAssignQuestions.length}</strong> of <strong>{availableQuestions.length}</strong> questions</span>
+                                <span>{toLocaleNumber(filteredAssignQuestions.length, shortCode)} / {toLocaleNumber(availableQuestions.length, shortCode)} {t("questions")}</span>
                                 {assignQuestions.length > 0 && (
                                     <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
-                                        {assignQuestions.length} Selected
+                                        {toLocaleNumber(assignQuestions.length, shortCode)} {t("selected")}
                                     </Badge>
                                 )}
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-bold text-gray-500 uppercase">Set Marks for Selected:</span>
+                                <span className="text-[11px] font-bold text-gray-500 uppercase">{t("set_marks_for_selected")}</span>
                                 <div className="flex items-center gap-1">
                                     <Input
                                         type="number"
@@ -1002,9 +1060,9 @@ export default function OnlineExamPage() {
                                         size="sm"
                                         onClick={handleApplyBulkMarks}
                                         disabled={assignQuestions.length === 0}
-                                        className="h-7 text-[10.5px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 rounded-md"
+                                        className="h-7 text-[10.5px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 rounded-md cursor-pointer"
                                     >
-                                        Apply
+                                        {t("apply")}
                                     </Button>
                                 </div>
                             </div>
@@ -1018,8 +1076,7 @@ export default function OnlineExamPage() {
                                 <div className="h-12 w-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto text-gray-400">
                                     <Search className="h-6 w-6" />
                                 </div>
-                                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">No questions found</p>
-                                <p className="text-xs text-gray-400">Try adjusting your search query or subject filters.</p>
+                                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{t("no_questions_found")}</p>
                             </div>
                         ) : (
                             filteredAssignQuestions.map((q, idx) => {
@@ -1053,7 +1110,7 @@ export default function OnlineExamPage() {
                                                 <div className="space-y-2 flex-1">
                                                     {/* Question Text */}
                                                     <div className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-100 leading-relaxed">
-                                                        <span className="font-bold text-indigo-600 dark:text-indigo-400 mr-1.5">#{idx + 1}.</span>
+                                                        <span className="font-bold text-indigo-600 dark:text-indigo-400 mr-1.5">#{toLocaleNumber(idx + 1, shortCode)}.</span>
                                                         {stripHtml(q.question)}
                                                     </div>
 
@@ -1081,7 +1138,7 @@ export default function OnlineExamPage() {
                                                         )}
                                                         {q.class_name && (
                                                             <span className="text-[9px] text-gray-400 font-medium">
-                                                                Class: {q.class_name} {q.section ? `(${q.section})` : ""}
+                                                                {t("class")}: {q.class_name} {q.section ? `(${q.section})` : ""}
                                                             </span>
                                                         )}
                                                     </div>
@@ -1089,7 +1146,7 @@ export default function OnlineExamPage() {
                                                     {/* Options Preview (if array) */}
                                                     {Array.isArray(q.options) && q.options.length > 0 && (
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 text-[11px] text-gray-600 dark:text-gray-400">
-                                                            {q.options.slice(0, 4).map((opt: any, optIdx: number) => (
+                                                            {q.options.slice(0, 4).map((opt: string | QuestionOption, optIdx: number) => (
                                                                 <div key={optIdx} className="bg-gray-50/80 dark:bg-gray-800/80 px-2.5 py-1 rounded-md border border-gray-100 dark:border-gray-800 truncate">
                                                                     <span className="font-bold text-gray-500 mr-1">{String.fromCharCode(65 + optIdx)}.</span>
                                                                     {typeof opt === 'string' ? opt : (opt.option || opt.text || "")}
@@ -1105,13 +1162,13 @@ export default function OnlineExamPage() {
                                                 className="flex items-center sm:flex-col sm:items-end justify-between sm:justify-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-800"
                                                 onClick={(e) => e.stopPropagation()}
                                             >
-                                                <span className="text-[10px] uppercase font-bold text-gray-400">Score / Marks</span>
+                                                <span className="text-[10px] uppercase font-bold text-gray-400">{t("marks")}</span>
                                                 <div className="flex items-center gap-1">
                                                     <button
                                                         type="button"
                                                         disabled={!isChecked || marksValue <= 1}
                                                         onClick={() => updateQuestionMarks(q.id, marksValue - 1)}
-                                                        className="h-7 w-7 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                                        className="h-7 w-7 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                                                     >
                                                         <Minus className="h-3 w-3" />
                                                     </button>
@@ -1127,7 +1184,7 @@ export default function OnlineExamPage() {
                                                         type="button"
                                                         disabled={!isChecked}
                                                         onClick={() => updateQuestionMarks(q.id, marksValue + 1)}
-                                                        className="h-7 w-7 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                                        className="h-7 w-7 rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300 font-bold disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                                                     >
                                                         <Plus className="h-3 w-3" />
                                                     </button>
@@ -1143,14 +1200,14 @@ export default function OnlineExamPage() {
                     {/* Dialog Footer */}
                     <DialogFooter className="p-4 sm:p-5 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between gap-3 shrink-0">
                         <div className="text-xs text-gray-500 font-medium">
-                            Total: <strong className="text-indigo-600 dark:text-indigo-400">{assignQuestions.length}</strong> selected (<strong>{totalAssignMarks}</strong> Marks)
+                            {t("total_questions_selected", { count: toLocaleNumber(assignQuestions.length, shortCode), marks: toLocaleNumber(totalAssignMarks, shortCode) })}
                         </div>
                         <div className="flex gap-2">
                             <Button
                                 type="button"
                                 onClick={() => setIsAssignDialogOpen(false)}
                                 variant="outline"
-                                className="h-9 px-5 rounded-full text-xs font-bold uppercase border-gray-200"
+                                className="h-9 px-5 rounded-full text-xs font-bold uppercase border-gray-200 cursor-pointer"
                             >
                                 {t("cancel")}
                             </Button>
@@ -1158,9 +1215,9 @@ export default function OnlineExamPage() {
                                 type="button"
                                 onClick={handleSaveAssign}
                                 disabled={savingAssign}
-                                className="btn-gradient text-white h-9 px-7 rounded-full text-xs font-bold uppercase shadow-lg shadow-orange-200/50"
+                                className="btn-gradient text-white h-9 px-7 rounded-full text-xs font-bold uppercase shadow-lg shadow-orange-200/50 cursor-pointer"
                             >
-                                {savingAssign ? "Saving..." : "Save Changes"}
+                                {savingAssign ? t("saving") : t("save_changes")}
                             </Button>
                         </div>
                     </DialogFooter>
@@ -1176,54 +1233,56 @@ export default function OnlineExamPage() {
                                 <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
                                     <Eye className="h-5 w-5" /> {viewExamDetails.title}
                                 </DialogTitle>
-                                <div className="flex gap-4 mt-2 text-xs text-indigo-100">
-                                    <span>Attempt Limit: <strong className="text-white">{viewExamDetails.attempt}</strong></span>
+                                <div className="flex gap-4 mt-2 text-xs text-indigo-100 flex-wrap">
+                                    <span>{t("attempt_limit")}: <strong className="text-white">{toLocaleNumber(viewExamDetails.attempt, shortCode)}</strong></span>
                                     <span>•</span>
-                                    <span>Passing: <strong className="text-white">{viewExamDetails.passing_percentage}%</strong></span>
+                                    <span>{t("passing_percentage")}: <strong className="text-white">{toLocaleNumber(viewExamDetails.passing_percentage, shortCode)}%</strong></span>
                                     <span>•</span>
-                                    <span>Duration: <strong className="text-white">{viewExamDetails.duration}</strong></span>
+                                    <span>{t("duration")}: <strong className="text-white">{toLocaleNumber(viewExamDetails.duration, shortCode)}</strong></span>
                                 </div>
                             </DialogHeader>
 
                             <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto bg-gray-50/50">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
-                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Exam Period Start</Label>
-                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_from?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</p>
+                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t("exam_period_start")}</Label>
+                                        <p className="text-xs font-bold text-gray-700">{toLocaleNumber(formatDate(viewExamDetails.exam_from?.replace(" ", "T"), "dd/MM/yyyy h:mm a"), shortCode)}</p>
                                     </div>
                                     <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
-                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Exam Period End</Label>
-                                        <p className="text-xs font-bold text-gray-700">{formatDate(viewExamDetails.exam_to?.replace(" ", "T"), "dd/MM/yyyy h:mm a")}</p>
+                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t("exam_period_end")}</Label>
+                                        <p className="text-xs font-bold text-gray-700">{toLocaleNumber(formatDate(viewExamDetails.exam_to?.replace(" ", "T"), "dd/MM/yyyy h:mm a"), shortCode)}</p>
                                     </div>
                                 </div>
 
                                 {viewExamDetails.description && (
                                     <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-1">
-                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Instructions</Label>
+                                        <Label className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{t("instructions")}</Label>
                                         <p className="text-xs text-gray-600 whitespace-pre-wrap">{viewExamDetails.description}</p>
                                     </div>
                                 )}
 
                                 <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
                                     <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Assigned Questions</h3>
-                                        <Badge className="bg-indigo-50 text-indigo-700 border-indigo-100 font-bold uppercase text-[9px] px-2 py-0.5">{viewExamDetails.questions?.length || 0} Questions</Badge>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("assigned_questions")}</h3>
+                                        <Badge className="bg-indigo-50 text-indigo-700 border-indigo-100 font-bold uppercase text-[9px] px-2 py-0.5">
+                                            {t("x_questions", { count: toLocaleNumber(viewExamDetails.questions?.length || 0, shortCode) })}
+                                        </Badge>
                                     </div>
 
                                     <div className="space-y-3">
                                         {(!viewExamDetails.questions || viewExamDetails.questions.length === 0) ? (
-                                            <p className="text-xs text-gray-400 italic text-center py-6">No questions assigned to this exam yet.</p>
+                                            <p className="text-xs text-gray-400 italic text-center py-6">{t("no_questions_assigned_yet")}</p>
                                         ) : (
-                                            viewExamDetails.questions.map((q: any, idx: number) => (
+                                            viewExamDetails.questions.map((q: QuestionItem, idx: number) => (
                                                 <div key={q.id} className="flex justify-between items-start p-3 rounded-lg bg-gray-50/50 border border-gray-50">
                                                     <div className="space-y-1 max-w-[80%]">
-                                                        <p className="text-xs font-bold text-gray-700"><span className="text-indigo-500 font-black mr-1">{idx+1}.</span> {stripHtml(q.question)}</p>
+                                                        <p className="text-xs font-bold text-gray-700"><span className="text-indigo-500 font-black mr-1">{toLocaleNumber(idx+1, shortCode)}.</span> {stripHtml(q.question)}</p>
                                                         <div className="flex gap-2">
                                                             <span className="text-[8px] bg-indigo-50 text-indigo-700 px-1 py-0.5 rounded font-black uppercase">{q.subject}</span>
                                                             <span className="text-[8px] bg-gray-100 text-gray-500 px-1 py-0.5 rounded font-black uppercase">{q.question_type}</span>
                                                         </div>
                                                     </div>
-                                                    <span className="text-xs font-black text-indigo-600 bg-indigo-50/60 border border-indigo-100/50 px-2.5 py-1 rounded-lg">{q.pivot?.marks || 1} M</span>
+                                                    <span className="text-xs font-black text-indigo-600 bg-indigo-50/60 border border-indigo-100/50 px-2.5 py-1 rounded-lg">{toLocaleNumber(q.pivot?.marks || 1, shortCode)} {t("marks")}</span>
                                                 </div>
                                             ))
                                         )}
@@ -1232,7 +1291,7 @@ export default function OnlineExamPage() {
                             </div>
 
                             <DialogFooter className="p-6 bg-gray-50/50 flex justify-end border-t border-gray-100">
-                                <Button onClick={() => setIsViewDialogOpen(false)} className="btn-gradient text-white h-10 px-8 rounded-full text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50">
+                                <Button onClick={() => setIsViewDialogOpen(false)} className="btn-gradient text-white h-10 px-8 rounded-full text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 cursor-pointer">
                                     {t("close")}
                                 </Button>
                             </DialogFooter>

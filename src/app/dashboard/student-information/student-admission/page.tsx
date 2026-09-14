@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useImageUrl } from "@/lib/image-url";
 import {
     Upload,
@@ -40,6 +41,7 @@ import { useSettings } from "@/components/providers/settings-provider";
 import { formatAutoIdentifier, replacePlaceholders } from "@/lib/id-generator";
 
 export default function StudentAdmissionPage() {
+    const pathname = usePathname();
     const getImageUrl = useImageUrl();
     const tt = useTranslateToast();
     const { t } = useTranslation();
@@ -49,6 +51,8 @@ export default function StudentAdmissionPage() {
     const [fetchingPrereqs, setFetchingPrereqs] = useState(true);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
+    const [branches, setBranches] = useState<{ id: number; branch_name: string; is_main?: boolean }[]>([]);
+    const [isBranchLocked, setIsBranchLocked] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
     const [houses, setHouses] = useState<any[]>([]);
     const [showSiblingModal, setShowSiblingModal] = useState(false);
@@ -62,6 +66,7 @@ export default function StudentAdmissionPage() {
     const [showMoreDetails, setShowMoreDetails] = useState(false);
 
     const [formData, setFormData] = useState<{ [key: string]: any }>({
+        branch_id: "1",
         admission_no: "",
         roll_no: "",
         username: "",
@@ -253,10 +258,26 @@ export default function StudentAdmissionPage() {
         return feeGroups.filter(g => !g.school_class_id || g.school_class_id.toString() === formData.school_class_id);
     }, [feeGroups, formData.school_class_id]);
 
+    const hasMultipleBranches = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        return list.length > 1;
+    }, [branches]);
+
+    const branchOptions = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        if (list.length === 0) {
+            return [{ label: "Main", value: "1" }];
+        }
+        return list.map((b: any) => ({
+            label: b.branch_name,
+            value: b.id.toString(),
+        }));
+    }, [branches]);
+
     const fetchPrerequisites = async () => {
         setFetchingPrereqs(true);
         try {
-            const [classesRes, categoriesRes, housesRes, routesRes, pickupsRes, hostelsRes, roomsRes, feeGroupsRes, feeDiscountsRes, admissionFormRes] = await Promise.all([
+            const [classesRes, categoriesRes, housesRes, routesRes, pickupsRes, hostelsRes, roomsRes, feeGroupsRes, feeDiscountsRes, admissionFormRes, branchesRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
                 api.get("/student-categories"),
                 api.get("/student-houses"),
@@ -266,7 +287,8 @@ export default function StudentAdmissionPage() {
                 api.get("/rooms"),
                 api.get("/fees-groups"),
                 api.get("/fee-discounts"),
-                api.get("/system-setting/admission-form")
+                api.get("/system-setting/admission-form"),
+                api.get("/multi-branch/branches?all=true")
             ]);
             setClasses(classesRes.data.data?.data || classesRes.data.data || []);
             setCategories(categoriesRes.data.data?.data || categoriesRes.data.data || []);
@@ -277,6 +299,70 @@ export default function StudentAdmissionPage() {
             setRooms(roomsRes.data.data?.data || roomsRes.data.data || []);
             setFeeGroups(feeGroupsRes.data.data?.data || feeGroupsRes.data.data || []);
             setFeeDiscounts(feeDiscountsRes.data.data?.data || feeDiscountsRes.data.data || []);
+            const branchList = branchesRes.data.data?.data || branchesRes.data.data || [];
+            setBranches(Array.isArray(branchList) ? branchList : []);
+
+            // Auto-detect branch from URL (/br/:slug/...) or localStorage/user
+            const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : (typeof window !== "undefined" ? window.location.pathname.match(/^\/br\/([^\/]+)/) : null);
+            const urlBranchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
+
+            let matchedBranch: any = null;
+            let locked = false;
+
+            if (urlBranchSlug && urlBranchSlug !== "main") {
+                matchedBranch = (Array.isArray(branchList) ? branchList : []).find((b: any) =>
+                    (b.slug && b.slug.toLowerCase() === urlBranchSlug.toLowerCase()) ||
+                    (b.branch_code && b.branch_code.toLowerCase() === urlBranchSlug.toLowerCase()) ||
+                    (b.branch_name && b.branch_name.toLowerCase().replace(/\s+/g, '-') === urlBranchSlug.toLowerCase()) ||
+                    (b.id && b.id.toString() === urlBranchSlug)
+                );
+                if (matchedBranch) {
+                    locked = true;
+                }
+            }
+
+            if (!matchedBranch && typeof window !== "undefined") {
+                const storedBranchId = localStorage.getItem("active_branch_id");
+                const storedBranchSlug = localStorage.getItem("active_branch_slug");
+                if (storedBranchId && storedBranchId !== "1") {
+                    matchedBranch = (Array.isArray(branchList) ? branchList : []).find((b: any) => b.id?.toString() === storedBranchId.toString());
+                    if (matchedBranch && !matchedBranch.is_main) {
+                        locked = true;
+                    }
+                } else if (storedBranchSlug && storedBranchSlug !== "main") {
+                    matchedBranch = (Array.isArray(branchList) ? branchList : []).find((b: any) => b.slug === storedBranchSlug || b.branch_code === storedBranchSlug);
+                    if (matchedBranch && !matchedBranch.is_main) {
+                        locked = true;
+                    }
+                }
+            }
+
+            if (!matchedBranch && typeof window !== "undefined") {
+                try {
+                    const userStr = localStorage.getItem("user");
+                    if (userStr) {
+                        const parsedUser = JSON.parse(userStr);
+                        if (parsedUser?.branch_id && parsedUser.branch_id !== 1 && parsedUser.branch_id !== "1") {
+                            matchedBranch = (Array.isArray(branchList) ? branchList : []).find((b: any) => b.id?.toString() === parsedUser.branch_id.toString());
+                            if (matchedBranch && parsedUser.role?.toLowerCase() !== "super admin") {
+                                locked = true;
+                            }
+                        }
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+
+            setIsBranchLocked(locked);
+
+            if (matchedBranch) {
+                setFormData(prev => ({ ...prev, branch_id: matchedBranch.id.toString() }));
+            } else if (Array.isArray(branchList) && branchList.length > 0) {
+                const mainB = branchList.find((b: any) => b.is_main || b.id === 1) || branchList[0];
+                const defaultBranchId = mainB?.id ? mainB.id.toString() : "1";
+                setFormData(prev => ({ ...prev, branch_id: prev.branch_id || defaultBranchId }));
+            }
 
             // Parse admission form settings
             if (admissionFormRes.data.success && admissionFormRes.data.data) {
@@ -619,6 +705,13 @@ export default function StudentAdmissionPage() {
                             onChange={(val) => handleChange("section_id", val)}
                             options={sections.map(s => ({ label: s.name, value: s.id.toString() }))}
                         />
+                        <SelectField
+                            label={t("campus_branch") || t("branch") || "Campus Branch"}
+                            value={formData.branch_id || (branches[0]?.id?.toString() ?? "1")}
+                            onChange={(val) => handleChange("branch_id", val)}
+                            options={branchOptions}
+                            disabled={isBranchLocked || !hasMultipleBranches}
+                        />
 
                         <InputField label={t("first_name")} required value={formData.name} onChange={(val) => handleChange("name", val)} />
                         <InputField label={t("last_name")} value={formData.last_name} onChange={(val) => handleChange("last_name", val)} />
@@ -635,9 +728,9 @@ export default function StudentAdmissionPage() {
                             ]}
                         />
                         <DateField label={t("date_of_birth")} required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
-                        <InputField label="ID/Birth Cert" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
-                        <InputField label="Place of Birth" value={formData.birth_place} onChange={(val) => handleChange("birth_place", val)} />
-                        <InputField label="State" value={formData.state} onChange={(val) => handleChange("state", val)} />
+                        <InputField label={t("id_birth_cert")} value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
+                        <InputField label={t("place_of_birth")} value={formData.birth_place} onChange={(val) => handleChange("birth_place", val)} />
+                        <InputField label={t("state")} value={formData.state} onChange={(val) => handleChange("state", val)} />
                         <InputField label={t("nationality")} value={formData.nationality} onChange={(val) => handleChange("nationality", val)} />
 
                         <SelectField
@@ -687,11 +780,11 @@ export default function StudentAdmissionPage() {
                         <InputField label={t("weight")} value={formData.weight} onChange={(val) => handleChange("weight", val)} />
 
                         <DateField label={t("measurement_date")} value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
-                        <InputField label="Postal / Zip Code" value={formData.postal_code} onChange={(val) => handleChange("postal_code", val)} />
+                        <InputField label={t("postal_zip_code")} value={formData.postal_code} onChange={(val) => handleChange("postal_code", val)} />
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <InputField label={t("mother_tongue")} value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
                             <div>
-                                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-2 uppercase tracking-wider">GENERAL BEHAVIOUR:</label>
+                                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-2 uppercase tracking-wider">{t("general_behaviour")}:</label>
                                 <div className="flex items-center gap-5">
                                     {["Mild", "Normal", "Hyperactive"].map(b => (
                                         <label key={b} className="flex items-center gap-2 cursor-pointer group">
@@ -706,13 +799,13 @@ export default function StudentAdmissionPage() {
                                                 <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
                                                 <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{b}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{t(b.toLowerCase())}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-2 uppercase tracking-wider">SECOND LANGUAGE:</label>
+                                <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-2 uppercase tracking-wider">{t("second_language")}:</label>
                                 <div className="flex items-center gap-5">
                                     {["English", "Arabic", "Others"].map(l => (
                                         <label key={l} className="flex items-center gap-2 cursor-pointer group">
@@ -727,7 +820,7 @@ export default function StudentAdmissionPage() {
                                                 <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
                                                 <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{l}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{t(l.toLowerCase())}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -813,15 +906,15 @@ export default function StudentAdmissionPage() {
                                 onClick={() => handleChange("previous_academic_record", [...formData.previous_academic_record, { school_name: "", class: "", year: "", percentage: "" }])}
                                 className="text-xs font-bold text-indigo-600 hover:underline mt-1 cursor-pointer"
                             >
-                                + Add Row
+                                + {t("add_row")}
                             </button>
                         </div>
                         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <TextAreaField label="Identification Marks" rows={2} value={formData.identification_marks} onChange={(val) => handleChange("identification_marks", val)} />
+                            <TextAreaField label={t("identification_marks")} rows={2} value={formData.identification_marks} onChange={(val) => handleChange("identification_marks", val)} />
                             <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
                         </div>
                         <div className="lg:col-span-2">
-                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-1.5 uppercase tracking-wider">APPRAISAL ACHIEVEMENT</label>
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 block mb-1.5 uppercase tracking-wider">{t("appraisal_achievement")}</label>
                             <textarea
                                 className="w-full min-h-[68px] text-xs font-medium text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-lg p-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-y bg-gray-50/40 dark:bg-gray-800/40 shadow-none"
                                 value={formData.appraisal_achievements}
@@ -1288,7 +1381,7 @@ function InputField({ label, required, type = "text", value = "", onChange, plac
     );
 }
 
-function SelectField({ label, required, options, value, onChange }: { label: string, required?: boolean, options: { label: string, value: string }[] | string[], value: string, onChange: (val: string) => void }) {
+function SelectField({ label, required, disabled, options, value, onChange }: { label: string, required?: boolean, disabled?: boolean, options: { label: string, value: string }[] | string[], value: string, onChange: (val: string) => void }) {
     const { t } = useTranslation();
     return (
         <div className="space-y-1.5 group">
@@ -1302,7 +1395,8 @@ function SelectField({ label, required, options, value, onChange }: { label: str
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
-                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer shadow-none"
+                    disabled={disabled}
+                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-medium ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer shadow-none disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                     <option value="" className="text-gray-400">{t("select")}</option>
                     {options.map(opt => {
@@ -1334,6 +1428,7 @@ function TextAreaField({ label, required, rows = 3, value, onChange }: { label: 
 }
 
 function FileUploadField({ label, required, value, onChange, placeholder }: { label: string, required?: boolean, value?: File | null, onChange?: (file: File | null) => void, placeholder?: string }) {
+    const { t } = useTranslation();
     const [localPreview, setLocalPreview] = useState<string | null>(null);
     const [imgError, setImgError] = useState<boolean>(false);
 
@@ -1374,20 +1469,20 @@ function FileUploadField({ label, required, value, onChange, placeholder }: { la
                             />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1 z-10 pointer-events-none">
                                 <Upload className="h-4 w-4" />
-                                <span>Change</span>
+                                <span>{t("change")}</span>
                             </div>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center p-2 text-center text-gray-400 group-hover:text-indigo-600 transition-colors">
                             <Upload className="h-6 w-6 mb-1 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                            <span className="text-[10px] font-bold leading-tight">Upload</span>
+                            <span className="text-[10px] font-bold leading-tight">{t("upload")}</span>
                             <span className="text-[8px] opacity-70">100x100</span>
                         </div>
                     )}
                 </div>
                 <div className="flex flex-col justify-center">
                     <span className="text-xs font-semibold text-gray-800 dark:text-gray-100">
-                        {value ? value.name : (placeholder || "No file chosen")}
+                        {value ? value.name : (placeholder || t("no_file_chosen"))}
                     </span>
                     <span className="text-[10px] text-gray-400 font-medium">PNG, JPG or WEBP (Max 2MB)</span>
                 </div>

@@ -32,7 +32,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -62,7 +62,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function LeaveTypePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
@@ -175,196 +176,199 @@ export default function LeaveTypePage() {
             {/* Left Column: Add Leave Type Form */}
             <div className="w-full lg:w-1/3">
                 <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
-                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <CalendarDays className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {isEditing ? t("edit_leave_type") : t("add_leave_type")}
-                            </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">
-                                {isEditing ? t("update_existing_leave_type") : t("create_new_leave_type")}
-                            </p>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="px-5">
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase">
-                                    {t("name")} <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg"
-                                    placeholder={t("eg_sick_leave")}
-                                />
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <CalendarDays className="h-4 w-4" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {isEditing ? t("edit_leave_type") : t("add_leave_type")}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    {isEditing ? t("update_existing_leave_type") : t("create_new_leave_type")}
+                                </p>
                             </div>
+                        </CardHeader>
+                        <CardContent className="px-5 py-5">
+                            <div className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[11px] font-bold text-gray-500 uppercase">
+                                        {t("name")} <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="h-9 border-gray-200 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg"
+                                        placeholder={t("eg_sick_leave")}
+                                    />
+                                </div>
 
-                            <div className="flex justify-end pt-2 gap-2">
-                                {isEditing && (
+                                <div className="flex justify-end pt-2 gap-2">
+                                    {isEditing && (
+                                        <Button
+                                            onClick={resetForm}
+                                            variant="outline"
+                                            className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded-full shadow-sm cursor-pointer"
+                                        >
+                                            {t("cancel")}
+                                        </Button>
+                                    )}
                                     <Button
-                                        onClick={resetForm}
-                                        variant="outline"
-                                        className="px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
+                                        onClick={handleSubmit}
+                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-8 text-[11px] uppercase font-bold rounded-full shadow-sm flex items-center gap-1.5 min-w-[80px] cursor-pointer border-0"
                                     >
-                                        {t("cancel")}
-                                    </Button>
-                                )}
-                                <Button
-                                    onClick={handleSubmit}
-                                    variant="gradient"
-                                    className="px-8 h-8 text-[11px] uppercase shadow-sm flex items-center gap-1.5 min-w-[80px]"
-                                >
-                                    {isEditing ? t("update") : t("save")}
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Right Column: Leave Type List */}
-            <div className="w-full lg:w-2/3">
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <CalendarDays className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("leave_type_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{filteredLeaveTypes.length === 1 ? t("total_entry") : `${filteredLeaveTypes.length} ${t("total_entries")}`}</p>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="px-5 space-y-4">
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="relative w-full md:w-64">
-                                <Input
-                                    placeholder={t("search")}
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1.5 mr-2">
-                                    <Select
-                                        value={itemsPerPage.toString()}
-                                        onValueChange={(val) => {
-                                            setItemsPerPage(parseInt(val));
-                                            setCurrentPage(1);
-                                        }}
-                                    >
-                                        <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex items-center gap-1 text-gray-400">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
-                                        <Copy className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
-                                        <FileSpreadsheet className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
-                                        <FileText className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
-                                        <Printer className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
-                                        <Columns className="h-3.5 w-3.5" />
+                                        {isEditing ? t("update") : t("save")}
                                     </Button>
                                 </div>
                             </div>
-                        </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                        <div className="rounded border border-gray-50 overflow-hidden">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="hover:bg-transparent border-gray-100">
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 w-[60px] text-center">{t("no")}</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("leave_type")}</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableSkeleton rows={5} cols={3} />
-                                    ) : paginatedData.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell>
+                {/* Right Column: Leave Type List */}
+                <div className="w-full lg:w-2/3">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <CalendarDays className="h-4 w-4" />
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("leave_type_list")}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(filteredLeaveTypes.length, shortCode)} {filteredLeaveTypes.length === 1 ? t("total_entry") : t("total_entries")}</p>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="px-5 py-4 space-y-4">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div className="relative w-full md:w-64">
+                                    <Input
+                                        placeholder={t("search")}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
+                                    />
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 mr-2">
+                                        <Select
+                                            value={itemsPerPage.toString()}
+                                            onValueChange={(val) => {
+                                                setItemsPerPage(parseInt(val));
+                                                setCurrentPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-8 w-16 text-[11px] font-bold border-gray-200 bg-white rounded-lg focus:ring-indigo-500 cursor-pointer">
+                                                <SelectValue placeholder={toLocaleNumber(itemsPerPage, shortCode)}>
+                                                    {toLocaleNumber(itemsPerPage, shortCode)}
+                                                </SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-lg border-gray-100">
+                                                {[10, 25, 50, 100].map(n => (
+                                                    <SelectItem key={n} value={String(n)} className="cursor-pointer text-xs font-bold">
+                                                        {toLocaleNumber(n, shortCode)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-gray-400">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
+                                            <Copy className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
+                                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
+                                            <FileText className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
+                                            <Printer className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
+                                            <Columns className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-lg border border-gray-200 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                                <Table>
+                                    <TableHeader className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
+                                        <TableRow className="hover:bg-transparent border-b border-gray-200">
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 w-[60px] text-center whitespace-nowrap">{t("no")}</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("leave_type")}</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 text-right whitespace-nowrap">{t("action")}</TableHead>
                                         </TableRow>
-                                    ) : (
-                                        paginatedData.map((lt, idx) => (
-                                            <TableRow key={lt.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                                <TableCell className="py-3.5 text-gray-500 font-medium text-center">{startIndex + idx + 1}</TableCell>
-                                                <TableCell className="py-3.5 text-gray-700 font-medium">{lt.name}</TableCell>
-                                                <TableCell className="py-3.5 text-right">
-                                                    <div className="flex items-center justify-end gap-1.5">
-                                                        <Button onClick={() => handleEdit(lt)} size="icon" variant="ghost" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors shadow-sm">
-                                                            <Pencil className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <Button onClick={() => handleDelete(lt.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm">
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
+                                    </TableHeader>
+                                    <TableBody className="bg-white divide-y divide-gray-100">
+                                        {loading ? (
+                                            <TableSkeleton rows={5} cols={3} />
+                                        ) : paginatedData.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                        ) : (
+                                            paginatedData.map((lt, idx) => (
+                                                <TableRow key={lt.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
+                                                    <TableCell className="py-3.5 px-4 text-gray-500 font-medium text-center whitespace-nowrap">{toLocaleNumber(startIndex + idx + 1, shortCode)}</TableCell>
+                                                    <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{lt.name}</TableCell>
+                                                    <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
+                                                        <div className="flex items-center justify-end gap-1.5">
+                                                            <Button onClick={() => handleEdit(lt)} size="icon" variant="ghost" className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md transition-colors shadow-sm cursor-pointer">
+                                                                <Pencil className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button onClick={() => handleDelete(lt.id)} size="icon" variant="ghost" className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm cursor-pointer">
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
 
-                        <div className="flex justify-end items-center gap-2 py-4">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={currentPage === 1}
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white disabled:opacity-30"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
-
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <div className="flex justify-end items-center gap-2 py-4">
                                 <Button
-                                    key={page}
                                     variant="ghost"
-                                    onClick={() => setCurrentPage(page)}
-                                    className={cn(
-                                        "h-8 w-8 rounded-[10px] text-[10px] font-bold p-0 transition-all",
-                                        currentPage === page
-                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md scale-105"
-                                            : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
-                                    )}
+                                    size="icon"
+                                    disabled={currentPage === 1}
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30 cursor-pointer"
                                 >
-                                    {page}
+                                    <ChevronLeft className="h-4 w-4" />
                                 </Button>
-                            ))}
 
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={currentPage === totalPages}
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white disabled:opacity-30"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                    <Button
+                                        key={page}
+                                        variant="ghost"
+                                        onClick={() => setCurrentPage(page)}
+                                        className={cn(
+                                            "h-8 w-8 rounded-[10px] text-[10px] font-bold p-0 transition-all cursor-pointer",
+                                            currentPage === page
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md scale-105"
+                                                : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
+                                        )}
+                                    >
+                                        {toLocaleNumber(page, shortCode)}
+                                    </Button>
+                                ))}
+
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={currentPage === totalPages}
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30 cursor-pointer"
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
-        </div>
-    );
+        );
 }

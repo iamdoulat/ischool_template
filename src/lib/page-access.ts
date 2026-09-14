@@ -94,6 +94,7 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
 
   // Human Resource
   "/dashboard/hr/staff-directory": { moduleKey: "human_resource", submenuName: "staff_directory" },
+  "/dashboard/hr/staff-requisition": { moduleKey: "human_resource", submenuName: "requisition_list" },
   "/dashboard/hr/staff-attendance": { moduleKey: "human_resource", submenuName: "staff_attendance" },
   "/dashboard/hr/payroll": { moduleKey: "human_resource", submenuName: "payroll" },
   "/dashboard/hr/approve-leave-request": { moduleKey: "human_resource", submenuName: "approve_leave_request" },
@@ -243,7 +244,6 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
   "/dashboard/front-cms/banner-images": { moduleKey: "front_cms", submenuName: "banner_images" },
 
   // QR Code Attendance
-  "/dashboard/qr-code-attendance/attendance": { moduleKey: "qr_code_attendance", submenuName: "attendance" },
   "/dashboard/smart-attendance-terminal": { moduleKey: "qr_code_attendance", submenuName: "terminal" },
   "/dashboard/qr-code-attendance/face-registration": { moduleKey: "qr_code_attendance", submenuName: "face_registration" },
   "/dashboard/qr-code-attendance/qr-code-generation": { moduleKey: "qr_code_attendance", submenuName: "qr_code_generation" },
@@ -345,6 +345,7 @@ const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
   },
   human_resource: {
     staff_directory: ["Staff"],
+    requisition_list: ["Staff", "Human Resource"],
     payroll: ["Staff Payroll"],
     leave_type: ["Leave Types"],
     disabled_staff: ["Disable Staff"],
@@ -405,14 +406,14 @@ const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
   },
   qr_code_attendance: {},
   system_setting: {
-    backup_restore: ["Backup"],
+    backup_restore: ["Backup", "Restore"],
     users: ["User Status"],
-    roles_permissions: [],
-    addons: [],
-    captcha_setting: [],
-    student_profile_setting: ["Student Profile Update"],
-    file_types: [],
-    system_update: [],
+    roles_permissions: ["Roles Permissions", "Roles & Permissions"],
+    addons: ["Addons", "Modules"],
+    captcha_setting: ["Captcha Setting"],
+    student_profile_setting: ["Student Profile Update", "Student Profile Setting"],
+    file_types: ["File Types"],
+    system_update: ["System Update"],
   },
 };
 
@@ -453,32 +454,105 @@ function permNameToPrefix(name: string): string {
 }
 
 /**
+ * Checks if a specific submenu is permitted for a user.
+ */
+export function isSubmenuPermitted(
+  moduleKey: string,
+  submenuName: string,
+  userPermissions: string[] | Set<string>,
+  userRole?: string
+): boolean {
+  if (moduleKey === "dashboard" || submenuName === "dashboard") return true;
+  const permSet = userPermissions instanceof Set ? userPermissions : new Set(userPermissions);
+  if (permSet.has("all")) return true;
+
+  const roleClean = String(userRole || "").toLowerCase().trim();
+  if (roleClean === "super admin" || roleClean === "superadmin" || roleClean === "admin") return true;
+
+  // Role default allowances
+  if (roleClean.includes("accountant") || roleClean.includes("account")) {
+    if (["fees_collection", "income", "expenses", "reports", "dashboard"].includes(moduleKey)) return true;
+    if (moduleKey === "human_resource" && submenuName === "payroll") return true;
+    if (moduleKey === "communicate" && submenuName === "notice_board") return true;
+    if (moduleKey === "annual_calendar") return true;
+  }
+  if (roleClean.includes("teacher")) {
+    if (["academics", "attendance", "examinations", "cbse_examination", "online_examinations", "homework", "lesson_plan", "gmeet_live_classes", "zoom_live_classes", "download_center", "communicate", "reports", "annual_calendar", "dashboard"].includes(moduleKey)) return true;
+    if (moduleKey === "student_information" && ["student_details", "student_categories", "student_house", "disabled_students"].includes(submenuName)) return true;
+  }
+  if (roleClean.includes("librarian")) {
+    if (["library", "download_center", "communicate", "reports", "annual_calendar", "dashboard"].includes(moduleKey)) return true;
+  }
+  if (roleClean.includes("receptionist")) {
+    if (["front_office", "communicate", "annual_calendar", "dashboard"].includes(moduleKey)) return true;
+    if (moduleKey === "student_information" && ["student_details", "online_admission"].includes(submenuName)) return true;
+  }
+
+  if (permSet.size === 0) return false;
+
+  const prefixes = buildPermissionPrefixes(moduleKey, submenuName);
+  if (prefixes.length === 0) return false;
+
+  const userPrefixes = new Set(Array.from(permSet).map(permNameToPrefix));
+  const userFullPerms = new Set(Array.from(permSet).map((p) => p.toLowerCase()));
+
+  return prefixes.some((p) => {
+    const cleanPrefix = p.toLowerCase();
+    if (userPrefixes.has(cleanPrefix)) return true;
+    if (userFullPerms.has(`${cleanPrefix}view`)) return true;
+    for (const up of userPrefixes) {
+      if (up.startsWith(cleanPrefix) || cleanPrefix.startsWith(up)) return true;
+    }
+    return false;
+  });
+}
+
+/**
+ * Checks if a top-level module is permitted (has at least one accessible submenu or direct permission).
+ */
+export function isModulePermitted(
+  moduleKey: string,
+  submenus: { name: string; href?: string }[],
+  userPermissions: string[] | Set<string>,
+  userRole?: string
+): boolean {
+  if (moduleKey === "dashboard") return true;
+  const permSet = userPermissions instanceof Set ? userPermissions : new Set(userPermissions);
+  if (permSet.has("all")) return true;
+
+  const roleClean = String(userRole || "").toLowerCase().trim();
+  if (roleClean === "super admin" || roleClean === "superadmin" || roleClean === "admin") return true;
+
+  if (!submenus || submenus.length === 0) {
+    return isSubmenuPermitted(moduleKey, moduleKey, permSet, userRole);
+  }
+
+  return submenus.some((s) => isSubmenuPermitted(moduleKey, s.name, permSet, userRole));
+}
+
+/**
  * Checks if the user has access to a given dashboard page.
  * @param pathname - The current URL pathname (e.g., "/dashboard/fees-collection/collect-fees")
  * @param userPermissions - Array of permission name strings from the user profile
+ * @param userRole - Optional role string (e.g., "Accountant", "Teacher")
  * @returns true if the user has access
  */
-export function checkPageAccess(pathname: string, userPermissions: string[]): boolean {
-  // Super Admin has access to everything
-  if (userPermissions.includes("all")) return true;
-  if (userPermissions.length === 0) return false;
+export function checkPageAccess(pathname: string, userPermissions: string[], userRole?: string): boolean {
+  // Clean path
+  const cleanPath = pathname.replace(/\/$/, "").replace(/^\/br\/[^\/]+/, "") || "/dashboard";
 
-  // Dashboard home is always accessible
-  if (pathname === "/dashboard") return true;
+  // Dashboard home is always accessible to all authenticated staff
+  if (cleanPath === "/dashboard" || cleanPath === "" || pathname === "/dashboard") return true;
 
-  // Remove trailing slash
-  const cleanPath = pathname.replace(/\/$/, "");
+  // Super Admin & Admin have universal bypass
+  if (userPermissions && userPermissions.includes("all")) return true;
+  const roleClean = String(userRole || "").toLowerCase().trim();
+  if (roleClean === "super admin" || roleClean === "superadmin" || roleClean === "admin") return true;
 
   const pageInfo = urlModuleMap[cleanPath];
   if (!pageInfo) return true;
 
-  const prefixes = buildPermissionPrefixes(pageInfo.moduleKey, pageInfo.submenuName);
-  if (prefixes.length === 0) return false;
-
-  // Build a set of user permission prefixes for fast lookup
-  const userPrefixes = new Set(userPermissions.map(permNameToPrefix));
-
-  return prefixes.some((p) => userPrefixes.has(p));
+  return isSubmenuPermitted(pageInfo.moduleKey, pageInfo.submenuName, userPermissions, userRole);
 }
 
 /**

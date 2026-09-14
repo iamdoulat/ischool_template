@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName } from "@/lib/utils";
 import { CreditCard, User, Printer, Download, Loader2 } from "lucide-react";
 import {
     type IdCardTemplate,
@@ -72,7 +73,7 @@ function SkeletonCard() {
 }
 
 export default function UserIdCardPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { toast } = useToast();
     const [data, setData] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -156,7 +157,7 @@ export default function UserIdCardPage() {
                                 {([
                                     [t("name"), data.student.name],
                                     [t("admission_no"), data.student.admission_no],
-                                    [t("class"), `${data.student.class || ""}${data.student.section ? ` (${data.student.section})` : ""}`],
+                                    [t("class"), `${data.student.class ? translateClassName(data.student.class, language?.short_code) : ""}${data.student.section ? ` (${translateSectionName(data.student.section, language?.short_code)})` : ""}`],
                                     [t("roll_no"), data.student.roll_no],
                                     [t("father_name"), data.student.father_name],
                                     [t("blood_group"), data.student.blood_group],
@@ -200,7 +201,7 @@ export default function UserIdCardPage() {
                                         </span>
                                         <div className="min-w-0">
                                             <h3 className="text-sm font-bold text-slate-800 truncate">{card.title}</h3>
-                                            <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">Official Student ID</span>
+                                            <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">{t("official_student_id") || "Official Student ID"}</span>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
@@ -221,7 +222,7 @@ export default function UserIdCardPage() {
                                             className="h-8 px-4 text-xs font-bold rounded-lg gap-1.5 transition-all active:scale-95 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs"
                                         >
                                             {downloadingId === card.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                                            Download PDF
+                                            {t("download_pdf") || "Download PDF"}
                                         </Button>
                                     </div>
                                 </div>
@@ -231,7 +232,7 @@ export default function UserIdCardPage() {
                                     {person && (
                                         <div
                                             className="origin-top"
-                                            dangerouslySetInnerHTML={{ __html: renderIdCardHtml(card, person, "student") }}
+                                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderIdCardHtml(card, person, "student")) }}
                                         />
                                     )}
                                 </div>

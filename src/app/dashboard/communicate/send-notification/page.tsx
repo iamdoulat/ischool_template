@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { translateClassName } from "@/lib/utils";
 import api from "@/lib/api";
 
 interface Template {
@@ -34,7 +35,7 @@ interface NotificationPayload {
 }
 
 export default function SendNotificationPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { toast } = useToast();
 
     const [activeTab, setActiveTab] = useState<"roles" | "class">("roles");
@@ -150,27 +151,31 @@ export default function SendNotificationPage() {
     };
 
     const availableRoles = [
-        { key: "Student", label: "Students" },
-        { key: "Parent", label: "Parents / Guardians" },
-        { key: "Teacher", label: "Teachers" },
-        { key: "Accountant", label: "Accountants" },
-        { key: "Librarian", label: "Librarians" },
-        { key: "Receptionist", label: "Receptionists" },
-        { key: "Staff", label: "All Staff" },
+        { key: "Student", label: t("students") || "Students" },
+        { key: "Parent", label: t("parents_guardians") || "Parents / Guardians" },
+        { key: "Teacher", label: t("teachers") || "Teachers" },
+        { key: "Accountant", label: t("accountants") || "Accountants" },
+        { key: "Librarian", label: t("librarians") || "Librarians" },
+        { key: "Receptionist", label: t("receptionists") || "Receptionists" },
+        { key: "Staff", label: t("all_staff") || "All Staff" },
     ];
 
     return (
         <div className="flex flex-col gap-6 p-4 lg:p-6 animate-in fade-in duration-300">
-            {/* Header Title */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-                        <Bell className="h-6 w-6 text-primary" />
-                        {t("send_notification") || "Send Notification"}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Compose and dispatch in-app notifications directly to students, parents, and staff.
-                    </p>
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-100">
+                        <Bell className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">
+                            {t("send_notification") || "Send Notification"}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("send_notification_subtitle") || "Compose and dispatch in-app notifications directly to students, parents, and staff."}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -187,7 +192,7 @@ export default function SendNotificationPage() {
                                     {t("compose_notification") || "Compose Notification"}
                                 </CardTitle>
                                 <CardDescription className="text-xs text-muted-foreground mt-1">
-                                    Select template or enter your custom message
+                                    {t("select_template_or_enter_custom_message") || "Select template or enter your custom message"}
                                 </CardDescription>
                             </div>
                         </CardHeader>
@@ -195,7 +200,7 @@ export default function SendNotificationPage() {
                             {/* Template Selector */}
                             <div className="space-y-2">
                                 <Label htmlFor="template" className="text-xs font-semibold uppercase text-muted-foreground">
-                                    Notification Template (Optional)
+                                    {t("notification_template_optional") || "Notification Template (Optional)"}
                                 </Label>
                                 <select
                                     id="template"
@@ -203,7 +208,7 @@ export default function SendNotificationPage() {
                                     onChange={(e) => handleSelectTemplate(e.target.value)}
                                     className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                                 >
-                                    <option value="">-- Select Template --</option>
+                                    <option value="">{t("select_template") || "-- Select Template --"}</option>
                                     {templates.map((tmpl) => (
                                         <option key={tmpl.id} value={tmpl.id.toString()}>
                                             {tmpl.title}
@@ -215,11 +220,11 @@ export default function SendNotificationPage() {
                             {/* Title / Subject */}
                             <div className="space-y-2">
                                 <Label htmlFor="title" className="text-xs font-semibold uppercase text-muted-foreground">
-                                    Notification Title <span className="text-destructive">*</span>
+                                    {t("notification_title") || t("title") || "Notification Title"} <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
                                     id="title"
-                                    placeholder="e.g. Upcoming Parent-Teacher Meeting"
+                                    placeholder={t("notification_title_placeholder") || "e.g. Upcoming Parent-Teacher Meeting"}
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     required
@@ -229,12 +234,12 @@ export default function SendNotificationPage() {
                             {/* Message Body */}
                             <div className="space-y-2">
                                 <Label htmlFor="message" className="text-xs font-semibold uppercase text-muted-foreground">
-                                    Notification Message <span className="text-destructive">*</span>
+                                    {t("notification_message") || t("message_body") || "Notification Message"} <span className="text-destructive">*</span>
                                 </Label>
                                 <Textarea
                                     id="message"
                                     rows={5}
-                                    placeholder="Write your notification message here..."
+                                    placeholder={t("notification_message_placeholder") || "Write your notification message here..."}
                                     value={message}
                                     onChange={(e) => setMessage(e.target.value)}
                                     required
@@ -251,12 +256,12 @@ export default function SendNotificationPage() {
                         {sending ? (
                             <>
                                 <RefreshCw className="h-4 w-4 animate-spin" />
-                                Sending Notification...
+                                {t("sending_notification") || "Sending Notification..."}
                             </>
                         ) : (
                             <>
                                 <Send className="h-4 w-4" />
-                                Send Notification Now
+                                {t("send_notification_now") || "Send Notification Now"}
                             </>
                         )}
                     </Button>
@@ -271,20 +276,20 @@ export default function SendNotificationPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-foreground leading-none">
-                                    Target Audience
+                                    {t("target_audience") || "Target Audience"}
                                 </CardTitle>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4 p-4">
                             <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as "roles" | "class")} className="w-full">
                                 <TabsList className="grid grid-cols-2 w-full mb-4">
-                                    <TabsTrigger value="roles">By Role</TabsTrigger>
-                                    <TabsTrigger value="class">By Class</TabsTrigger>
+                                    <TabsTrigger value="roles">{t("by_role") || "By Role"}</TabsTrigger>
+                                    <TabsTrigger value="class">{t("by_class") || "By Class"}</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="roles" className="space-y-3 mt-0">
                                     <p className="text-xs text-muted-foreground">
-                                        Select the roles that will receive this in-app notification:
+                                        {t("select_roles_to_receive_notification") || "Select the roles that will receive this in-app notification:"}
                                     </p>
                                     <div className="space-y-2.5 pt-1">
                                         {availableRoles.map((role) => {
@@ -312,11 +317,11 @@ export default function SendNotificationPage() {
 
                                 <TabsContent value="class" className="space-y-4 mt-0">
                                     <p className="text-xs text-muted-foreground">
-                                        Target students in a specific class and section:
+                                        {t("target_students_in_specific_class_section") || "Target students in a specific class and section:"}
                                     </p>
                                     <div className="space-y-3">
                                         <div className="space-y-1.5">
-                                            <Label className="text-xs font-semibold uppercase text-muted-foreground">Class</Label>
+                                            <Label className="text-xs font-semibold uppercase text-muted-foreground">{t("class") || "Class"}</Label>
                                             <select
                                                 value={selectedClassId}
                                                 onChange={(e) => {
@@ -325,10 +330,10 @@ export default function SendNotificationPage() {
                                                 }}
                                                 className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                             >
-                                                <option value="">All Classes</option>
+                                                <option value="">{t("all_classes") || "All Classes"}</option>
                                                 {classes.map((cls) => (
                                                     <option key={cls.id} value={cls.id.toString()}>
-                                                        {cls.name}
+                                                        {translateClassName(cls.name, language?.short_code)}
                                                     </option>
                                                 ))}
                                             </select>
@@ -336,13 +341,13 @@ export default function SendNotificationPage() {
 
                                         {selectedClassId && (
                                             <div className="space-y-1.5">
-                                                <Label className="text-xs font-semibold uppercase text-muted-foreground">Section</Label>
+                                                <Label className="text-xs font-semibold uppercase text-muted-foreground">{t("section") || "Section"}</Label>
                                                 <select
                                                     value={selectedSectionId}
                                                     onChange={(e) => setSelectedSectionId(e.target.value)}
                                                     className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                                                 >
-                                                    <option value="">All Sections</option>
+                                                    <option value="">{t("all_sections") || "All Sections"}</option>
                                                     {classes
                                                         .find((c) => c.id.toString() === selectedClassId)
                                                         ?.sections?.map((sec) => (

@@ -59,7 +59,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import {
     type CertificateTemplate,
     type SchoolSettings,
@@ -132,11 +132,11 @@ function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: n
     return (
         <>
             {Array.from({ length: rows }).map((_, i) => (
-                <TableRow key={i} className="border-b border-gray-50">
+                <TableRow key={i} className="border-b border-gray-50 dark:border-zinc-800">
                     {Array.from({ length: cols }).map((_, j) => (
                         <TableCell key={j} className="py-3">
                             <div
-                                className="h-3 rounded bg-gray-200/70 animate-pulse"
+                                className="h-3 rounded bg-gray-200/70 dark:bg-zinc-800 animate-pulse"
                                 style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }}
                             />
                         </TableCell>
@@ -149,7 +149,8 @@ function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 export default function StudentCertificatePage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<CertificateTemplate[]>([]);
@@ -284,8 +285,8 @@ export default function StudentCertificatePage() {
         });
         setEditingId(null);
         toast({
-            title: t("template_loaded") || "Design Loaded",
-            description: `Loaded "${preset.name}". You can now customize or save it for your school.`,
+            title: t("template_loaded") || t("success") || "Template Loaded",
+            description: `Loaded "${preset.name}".`,
         });
         window.scrollTo({ top: 380, behavior: "smooth" });
     };
@@ -317,28 +318,28 @@ export default function StudentCertificatePage() {
         }
     };
 
-    const startEdit = (t: CertificateTemplate) => {
-        setEditingId(t.id);
+    const startEdit = (template: CertificateTemplate) => {
+        setEditingId(template.id);
         setForm({
-            name: t.name ?? "",
-            header_left: t.header_left ?? "",
-            header_center: t.header_center ?? "",
-            header_right: t.header_right ?? "",
-            body_text: t.body_text ?? "",
-            remarks: t.remarks ?? "",
-            footer_left: t.footer_left ?? "",
-            footer_center: t.footer_center ?? "",
-            footer_right: t.footer_right ?? "",
-            header_height: t.header_height ?? "90",
-            footer_height: t.footer_height ?? "70",
-            body_height: t.body_height ?? "auto",
-            body_width: t.body_width ?? "900",
-            enable_student_photo: !!t.enable_student_photo,
-            background_image: t.background_image ?? "",
-            header_font_color: t.header_font_color ?? "#0f766e",
-            title_color: t.title_color ?? "#0f172a",
-            body_font_color: t.body_font_color ?? "#1e293b",
-            layout_type: t.layout_type ?? "royal_gold",
+            name: template.name ?? "",
+            header_left: template.header_left ?? "",
+            header_center: template.header_center ?? "",
+            header_right: template.header_right ?? "",
+            body_text: template.body_text ?? "",
+            remarks: template.remarks ?? "",
+            footer_left: template.footer_left ?? "",
+            footer_center: template.footer_center ?? "",
+            footer_right: template.footer_right ?? "",
+            header_height: template.header_height ?? "90",
+            footer_height: template.footer_height ?? "70",
+            body_height: template.body_height ?? "auto",
+            body_width: template.body_width ?? "900",
+            enable_student_photo: !!template.enable_student_photo,
+            background_image: template.background_image ?? "",
+            header_font_color: template.header_font_color ?? "#0f766e",
+            title_color: template.title_color ?? "#0f172a",
+            body_font_color: template.body_font_color ?? "#1e293b",
+            layout_type: template.layout_type ?? "royal_gold",
         });
         window.scrollTo({ top: 380, behavior: "smooth" });
     };
@@ -374,14 +375,14 @@ export default function StudentCertificatePage() {
         }
     };
 
-    const handlePreviewTemplate = (t: CertificateTemplate) => {
+    const handlePreviewTemplate = (template: CertificateTemplate) => {
         const student = {
             ...SAMPLE_STUDENT,
             school_name: settings.school_name,
             school_logo: settings.admin_logo,
             session: settings.current_session,
         };
-        const html = renderCertificateHtml(t, student, settings);
+        const html = renderCertificateHtml(template, student, settings);
         printCertificate(html);
     };
 
@@ -402,14 +403,14 @@ export default function StudentCertificatePage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(templates.map((t) => t.name).join("\n"));
+        navigator.clipboard.writeText(templates.map((tpl) => tpl.name).join("\n"));
         tt.success("data_copied_to_clipboard");
     };
 
     const handleExportCSV = () => {
         const rows = [
             [t("certificate_name"), t("layout_style"), t("background_image")],
-            ...templates.map((t) => [t.name, t.layout_type || "standard_school", t.background_image || "-"]),
+            ...templates.map((tpl) => [tpl.name, tpl.layout_type || "standard_school", tpl.background_image || "-"]),
         ];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
@@ -419,46 +420,46 @@ export default function StudentCertificatePage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     const getLayoutBadge = (layout?: string | null) => {
         switch (layout) {
             case "royal_gold":
-                return <Badge className="bg-amber-600/90 hover:bg-amber-600 text-white text-[10px]">Royal Maroon & Gold</Badge>;
+                return <Badge className="bg-amber-600/90 hover:bg-amber-600 text-white text-[10px]">{t("layout_royal_gold")}</Badge>;
             case "kids_purple":
-                return <Badge className="bg-purple-600/90 hover:bg-purple-600 text-white text-[10px]">Kids Vibrant Purple</Badge>;
+                return <Badge className="bg-purple-600/90 hover:bg-purple-600 text-white text-[10px]">{t("layout_kids_purple")}</Badge>;
             case "luxury_burgundy":
-                return <Badge className="bg-rose-950 hover:bg-rose-900 text-white text-[10px]">Luxury Burgundy</Badge>;
+                return <Badge className="bg-rose-950 hover:bg-rose-900 text-white text-[10px]">{t("layout_luxury_burgundy")}</Badge>;
             case "school_letterhead":
-                return <Badge className="bg-teal-700 hover:bg-teal-800 text-white text-[10px]">School Letterhead (Print H/F)</Badge>;
+                return <Badge className="bg-teal-700 hover:bg-teal-800 text-white text-[10px]">{t("layout_school_letterhead")}</Badge>;
             default:
-                return <Badge className="bg-slate-700 hover:bg-slate-800 text-white text-[10px]">Standard School Print</Badge>;
+                return <Badge className="bg-slate-700 hover:bg-slate-800 text-white text-[10px]">{t("layout_standard_school")}</Badge>;
         }
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             {/* ──────────────────────── Pre-built Certificate Templates Gallery ──────────────────────── */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <Card className="border-[0.5px] border-gray-300 dark:border-zinc-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Sparkles className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                <span>Pre-built Certificate Design Templates</span>
-                                <Badge className="bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-2">
-                                    Pro Styles
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 dark:text-gray-100 leading-none flex items-center gap-2">
+                                <span>{t("prebuilt_certificate_templates")}</span>
+                                <Badge className="bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-2 border-0">
+                                    {t("pro_styles")}
                                 </Badge>
                             </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">
-                                1-Click ready-to-use high-resolution certificates. Automatically branded with your school logo, name, and General Purpose print settings.
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                                {t("prebuilt_certificates_desc")}
                             </p>
                         </div>
                     </div>
@@ -470,8 +471,8 @@ export default function StudentCertificatePage() {
                             variant="outline"
                             size="icon"
                             onClick={() => scrollGallery("left")}
-                            className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
-                            title="Scroll left"
+                            className="h-8 w-8 rounded-full border-gray-200 dark:border-zinc-700 bg-white dark:bg-card text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
+                            title={t("previous")}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -480,8 +481,8 @@ export default function StudentCertificatePage() {
                             variant="outline"
                             size="icon"
                             onClick={() => scrollGallery("right")}
-                            className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
-                            title="Scroll right"
+                            className="h-8 w-8 rounded-full border-gray-200 dark:border-zinc-700 bg-white dark:bg-card text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
+                            title={t("next")}
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -495,7 +496,7 @@ export default function StudentCertificatePage() {
                         {PREBUILT_CERTIFICATES.map((preset) => (
                             <div
                                 key={preset.id}
-                                className="group relative flex-none w-[calc(25%-12px)] min-w-[240px] flex flex-col justify-between rounded-2xl bg-white border border-gray-200/80 p-4 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 hover:-translate-y-0.5 snap-start"
+                                className="group relative flex-none w-[calc(25%-12px)] min-w-[240px] flex flex-col justify-between rounded-2xl bg-white dark:bg-card/70 border border-gray-200/80 dark:border-zinc-800 p-4 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 hover:-translate-y-0.5 snap-start"
                             >
                                 <div className="space-y-3">
                                     {/* Preview Banner Header */}
@@ -506,11 +507,11 @@ export default function StudentCertificatePage() {
                                         <div className="absolute inset-0 bg-black/10 backdrop-blur-[0.5px]" />
                                         <div className="relative z-10 space-y-1">
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-200 block">
-                                                {preset.layout_type === "royal_gold" && "Regal Foil & Waves"}
-                                                {preset.layout_type === "kids_purple" && "Playful Distinction"}
-                                                {preset.layout_type === "luxury_burgundy" && "Classic Excellence"}
-                                                {preset.layout_type === "school_letterhead" && "Letterhead Print H/F"}
-                                                {preset.layout_type === "standard_school" && "School Print Header"}
+                                                {preset.layout_type === "royal_gold" && (t("layout_royal_gold") || "Royal Maroon & Gold")}
+                                                {preset.layout_type === "kids_purple" && (t("layout_kids_purple") || "Kids Vibrant Purple")}
+                                                {preset.layout_type === "luxury_burgundy" && (t("layout_luxury_burgundy") || "Classic Luxury Burgundy")}
+                                                {preset.layout_type === "school_letterhead" && (t("layout_school_letterhead") || "School Letterhead")}
+                                                {preset.layout_type === "standard_school" && (t("layout_standard_school") || "School Print Header")}
                                             </span>
                                             <h4 className="font-extrabold text-sm tracking-tight text-white drop-shadow-sm leading-snug">
                                                 {preset.header_center}
@@ -519,23 +520,23 @@ export default function StudentCertificatePage() {
                                     </div>
 
                                     <div>
-                                        <h4 className="font-bold text-xs text-gray-900 line-clamp-1">{preset.name}</h4>
-                                        <p className="text-[11px] text-gray-500 line-clamp-2 mt-1 leading-relaxed">
+                                        <h4 className="font-bold text-xs text-gray-900 dark:text-gray-100 line-clamp-1">{preset.name}</h4>
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-1 leading-relaxed">
                                             {preset.description}
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Actions</span>
+                                <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100 dark:border-zinc-800">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("action")}</span>
                                     <div className="flex items-center gap-1.5">
                                         <Button
                                             type="button"
                                             size="icon"
                                             variant="outline"
                                             onClick={() => handlePreviewTemplate(preset)}
-                                            title={t("preview") || "Preview Certificate"}
-                                            className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs active:scale-95 transition-all"
+                                            title={t("preview")}
+                                            className="h-8 w-8 rounded-lg border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-300 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs active:scale-95 transition-all cursor-pointer"
                                         >
                                             <Eye className="h-4 w-4" />
                                         </Button>
@@ -543,8 +544,8 @@ export default function StudentCertificatePage() {
                                             type="button"
                                             size="icon"
                                             onClick={() => applyPrebuilt(preset)}
-                                            title="Use Design / Apply Template"
-                                            className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm active:scale-95 transition-all"
+                                            title={t("use_design")}
+                                            className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm active:scale-95 transition-all border-0 cursor-pointer"
                                         >
                                             <Check className="h-4 w-4" />
                                         </Button>
@@ -560,32 +561,32 @@ export default function StudentCertificatePage() {
             <div className="flex flex-col lg:flex-row gap-6">
                 {/* Left: Form */}
                 <div className="w-full lg:w-[460px] shrink-0">
-                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <Card className="border-[0.5px] border-gray-300 dark:border-zinc-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                 <FileBadge className="h-5 w-5" />
                             </span>
                             <div className="min-w-0 flex-1">
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 dark:text-gray-100 leading-none">
                                     {editingId ? t("edit_student_certificate") : t("add_student_certificate")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("design_reusable_certificate_template")}</p>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{t("design_reusable_certificate_template")}</p>
                             </div>
                             {editingId && (
-                                <Button variant="ghost" size="icon" onClick={resetForm} className="h-7 w-7 text-gray-500" title={t("cancel_edit")}>
+                                <Button variant="ghost" size="icon" onClick={resetForm} className="h-7 w-7 text-gray-500" title={t("cancel")}>
                                     <X className="h-4 w-4" />
                                 </Button>
                             )}
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 p-5">
                             {/* Certificate Name */}
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                                <Label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">
                                     {t("certificate_name")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Input
                                     value={form.name ?? ""}
-                                    placeholder="e.g. Certificate of Appreciation"
+                                    placeholder={t("enter_certificate_name")}
                                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                                     className="h-9 text-xs"
                                 />
@@ -593,35 +594,35 @@ export default function StudentCertificatePage() {
 
                             {/* UI Layout Style Picker */}
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight flex items-center gap-1.5">
+                                <Label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight flex items-center gap-1.5">
                                     <Palette className="h-3.5 w-3.5 text-indigo-500" />
-                                    Certificate UI Style Layout <span className="text-red-500">*</span>
+                                    {t("certificate_layout_style")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select
                                     value={form.layout_type ?? "royal_gold"}
                                     onValueChange={(val) => setForm({ ...form, layout_type: val })}
                                 >
                                     <SelectTrigger className="h-9 text-xs">
-                                        <SelectValue placeholder="Choose a certificate layout style" />
+                                        <SelectValue placeholder={t("choose_layout_style")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="royal_gold">Royal Maroon & Gold (Appreciation / Honors)</SelectItem>
-                                        <SelectItem value="kids_purple">Kids Vibrant Purple (Distinction / Primary)</SelectItem>
-                                        <SelectItem value="luxury_burgundy">Classic Luxury Burgundy (Excellence / Senior)</SelectItem>
-                                        <SelectItem value="school_letterhead">School Letterhead Template (General Purpose Print H/F)</SelectItem>
-                                        <SelectItem value="standard_school">Standard School Print Header & Footer</SelectItem>
+                                        <SelectItem value="royal_gold">{t("layout_royal_gold")}</SelectItem>
+                                        <SelectItem value="kids_purple">{t("layout_kids_purple")}</SelectItem>
+                                        <SelectItem value="luxury_burgundy">{t("layout_luxury_burgundy")}</SelectItem>
+                                        <SelectItem value="school_letterhead">{t("layout_school_letterhead")}</SelectItem>
+                                        <SelectItem value="standard_school">{t("layout_standard_school")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             {/* Header Texts */}
                             {([
-                                [t("header_left_text"), "header_left", "Left header or affiliation code"],
-                                [t("header_center_text"), "header_center", "Main Certificate Title (e.g. CERTIFICATE OF APPRECIATION)"],
-                                [t("header_right_text"), "header_right", "Right header or session code"],
+                                [t("header_left_text"), "header_left", t("left_header_placeholder")],
+                                [t("header_center_text"), "header_center", t("center_header_placeholder")],
+                                [t("header_right_text"), "header_right", t("right_header_placeholder")],
                             ] as const).map(([label, key, placeholder]) => (
                                 <div key={key} className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</Label>
+                                    <Label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{label}</Label>
                                     <Input
                                         value={form[key] ?? ""}
                                         placeholder={placeholder}
@@ -632,62 +633,62 @@ export default function StudentCertificatePage() {
                             ))}
 
                             {/* ── Font & Color Controls ── */}
-                            <div className="space-y-3 p-3.5 rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/40 via-white to-orange-50/30 shadow-xs">
+                            <div className="space-y-3 p-3.5 rounded-xl border border-indigo-100 dark:border-zinc-800 bg-gradient-to-br from-indigo-50/40 via-white to-orange-50/30 dark:from-zinc-900/50 dark:via-zinc-950 dark:to-zinc-900/40 shadow-xs">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Label className="text-[10px] font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider flex items-center gap-1.5">
                                         <Palette className="h-3.5 w-3.5 text-indigo-600" />
-                                        Header & Title Font Color Controls
+                                        {t("header_title_color_controls")}
                                     </Label>
-                                    <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">Live Preview</span>
+                                    <span className="text-[9px] font-semibold text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-800">{t("live_preview")}</span>
                                 </div>
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {/* School Name / Header Font Color */}
                                     <div className="space-y-1">
-                                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                                            School Name / Header Color
+                                        <Label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">
+                                            {t("school_name_header_color")}
                                         </Label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="color"
                                                 value={form.header_font_color || "#0f766e"}
                                                 onChange={(e) => setForm({ ...form, header_font_color: e.target.value })}
-                                                className="h-8 w-8 rounded cursor-pointer border border-gray-200 p-0.5 shrink-0"
+                                                className="h-8 w-8 rounded cursor-pointer border border-gray-200 dark:border-zinc-700 p-0.5 shrink-0"
                                             />
                                             <Input
                                                 value={form.header_font_color ?? ""}
                                                 onChange={(e) => setForm({ ...form, header_font_color: e.target.value })}
                                                 placeholder="#0f766e"
-                                                className="h-8 text-xs flex-1 font-mono uppercase bg-white"
+                                                className="h-8 text-xs flex-1 font-mono uppercase bg-white dark:bg-card"
                                             />
                                         </div>
                                     </div>
 
                                     {/* Certificate Title Color */}
                                     <div className="space-y-1">
-                                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
-                                            Certificate Title Color
+                                        <Label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">
+                                            {t("certificate_title_color")}
                                         </Label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="color"
                                                 value={form.title_color || "#0f172a"}
                                                 onChange={(e) => setForm({ ...form, title_color: e.target.value })}
-                                                className="h-8 w-8 rounded cursor-pointer border border-gray-200 p-0.5 shrink-0"
+                                                className="h-8 w-8 rounded cursor-pointer border border-gray-200 dark:border-zinc-700 p-0.5 shrink-0"
                                             />
                                             <Input
                                                 value={form.title_color ?? ""}
                                                 onChange={(e) => setForm({ ...form, title_color: e.target.value })}
                                                 placeholder="#0f172a"
-                                                className="h-8 text-xs flex-1 font-mono uppercase bg-white"
+                                                className="h-8 text-xs flex-1 font-mono uppercase bg-white dark:bg-card"
                                             />
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Preset Swatches */}
-                                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-100/80">
-                                    <span className="text-[9px] text-gray-400 font-medium">Quick Header Swatches:</span>
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-gray-100/80 dark:border-zinc-800">
+                                    <span className="text-[9px] text-gray-400 font-medium">{t("quick_header_swatches")}</span>
                                     {[
                                         { label: "Teal", color: "#0f766e" },
                                         { label: "Indigo", color: "#6366f1" },
@@ -715,17 +716,17 @@ export default function StudentCertificatePage() {
                             {/* Body Text (Open Custom Text) */}
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-bold text-gray-700 uppercase tracking-tight">
-                                        {t("body_text")} (Open Custom Text)
+                                    <Label className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-tight">
+                                        {t("body_text")} ({t("custom_text")})
                                     </Label>
-                                    <span className="text-[10px] text-gray-400">Used in artistic layout styles</span>
+                                    <span className="text-[10px] text-gray-400">{t("used_in_artistic_styles")}</span>
                                 </div>
                                 <Textarea
                                     ref={bodyRef}
                                     value={form.body_text ?? ""}
                                     onChange={(e) => setForm({ ...form, body_text: e.target.value })}
                                     className="min-h-[90px] text-xs resize-none"
-                                    placeholder="Enter open certificate recognition text or paragraph..."
+                                    placeholder={t("enter_certificate_body_placeholder")}
                                 />
                                 <div className="flex flex-wrap gap-1 mt-1.5">
                                     {PLACEHOLDERS.map((p) => (
@@ -733,7 +734,7 @@ export default function StudentCertificatePage() {
                                             key={p}
                                             type="button"
                                             onClick={() => insertPlaceholder(p, "body_text")}
-                                            className="text-[9px] text-indigo-600 font-semibold px-1.5 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 cursor-pointer transition-colors"
+                                            className="text-[9px] text-indigo-600 dark:text-indigo-400 font-semibold px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 cursor-pointer transition-colors"
                                         >
                                             {p}
                                         </button>
@@ -744,17 +745,17 @@ export default function StudentCertificatePage() {
                             {/* REMARKS / PURPOSE / CERTIFICATION */}
                             <div className="space-y-1.5 pt-1">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[10px] font-bold text-teal-800 uppercase tracking-tight">
-                                        REMARKS / PURPOSE / CERTIFICATION :
+                                    <Label className="text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-tight">
+                                        {t("remarks_purpose_certification")}
                                     </Label>
-                                    <span className="text-[10px] text-gray-400">Printed in structured certificates</span>
+                                    <span className="text-[10px] text-gray-400">{t("printed_in_structured_certificates")}</span>
                                 </div>
                                 <Textarea
                                     ref={remarksRef}
                                     value={form.remarks ?? ""}
                                     onChange={(e) => setForm({ ...form, remarks: e.target.value })}
                                     className="min-h-[85px] text-xs resize-none"
-                                    placeholder="e.g. Certified that the student has been a bona fide student with commendable moral character and regular attendance..."
+                                    placeholder={t("enter_remarks_placeholder")}
                                 />
                                 <div className="flex flex-wrap gap-1 mt-1">
                                     {PLACEHOLDERS.map((p) => (
@@ -762,7 +763,7 @@ export default function StudentCertificatePage() {
                                             key={p}
                                             type="button"
                                             onClick={() => insertPlaceholder(p, "remarks")}
-                                            className="text-[9px] text-teal-700 font-semibold px-1.5 py-0.5 rounded bg-teal-50 hover:bg-teal-100 cursor-pointer transition-colors"
+                                            className="text-[9px] text-teal-700 dark:text-teal-400 font-semibold px-1.5 py-0.5 rounded bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 cursor-pointer transition-colors"
                                         >
                                             {p}
                                         </button>
@@ -772,12 +773,12 @@ export default function StudentCertificatePage() {
 
                             {/* Footer Signatures */}
                             {([
-                                [t("footer_left_text"), "footer_left", "Left signature (e.g. Class Teacher)"],
-                                [t("footer_center_text"), "footer_center", "Center signature (e.g. Principal)"],
-                                [t("footer_right_text"), "footer_right", "Right signature (e.g. Director)"],
+                                [t("footer_left_text"), "footer_left", t("left_signature_placeholder")],
+                                [t("footer_center_text"), "footer_center", t("center_signature_placeholder")],
+                                [t("footer_right_text"), "footer_right", t("right_signature_placeholder")],
                             ] as const).map(([label, key, placeholder]) => (
                                 <div key={key} className="space-y-1.5">
-                                    <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{label}</Label>
+                                    <Label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{label}</Label>
                                     <Input
                                         value={form[key] ?? ""}
                                         placeholder={placeholder}
@@ -788,8 +789,8 @@ export default function StudentCertificatePage() {
                             ))}
 
                             {/* Design Dimensions */}
-                            <div className="space-y-3 pt-2 border-t border-gray-100">
-                                <h3 className="text-[10px] font-bold text-gray-800 uppercase tracking-wider">{t("certificate_design")}</h3>
+                            <div className="space-y-3 pt-2 border-t border-gray-100 dark:border-zinc-800">
+                                <h3 className="text-[10px] font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">{t("certificate_design")}</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     {([
                                         [t("header_height"), "header_height", "90"],
@@ -810,8 +811,8 @@ export default function StudentCertificatePage() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between py-2 border-t border-gray-100">
-                                <Label className="text-[10px] font-bold text-gray-800 uppercase tracking-tight">{t("student_photo")}</Label>
+                            <div className="flex items-center justify-between py-2 border-t border-gray-100 dark:border-zinc-800">
+                                <Label className="text-[10px] font-bold text-gray-800 dark:text-gray-200 uppercase tracking-tight">{t("student_photo")}</Label>
                                 <Switch
                                     checked={form.enable_student_photo}
                                     onCheckedChange={(v) => setForm({ ...form, enable_student_photo: v })}
@@ -821,8 +822,8 @@ export default function StudentCertificatePage() {
 
                             {/* Optional Custom Background Image */}
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Custom Background Image (Optional)
+                                <Label className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">
+                                    {t("custom_background_image_optional")}
                                 </Label>
                                 <input
                                     ref={fileRef}
@@ -833,47 +834,47 @@ export default function StudentCertificatePage() {
                                 />
                                 <div
                                     onClick={() => fileRef.current?.click()}
-                                    className="border-2 border-dashed border-gray-200 rounded-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-indigo-200 transition-colors bg-gray-50/30"
+                                    className="border-2 border-dashed border-gray-200 dark:border-zinc-700 rounded-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-indigo-200 transition-colors bg-gray-50/30 dark:bg-zinc-800/30"
                                 >
                                     {uploading ? (
                                         <Loader2 className="h-5 w-5 text-indigo-500 animate-spin" />
                                     ) : form.background_image ? (
                                         <>
                                             <img src={form.background_image} alt="bg" className="h-14 object-contain rounded shadow-xs" />
-                                            <p className="text-[10px] text-gray-500">{t("click_to_replace")}</p>
+                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">{t("click_to_replace")}</p>
                                         </>
                                     ) : (
                                         <>
-                                            <div className="h-7 w-7 rounded-full bg-indigo-50 flex items-center justify-center">
+                                            <div className="h-7 w-7 rounded-full bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center">
                                                 <Upload className="h-3.5 w-3.5 text-indigo-500" />
                                             </div>
-                                            <p className="text-[10px] text-gray-500 font-medium">{t("drag_drop_or_click")}</p>
+                                            <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">{t("drag_drop_or_click")}</p>
                                         </>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="flex justify-between items-center gap-2 pt-3 border-t border-gray-100">
+                            <div className="flex justify-between items-center gap-2 pt-3 border-t border-gray-100 dark:border-zinc-800">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={handlePreviewCurrentForm}
-                                    className="h-9 px-3.5 text-xs font-semibold gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                    className="h-9 px-3.5 text-xs font-semibold gap-1.5 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-800 cursor-pointer"
                                 >
                                     <Eye className="h-3.5 w-3.5" />
-                                    Live Preview
+                                    {t("live_preview")}
                                 </Button>
 
                                 <div className="flex items-center gap-2">
                                     {editingId && (
-                                        <Button variant="outline" onClick={resetForm} className="h-9 px-4 text-xs">
+                                        <Button variant="outline" onClick={resetForm} className="h-9 px-4 text-xs cursor-pointer">
                                             {t("cancel")}
                                         </Button>
                                     )}
                                     <Button
                                         onClick={handleSave}
                                         disabled={saving}
-                                        className="h-9 px-7 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                                        className="h-9 px-7 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all border-0 cursor-pointer"
                                     >
                                         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                                         {editingId ? t("update") : t("save")}
@@ -886,21 +887,21 @@ export default function StudentCertificatePage() {
 
                 {/* Right: List */}
                 <div className="flex-1 min-w-0">
-                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <Card className="border-[0.5px] border-gray-300 dark:border-zinc-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                 <FileText className="h-5 w-5" />
                             </span>
                             <div className="min-w-0">
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 dark:text-gray-100 leading-none">
                                     {t("student_certificate_list")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                    {pagination?.total ?? templates.length} {t("certificates")}
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                                    {toLocaleNumber(pagination?.total ?? templates.length, shortCode)} {t("certificates")}
                                 </p>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 p-5">
                             <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                                 <form
                                     onSubmit={(e) => {
@@ -917,7 +918,7 @@ export default function StudentCertificatePage() {
                                     />
                                     <Button
                                         type="submit"
-                                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all border-0 cursor-pointer"
                                     >
                                         <Search className="h-4 w-4" /> {t("search")}
                                     </Button>
@@ -930,12 +931,12 @@ export default function StudentCertificatePage() {
                                         <SelectContent>
                                             {["10", "25", "50", "100"].map((n) => (
                                                 <SelectItem key={n} value={n}>
-                                                    {n}
+                                                    {toLocaleNumber(n, shortCode)}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
+                                    <div className="flex items-center border border-gray-200 dark:border-zinc-700 rounded-md p-1 bg-gray-50 dark:bg-zinc-800 text-gray-500">
                                         {toolbarActions.map((a, i) => (
                                             <Button
                                                 key={i}
@@ -943,7 +944,7 @@ export default function StudentCertificatePage() {
                                                 size="icon"
                                                 onClick={a.onClick}
                                                 title={a.title}
-                                                className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                                className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:hover:bg-zinc-700 cursor-pointer"
                                             >
                                                 <a.Icon className="h-4 w-4" />
                                             </Button>
@@ -952,18 +953,18 @@ export default function StudentCertificatePage() {
                                 </div>
                             </div>
 
-                            <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                            <div className="rounded-md border border-gray-200 dark:border-zinc-800 overflow-x-auto custom-scrollbar">
                                 <Table className="min-w-[650px]">
-                                    <TableHeader className="bg-gray-50 text-xs uppercase">
-                                        <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                            <TableHead className="font-semibold text-gray-600">
+                                    <TableHeader className="bg-gray-50 dark:bg-zinc-800/70 text-xs uppercase">
+                                        <TableRow className="hover:bg-transparent whitespace-nowrap border-b border-gray-200 dark:border-zinc-800">
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">
                                                 <div className="flex items-center gap-1">
                                                     {t("certificate_name")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />
                                                 </div>
                                             </TableHead>
-                                            <TableHead className="font-semibold text-gray-600">Layout Style</TableHead>
-                                            <TableHead className="font-semibold text-gray-600">{t("background_image")}</TableHead>
-                                            <TableHead className="font-semibold text-gray-600 text-right">{t("action")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("layout_style")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("background_image")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300 text-right">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -979,7 +980,7 @@ export default function StudentCertificatePage() {
                                             templates.map((template) => (
                                                 <TableRow
                                                     key={template.id}
-                                                    className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap"
+                                                    className="text-xs hover:bg-indigo-50/40 dark:hover:bg-zinc-800/50 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap border-b border-gray-50 dark:border-zinc-800/50"
                                                 >
                                                     <TableCell className="py-3 text-[#6366f1] font-medium">
                                                         {template.name}
@@ -992,10 +993,10 @@ export default function StudentCertificatePage() {
                                                             <img
                                                                 src={template.background_image}
                                                                 alt="bg"
-                                                                className="h-9 w-14 object-cover rounded border border-gray-200"
+                                                                className="h-9 w-14 object-cover rounded border border-gray-200 dark:border-zinc-700"
                                                             />
                                                         ) : (
-                                                            <div className="h-9 w-14 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+                                                            <div className="h-9 w-14 bg-gray-100 dark:bg-zinc-800 rounded border border-gray-200 dark:border-zinc-700 flex items-center justify-center">
                                                                 <ImageIcon className="h-4 w-4 text-gray-400" />
                                                             </div>
                                                         )}
@@ -1006,7 +1007,7 @@ export default function StudentCertificatePage() {
                                                                 size="icon"
                                                                 onClick={() => handlePreviewTemplate(template)}
                                                                 title={t("preview")}
-                                                                className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                                className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all border-0 cursor-pointer"
                                                             >
                                                                 <Eye className="h-3.5 w-3.5" />
                                                             </Button>
@@ -1014,7 +1015,7 @@ export default function StudentCertificatePage() {
                                                                 size="icon"
                                                                 onClick={() => startEdit(template)}
                                                                 title={t("edit")}
-                                                                className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                                className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all border-0 cursor-pointer"
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
@@ -1022,7 +1023,7 @@ export default function StudentCertificatePage() {
                                                                 size="icon"
                                                                 onClick={() => setDeleteId(template.id)}
                                                                 title={t("delete")}
-                                                                className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"
+                                                                className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all border-0 cursor-pointer"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -1035,12 +1036,12 @@ export default function StudentCertificatePage() {
                                 </Table>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium pt-2">
                                 <div>
                                     {t("showing_x_to_y_of_z", {
-                                        from: pagination?.from || 0,
-                                        to: pagination?.to || 0,
-                                        total: pagination?.total || 0,
+                                        from: toLocaleNumber(pagination?.from || 0, shortCode),
+                                        to: toLocaleNumber(pagination?.to || 0, shortCode),
+                                        total: toLocaleNumber(pagination?.total || 0, shortCode),
                                     })}
                                 </div>
                                 <div className="flex gap-1 items-center">
@@ -1049,7 +1050,7 @@ export default function StudentCertificatePage() {
                                         size="sm"
                                         disabled={!pagination || pagination.current_page === 1}
                                         onClick={() => fetchTemplates(pagination!.current_page - 1)}
-                                        className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-card border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-300 shadow-sm disabled:opacity-40"
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
@@ -1059,13 +1060,13 @@ export default function StudentCertificatePage() {
                                             size="sm"
                                             onClick={() => fetchTemplates(i + 1)}
                                             className={cn(
-                                                "h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all",
+                                                "h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all cursor-pointer",
                                                 pagination?.current_page === i + 1
-                                                    ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md"
-                                                    : "bg-white text-gray-600 border border-gray-200"
+                                                    ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md border-0"
+                                                    : "bg-white dark:bg-card text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700"
                                             )}
                                         >
-                                            {i + 1}
+                                            {toLocaleNumber(i + 1, shortCode)}
                                         </Button>
                                     ))}
                                     <Button
@@ -1073,7 +1074,7 @@ export default function StudentCertificatePage() {
                                         size="sm"
                                         disabled={!pagination || pagination.current_page === pagination.last_page}
                                         onClick={() => fetchTemplates(pagination!.current_page + 1)}
-                                        className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-card border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-gray-300 shadow-sm disabled:opacity-40"
                                     >
                                         <ChevronRight className="h-4 w-4" />
                                     </Button>
@@ -1085,14 +1086,14 @@ export default function StudentCertificatePage() {
             </div>
 
             <AlertDialog open={deleteId !== null} onOpenChange={(o) => !o && setDeleteId(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800 rounded-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("delete_certificate_q")}</AlertDialogTitle>
                         <AlertDialogDescription>{t("delete_certificate_description")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 border-0 text-white rounded-full">
                             {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>

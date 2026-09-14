@@ -4,15 +4,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Variable, Tag } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface VariableItem {
   label: string;
   value: string;
 }
 
-const variableGroups: { name: string; variables: VariableItem[] }[] = [
+const variableGroups: { name: string; key: string; variables: VariableItem[] }[] = [
   {
     name: "Student",
+    key: "student",
     variables: [
       { label: "Full Name", value: "{name}" },
       { label: "First Name", value: "{first_name}" },
@@ -32,6 +34,7 @@ const variableGroups: { name: string; variables: VariableItem[] }[] = [
   },
   {
     name: "Parent",
+    key: "parent",
     variables: [
       { label: "Father Name", value: "{father_name}" },
       { label: "Father Phone", value: "{father_phone}" },
@@ -44,6 +47,7 @@ const variableGroups: { name: string; variables: VariableItem[] }[] = [
   },
   {
     name: "School",
+    key: "school",
     variables: [
       { label: "School Name", value: "{school_name}" },
       { label: "School Address", value: "{school_address}" },
@@ -57,6 +61,7 @@ const variableGroups: { name: string; variables: VariableItem[] }[] = [
   },
   {
     name: "Fee",
+    key: "fee",
     variables: [
       { label: "Fee Amount", value: "{fee_amount}" },
       { label: "Due Date", value: "{due_date}" },
@@ -69,6 +74,7 @@ const variableGroups: { name: string; variables: VariableItem[] }[] = [
   },
   {
     name: "Attendance",
+    key: "attendance",
     variables: [
       { label: "Total Days", value: "{total_days}" },
       { label: "Present Days", value: "{present_days}" },
@@ -81,6 +87,7 @@ const variableGroups: { name: string; variables: VariableItem[] }[] = [
   },
   {
     name: "Exam",
+    key: "exam",
     variables: [
       { label: "Exam Name", value: "{exam_name}" },
       { label: "Subject", value: "{subject}" },
@@ -99,6 +106,8 @@ interface VariablePickerProps {
 }
 
 export default function VariablePicker({ onSelect }: VariablePickerProps) {
+  const { t } = useTranslation();
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -109,19 +118,21 @@ export default function VariablePicker({ onSelect }: VariablePickerProps) {
           className="h-7 gap-1.5 text-[10px] font-semibold text-gray-400 hover:text-indigo-600 hover:bg-indigo-50/50 rounded-md px-2"
         >
           <Variable className="h-3.5 w-3.5" />
-          Variables
+          {t("variables")}
         </Button>
       </PopoverTrigger>
       <PopoverContent side="top" align="end" className="w-[400px] p-0">
         <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50/50">
           <Tag className="h-3.5 w-3.5 text-indigo-500" />
-          <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">Insert Variable</span>
-          <span className="text-[9px] text-gray-400 ml-auto">Click to insert at cursor</span>
+          <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider">{t("insert_variable")}</span>
+          <span className="text-[9px] text-gray-400 ml-auto">{t("click_to_insert_at_cursor")}</span>
         </div>
         <ScrollArea className="h-[300px]">
           {variableGroups.map((group) => (
             <div key={group.name} className="px-3 py-2 border-b border-gray-50 last:border-0">
-              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">{group.name}</h4>
+              <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">
+                {t(group.key) || group.name}
+              </h4>
               <div className="flex flex-wrap gap-1">
                 {group.variables.map((v) => (
                   <button

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
     Phone,
     Mail,
@@ -20,9 +20,10 @@ import {
     ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
+import { tokenManager } from "@/lib/token-manager";
 import { useImageUrl } from "@/lib/image-url";
 import { getPublicMenus, type PublicMenuItem as MenuItem } from "@/lib/public-menus";
 import api from "@/lib/api";
@@ -50,9 +51,73 @@ const LANGUAGES = [
     { id: 2, name: "Bengali", short_code: "bn", country_code: "bd", is_rtl: false, is_active: true, is_enabled: true, label: "bd বাংলা" },
 ];
 
+/**
+ * Marquee text component that automatically marquees if text overflows container,
+ * with pause on hover, single line containment, and accessibility support.
+ */
+function MarqueeText({
+    text = "",
+    className = "",
+}: {
+    text?: string;
+    className?: string;
+}) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const textRef = useRef<HTMLSpanElement>(null);
+    const [isOverflowing, setIsOverflowing] = useState(false);
+
+    useEffect(() => {
+        const checkOverflow = () => {
+            if (containerRef.current && textRef.current) {
+                const cWidth = containerRef.current.clientWidth;
+                const sWidth = textRef.current.scrollWidth;
+                setIsOverflowing(sWidth > cWidth + 2);
+            }
+        };
+
+        checkOverflow();
+        const t1 = setTimeout(checkOverflow, 150);
+        const t2 = setTimeout(checkOverflow, 500);
+        window.addEventListener("resize", checkOverflow);
+        return () => {
+            clearTimeout(t1);
+            clearTimeout(t2);
+            window.removeEventListener("resize", checkOverflow);
+        };
+    }, [text]);
+
+    if (!text) return null;
+
+    return (
+        <div
+            ref={containerRef}
+            className={cn("overflow-hidden whitespace-nowrap min-w-0", className)}
+            title={text}
+        >
+            {isOverflowing ? (
+                <div className="inline-flex whitespace-nowrap animate-marquee group-hover:[animation-play-state:paused]">
+                    <span className="shrink-0 inline-flex items-center">
+                        <span ref={textRef}>{text}</span>
+                        <span className="w-8 shrink-0 inline-block" aria-hidden="true" />
+                    </span>
+                    <span className="shrink-0 inline-flex items-center" aria-hidden="true">
+                        <span>{text}</span>
+                        <span className="w-8 shrink-0 inline-block" />
+                    </span>
+                </div>
+            ) : (
+                <span ref={textRef} className="truncate block">
+                    {text}
+                </span>
+            )}
+        </div>
+    );
+}
+
 export function PublicHeader() {
     const { settings } = useSettings();
     const pathname = usePathname();
+    const router = useRouter();
     const { t } = useTranslation();
     const { selectedLanguage, setSelectedLanguage, setUserContext } = useLanguage();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -82,7 +147,7 @@ export function PublicHeader() {
 
     useEffect(() => {
         const checkAuth = async () => {
-            const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+            const token = typeof window !== 'undefined' ? (tokenManager.getToken() || await tokenManager.syncSession()) : null;
             if (!token) {
                 setUser(null);
                 setUserContext(null);
@@ -99,8 +164,12 @@ export function PublicHeader() {
                     setUser(null);
                     setUserContext(null);
                 }
-            } catch (error) {
-                console.error("Failed to fetch profile in public header:", error);
+            } catch (error: unknown) {
+                // If token has expired or is unauthorized, clean up stale session state
+                const err = error as { response?: { status?: number } };
+                if (err?.response?.status === 401) {
+                    tokenManager.clearToken();
+                }
                 setUser(null);
                 setUserContext(null);
             } finally {
@@ -108,6 +177,7 @@ export function PublicHeader() {
             }
         };
         checkAuth();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const getDashboardUrl = () => {
@@ -166,32 +236,54 @@ export function PublicHeader() {
     const logoSrc = settings?.app_logo || settings?.admin_logo || settings?.admin_small_logo;
 
     return (
-        <header className="w-full flex flex-col z-50 sticky top-0 bg-white shadow-sm overflow-x-clip">
+        <header className="w-full flex flex-col z-50 sticky top-0 shadow-sm overflow-x-clip">
             {/* Top Bar */}
-            <div className="bg-white border-b border-gray-200/80 pt-3.5 pb-2 sm:py-2 md:py-2.5 px-4 sm:px-6 md:px-8 text-xs font-medium text-slate-600">
-                <div className="container mx-auto flex flex-wrap justify-between items-center gap-2 sm:gap-3">
-                    {/* Contact Information */}
-                    <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2 sm:gap-4 pr-1.5 sm:pr-0">
-                        <a href={`tel:${settings?.phone || "+880 1800-123456"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
-                            <Phone className="h-3.5 w-3.5 text-[#044E43]" />
-                            <span>{settings?.phone || "+880 1800-123456"}</span>
+            <div className="bg-white border-b border-gray-200/80 py-2 sm:py-2 md:py-2.5 px-4 sm:px-6 md:px-8 text-xs font-medium text-slate-600">
+                <div className="container mx-auto flex items-center justify-between gap-3 sm:gap-4 flex-nowrap">
+                    {/* Fixed Position Contact Information (Mobile, Email, Address) with Marquee on Overflow */}
+                    <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1 overflow-hidden">
+                        {/* Mobile Phone */}
+                        <a
+                            href={`tel:${settings?.phone || "+880 1800-123456"}`}
+                            className="group flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0 max-w-[135px] sm:max-w-[165px] md:max-w-[185px]"
+                        >
+                            <Phone className="h-3.5 w-3.5 text-[#044E43] shrink-0" />
+                            <MarqueeText
+                                text={settings?.phone || "+880 1800-123456"}
+                                className="max-w-[110px] sm:max-w-[140px] md:max-w-[160px]"
+                            />
                         </a>
-                        <div className="w-px h-3.5 bg-gray-300 hidden sm:block" />
-                        <a href={`mailto:${settings?.email || "info@ischool.edu.bd"}`} className="flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0">
-                            <Mail className="h-3.5 w-3.5 text-[#044E43]" />
-                            <span>{settings?.email || "info@ischool.edu.bd"}</span>
+
+                        <div className="w-px h-3.5 bg-gray-300 shrink-0 hidden sm:block" />
+
+                        {/* Email */}
+                        <a
+                            href={`mailto:${settings?.email || "info@ischool.edu.bd"}`}
+                            className="group hidden sm:flex items-center gap-1.5 hover:text-[#044E43] transition-colors shrink-0 max-w-[170px] sm:max-w-[210px] md:max-w-[240px]"
+                        >
+                            <Mail className="h-3.5 w-3.5 text-[#044E43] shrink-0" />
+                            <MarqueeText
+                                text={settings?.email || "info@ischool.edu.bd"}
+                                className="max-w-[145px] sm:max-w-[185px] md:max-w-[215px]"
+                            />
                         </a>
-                        <div className="w-px h-3.5 bg-gray-300 hidden md:block" />
-                        <div className="hidden lg:flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-[#044E43]" />
-                            <span>{settings?.address || "House 42, Road 11, Banani, Dhaka-1213"}</span>
+
+                        <div className="w-px h-3.5 bg-gray-300 shrink-0 hidden md:block" />
+
+                        {/* Address */}
+                        <div className="group hidden md:flex items-center gap-1.5 shrink min-w-0 max-w-[220px] lg:max-w-[340px] xl:max-w-[460px]">
+                            <MapPin className="h-3.5 w-3.5 text-[#044E43] shrink-0" />
+                            <MarqueeText
+                                text={settings?.address || "House 42, Road 11, Banani, Dhaka-1213"}
+                                className="min-w-0 flex-1"
+                            />
                         </div>
                     </div>
 
                     {/* Social Icons, Language Dropdown, Search & Login/Dashboard */}
-                    <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-2 sm:gap-4 flex-wrap">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
                         {/* Circular Social Buttons */}
-                        <div className="flex items-center gap-2">
+                        <div className="hidden sm:flex items-center gap-1.5 md:gap-2">
                             <a
                                 href={settings?.facebook_url && settings.facebook_url !== '#' ? settings.facebook_url : "https://facebook.com/ischool"}
                                 target="_blank"
@@ -232,64 +324,61 @@ export function PublicHeader() {
                             )}
                         </div>
 
-                        {/* Right-aligned Search & Action controls */}
-                        <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0 pr-1.5 sm:pr-0">
-                            {/* Functional Language Selector (English, Bangla) - Hidden on small mobile screens */}
-                            <div className="relative hidden sm:block">
-                                <select
-                                    value={currentLangCode}
-                                    onChange={(e) => handleLanguageChange(e.target.value)}
-                                    className="appearance-none bg-white border border-gray-300 rounded-full py-1 pl-3 pr-7 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#044E43] shadow-sm hover:border-gray-400 transition-all"
-                                >
-                                    {LANGUAGES.map((lang) => (
-                                        <option key={lang.short_code} value={lang.short_code}>
-                                            {lang.label}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown className="h-3.5 w-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-
-                            {/* Search Trigger Button */}
-                            <button
-                                onClick={() => setIsSearchOpen(true)}
-                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-[#044E43] hover:text-white transition-all duration-300 shadow-sm"
-                                title={t("search")}
+                        {/* Functional Language Selector (English, Bangla) */}
+                        <div className="relative hidden sm:block">
+                            <select
+                                value={currentLangCode}
+                                onChange={(e) => handleLanguageChange(e.target.value)}
+                                className="appearance-none bg-white border border-gray-300 rounded-full py-1 pl-3 pr-7 text-xs font-bold text-slate-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#044E43] shadow-sm hover:border-gray-400 transition-all"
                             >
-                                <Search className="h-3.5 w-3.5" />
-                            </button>
-
-                            {/* Login / Dashboard Button */}
-                            {!mounted || !user ? (
-                                <Link href="/login" className="group">
-                                    <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
-                                        <span>{t("login")}</span>
-                                        <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                            <ArrowUpRight className="h-3 w-3" />
-                                        </div>
-                                    </div>
-                                </Link>
-                            ) : (
-                                <Link href={getDashboardUrl()} className="group">
-                                    <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
-                                        <span>{t("dashboard")}</span>
-                                        <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                            <LayoutGrid className="h-3 w-3" />
-                                        </div>
-                                    </div>
-                                </Link>
-                            )}
+                                {LANGUAGES.map((lang) => (
+                                    <option key={lang.short_code} value={lang.short_code}>
+                                        {lang.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="h-3.5 w-3.5 text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
+
+                        {/* Search Trigger Button */}
+                        <button
+                            onClick={() => setIsSearchOpen(true)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-[#044E43] hover:text-white transition-all duration-300 shadow-sm"
+                            title={t("search")}
+                        >
+                            <Search className="h-3.5 w-3.5" />
+                        </button>
+
+                        {/* Login / Dashboard Button */}
+                        {!mounted || !user ? (
+                            <Link href="/login" className="group">
+                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
+                                    <span>{t("login")}</span>
+                                    <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <ArrowUpRight className="h-3 w-3" />
+                                    </div>
+                                </div>
+                            </Link>
+                        ) : (
+                            <Link href={getDashboardUrl()} className="group">
+                                <div className="bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-xs pl-3 pr-1 py-1 rounded-full flex items-center gap-1.5 shadow-sm transition-all duration-300">
+                                    <span>{t("dashboard")}</span>
+                                    <div className="w-5 h-5 rounded-full bg-[#FF9800] text-white flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
+                                        <LayoutGrid className="h-3 w-3" />
+                                    </div>
+                                </div>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Main Navigation */}
-            <div className="bg-[#F4F6F5] border-b border-gray-200/60 w-full">
+            <div className="bg-[#F4F6F5] w-full">
                 <div className="container mx-auto px-4 sm:px-6 md:px-8 h-11 sm:h-14 md:h-18 flex items-center justify-between relative">
 
                     {/* Logo with Curved Dark Teal Badge */}
-                    <div className="relative flex items-center h-full shrink-0">
+                    <div className="relative flex items-stretch h-full shrink-0">
                         <div className="bg-[#044E43] h-full pl-1 pr-3 sm:px-5 md:px-6 flex items-center relative z-10 min-w-[110px] sm:min-w-[180px] md:min-w-[220px] lg:min-w-[250px] before:content-[''] before:absolute before:right-full before:top-0 before:bottom-0 before:w-[100vw] before:bg-[#044E43]">
                             <Link href="/" className="flex items-center gap-2 text-white group relative z-10 py-0.5">
                                 {logoSrc ? (
@@ -315,9 +404,9 @@ export function PublicHeader() {
                                 )}
                             </Link>
 
-                            {/* SVG Curved Shape Flange - Extra Sweeping Curve without gray line seam */}
-                            <div className="absolute left-[calc(100%-1px)] top-0 h-full w-9 sm:w-20 md:w-28 lg:w-32 xl:w-36 text-[#044E43] pointer-events-none">
-                                <svg className="h-full w-full" viewBox="0 0 160 100" fill="currentColor" preserveAspectRatio="none">
+                            {/* SVG Curved Shape Flange - Perfectly flush continuous curve */}
+                            <div className="absolute left-[calc(100%-1px)] top-0 bottom-0 h-full w-9 sm:w-20 md:w-28 lg:w-32 xl:w-36 text-[#044E43] pointer-events-none">
+                                <svg className="h-full w-full block" viewBox="0 0 160 100" fill="currentColor" preserveAspectRatio="none">
                                     <path d="M 0 0 C 45 0 70 25 85 50 C 100 75 120 100 160 100 L 0 100 Z" />
                                 </svg>
                             </div>
@@ -442,7 +531,8 @@ export function PublicHeader() {
                                 className="bg-[#044E43] hover:bg-[#033b33] text-white rounded-xl text-xs px-5"
                                 onClick={() => {
                                     if (searchQuery.trim()) {
-                                        window.location.href = `/academics?search=${encodeURIComponent(searchQuery)}`;
+                                        setIsSearchOpen(false);
+                                        router.push(`/academics?search=${encodeURIComponent(searchQuery)}`);
                                     }
                                 }}
                             >

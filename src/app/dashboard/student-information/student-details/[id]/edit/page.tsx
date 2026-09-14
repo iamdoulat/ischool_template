@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useImageUrl } from "@/lib/image-url";
 import {
@@ -37,19 +37,24 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { formatAutoIdentifier, replacePlaceholders } from "@/lib/id-generator";
 
 export default function StudentEditPage() {
+    const pathname = usePathname();
     const { id } = useParams();
     const router = useRouter();
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
     const { symbol } = useCurrencyFormatter();
     const getImageUrl = useImageUrl();
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
     const [classes, setClasses] = useState<{ id: number; name: string }[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
+    const [branches, setBranches] = useState<{ id: number; branch_name: string; is_main?: boolean }[]>([]);
+    const [isBranchLocked, setIsBranchLocked] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
     const [houses, setHouses] = useState<any[]>([]);
     const [disableReasons, setDisableReasons] = useState<any[]>([]);
@@ -69,6 +74,7 @@ export default function StudentEditPage() {
     const [showMoreDetails, setShowMoreDetails] = useState(false);
 
     const [formData, setFormData] = useState<{ [key: string]: any }>({
+        branch_id: "1",
         admission_no: "",
         roll_no: "",
         username: "",
@@ -218,7 +224,7 @@ export default function StudentEditPage() {
 
     const fetchPrerequisites = async () => {
         try {
-            const [classesRes, categoriesRes, housesRes, disableReasonsRes, feeGroupsRes, feeDiscountsRes, routesRes, pickupsRes, hostelsRes, roomsRes] = await Promise.all([
+            const [classesRes, categoriesRes, housesRes, disableReasonsRes, feeGroupsRes, feeDiscountsRes, routesRes, pickupsRes, hostelsRes, roomsRes, branchesRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
                 api.get("/student-categories"),
                 api.get("/student-houses"),
@@ -228,7 +234,8 @@ export default function StudentEditPage() {
                 api.get("/transport/routes"),
                 api.get("/transport/pickup-points"),
                 api.get("/hostels"),
-                api.get("/rooms")
+                api.get("/rooms"),
+                api.get("/multi-branch/branches?all=true")
             ]);
             setClasses(classesRes.data.data?.data || classesRes.data.data || []);
             setCategories(categoriesRes.data.data?.data || categoriesRes.data.data || []);
@@ -240,10 +247,82 @@ export default function StudentEditPage() {
             setPickupPoints(pickupsRes.data.data?.data || pickupsRes.data.data || []);
             setHostels(hostelsRes.data.data?.data || hostelsRes.data.data || []);
             setRooms(roomsRes.data.data?.data || roomsRes.data.data || []);
+            const bList = branchesRes.data.data?.data || branchesRes.data.data || [];
+            setBranches(Array.isArray(bList) ? bList : []);
+
+            // Auto-detect branch from URL (/br/:slug/...) or localStorage/user
+            const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : (typeof window !== "undefined" ? window.location.pathname.match(/^\/br\/([^\/]+)/) : null);
+            const urlBranchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
+
+            let matchedBranch: any = null;
+            let locked = false;
+
+            if (urlBranchSlug && urlBranchSlug !== "main") {
+                matchedBranch = (Array.isArray(bList) ? bList : []).find((b: any) =>
+                    (b.slug && b.slug.toLowerCase() === urlBranchSlug.toLowerCase()) ||
+                    (b.branch_code && b.branch_code.toLowerCase() === urlBranchSlug.toLowerCase()) ||
+                    (b.branch_name && b.branch_name.toLowerCase().replace(/\s+/g, '-') === urlBranchSlug.toLowerCase()) ||
+                    (b.id && b.id.toString() === urlBranchSlug)
+                );
+                if (matchedBranch) {
+                    locked = true;
+                }
+            }
+
+            if (!matchedBranch && typeof window !== "undefined") {
+                const storedBranchId = localStorage.getItem("active_branch_id");
+                const storedBranchSlug = localStorage.getItem("active_branch_slug");
+                if (storedBranchId && storedBranchId !== "1") {
+                    matchedBranch = (Array.isArray(bList) ? bList : []).find((b: any) => b.id?.toString() === storedBranchId.toString());
+                    if (matchedBranch && !matchedBranch.is_main) {
+                        locked = true;
+                    }
+                } else if (storedBranchSlug && storedBranchSlug !== "main") {
+                    matchedBranch = (Array.isArray(bList) ? bList : []).find((b: any) => b.slug === storedBranchSlug || b.branch_code === storedBranchSlug);
+                    if (matchedBranch && !matchedBranch.is_main) {
+                        locked = true;
+                    }
+                }
+            }
+
+            if (!matchedBranch && typeof window !== "undefined") {
+                try {
+                    const userStr = localStorage.getItem("user");
+                    if (userStr) {
+                        const parsedUser = JSON.parse(userStr);
+                        if (parsedUser?.branch_id && parsedUser.branch_id !== 1 && parsedUser.branch_id !== "1") {
+                            matchedBranch = (Array.isArray(bList) ? bList : []).find((b: any) => b.id?.toString() === parsedUser.branch_id.toString());
+                            if (matchedBranch && parsedUser.role?.toLowerCase() !== "super admin") {
+                                locked = true;
+                            }
+                        }
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+
+            setIsBranchLocked(locked);
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
         }
     };
+
+    const hasMultipleBranches = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        return list.length > 1;
+    }, [branches]);
+
+    const branchOptions = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        if (list.length === 0) {
+            return [{ label: "Main", value: "1" }];
+        }
+        return list.map((b: any) => ({
+            label: b.branch_name,
+            value: b.id.toString(),
+        }));
+    }, [branches]);
 
     const fetchSectionsForClass = async (classId: string, currentSectionId?: string, currentSectionName?: string) => {
         if (!classId) {
@@ -383,7 +462,32 @@ export default function StudentEditPage() {
                 rawParent = formatAutoIdentifier("PAR-{class}{section}", 4, 1, className, sectionName);
             }
 
+            const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : (typeof window !== "undefined" ? window.location.pathname.match(/^\/br\/([^\/]+)/) : null);
+            const urlBranchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
+
+            let subBranchObj: any = null;
+            if (urlBranchSlug && urlBranchSlug !== "main") {
+                subBranchObj = branches.find((b: any) =>
+                    (b.slug && b.slug.toLowerCase() === urlBranchSlug.toLowerCase()) ||
+                    (b.branch_code && b.branch_code.toLowerCase() === urlBranchSlug.toLowerCase()) ||
+                    (b.branch_name && b.branch_name.toLowerCase().replace(/\s+/g, '-') === urlBranchSlug.toLowerCase()) ||
+                    (b.id && b.id.toString() === urlBranchSlug)
+                );
+            }
+            if (!subBranchObj && typeof window !== "undefined") {
+                const storedBranchId = localStorage.getItem("active_branch_id");
+                if (storedBranchId && storedBranchId !== "1") {
+                    subBranchObj = branches.find((b: any) => b.id?.toString() === storedBranchId.toString());
+                }
+            }
+
+            const mainB = branches.find((b: any) => b.is_main) || branches[0];
+            const defaultBranchId = subBranchObj?.id 
+                ? subBranchObj.id.toString() 
+                : (student.branch_id ? student.branch_id.toString() : (mainB?.id ? mainB.id.toString() : "1"));
+
             setFormData({
+                branch_id: defaultBranchId,
                 admission_no: rawAdm,
                 roll_no: rawRoll,
                 username: rawUser,
@@ -510,7 +614,7 @@ export default function StudentEditPage() {
             }
         } catch (error) {
             console.error("Error fetching student data:", error);
-            toast("error", "Failed to load student data");
+            tt.error("failed_to_load_student_data");
             router.push("/dashboard/student-information/student-details");
         }
     };
@@ -571,10 +675,10 @@ export default function StudentEditPage() {
             });
             
             setShowSiblingModal(false);
-            toast("success", "Sibling added and details applied");
+            tt.success("sibling_added_and_details_applied");
         } catch (error) {
             console.error("Error adding sibling:", error);
-            toast("error", "Failed to add sibling details");
+            tt.error("failed_to_add_sibling_details");
         }
     };
 
@@ -692,12 +796,12 @@ export default function StudentEditPage() {
                 }
             });
 
-            toast("success", "Student updated successfully");
+            tt.success("student_updated_successfully");
             router.push("/dashboard/student-information/student-details");
         } catch (error: any) {
             console.error("Error updating student:", error);
-            const message = error.response?.data?.message || "Failed to update student";
-            toast("error", message);
+            const message = error.response?.data?.message || "failed_to_update_student";
+            tt.toast("error", message);
         } finally {
             setLoading(false);
         }
@@ -725,14 +829,14 @@ export default function StudentEditPage() {
                         <UserPlus className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Edit Student</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">Modify details for {formData.name} {formData.last_name}</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("edit_student")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("modify_details_for_student", { name: `${formData.name} ${formData.last_name}` })}</p>
                     </div>
                 </div>
             </div>
 
             <form className="space-y-8" onSubmit={handleSubmit}>
-                <SectionCard title="Basic Information" icon={GraduationCap}>
+                <SectionCard title={t("basic_information")} icon={GraduationCap}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="lg:col-span-1 flex flex-col items-center justify-center border-r border-muted/50 pr-6">
                             <div className="relative group">
@@ -753,118 +857,125 @@ export default function StudentEditPage() {
                                     <input type="file" className="sr-only" onChange={(e) => handleChange("avatar", e.target.files?.[0] || null)} accept="image/*" />
                                 </label>
                             </div>
-                            <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mt-6">Student Photo</p>
+                            <p className="text-[11px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mt-6">{t("student_photo")}</p>
                         </div>
 
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <InputField label="Admission No" required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} />
-                            <InputField label="Roll Number" value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} />
+                            <InputField label={t("admission_no")} required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} />
+                            <InputField label={t("roll_number")} value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} />
                             <div className="relative">
-                                <InputField label="Username" value={formData.username || ""} onChange={(val) => handleChange("username", val)} readOnly={autoUsernameEnabled} helperText={autoUsernameEnabled ? "Auto-generated" : ""} />
+                                <InputField label={t("username")} value={formData.username || ""} onChange={(val) => handleChange("username", val)} readOnly={autoUsernameEnabled} helperText={autoUsernameEnabled ? t("auto_generated") : ""} />
                                 <button
                                     type="button"
                                     onClick={() => fetchAutoGeneratedIds()}
                                     className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
-                                    title="Generate Username"
+                                    title={t("generate_username")}
                                 >
                                     <RefreshCw className="h-3.5 w-3.5" />
                                 </button>
                             </div>
                             <SelectField
-                                label="Class"
+                                label={t("class")}
                                 required
                                 value={formData.school_class_id}
                                 onChange={(val) => handleChange("school_class_id", val)}
                                 options={classes.map(c => ({ label: c.name, value: c.id.toString() }))}
                             />
                             <SelectField
-                                label="Section"
+                                label={t("section")}
                                 required
                                 value={formData.section_id}
                                 onChange={(val) => handleChange("section_id", val)}
                                 options={sections.map(s => ({ label: s.name, value: s.id.toString() }))}
                             />
-                            <InputField label="First Name" required value={formData.name} onChange={(val) => handleChange("name", val)} />
-                            <InputField label="Last Name" value={formData.last_name} onChange={(val) => handleChange("last_name", val)} />
-                            <InputField label="Student Full Name" value={formData.full_name || ""} onChange={(val) => handleChange("full_name", val)} readOnly />
+                            <SelectField
+                                label={t("campus_branch") || t("branch") || "Campus Branch"}
+                                value={formData.branch_id || (branches[0]?.id?.toString() ?? "1")}
+                                onChange={(val) => handleChange("branch_id", val)}
+                                options={branchOptions}
+                                disabled={isBranchLocked || !hasMultipleBranches}
+                            />
+                            <InputField label={t("first_name")} required value={formData.name} onChange={(val) => handleChange("name", val)} />
+                            <InputField label={t("last_name")} value={formData.last_name} onChange={(val) => handleChange("last_name", val)} />
+                            <InputField label={t("student_full_name")} value={formData.full_name || ""} onChange={(val) => handleChange("full_name", val)} readOnly />
                         </div>
 
                         <SelectField
-                            label="Gender"
+                            label={t("gender")}
                             required
                             value={formData.gender}
                             onChange={(val) => handleChange("gender", val)}
                             options={[
-                                { label: "Male", value: "Male" },
-                                { label: "Female", value: "Female" },
-                                { label: "Other", value: "Other" }
+                                { label: t("male"), value: "Male" },
+                                { label: t("female"), value: "Female" },
+                                { label: t("other"), value: "Other" }
                             ]}
                         />
-                        <DateField label="Date Of Birth" required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
-                        <InputField label="ID/Birth Cert" value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
-                        <InputField label="Place of Birth" value={formData.birth_place} onChange={(val) => handleChange("birth_place", val)} />
-                        <InputField label="State" value={formData.state} onChange={(val) => handleChange("state", val)} />
-                        <InputField label="Nationality" value={formData.nationality} onChange={(val) => handleChange("nationality", val)} />
+                        <DateField label={t("date_of_birth")} required value={formData.dob} onChange={(val) => handleChange("dob", val)} />
+                        <InputField label={t("id_birth_cert")} value={formData.national_identification_no} onChange={(val) => handleChange("national_identification_no", val)} />
+                        <InputField label={t("place_of_birth")} value={formData.birth_place} onChange={(val) => handleChange("birth_place", val)} />
+                        <InputField label={t("state")} value={formData.state} onChange={(val) => handleChange("state", val)} />
+                        <InputField label={t("nationality")} value={formData.nationality} onChange={(val) => handleChange("nationality", val)} />
 
                         <SelectField
-                            label="Category"
+                            label={t("category")}
                             value={formData.category}
                             onChange={(val) => handleChange("category", val)}
                             options={categories.map(c => ({ label: c.category_name || c.category || c.name, value: c.id.toString() }))}
                         />
-                        <InputField label="Religion" value={formData.religion} onChange={(val) => handleChange("religion", val)} />
-                        <InputField label="Caste" value={formData.caste} onChange={(val) => handleChange("caste", val)} />
-                        <InputField label="Mobile Number" value={formData.phone} onChange={(val) => handleChange("phone", val)} />
+                        <InputField label={t("religion")} value={formData.religion} onChange={(val) => handleChange("religion", val)} />
+                        <InputField label={t("caste")} value={formData.caste} onChange={(val) => handleChange("caste", val)} />
+                        <InputField label={t("mobile_number")} value={formData.phone} onChange={(val) => handleChange("phone", val)} />
                         <SelectField
-                            label="Status"
+                            label={t("status")}
                             required
                             value={formData.active ? "1" : "0"}
                             onChange={(val) => handleChange("active", val === "1")}
                             options={[
-                                { label: "Active", value: "1" },
-                                { label: "Disabled", value: "0" }
+                                { label: t("active"), value: "1" },
+                                { label: t("disabled"), value: "0" }
                             ]}
                         />
                         {!formData.active && (
                             <>
                                 <SelectField
-                                    label="Disable Reason"
+                                    label={t("disable_reason")}
                                     required
                                     value={formData.disable_reason}
                                     onChange={(val) => handleChange("disable_reason", val)}
                                     options={disableReasons.map(r => ({ label: r.reason, value: r.id.toString() }))}
                                 />
                                 <DateField
-                                    label="Disable Date"
+                                    label={t("disable_date")}
                                     value={formData.disable_date}
                                     onChange={(val) => handleChange("disable_date", val)}
                                 />
                             </>
                         )}
-                        <InputField label="Email" type="email" value={formData.email} onChange={(val) => handleChange("email", val)} />
-                        <DateField label="Admission Date" value={formData.admission_date} onChange={(val) => handleChange("admission_date", val)} />
+                        <InputField label={t("email")} type="email" value={formData.email} onChange={(val) => handleChange("email", val)} />
+                        <DateField label={t("admission_date")} value={formData.admission_date} onChange={(val) => handleChange("admission_date", val)} />
 
                         <SelectField
-                            label="Blood Group"
+                            label={t("blood_group")}
                             value={formData.blood_group}
                             onChange={(val) => handleChange("blood_group", val)}
                             options={["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map(v => ({ label: v, value: v }))}
                         />
                         <SelectField
-                            label="House"
+                            label={t("house")}
                             value={formData.house}
                             onChange={(val) => handleChange("house", val)}
                             options={houses.map(h => ({ label: h.house_name || h.name, value: h.id.toString() }))}
                         />
-                        <InputField label="Height" value={formData.height} onChange={(val) => handleChange("height", val)} />
-                        <InputField label="Weight" value={formData.weight} onChange={(val) => handleChange("weight", val)} />
+                        <InputField label={t("height")} value={formData.height} onChange={(val) => handleChange("height", val)} />
+                        <InputField label={t("weight")} value={formData.weight} onChange={(val) => handleChange("weight", val)} />
 
-                        <DateField label="Measurement Date" value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
-                        <InputField label="Postal / Zip Code" value={formData.postal_code} onChange={(val) => handleChange("postal_code", val)} />
+                        <DateField label={t("measurement_date")} value={formData.measurement_date} onChange={(val) => handleChange("measurement_date", val)} />
+                        <InputField label={t("postal_zip_code")} value={formData.postal_code} onChange={(val) => handleChange("postal_code", val)} />
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <InputField label="Mother Tongue" value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
+                            <InputField label={t("mother_tongue")} value={formData.mother_tongue} onChange={(val) => handleChange("mother_tongue", val)} />
                             <div>
-                                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-2">GENERAL BEHAVIOUR:</label>
+                                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-2">{t("general_behaviour")}:</label>
                                 <div className="flex items-center gap-5">
                                     {["Mild", "Normal", "Hyperactive"].map(b => (
                                         <label key={b} className="flex items-center gap-2 cursor-pointer group">
@@ -879,13 +990,13 @@ export default function StudentEditPage() {
                                                 <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
                                                 <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">{b}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">{t(b.toLowerCase())}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
                             <div>
-                                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-2">SECOND LANGUAGE:</label>
+                                <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-2">{t("second_language")}:</label>
                                 <div className="flex items-center gap-5">
                                     {["English", "Arabic", "Others"].map(l => (
                                         <label key={l} className="flex items-center gap-2 cursor-pointer group">
@@ -900,28 +1011,28 @@ export default function StudentEditPage() {
                                                 <div className="h-4 w-4 rounded border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
                                                 <div className="absolute h-2 w-2 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">{l}</span>
+                                            <span className="text-xs font-bold text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 transition-colors">{t(l.toLowerCase())}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
                         </div>
                         <div className="lg:col-span-2">
-                            <TextAreaField label="Current Address" rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
+                            <TextAreaField label={t("current_address")} rows={2} value={formData.current_address} onChange={(val) => handleChange("current_address", val)} />
                         </div>
                         <div className="lg:col-span-2">
-                            <TextAreaField label="Permanent Address" rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
+                            <TextAreaField label={t("permanent_address")} rows={2} value={formData.permanent_address} onChange={(val) => handleChange("permanent_address", val)} />
                         </div>
                         <div className="lg:col-span-4 space-y-2">
-                            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider ml-0.5">Previous Academic Record</label>
+                            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider ml-0.5">{t("previous_academic_record")}</label>
                             <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden overflow-x-auto shadow-2xs">
                                 <table className="w-full text-sm text-left">
                                     <thead className="bg-gray-50 dark:bg-gray-800/80 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
                                         <tr>
-                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">Name of the previous school &amp; location</th>
-                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">Class</th>
-                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">Year of Study</th>
-                                            <th className="px-3 py-2.5 font-bold text-[11px] uppercase tracking-wider">Percentage/Grade</th>
+                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">{t("name_of_previous_school")}</th>
+                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">{t("class")}</th>
+                                            <th className="px-3 py-2.5 font-bold border-r border-gray-200 dark:border-gray-700 text-[11px] uppercase tracking-wider">{t("year_of_study")}</th>
+                                            <th className="px-3 py-2.5 font-bold text-[11px] uppercase tracking-wider">{t("percentage_grade")}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
@@ -985,37 +1096,37 @@ export default function StudentEditPage() {
                                 onClick={() => handleChange("previous_academic_record", [...formData.previous_academic_record, { school_name: "", class: "", year: "", percentage: "" }])}
                                 className="text-[11.5px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline mt-1.5 cursor-pointer"
                             >
-                                + Add Row
+                                + {t("add_row")}
                             </button>
                         </div>
                         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <TextAreaField label="Identification Marks" rows={2} value={formData.identification_marks} onChange={(val) => handleChange("identification_marks", val)} />
-                            <TextAreaField label="Medical History" rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
+                            <TextAreaField label={t("identification_marks")} rows={2} value={formData.identification_marks} onChange={(val) => handleChange("identification_marks", val)} />
+                            <TextAreaField label={t("medical_history")} rows={2} value={formData.medical_history} onChange={(val) => handleChange("medical_history", val)} />
                         </div>
                         <div className="lg:col-span-2">
-                            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-1.5 ml-0.5">APPRAISAL ACHIEVEMENT</label>
+                            <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-1.5 ml-0.5">{t("appraisal_achievement")}</label>
                             <textarea
                                 className="w-full min-h-[68px] text-xs font-semibold text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-xl p-3 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 resize-y bg-gray-50/50 dark:bg-gray-800/40 focus:bg-white dark:focus:bg-gray-800 transition-all"
                                 value={formData.appraisal_achievements}
                                 onChange={(e) => handleChange("appraisal_achievements", e.target.value)}
-                                placeholder="Appraisal of your child..."
+                                placeholder={t("enter_achievements") || "Appraisal of your child..."}
                             />
                         </div>
                         <div className="lg:col-span-2">
-                            <TextAreaField label="Note" rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
+                            <TextAreaField label={t("note")} rows={2} value={formData.note} onChange={(val) => handleChange("note", val)} />
                         </div>
                         
                         {/* Sibling Section Matching Screenshot */}
                         <div className="lg:col-span-4 mt-6">
                             <div className="bg-[#f8f9fa] dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2.5 flex items-center justify-between rounded-t-xl">
-                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Sibling</span>
+                                <span className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">{t("sibling")}</span>
                                 {selectedSiblings.length > 0 && (
                                     <button 
                                         type="button" 
                                         onClick={() => setSelectedSiblings([])}
-                                        className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-xs hover:bg-indigo-700 transition-colors"
+                                        className="bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
                                     >
-                                        Remove Sibling
+                                        {t("remove_sibling")}
                                     </button>
                                 )}
                             </div>
@@ -1036,15 +1147,15 @@ export default function StudentEditPage() {
                                         <div className="flex flex-col text-[11px] space-y-0.5">
                                             <span className="text-indigo-600 dark:text-indigo-400 font-bold text-sm mb-1">{sibling.name}</span>
                                             <div className="flex gap-1">
-                                                <span className="font-bold text-gray-900 dark:text-gray-100">Admission No:</span>
+                                                <span className="font-bold text-gray-900 dark:text-gray-100">{t("admission_no")}:</span>
                                                 <span className="text-gray-600 dark:text-gray-400 font-semibold">{sibling.admission_no}</span>
                                             </div>
                                             <div className="flex gap-1">
-                                                <span className="font-bold text-gray-900 dark:text-gray-100">Class:</span>
+                                                <span className="font-bold text-gray-900 dark:text-gray-100">{t("class")}:</span>
                                                 <span className="text-gray-600 dark:text-gray-400 font-semibold">{sibling.class_name}</span>
                                             </div>
                                             <div className="flex gap-1">
-                                                <span className="font-bold text-gray-900 dark:text-gray-100">Section:</span>
+                                                <span className="font-bold text-gray-900 dark:text-gray-100">{t("section")}:</span>
                                                 <span className="text-gray-600 dark:text-gray-400 font-semibold">{sibling.section_name}</span>
                                             </div>
                                         </div>
@@ -1063,7 +1174,7 @@ export default function StudentEditPage() {
                                     className="h-[106px] w-[300px] border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl text-indigo-600 dark:text-indigo-400 font-bold text-xs flex flex-col items-center justify-center gap-2 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 hover:border-indigo-400 transition-all group cursor-pointer"
                                 >
                                     <Plus className="h-6 w-6 transition-transform group-hover:scale-110" /> 
-                                    <span className="uppercase tracking-wider">Add Sibling</span>
+                                    <span className="uppercase tracking-wider">{t("add_sibling")}</span>
                                 </button>
                             </div>
                         </div>
@@ -1072,7 +1183,7 @@ export default function StudentEditPage() {
                 </SectionCard>
 
                 {/* Fees Details Card */}
-                <SectionCard title="Fees Details" icon={Wallet}>
+                <SectionCard title={t("fees_details")} icon={Wallet}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredFeeGroups.map((group) => (
                             <label key={group.id} className="flex flex-col border border-gray-200 dark:border-gray-700 p-4 rounded-xl cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-gray-800/60 transition-colors group/fee shadow-2xs">
@@ -1103,14 +1214,14 @@ export default function StudentEditPage() {
                         ))}
                         {filteredFeeGroups.length === 0 && (
                             <div className="col-span-full py-6 text-center text-gray-500 text-xs font-medium">
-                                No fee groups available.
+                                {t("no_fee_groups_available") || "No fee groups available."}
                             </div>
                         )}
                     </div>
                 </SectionCard>
 
                 {/* Fees Discount Details Card */}
-                <SectionCard title="Fees Discount Details" icon={Percent}>
+                <SectionCard title={t("fees_discount_details")} icon={Percent}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {feeDiscounts.map((discount) => (
                             <label key={discount.id} className="flex flex-col border border-gray-200 dark:border-gray-700 p-4 rounded-xl cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-gray-800/60 transition-colors group/discount shadow-2xs">
@@ -1139,37 +1250,37 @@ export default function StudentEditPage() {
                                                 {discount.type === 'percentage' ? `${discount.percentage}%` : `${symbol}${discount.amount}`}
                                             </span>
                                         </div>
-                                        {discount.code && <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Code: {discount.code}</span>}
+                                        {discount.code && <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t("code")}: {discount.code}</span>}
                                     </div>
                                 </div>
                             </label>
                         ))}
                         {feeDiscounts.length === 0 && (
                             <div className="col-span-full py-6 text-center text-gray-500 text-xs font-medium">
-                                No fee discounts available.
+                                {t("no_fee_discounts_available") || "No fee discounts available."}
                             </div>
                         )}
                     </div>
                 </SectionCard>
 
                 {/* Parent Guardian Detail Card */}
-                <SectionCard title="Parent Guardian Detail" icon={Users}>
+                <SectionCard title={t("parent_guardian_detail")} icon={Users}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <InputField label="Father Name" value={formData.father_name} onChange={(val) => handleChange("father_name", val)} />
-                        <InputField label="Father Phone" value={formData.father_phone} onChange={(val) => handleChange("father_phone", val)} />
-                        <InputField label="Father Occupation" value={formData.father_occupation} onChange={(val) => handleChange("father_occupation", val)} />
+                        <InputField label={t("father_name")} value={formData.father_name} onChange={(val) => handleChange("father_name", val)} />
+                        <InputField label={t("father_phone")} value={formData.father_phone} onChange={(val) => handleChange("father_phone", val)} />
+                        <InputField label={t("father_occupation")} value={formData.father_occupation} onChange={(val) => handleChange("father_occupation", val)} />
                         <FileUploadField
-                            label="Father Photo (100px X 100px)"
+                            label={t("father_photo_100px_x_100px") || "Father Photo (100px X 100px)"}
                             value={formData.father_photo}
                             onChange={(file) => handleChange("father_photo", file)}
                             existingPreview={fatherPhotoPreview}
                         />
 
-                        <InputField label="Mother Name" value={formData.mother_name} onChange={(val) => handleChange("mother_name", val)} />
-                        <InputField label="Mother Phone" value={formData.mother_phone} onChange={(val) => handleChange("mother_phone", val)} />
-                        <InputField label="Mother Occupation" value={formData.mother_occupation} onChange={(val) => handleChange("mother_occupation", val)} />
+                        <InputField label={t("mother_name")} value={formData.mother_name} onChange={(val) => handleChange("mother_name", val)} />
+                        <InputField label={t("mother_phone")} value={formData.mother_phone} onChange={(val) => handleChange("mother_phone", val)} />
+                        <InputField label={t("mother_occupation")} value={formData.mother_occupation} onChange={(val) => handleChange("mother_occupation", val)} />
                         <FileUploadField
-                            label="Mother Photo (100px X 100px)"
+                            label={t("mother_photo_100px_x_100px") || "Mother Photo (100px X 100px)"}
                             value={formData.mother_photo}
                             onChange={(file) => handleChange("mother_photo", file)}
                             existingPreview={motherPhotoPreview}
@@ -1177,7 +1288,7 @@ export default function StudentEditPage() {
 
                         <div className="lg:col-span-4 py-2">
                             <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-3">
-                                If Guardian Is <span className="text-destructive">*</span>
+                                {t("if_guardian_is")} <span className="text-destructive">*</span>
                             </label>
                             <div className="flex gap-6">
                                 {["Father", "Mother", "Other"].map((role) => (
@@ -1193,39 +1304,39 @@ export default function StudentEditPage() {
                                             <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
                                             <div className="absolute h-2.5 w-2.5 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                         </div>
-                                        <span className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{role}</span>
+                                        <span className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{t(role.toLowerCase())}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
-                        <InputField label="Guardian Name" required value={formData.guardian_name} onChange={(val) => handleChange("guardian_name", val)} />
+                        <InputField label={t("guardian_name")} required value={formData.guardian_name} onChange={(val) => handleChange("guardian_name", val)} />
                         {formData.guardian_type === "Other" && (
-                            <InputField label="Guardian Relation" required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
+                            <InputField label={t("guardian_relation")} required value={formData.guardian_relation} onChange={(val) => handleChange("guardian_relation", val)} />
                         )}
-                        <InputField label="Guardian Email" value={formData.guardian_email} onChange={(val) => handleChange("guardian_email", val)} />
+                        <InputField label={t("guardian_email")} value={formData.guardian_email} onChange={(val) => handleChange("guardian_email", val)} />
                         <div className="relative">
-                            <InputField label="Parent Username" value={formData.parent_username || ""} onChange={(val) => handleChange("parent_username", val)} readOnly={parentAutoUsernameEnabled} helperText={parentAutoUsernameEnabled ? "Auto-generated" : ""} />
+                            <InputField label={t("parent_username")} value={formData.parent_username || ""} onChange={(val) => handleChange("parent_username", val)} readOnly={parentAutoUsernameEnabled} helperText={parentAutoUsernameEnabled ? t("auto_generated") : ""} />
                             <button
                                 type="button"
                                 onClick={fetchParentUsername}
                                 disabled={generatingParentUsername}
                                 className="absolute right-1 top-6 h-6 w-6 flex items-center justify-center rounded hover:bg-indigo-50 text-indigo-500 transition-colors"
-                                title="Generate parent username"
+                                title={t("generate_parent_username")}
                             >
                                 <RefreshCw className={`h-3.5 w-3.5 ${generatingParentUsername ? 'animate-spin' : ''}`} />
                             </button>
                         </div>
 
-                        <InputField label="Guardian Phone" required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
-                        <InputField label="Guardian Occupation" value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
+                        <InputField label={t("guardian_phone")} required value={formData.guardian_phone} onChange={(val) => handleChange("guardian_phone", val)} />
+                        <InputField label={t("guardian_occupation")} value={formData.guardian_occupation} onChange={(val) => handleChange("guardian_occupation", val)} />
                         <FileUploadField
-                            label="Guardian Photo (100px X 100px)"
+                            label={t("guardian_photo_100px_x_100px") || "Guardian Photo (100px X 100px)"}
                             value={formData.guardian_photo}
                             onChange={(file) => handleChange("guardian_photo", file)}
                             existingPreview={guardianPhotoPreview}
                         />
-                        <TextAreaField label="Guardian Address" rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
+                        <TextAreaField label={t("guardian_address")} rows={2} value={formData.guardian_address} onChange={(val) => handleChange("guardian_address", val)} />
                     </div>
                     <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
                         <button 
@@ -1233,7 +1344,7 @@ export default function StudentEditPage() {
                             onClick={() => setShowMoreDetails(!showMoreDetails)}
                             className="w-full flex items-center justify-between text-gray-700 dark:text-gray-300 hover:text-indigo-600 transition-colors py-2 px-1 cursor-pointer"
                         >
-                            <span className="font-bold text-xs uppercase tracking-wider">{showMoreDetails ? "Hide More Details" : "Add More Details"}</span>
+                            <span className="font-bold text-xs uppercase tracking-wider">{showMoreDetails ? t("hide_more_details") : t("add_more_details")}</span>
                             <Plus className={cn("h-5 w-5 bg-gray-100 dark:bg-gray-800 rounded-full p-1 transition-transform", showMoreDetails && "rotate-45")} />
                         </button>
                     </div>
@@ -1241,16 +1352,16 @@ export default function StudentEditPage() {
                     {showMoreDetails && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6 pt-6 border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-4 duration-300">
                             <div className="lg:col-span-4 mb-2">
-                                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">Others Information</h3>
+                                <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider">{t("others_information")}</h3>
                             </div>
                             
-                            <InputField label="Bank Account Number" value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
-                            <InputField label="Bank Name" value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
-                            <InputField label="IFSC Code" value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
+                            <InputField label={t("bank_account_number")} value={formData.bank_account_no} onChange={(val) => handleChange("bank_account_no", val)} />
+                            <InputField label={t("bank_name")} value={formData.bank_name} onChange={(val) => handleChange("bank_name", val)} />
+                            <InputField label={t("ifsc_code")} value={formData.ifsc_code} onChange={(val) => handleChange("ifsc_code", val)} />
                             
                             <div className="py-2">
                                 <label className="text-[11.5px] font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider block mb-3">
-                                    RTE
+                                    {t("rte")}
                                 </label>
                                 <div className="flex gap-6">
                                     {["Yes", "No"].map((opt) => (
@@ -1266,7 +1377,7 @@ export default function StudentEditPage() {
                                                 <div className="h-5 w-5 rounded-full border-2 border-gray-300 dark:border-gray-600 peer-checked:border-indigo-600 transition-all"></div>
                                                 <div className="absolute h-2.5 w-2.5 rounded-full bg-indigo-600 scale-0 peer-checked:scale-100 transition-all"></div>
                                             </div>
-                                            <span className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{opt}</span>
+                                            <span className="text-xs font-bold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 transition-colors">{t(opt.toLowerCase())}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -1277,32 +1388,32 @@ export default function StudentEditPage() {
                 </SectionCard>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                    <SectionCard title="Transport Details" icon={MapPin}>
+                    <SectionCard title={t("transport_details")} icon={MapPin}>
                         <div className="grid grid-cols-1 gap-6">
                             <SelectField
-                                label="Route List"
+                                label={t("route_list")}
                                 options={transportRoutes.map(r => ({ label: r.title || r.name, value: r.id.toString() }))}
                                 value={formData.transport_route_id || ""}
                                 onChange={(val) => handleChange("transport_route_id", val)}
                             />
                             <SelectField
-                                label="Pickup Point"
+                                label={t("pickup_point")}
                                 options={pickupPoints.map(p => ({ label: p.point_name || p.name, value: p.id.toString() }))}
                                 value={formData.transport_pickup_point_id || ""}
                                 onChange={(val) => handleChange("transport_pickup_point_id", val)}
                             />
                         </div>
                     </SectionCard>
-                    <SectionCard title="Hostel Details" icon={House}>
+                    <SectionCard title={t("hostel_details")} icon={House}>
                         <div className="grid grid-cols-1 gap-6">
                             <SelectField
-                                label="Hostel"
+                                label={t("hostel")}
                                 options={hostels.map(h => ({ label: h.hostel_name || h.name, value: h.id.toString() }))}
                                 value={formData.hostel_id || ""}
                                 onChange={(val) => handleChange("hostel_id", val)}
                             />
                             <SelectField
-                                label="Room No."
+                                label={t("room_no")}
                                 options={rooms.map(r => ({ label: r.room_number || r.room_no || r.name, value: r.id.toString() }))}
                                 value={formData.room_id || ""}
                                 onChange={(val) => handleChange("room_id", val)}
@@ -1313,7 +1424,7 @@ export default function StudentEditPage() {
 
                 <div className="flex justify-end gap-4 pt-6">
                     <Link href="/dashboard/student-information/student-details">
-                        <Button variant="outline" type="button" className="h-11 px-8 rounded-full font-bold text-xs uppercase tracking-wider border-gray-200 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 cursor-pointer shadow-xs">Cancel</Button>
+                        <Button variant="outline" type="button" className="h-11 px-8 rounded-full font-bold text-xs uppercase tracking-wider border-gray-200 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 cursor-pointer shadow-xs">{t("cancel")}</Button>
                     </Link>
                     <Button
                         type="submit"
@@ -1321,7 +1432,7 @@ export default function StudentEditPage() {
                         disabled={loading}
                     >
                         {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                        Update Student
+                        {t("update_student")}
                     </Button>
                 </div>
             </form>
@@ -1329,11 +1440,11 @@ export default function StudentEditPage() {
             <Dialog open={showSiblingModal} onOpenChange={setShowSiblingModal}>
                 <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden border border-gray-200/80 dark:border-gray-800 shadow-2xl rounded-3xl bg-white dark:bg-gray-900">
                     <DialogHeader className="px-6 py-5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850 border-b border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between space-y-0">
-                        <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">Add Sibling</DialogTitle>
+                        <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">{t("add_sibling")}</DialogTitle>
                     </DialogHeader>
                     <div className="p-6 md:p-8 space-y-6">
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">Class</label>
+                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">{t("class")}</label>
                             <SelectField
                                 label=""
                                 value={siblingClassId}
@@ -1345,7 +1456,7 @@ export default function StudentEditPage() {
                             />
                         </div>
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">Section</label>
+                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">{t("section")}</label>
                             <SelectField
                                 label=""
                                 value={siblingSectionId}
@@ -1357,7 +1468,7 @@ export default function StudentEditPage() {
                             />
                         </div>
                         <div className="grid grid-cols-[100px_1fr] items-center gap-4">
-                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">Student</label>
+                            <label className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider text-right">{t("student")}</label>
                             <SelectField
                                 label=""
                                 value={siblingStudentId}
@@ -1376,7 +1487,7 @@ export default function StudentEditPage() {
                             className="btn-gradient text-white px-7 h-10 rounded-full font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md hover:shadow-lg cursor-pointer"
                         >
                             {loadingSiblings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
-                            Add
+                            {t("add")}
                         </Button>
                     </div>
                 </DialogContent>
@@ -1443,7 +1554,8 @@ function InputField({ label, required, type = "text", value = "", onChange, plac
     );
 }
 
-function SelectField({ label, required, options, value, onChange }: { label: string, required?: boolean, options: { label: string, value: string }[] | string[], value: string, onChange: (val: string) => void }) {
+function SelectField({ label, required, disabled, options, value, onChange }: { label: string, required?: boolean, disabled?: boolean, options: { label: string, value: string }[] | string[], value: string, onChange: (val: string) => void }) {
+    const { t } = useTranslation();
     return (
         <div className="space-y-1.5 group">
             {label && (
@@ -1456,9 +1568,10 @@ function SelectField({ label, required, options, value, onChange }: { label: str
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     required={required}
-                    className="flex h-11 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 px-4 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:border-indigo-600 transition-all appearance-none cursor-pointer"
+                    disabled={disabled}
+                    className="flex h-11 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40 px-4 py-2 text-xs font-semibold text-gray-900 dark:text-gray-100 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:border-indigo-600 transition-all appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                    <option value="">Select</option>
+                    <option value="">{t("select")}</option>
                     {options.map(opt => {
                         const label = typeof opt === "string" ? opt : opt.label;
                         const value = typeof opt === "string" ? opt : opt.value;
@@ -1491,6 +1604,7 @@ function TextAreaField({ label, required, value = "", onChange, rows = 3 }: { la
 }
 
 function FileUploadField({ label, required, value, onChange, existingPreview }: { label: string, required?: boolean, value: any, onChange: (val: File | null) => void, existingPreview?: string | null }) {
+    const { t } = useTranslation();
     const [localPreview, setLocalPreview] = useState<string | null>(null);
     const [imgError, setImgError] = useState<boolean>(false);
 
@@ -1531,20 +1645,20 @@ function FileUploadField({ label, required, value, onChange, existingPreview }: 
                             />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-semibold gap-1 z-10 pointer-events-none">
                                 <Upload className="h-4 w-4" />
-                                <span>Change</span>
+                                <span>{t("change")}</span>
                             </div>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center p-2 text-center text-gray-500 group-hover:text-indigo-600 transition-colors">
                             <Upload className="h-6 w-6 mb-1 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-                            <span className="text-[10px] font-bold uppercase leading-tight">Upload</span>
+                            <span className="text-[10px] font-bold uppercase leading-tight">{t("upload")}</span>
                             <span className="text-[8px] opacity-70">100x100</span>
                         </div>
                     )}
                 </div>
                 <div className="flex flex-col justify-center">
                     <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                        {value instanceof File ? value.name : (showPreview ? "Photo attached" : "No photo chosen")}
+                        {value instanceof File ? value.name : (showPreview ? t("photo_attached") : t("no_file_chosen"))}
                     </span>
                     <span className="text-[10px] text-gray-500 font-medium">PNG, JPG or WEBP (Max 2MB)</span>
                 </div>

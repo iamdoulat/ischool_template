@@ -28,7 +28,8 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useImageUrl } from "@/lib/image-url";
 import { useSettings } from "@/components/providers/settings-provider";
-import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
+import { cn, toLocaleNumber } from "@/lib/utils";
 
 interface Contact {
     id: number;
@@ -88,6 +89,7 @@ export function InternalChatDialog({
     initialContact,
     currentUser
 }: InternalChatDialogProps) {
+    const { t, language } = useTranslation();
     const { toast } = useToast();
     const getImageUrl = useImageUrl();
     const { settings } = useSettings();
@@ -483,7 +485,7 @@ export function InternalChatDialog({
                                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-indigo-600 text-white flex items-center justify-center shadow-sm">
                                     <MessageSquare className="h-4 w-4" />
                                 </div>
-                                <span className="text-xs font-bold text-foreground">Internal Chat</span>
+                                <span className="text-xs font-bold text-foreground">{t("internal_chat") || "Internal Chat"}</span>
                             </div>
 
                             {/* Presence Menu */}
@@ -493,9 +495,9 @@ export function InternalChatDialog({
                                     onChange={(e) => handleUpdatePresence(e.target.value as any)}
                                     className="bg-background border border-muted/60 text-[11px] font-semibold rounded-full py-0.5 pl-2 pr-1 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary shadow-sm"
                                 >
-                                    <option value="online">🟢 Online</option>
-                                    <option value="offline">⚪ Offline</option>
-                                    <option value="invisible">👻 Invisible</option>
+                                    <option value="online">🟢 {t("online") || "Online"}</option>
+                                    <option value="offline">⚪ {t("offline") || "Offline"}</option>
+                                    <option value="invisible">👻 {t("invisible") || "Invisible"}</option>
                                 </select>
                             </div>
                         </div>
@@ -510,7 +512,7 @@ export function InternalChatDialog({
                                     activeTab === "chats" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-muted/40"
                                 )}
                             >
-                                Chats ({contacts.length})
+                                {t("chats") || "Chats"} ({toLocaleNumber(contacts.length, language?.short_code)})
                             </button>
                             <button
                                 type="button"
@@ -520,10 +522,10 @@ export function InternalChatDialog({
                                     activeTab === "requests" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-muted/40"
                                 )}
                             >
-                                Requests
+                                {t("requests") || "Requests"}
                                 {requests.length > 0 && (
                                     <span className="ml-1 bg-rose-500 text-white text-[9px] px-1.5 py-0.2 rounded-full font-black">
-                                        {requests.length}
+                                        {toLocaleNumber(requests.length, language?.short_code)}
                                     </span>
                                 )}
                             </button>
@@ -534,7 +536,7 @@ export function InternalChatDialog({
                                     "py-1.5 px-3 text-xs font-bold rounded-lg transition-all text-center flex items-center gap-1",
                                     activeTab === "add" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:bg-muted/40"
                                 )}
-                                title="Add Contact"
+                                title={t("add_contact") || "Add Contact"}
                             >
                                 <UserPlus className="h-3.5 w-3.5" />
                             </button>
@@ -546,7 +548,7 @@ export function InternalChatDialog({
                                 {loadingContacts ? (
                                     <div className="p-4 text-center text-xs text-muted-foreground">
                                         <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
-                                        Loading contacts...
+                                        {t("loading_contacts") || "Loading contacts..."}
                                     </div>
                                 ) : contacts.length > 0 ? (
                                     contacts.map((contact) => (
@@ -579,24 +581,24 @@ export function InternalChatDialog({
                                                         {contact.name}
                                                     </p>
                                                     <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full uppercase shrink-0">
-                                                        {contact.role}
+                                                        {t(contact.role.toLowerCase()) || contact.role}
                                                     </span>
                                                 </div>
                                                 <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                                                    {contact.has_attachment ? "📷 Attachment" : (contact.last_message || "No messages yet")}
+                                                    {contact.has_attachment ? `📷 ${t("attachment") || "Attachment"}` : (contact.last_message || t("no_messages_yet") || "No messages yet")}
                                                 </p>
                                             </div>
 
                                             {contact.unread_count ? contact.unread_count > 0 ? (
                                                 <span className="h-4.5 w-4.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shrink-0 animate-pulse">
-                                                    {contact.unread_count}
+                                                    {toLocaleNumber(contact.unread_count, language?.short_code)}
                                                 </span>
                                             ) : null : null}
                                         </div>
                                     ))
                                 ) : (
                                     <div className="p-6 text-center text-xs text-muted-foreground italic">
-                                        No chat contacts. Click &quot;+&quot; to send contact requests.
+                                        {t("no_chat_contacts_tip") || "No chat contacts. Click \"+\" to send contact requests."}
                                     </div>
                                 )}
                             </div>
@@ -624,24 +626,24 @@ export function InternalChatDialog({
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleRespondRequest(req.id, "accept")}
-                                                    className="flex-1 h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg gap-1"
+                                                    className="flex-1 h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg gap-1 cursor-pointer"
                                                 >
-                                                    <Check className="h-3 w-3" /> Accept
+                                                    <Check className="h-3 w-3" /> {t("accept") || "Accept"}
                                                 </Button>
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={() => handleRespondRequest(req.id, "reject")}
-                                                    className="flex-1 h-7 text-[11px] text-destructive hover:bg-destructive/10 rounded-lg gap-1"
+                                                    className="flex-1 h-7 text-[11px] text-destructive hover:bg-destructive/10 rounded-lg gap-1 cursor-pointer"
                                                 >
-                                                    <X className="h-3 w-3" /> Reject
+                                                    <X className="h-3 w-3" /> {t("reject") || "Reject"}
                                                 </Button>
                                             </div>
                                         </div>
                                     ))
                                 ) : (
                                     <div className="p-6 text-center text-xs text-muted-foreground italic">
-                                        No pending incoming requests.
+                                        {t("no_pending_requests") || "No pending incoming requests."}
                                     </div>
                                 )}
                             </div>
@@ -652,7 +654,7 @@ export function InternalChatDialog({
                             <div className="flex-1 flex flex-col p-2 space-y-2 overflow-hidden">
                                 <div className="relative">
                                     <Input
-                                        placeholder="Search staff, teacher, student..."
+                                        placeholder={t("search_staff_teacher_student") || "Search staff, teacher, student..."}
                                         value={searchQuery}
                                         onChange={(e) => handleSearchUsers(e.target.value)}
                                         className="pl-8 h-8 text-xs rounded-xl"
@@ -662,7 +664,7 @@ export function InternalChatDialog({
 
                                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2">
                                     {searchingUsers ? (
-                                        <div className="p-4 text-center text-xs text-muted-foreground">Searching...</div>
+                                        <div className="p-4 text-center text-xs text-muted-foreground">{t("searching") || "Searching..."}</div>
                                     ) : searchResults.length > 0 ? (
                                         searchResults.map((userItem) => (
                                             <div key={userItem.id} className="p-2 bg-card border border-muted/50 rounded-xl flex items-center justify-between gap-2">
@@ -675,33 +677,33 @@ export function InternalChatDialog({
                                                     </Avatar>
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-bold text-foreground truncate">{userItem.name}</p>
-                                                        <p className="text-[10px] text-muted-foreground uppercase">{userItem.role}</p>
+                                                        <p className="text-[10px] text-muted-foreground uppercase">{t(userItem.role?.toLowerCase() || "") || userItem.role}</p>
                                                     </div>
                                                 </div>
 
                                                 {userItem.connection_status === "accepted" ? (
                                                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                        <UserCheck className="h-3 w-3" /> Connected
+                                                        <UserCheck className="h-3 w-3" /> {t("connected") || "Connected"}
                                                     </span>
                                                 ) : userItem.connection_status === "pending_sent" ? (
                                                     <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                        <Clock className="h-3 w-3" /> Pending
+                                                        <Clock className="h-3 w-3" /> {t("pending") || "Pending"}
                                                     </span>
                                                 ) : (
                                                     <Button
                                                         size="sm"
                                                         onClick={() => handleSendContactRequest(userItem.id)}
-                                                        className="h-6 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white rounded-lg px-2 gap-1"
+                                                        className="h-6 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white rounded-lg px-2 gap-1 cursor-pointer"
                                                     >
-                                                        <UserPlus className="h-3 w-3" /> Add Request
+                                                        <UserPlus className="h-3 w-3" /> {t("add_request") || "Add Request"}
                                                     </Button>
                                                 )}
                                             </div>
                                         ))
                                     ) : searchQuery ? (
-                                        <div className="p-4 text-center text-xs text-muted-foreground italic">No users found.</div>
+                                        <div className="p-4 text-center text-xs text-muted-foreground italic">{t("no_users_found") || "No users found."}</div>
                                     ) : (
-                                        <div className="p-4 text-center text-xs text-muted-foreground italic">Type a name to search users.</div>
+                                        <div className="p-4 text-center text-xs text-muted-foreground italic">{t("search_by_name") || "Type a name to search users."}</div>
                                     )}
                                 </div>
                             </div>
@@ -730,7 +732,7 @@ export function InternalChatDialog({
                                         <h3 className="text-xs font-bold text-foreground leading-none truncate">{selectedContact.name}</h3>
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.2 rounded-full uppercase">
-                                                {selectedContact.role}
+                                                {t(selectedContact.role.toLowerCase()) || selectedContact.role}
                                             </span>
                                         </div>
                                     </div>
@@ -738,7 +740,7 @@ export function InternalChatDialog({
                             ) : (
                                 <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
                                     <Sparkles className="h-4 w-4 text-primary" />
-                                    Internal Chat Window
+                                    {t("internal_chat") || "Internal Chat Window"}
                                 </div>
                             )}
 
@@ -748,8 +750,8 @@ export function InternalChatDialog({
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setIsMinimized(true)}
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
-                                    title="Minimize"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
+                                    title={t("minimize") || "Minimize"}
                                 >
                                     <Minus className="h-3.5 w-3.5" />
                                 </Button>
@@ -757,8 +759,8 @@ export function InternalChatDialog({
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setIsMaximized(!isMaximized)}
-                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg hidden sm:inline-flex"
-                                    title={isMaximized ? "Restore Window" : "Maximize Window"}
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg hidden sm:inline-flex cursor-pointer"
+                                    title={isMaximized ? (t("restore_window") || "Restore Window") : (t("maximize_window") || "Maximize Window")}
                                 >
                                     {isMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                                 </Button>
@@ -766,8 +768,8 @@ export function InternalChatDialog({
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => onOpenChange(false)}
-                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                                    title="Close"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer"
+                                    title={t("close") || "Close"}
                                 >
                                     <X className="h-4 w-4" />
                                 </Button>
@@ -781,7 +783,7 @@ export function InternalChatDialog({
                                     {loadingMessages ? (
                                         <div className="p-6 text-center text-xs text-muted-foreground">
                                             <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-primary" />
-                                            Loading messages...
+                                            {t("loading_messages") || "Loading messages..."}
                                         </div>
                                     ) : (
                                         <>
@@ -792,9 +794,9 @@ export function InternalChatDialog({
                                                         <Clock className="h-5 w-5 animate-pulse" />
                                                     </div>
                                                     <div>
-                                                        <h4 className="text-xs font-bold text-amber-900">Friend Request Pending</h4>
+                                                        <h4 className="text-xs font-bold text-amber-900">{t("friend_request_pending") || "Friend Request Pending"}</h4>
                                                         <p className="text-[11px] text-amber-800/90 leading-relaxed mt-1">
-                                                            Waiting for <span className="font-semibold">{selectedContact.name}</span> to accept your request. Once accepted, live chatting will be enabled.
+                                                            {t("request_pending_description", { name: selectedContact.name }) || `Waiting for ${selectedContact.name} to accept your request. Once accepted, live chatting will be enabled.`}
                                                         </p>
                                                     </div>
                                                     <Button
@@ -803,7 +805,7 @@ export function InternalChatDialog({
                                                         onClick={() => handleSendContactRequest(selectedContact.id, true)}
                                                         className="h-7 text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-lg gap-1.5 shadow-2xs cursor-pointer"
                                                     >
-                                                        <UserPlus className="h-3.5 w-3.5" /> Resend Friend Request
+                                                        <UserPlus className="h-3.5 w-3.5" /> {t("resend_request") || "Resend Friend Request"}
                                                     </Button>
                                                 </div>
                                             )}
@@ -814,9 +816,9 @@ export function InternalChatDialog({
                                                         <UserPlus className="h-5 w-5" />
                                                     </div>
                                                     <div>
-                                                        <h4 className="text-xs font-bold text-indigo-900">Connect with {selectedContact.name}</h4>
+                                                        <h4 className="text-xs font-bold text-indigo-900">{t("connect_with_user", { name: selectedContact.name }) || `Connect with ${selectedContact.name}`}</h4>
                                                         <p className="text-[11px] text-indigo-800/90 leading-relaxed mt-1">
-                                                            Send a friend request to start communicating directly with {selectedContact.name}.
+                                                            {t("connect_with_description", { name: selectedContact.name }) || `Send a friend request to start communicating directly with ${selectedContact.name}.`}
                                                         </p>
                                                     </div>
                                                     <Button
@@ -825,7 +827,7 @@ export function InternalChatDialog({
                                                         onClick={() => handleSendContactRequest(selectedContact.id, true)}
                                                         className="h-7 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg gap-1.5 shadow-2xs cursor-pointer"
                                                     >
-                                                        <UserPlus className="h-3.5 w-3.5" /> Send Friend Request
+                                                        <UserPlus className="h-3.5 w-3.5" /> {t("send_friend_request") || "Send Friend Request"}
                                                     </Button>
                                                 </div>
                                             )}
@@ -869,7 +871,7 @@ export function InternalChatDialog({
                                                                                 )}
                                                                             >
                                                                                 <FileText className="h-4 w-4 shrink-0" />
-                                                                                <span className="truncate max-w-[130px]">{msg.attachment_name || "Attachment"}</span>
+                                                                                <span className="truncate max-w-[130px]">{msg.attachment_name || t("attachment") || "Attachment"}</span>
                                                                                 <Download className="h-3.5 w-3.5 ml-auto shrink-0" />
                                                                             </a>
                                                                         )}
@@ -885,7 +887,7 @@ export function InternalChatDialog({
                                             ) : (
                                                 contactConnectionStatus === "accepted" && (
                                                     <div className="py-12 text-center text-xs text-muted-foreground italic">
-                                                        No messages yet. Say hello!
+                                                        {t("no_messages_say_hello") || "No messages yet. Say hello!"}
                                                     </div>
                                                 )
                                             )}
@@ -905,9 +907,9 @@ export function InternalChatDialog({
                                                     <FileText className="h-4 w-4 text-primary" />
                                                 )}
                                                 <span className="font-semibold text-primary truncate">{selectedFile.name}</span>
-                                                <span className="text-[10px] text-muted-foreground">({(selectedFile.size / 1024).toFixed(0)} KB)</span>
+                                                <span className="text-[10px] text-muted-foreground">({toLocaleNumber((selectedFile.size / 1024).toFixed(0), language?.short_code)} KB)</span>
                                             </div>
-                                            <button type="button" onClick={() => { setSelectedFile(null); setFilePreviewUrl(null); }} className="text-muted-foreground hover:text-foreground">
+                                            <button type="button" onClick={() => { setSelectedFile(null); setFilePreviewUrl(null); }} className="text-muted-foreground hover:text-foreground cursor-pointer">
                                                 <X className="h-3.5 w-3.5" />
                                             </button>
                                         </div>
@@ -926,8 +928,8 @@ export function InternalChatDialog({
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="h-8 w-8 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0"
-                                            title="Attach image or file (Max 5 MB)"
+                                            className="h-8 w-8 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 shrink-0 cursor-pointer"
+                                            title={t("attach_file_hint") || "Attach image or file (Max 5 MB)"}
                                         >
                                             <Paperclip className="h-4 w-4" />
                                         </Button>
@@ -935,17 +937,17 @@ export function InternalChatDialog({
                                         <Input
                                             value={inputText}
                                             onChange={(e) => setInputText(e.target.value)}
-                                            placeholder="Type a message..."
+                                            placeholder={t("type_message_placeholder") || "Type a message..."}
                                             className="flex-1 h-8 text-xs rounded-xl"
                                         />
 
                                         <Button
                                             type="submit"
                                             disabled={sending || (!inputText.trim() && !selectedFile)}
-                                            className="h-8 px-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs gap-1.5 shrink-0"
+                                            className="h-8 px-3.5 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl text-xs gap-1.5 shrink-0 cursor-pointer"
                                         >
                                             {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                                            Send
+                                            {t("send") || "Send"}
                                         </Button>
                                     </div>
                                 </form>

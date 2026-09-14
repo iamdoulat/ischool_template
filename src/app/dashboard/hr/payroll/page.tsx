@@ -49,7 +49,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PrintHeader } from "@/components/layout/PrintHeader";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import * as XLSX from 'xlsx';
@@ -324,14 +324,69 @@ function Payslip({ row, month, year, school, t }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PayrollPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const { selectedCurrency } = useCurrency();
 
     // Criteria
     const [role, setRole] = useState("all");
+    const [roles, setRoles] = useState<Array<{ id?: string | number; name: string }>>([]);
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [year, setYear] = useState(new Date().getFullYear());
+
+    const getLocalizedRoleName = (roleName?: string) => {
+        if (!roleName) return "";
+        const key = roleName.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        if (trans && trans !== key) return trans;
+        const roleMapBn: Record<string, string> = {
+            super_admin: "সুপার অ্যাডমিন",
+            superadmin: "সুপার অ্যাডমিন",
+            admin: "অ্যাডমিন",
+            teacher: "শিক্ষক",
+            accountant: "হিসাবরক্ষক",
+            librarian: "গ্রন্থাগারিক",
+            receptionist: "রিসেপশনিস্ট",
+            driver: "ড্রাইভার",
+            staff: "স্টাফ",
+            branch_admin: "ব্রাঞ্চ অ্যাডমিন",
+            principal: "অধ্যক্ষ",
+            vice_principal: "উপাধ্যক্ষ",
+            headmaster: "প্রধান শিক্ষক",
+            head_master: "প্রধান শিক্ষক",
+            assistant_teacher: "সহকারী শিক্ষক",
+            security_guard: "নিরাপত্তা প্রহরী",
+            cleaner: "পরিচ্ছন্নতাকর্মী",
+            clerk: "অফিস সহকারী",
+            student: "শিক্ষার্থী",
+            parent: "অভিভাবক",
+        };
+        if (shortCode === "bn" && roleMapBn[key]) {
+            return roleMapBn[key];
+        }
+        return trans || roleName;
+    };
+
+    const getLocalizedMonthName = (mValue: number) => {
+        const monthBn: Record<number, string> = {
+            1: "জানুয়ারি",
+            2: "ফেব্রুয়ারি",
+            3: "মার্চ",
+            4: "এপ্রিল",
+            5: "মে",
+            6: "জুন",
+            7: "জুলাই",
+            8: "আগস্ট",
+            9: "সেপ্টেম্বর",
+            10: "অক্টোবর",
+            11: "নভেম্বর",
+            12: "ডিসেম্বর",
+        };
+        if (shortCode === "bn" && monthBn[mValue]) return monthBn[mValue];
+        const m = MONTHS.find(item => item.value === mValue);
+        return m ? t(m.label) : String(mValue);
+    };
 
     // Table
     const [keyword, setKeyword] = useState("");
@@ -374,7 +429,26 @@ export default function PayrollPage() {
     const [historyData, setHistoryData] = useState<HistoryData | null>(null);
     const [historyLoading, setHistoryLoading] = useState(false);
 
-    // ── Fetch school settings ──────────────────────────────────────────────────
+    // ── Fetch roles & school settings ──────────────────────────────────────────
+    useEffect(() => {
+        api.get("/hr/staff-roles")
+            .then(res => {
+                const list = res.data?.data || [];
+                if (list.length > 0) setRoles(list);
+            })
+            .catch(() => {
+                setRoles([
+                    { name: "Admin" },
+                    { name: "Teacher" },
+                    { name: "Accountant" },
+                    { name: "Receptionist" },
+                    { name: "Librarian" },
+                    { name: "Driver" },
+                    { name: "Staff" }
+                ]);
+            });
+    }, []);
+
     useEffect(() => {
         api.get("/system-setting/general-setting").then(res => {
             const d = res.data?.data ?? res.data ?? {};
@@ -678,20 +752,31 @@ export default function PayrollPage() {
     const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
 
     return (
-        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            {/* ── Page header ─────────────────────────────────────────────────── */}
-            <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                    <Banknote className="h-5 w-5" />
-                </span>
-                <h1 className="text-xl font-medium text-gray-800">{t("payroll")}</h1>
-            </div>
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* ── Page Header Card with Gradient Colors ──────────────────────── */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] overflow-hidden py-0 gap-0">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0 px-4 py-2.5 bg-transparent border-0">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Banknote className="h-4.5 w-4.5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-sm font-bold tracking-tight text-slate-800 leading-none">
+                                {t("payroll")}
+                            </CardTitle>
+                            <p className="text-[10.5px] text-gray-500 mt-0.5">
+                                {shortCode === "bn" ? "স্টাফদের বেতন, ভাতা এবং পে-রোল পরিচালনা করুন" : "Manage staff payroll, allowances, and salary disbursement"}
+                            </p>
+                        </div>
+                    </div>
+                </CardHeader>
+            </Card>
 
             {/* ── Select Criteria ─────────────────────────────────────────────── */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Filter className="h-5 w-5" />
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-4 w-4" />
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
@@ -703,17 +788,26 @@ export default function PayrollPage() {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{t("role")} <span className="text-red-500">*</span></Label>
                             <Select value={String(role)} onValueChange={setRole}>
-                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                    <SelectValue placeholder={t("all_roles")} />
+                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none cursor-pointer">
+                                    <SelectValue placeholder={t("all_roles")}>
+                                        {role === "all" ? t("all_roles") : getLocalizedRoleName(role)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-100">
-                                    <SelectItem value="all">{t("all_roles")}</SelectItem>
-                                    <SelectItem value="Admin">Admin</SelectItem>
-                                    <SelectItem value="Teacher">Teacher</SelectItem>
-                                    <SelectItem value="Accountant">Accountant</SelectItem>
-                                    <SelectItem value="Receptionist">Receptionist</SelectItem>
-                                    <SelectItem value="Librarian">Librarian</SelectItem>
-                                    <SelectItem value="Driver">Driver</SelectItem>
+                                    <SelectItem value="all" className="cursor-pointer">{t("all_roles")}</SelectItem>
+                                    {(roles.length > 0 ? roles : [
+                                        { name: "Admin" },
+                                        { name: "Teacher" },
+                                        { name: "Accountant" },
+                                        { name: "Receptionist" },
+                                        { name: "Librarian" },
+                                        { name: "Driver" },
+                                        { name: "Staff" }
+                                    ]).map((r, idx) => (
+                                        <SelectItem key={r.name || idx} value={r.name} className="cursor-pointer">
+                                            {getLocalizedRoleName(r.name)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -721,12 +815,14 @@ export default function PayrollPage() {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{t("month")} <span className="text-red-500">*</span></Label>
                             <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
-                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                    <SelectValue />
+                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none cursor-pointer">
+                                    <SelectValue placeholder={t("select_month")}>
+                                        {getLocalizedMonthName(month)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-100">
                                     {MONTHS.map(m => (
-                                        <SelectItem key={m.value} value={String(m.value)}>{t(m.label)}</SelectItem>
+                                        <SelectItem key={m.value} value={String(m.value)} className="cursor-pointer">{getLocalizedMonthName(m.value)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -735,12 +831,14 @@ export default function PayrollPage() {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{t("year")} <span className="text-red-500">*</span></Label>
                             <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
-                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                    <SelectValue />
+                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none cursor-pointer">
+                                    <SelectValue placeholder={t("select_year")}>
+                                        {toLocaleNumber(year, shortCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-100">
                                     {years.map(y => (
-                                        <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                                        <SelectItem key={y} value={String(y)} className="cursor-pointer">{toLocaleNumber(y, shortCode)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -823,29 +921,29 @@ export default function PayrollPage() {
                             </div>
                         </div>
 
-                        <div className="rounded border border-gray-50 overflow-hidden">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="hover:bg-transparent border-gray-100">
+                        <div className="rounded-lg border border-gray-200 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                            <Table className="min-w-[950px]">
+                                <TableHeader className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
+                                    <TableRow className="hover:bg-transparent border-b border-gray-200">
                                         {["staff_id", "name", "role", "department_name", "designation", "phone", "status", "action"].map(h => (
-                                            <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-600 py-3 ${h === "action" ? "text-right" : ""}`}>{t(h)}</TableHead>
+                                            <TableHead key={h} className={`text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap ${h === "action" ? "text-right" : ""}`}>{t(h)}</TableHead>
                                         ))}
                                     </TableRow>
                                 </TableHeader>
-                                <TableBody>
+                                <TableBody className="bg-white divide-y divide-gray-100">
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={8} />
                                     ) : rows.length === 0 ? (
                                         <TableRow><TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                     ) : rows.map(row => (
-                                        <TableRow key={row.id} className="border-b border-gray-50 hover:bg-gray-50/20 transition-colors text-[11px]">
-                                            <TableCell className="py-3 text-gray-500 font-mono">{row.staff_id}</TableCell>
-                                            <TableCell className="py-3 text-gray-800 font-medium">{row.name}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{row.role}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{row.department || "—"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{row.designation || "—"}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{row.phone || "—"}</TableCell>
-                                            <TableCell className="py-3">
+                                        <TableRow key={row.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
+                                            <TableCell className="py-3.5 px-4 text-gray-500 font-mono whitespace-nowrap">{toLocaleNumber(row.staff_id, shortCode)}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{row.name}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{getLocalizedRoleName(row.role)}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{row.department || "—"}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{row.designation || "—"}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{toLocaleNumber(row.phone, shortCode) || "—"}</TableCell>
+                                            <TableCell className="py-3.5 px-4 whitespace-nowrap">
                                                 {row.status ? (
                                                     <span className={cn(
                                                         "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm",
@@ -854,10 +952,10 @@ export default function PayrollPage() {
                                                         {t(row.status.toLowerCase())}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[10px] text-gray-300 italic">{t("not_generated")}</span>
+                                                    <span className="text-[10px] text-gray-400 italic">{t("not_generated")}</span>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="py-3 text-right">
+                                            <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <Button
                                                         size="icon"

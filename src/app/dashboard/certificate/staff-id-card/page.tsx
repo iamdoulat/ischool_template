@@ -57,7 +57,8 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/providers/language-provider";
+import { cn, toLocaleNumber, translateCertificateTemplateName } from "@/lib/utils";
 import {
     type IdCardTemplate,
     type PrebuiltIdCardPreset,
@@ -69,25 +70,25 @@ import {
 interface PaginationData { current_page: number; last_page: number; total: number; from: number; to: number; }
 
 const TOGGLE_FIELDS = [
-    { label: "Staff Name", key: "show_staff_name" },
-    { label: "Staff ID", key: "show_staff_id" },
-    { label: "Designation", key: "show_designation" },
-    { label: "Department", key: "show_department" },
-    { label: "Father Name", key: "show_father_name" },
-    { label: "Mother Name", key: "show_mother_name" },
-    { label: "Date Of Joining", key: "show_joining_date" },
-    { label: "Current Address", key: "show_address" },
-    { label: "Phone", key: "show_phone" },
-    { label: "Date Of Birth", key: "show_dob" },
-    { label: "Barcode / QR Code", key: "show_qr" },
+    { key: "show_staff_name" },
+    { key: "show_staff_id" },
+    { key: "show_designation" },
+    { key: "show_department" },
+    { key: "father_name", toggleKey: "show_father_name" },
+    { key: "mother_name", toggleKey: "show_mother_name" },
+    { key: "date_of_joining", toggleKey: "show_joining_date" },
+    { key: "current_address", toggleKey: "show_address" },
+    { key: "phone", toggleKey: "show_phone" },
+    { key: "date_of_birth", toggleKey: "show_dob" },
+    { key: "barcode_or_qrcode", toggleKey: "show_qr" },
 ] as const;
 
-type ToggleKey = (typeof TOGGLE_FIELDS)[number]["key"];
+type ToggleKey = "show_staff_name" | "show_staff_id" | "show_designation" | "show_department" | "show_father_name" | "show_mother_name" | "show_joining_date" | "show_address" | "show_phone" | "show_dob" | "show_qr";
 
 const ASSETS = [
-    { label: "Background Image", key: "background_image", title: "Background Image", hint: "Optional background pattern or image" },
-    { label: "School Logo", key: "logo", title: "School Logo", hint: "Upload school emblem or crest (PNG/JPEG)" },
-    { label: "Principal / Authorized Signature", key: "signature", title: "Principal / Authorized Signature", hint: "Upload Principal / Authorized signature image (PNG with transparent bg)" },
+    { labelKey: "background_image", key: "background_image", titleKey: "background_image", hintKey: "optional_background_hint" },
+    { labelKey: "school_logo", key: "logo", titleKey: "school_logo", hintKey: "upload_school_logo_hint" },
+    { labelKey: "principal_authorized_signature", key: "signature", titleKey: "principal_authorized_signature", hintKey: "upload_signature_hint" },
 ] as const;
 type AssetKey = (typeof ASSETS)[number]["key"];
 
@@ -125,8 +126,10 @@ function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: n
 
 export default function StaffIDCardPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
+    const langCode = language?.short_code || "en";
+
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<IdCardTemplate[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -139,24 +142,29 @@ export default function StaffIDCardPage() {
     const [uploadingKey, setUploadingKey] = useState<AssetKey | null>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    const fetchTemplates = async (page = 1) => {
-        setLoading(true);
-        try {
-            const res = await api.get(`/certificate/staff-id-cards`, { params: { page, search: searchTerm, per_page: limit } });
-            const d = res.data;
-            setTemplates(d.data ?? d ?? []);
-            setPagination({ current_page: d.current_page, last_page: d.last_page, total: d.total, from: d.from, to: d.to });
-        } catch {
-            tt.error("failed_to_fetch_staff_id_cards");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const fetchTemplates = useCallback(
+        async (page = 1) => {
+            setLoading(true);
+            try {
+                const res = await api.get(`/certificate/staff-id-cards`, {
+                    params: { page, search: searchTerm || undefined, per_page: limit },
+                });
+                const d = res.data;
+                setTemplates(d.data ?? d ?? []);
+                setPagination({ current_page: d.current_page, last_page: d.last_page, total: d.total, from: d.from, to: d.to });
+            } catch {
+                tt.error("failed_to_fetch_staff_id_cards");
+            } finally {
+                setLoading(false);
+            }
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [limit, searchTerm]
+    );
 
     useEffect(() => {
         fetchTemplates();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [limit]);
+    }, [fetchTemplates]);
 
     const resetForm = () => { setForm({ ...emptyForm }); setEditingId(null); };
 
@@ -277,18 +285,18 @@ export default function StaffIDCardPage() {
             show_qr: !!preset.show_qr,
         });
         toast({
-            title: t("template_loaded") || "Template Loaded",
-            description: `"${preset.title}" design loaded. You can customize fields and click Save.`,
+            title: t("template_loaded"),
+            description: `"${translateCertificateTemplateName(preset.title, langCode)}" ${t("template_applied_desc") || "design loaded. Customize fields and click Save."}`,
         });
         window.scrollTo({ top: 380, behavior: "smooth" });
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -302,13 +310,13 @@ export default function StaffIDCardPage() {
                         </span>
                         <div className="min-w-0">
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                <span>Pre-built Staff ID Card Design Templates</span>
+                                <span>{t("prebuilt_staff_id_card_templates")}</span>
                                 <Badge className="bg-gradient-to-r from-amber-500 to-indigo-600 text-white text-[10px] uppercase font-bold tracking-wider px-2">
-                                    {PREBUILT_STAFF_ID_CARDS.length} Pro Styles
+                                    {toLocaleNumber(PREBUILT_STAFF_ID_CARDS.length, langCode)} {t("pro_styles")}
                                 </Badge>
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                1-Click ready-to-use professional staff ID cards. Click &ldquo;Use Design&rdquo; to customize, redesign, and save into your reusable templates.
+                                {t("prebuilt_staff_id_cards_desc")}
                             </p>
                         </div>
                     </div>
@@ -321,7 +329,7 @@ export default function StaffIDCardPage() {
                             size="icon"
                             onClick={() => scrollGallery("left")}
                             className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
-                            title="Scroll left"
+                            title={t("scroll_left") || "Scroll left"}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
@@ -331,7 +339,7 @@ export default function StaffIDCardPage() {
                             size="icon"
                             onClick={() => scrollGallery("right")}
                             className="h-8 w-8 rounded-full border-gray-200 bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs"
-                            title="Scroll right"
+                            title={t("scroll_right") || "Scroll right"}
                         >
                             <ChevronRight className="h-4 w-4" />
                         </Button>
@@ -357,31 +365,33 @@ export default function StaffIDCardPage() {
                                         <div className="absolute inset-0 bg-black/10 backdrop-blur-[0.5px]" />
                                         <div className="relative z-10 space-y-1 mt-2">
                                             <span className="text-[10px] font-bold uppercase tracking-widest text-amber-200 block">
-                                                {preset.design_type} Style
+                                                {preset.design_type === "Vertical" ? t("vertical") : t("horizontal")}
                                             </span>
                                             <h4 className="font-extrabold text-sm tracking-tight text-white drop-shadow-sm leading-snug">
-                                                {preset.title.split("(")[0]}
+                                                {translateCertificateTemplateName(preset.title.split("(")[0].trim(), langCode)}
                                             </h4>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h4 className="font-bold text-xs text-gray-900 line-clamp-1">{preset.title}</h4>
+                                        <h4 className="font-bold text-xs text-gray-900 line-clamp-1">
+                                            {translateCertificateTemplateName(preset.title, langCode)}
+                                        </h4>
                                         <p className="text-[11px] text-gray-500 line-clamp-2 mt-1 leading-relaxed">
-                                            {preset.description}
+                                            {translateCertificateTemplateName(preset.description, langCode)}
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between pt-3 mt-2 border-t border-gray-100">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Actions</span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("actions") || "Actions"}</span>
                                     <div className="flex items-center gap-1.5">
                                         <Button
                                             type="button"
                                             size="icon"
                                             variant="outline"
                                             onClick={() => handlePreview({ ...preset, id: 0 })}
-                                            title={t("preview") || "Preview ID Card"}
+                                            title={t("preview")}
                                             className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600 shadow-xs active:scale-95 transition-all"
                                         >
                                             <Eye className="h-4 w-4" />
@@ -390,7 +400,7 @@ export default function StaffIDCardPage() {
                                             type="button"
                                             size="icon"
                                             onClick={() => applyPrebuilt(preset)}
-                                            title="Use Design / Apply Template"
+                                            title={t("use_design") || "Use Design"}
                                             className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm active:scale-95 transition-all"
                                         >
                                             <Check className="h-4 w-4" />
@@ -415,20 +425,20 @@ export default function StaffIDCardPage() {
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{editingId ? t("edit_staff_id_card") : t("add_staff_id_card")}</CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">{t("design_reusable_staff_id_card_template")}</p>
                             </div>
-                            {editingId && <Button variant="ghost" size="icon" onClick={resetForm} className="h-7 w-7 text-gray-500" title={t("cancel_edit")}><X className="h-4 w-4" /></Button>}
+                            {editingId && <Button variant="ghost" size="icon" onClick={resetForm} className="h-7 w-7 text-gray-500" title={t("cancel")}><X className="h-4 w-4" /></Button>}
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {ASSETS.map((asset) => (
                                 <div key={asset.key} className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{asset.title}</Label>
+                                        <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{t(asset.titleKey)}</Label>
                                         {form[asset.key] && (
                                             <button
                                                 type="button"
                                                 onClick={() => setForm((f) => ({ ...f, [asset.key]: "" }))}
                                                 className="text-[10px] text-red-500 hover:text-red-700 font-semibold flex items-center gap-0.5"
                                             >
-                                                <X className="h-3 w-3" /> Remove
+                                                <X className="h-3 w-3" /> {t("remove")}
                                             </button>
                                         )}
                                     </div>
@@ -436,20 +446,20 @@ export default function StaffIDCardPage() {
                                         <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleUpload(asset.key, e.target.files[0])} />
                                         {uploadingKey === asset.key ? (
                                             <div className="flex items-center gap-2 text-xs text-indigo-600 font-medium">
-                                                <Loader2 className="h-4 w-4 animate-spin" /> Uploading...
+                                                <Loader2 className="h-4 w-4 animate-spin" /> {t("uploading") || "Uploading..."}
                                             </div>
                                         ) : form[asset.key] ? (
                                             <div className="flex items-center gap-3 w-full justify-center">
-                                                <img src={form[asset.key]} alt={asset.label} className="h-10 max-w-[140px] object-contain rounded bg-white p-1 border border-gray-200 shadow-xs" />
-                                                <span className="text-[10px] text-indigo-600 font-semibold">Click to change</span>
+                                                <img src={form[asset.key]} alt={t(asset.labelKey)} className="h-10 max-w-[140px] object-contain rounded bg-white p-1 border border-gray-200 shadow-xs" />
+                                                <span className="text-[10px] text-indigo-600 font-semibold">{t("click_to_change")}</span>
                                             </div>
                                         ) : (
                                             <>
                                                 <div className="flex items-center gap-1.5 text-gray-600">
                                                     <Upload className="h-3.5 w-3.5 text-gray-400" />
-                                                    <span className="text-[11px] font-semibold">Upload {asset.label}</span>
+                                                    <span className="text-[11px] font-semibold">{t("upload_x", { name: t(asset.labelKey) })}</span>
                                                 </div>
-                                                <span className="text-[9.5px] text-gray-400">{asset.hint}</span>
+                                                <span className="text-[9.5px] text-gray-400">{t(asset.hintKey)}</span>
                                             </>
                                         )}
                                     </label>
@@ -458,15 +468,15 @@ export default function StaffIDCardPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("id_card_title")} <span className="text-red-500">*</span></Label>
-                                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" />
+                                <Input placeholder={t("enter_id_card_title")} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="h-9 text-xs" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("school_name")}</Label>
-                                <Input value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} className="h-9 text-xs" />
+                                <Input placeholder={t("enter_school_name")} value={form.school_name} onChange={(e) => setForm({ ...form, school_name: e.target.value })} className="h-9 text-xs" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("address_phone_email")}</Label>
-                                <Input value={form.school_address} onChange={(e) => setForm({ ...form, school_address: e.target.value })} className="h-9 text-xs" />
+                                <Input placeholder={t("enter_school_address")} value={form.school_address} onChange={(e) => setForm({ ...form, school_address: e.target.value })} className="h-9 text-xs" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
@@ -493,7 +503,7 @@ export default function StaffIDCardPage() {
                                 {TOGGLE_FIELDS.map((field) => (
                                     <div key={field.key} className="flex items-center justify-between py-0.5">
                                         <Label className="text-[11px] font-medium text-gray-600">{t(field.key)}</Label>
-                                        <Switch checked={form[field.key as ToggleKey]} onCheckedChange={(v) => setForm({ ...form, [field.key]: v })} className="data-[state=checked]:bg-indigo-500 scale-90" />
+                                        <Switch checked={form[("toggleKey" in field ? field.toggleKey : field.key) as ToggleKey]} onCheckedChange={(v) => setForm({ ...form, [("toggleKey" in field ? field.toggleKey : field.key)]: v })} className="data-[state=checked]:bg-indigo-500 scale-90" />
                                     </div>
                                 ))}
                             </div>
@@ -517,7 +527,7 @@ export default function StaffIDCardPage() {
                             </span>
                             <div className="min-w-0">
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("staff_id_card_list")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? templates.length} {t("templates")}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(pagination?.total ?? templates.length, langCode)} {t("templates")}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -530,8 +540,8 @@ export default function StaffIDCardPage() {
                                 </form>
                                 <div className="flex items-center gap-2">
                                     <Select value={limit} onValueChange={setLimit}>
-                                        <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue /></SelectTrigger>
-                                        <SelectContent>{["10", "25", "50", "100"].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
+                                        <SelectTrigger className="w-[70px] h-9 text-xs"><SelectValue placeholder={toLocaleNumber(limit, langCode)} /></SelectTrigger>
+                                        <SelectContent>{["10", "25", "50", "100"].map((n) => <SelectItem key={n} value={n}>{toLocaleNumber(n, langCode)}</SelectItem>)}</SelectContent>
                                     </Select>
                                     <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
                                         {toolbarActions.map((a, i) => (
@@ -558,7 +568,7 @@ export default function StaffIDCardPage() {
                                             <TableRow><TableCell colSpan={TABLE_COLS} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_staff_id_cards_found")}</TableCell></TableRow>
                                         ) : templates.map((tp) => (
                                             <TableRow key={tp.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                                <TableCell className="py-3 text-[#6366f1] font-medium">{tp.title}</TableCell>
+                                                <TableCell className="py-3 text-[#6366f1] font-medium">{translateCertificateTemplateName(tp.title, langCode)}</TableCell>
                                                 <TableCell className="py-3">
                                                     {tp.background_image ? (
                                                         <img src={tp.background_image} alt="bg" className="h-10 w-14 object-cover rounded border border-gray-200" />
@@ -566,7 +576,7 @@ export default function StaffIDCardPage() {
                                                         <div className="h-10 w-14 bg-gray-100 rounded border border-gray-200 flex items-center justify-center"><ImageIcon className="h-5 w-5 text-gray-400" /></div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="py-3 text-gray-500 font-medium">{tp.design_type || "-"}</TableCell>
+                                                <TableCell className="py-3 text-gray-500 font-medium">{tp.design_type ? (tp.design_type === "Vertical" ? t("vertical") : t("horizontal")) : "-"}</TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Button size="icon" onClick={() => handlePreview(tp)} title={t("preview")} className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Eye className="h-3.5 w-3.5" /></Button>
@@ -581,11 +591,11 @@ export default function StaffIDCardPage() {
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                                <div>{t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}</div>
+                                <div>{t("showing_x_to_y_of_z", { from: toLocaleNumber(pagination?.from || 0, langCode), to: toLocaleNumber(pagination?.to || 0, langCode), total: toLocaleNumber(pagination?.total || 0, langCode) })}</div>
                                 <div className="flex gap-1 items-center">
                                     <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === 1} onClick={() => fetchTemplates(pagination!.current_page - 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
                                     {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                                        <Button key={i + 1} size="sm" onClick={() => fetchTemplates(i + 1)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", pagination?.current_page === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{i + 1}</Button>
+                                        <Button key={i + 1} size="sm" onClick={() => fetchTemplates(i + 1)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all", pagination?.current_page === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}>{toLocaleNumber(i + 1, langCode)}</Button>
                                     ))}
                                     <Button variant="outline" size="sm" disabled={!pagination || pagination.current_page === pagination.last_page} onClick={() => fetchTemplates(pagination!.current_page + 1)} className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
                                 </div>

@@ -37,10 +37,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
-const activeGradient = "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:from-[#FF9800] hover:to-[#6366F1]";
+const activeGradient = "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:from-[#f59e0b] hover:to-[#818cf8]";
 
 export default function SettingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState({ curriculum: false, aws: false, guest: false });
 
@@ -82,57 +83,80 @@ export default function SettingPage() {
     }, [fetchSettings]);
 
     const handleSave = async (section: 'curriculum' | 'aws' | 'guest') => {
-        setSaving({ ...saving, [section]: true });
+        setSaving(prev => ({ ...prev, [section]: true }));
         try {
             await api.post("/online-course/settings", settings);
             toast.success(t("settings_updated_successfully"));
         } catch {
             toast.error(t("failed_to_save_settings"));
         } finally {
-            setSaving({ ...saving, [section]: false });
+            setSaving(prev => ({ ...prev, [section]: false }));
             setConfirmSection(null);
         }
     };
 
+    const getSectionName = (section: 'curriculum' | 'aws' | 'guest' | null) => {
+        if (!section) return "";
+        if (shortCode === "bn") {
+            if (section === "curriculum") return "পাঠ্যক্রম";
+            if (section === "aws") return "AWS S3 ক্লাউড";
+            if (section === "guest") return "গেস্ট ব্যবহারকারী";
+        }
+        if (shortCode === "ar") {
+            if (section === "curriculum") return "المنهج الدراسي";
+            if (section === "aws") return "تخزين AWS S3";
+            if (section === "guest") return "المستخدم الضيف";
+        }
+        if (shortCode === "hi") {
+            if (section === "curriculum") return "पाठ्यक्रम";
+            if (section === "aws") return "AWS S3 क्लाउड";
+            if (section === "guest") return "अतिथि उपयोगकर्ता";
+        }
+        if (section === "curriculum") return "Curriculum";
+        if (section === "aws") return "AWS S3 Cloud";
+        if (section === "guest") return "Guest User";
+        return section;
+    };
+
     if (loading) {
         return (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-                <div className="h-16 w-16 rounded-xl bg-indigo-50 flex items-center justify-center">
-                    <Settings className="h-8 w-8 text-indigo-500" />
+            <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4 animate-in fade-in">
+                <div className="h-16 w-16 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center">
+                    <Settings className="h-8 w-8 text-indigo-500 animate-spin" />
                 </div>
-                <p className="text-sm font-semibold text-gray-500">{t("loading_settings")}</p>
+                <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">{t("loading_settings")}</p>
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-20 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border border-gray-100 dark:border-zinc-800 rounded-lg shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Settings className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("online_course_settings")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("configure_assessment_and_cloud_storage")}</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">{t("online_course_settings")}</h1>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{t("configure_assessment_and_cloud_storage")}</p>
                     </div>
                 </div>
             </div>
 
             {/* Curriculum Setting Section */}
-            <Card className="border-gray-100 shadow-sm overflow-hidden p-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+            <Card className="border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden p-0 gap-0 bg-white dark:bg-card/50">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Zap className="h-4 w-4" />
                         </span>
-                        <CardTitle className="text-sm font-bold text-gray-800 leading-none">{t("course_curriculum")}</CardTitle>
+                        <CardTitle className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-none">{t("course_curriculum")}</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5 space-y-6">
                     <div className="space-y-3">
-                        <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("assessment_modules")}</Label>
+                        <Label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight">{t("assessment_modules")}</Label>
                         <div className="flex flex-wrap gap-3">
                             <CheckboxItem
                                 id="quiz"
@@ -154,11 +178,11 @@ export default function SettingPage() {
                             />
                         </div>
                     </div>
-                    <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-zinc-800">
                         <Button
                             onClick={() => setConfirmSection("curriculum")}
                             disabled={saving.curriculum}
-                            className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md", activeGradient)}
+                            className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md cursor-pointer transition-all active:scale-95 border-0", activeGradient)}
                         >
                             {saving.curriculum ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             {t("sync_curriculum")}
@@ -168,13 +192,13 @@ export default function SettingPage() {
             </Card>
 
             {/* AWS S3 Bucket Setting Section */}
-            <Card className="border-gray-100 shadow-sm overflow-hidden p-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+            <Card className="border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden p-0 gap-0 bg-white dark:bg-card/50">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Cloud className="h-4 w-4" />
                         </span>
-                        <CardTitle className="text-sm font-bold text-gray-800 leading-none">{t("cloud_storage_infrastructure")}</CardTitle>
+                        <CardTitle className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-none">{t("cloud_storage_infrastructure")}</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5 space-y-6">
@@ -185,6 +209,7 @@ export default function SettingPage() {
                             icon={<Lock className="h-3.5 w-3.5" />}
                             value={settings.aws_access_key_id || ""}
                             onChange={(val) => setSettings({ ...settings, aws_access_key_id: val })}
+                            placeholder={t("enter_aws_access_key_id")}
                         />
                         <InputField
                             label={t("secret_access_key")}
@@ -193,6 +218,7 @@ export default function SettingPage() {
                             icon={<ShieldCheck className="h-3.5 w-3.5" />}
                             value={settings.aws_secret_access_key || ""}
                             onChange={(val) => setSettings({ ...settings, aws_secret_access_key: val })}
+                            placeholder={t("enter_secret_access_key")}
                         />
                         <InputField
                             label={t("institutional_bucket")}
@@ -200,6 +226,7 @@ export default function SettingPage() {
                             icon={<Cloud className="h-3.5 w-3.5" />}
                             value={settings.aws_bucket_name || ""}
                             onChange={(val) => setSettings({ ...settings, aws_bucket_name: val })}
+                            placeholder={t("enter_bucket_name")}
                         />
                         <InputField
                             label={t("target_region")}
@@ -207,13 +234,14 @@ export default function SettingPage() {
                             icon={<Info className="h-3.5 w-3.5" />}
                             value={settings.aws_region || ""}
                             onChange={(val) => setSettings({ ...settings, aws_region: val })}
+                            placeholder={t("enter_aws_region")}
                         />
                     </div>
-                    <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-zinc-800">
                         <Button
                             onClick={() => setConfirmSection("aws")}
                             disabled={saving.aws}
-                            className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md", activeGradient)}
+                            className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md cursor-pointer transition-all active:scale-95 border-0", activeGradient)}
                         >
                             {saving.aws ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             {t("commit_cloud_sync")}
@@ -223,28 +251,29 @@ export default function SettingPage() {
             </Card>
 
             {/* Guest User Section */}
-            <Card className="border-gray-100 shadow-sm overflow-hidden p-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+            <Card className="border-gray-100 dark:border-zinc-800 shadow-sm overflow-hidden p-0 gap-0 bg-white dark:bg-card/50">
+                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <UserCircle className="h-4 w-4" />
                         </span>
-                        <CardTitle className="text-sm font-bold text-gray-800 leading-none">{t("guest_node_configuration")}</CardTitle>
+                        <CardTitle className="text-sm font-bold text-gray-800 dark:text-gray-100 leading-none">{t("guest_node_configuration")}</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5 space-y-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-gray-50/50 rounded-lg border border-gray-100">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-gray-50/70 dark:bg-zinc-800/50 rounded-lg border border-gray-100 dark:border-zinc-800">
                         <div className="space-y-1">
-                            <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">
+                            <Label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-tight">
                                 {t("guest_access_protocol")} <span className="text-red-500">*</span>
                             </Label>
-                            <p className="text-xs text-gray-400">{t("allow_unauthenticated_nodes_preview")}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{t("allow_unauthenticated_nodes_preview")}</p>
                         </div>
                         <button
+                            type="button"
                             onClick={() => setSettings({ ...settings, guest_login: !settings.guest_login })}
                             className={cn(
                                 "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
-                                settings.guest_login ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1]" : "bg-gray-200"
+                                settings.guest_login ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1]" : "bg-gray-200 dark:bg-zinc-700"
                             )}
                         >
                             <span
@@ -263,6 +292,7 @@ export default function SettingPage() {
                             icon={<UserCircle className="h-3.5 w-3.5" />}
                             value={settings.guest_user_prefix || ""}
                             onChange={(val) => setSettings({ ...settings, guest_user_prefix: val })}
+                            placeholder={t("enter_guest_prefix")}
                         />
                         <InputField
                             label={t("id_start_range")}
@@ -271,13 +301,14 @@ export default function SettingPage() {
                             icon={<Zap className="h-3.5 w-3.5" />}
                             value={(settings.guest_user_id_start || 0).toString()}
                             onChange={(val) => setSettings({ ...settings, guest_user_id_start: parseInt(val) || 0 })}
+                            placeholder={t("enter_id_start_range")}
                         />
                     </div>
-                    <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-zinc-800">
                         <Button
                             onClick={() => setConfirmSection("guest")}
                             disabled={saving.guest}
-                            className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md", activeGradient)}
+                            className={cn("h-9 text-xs font-bold rounded-full px-6 shadow-md cursor-pointer transition-all active:scale-95 border-0", activeGradient)}
                         >
                             {saving.guest ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             {t("initialize_guest_protocol")}
@@ -288,18 +319,18 @@ export default function SettingPage() {
 
             {/* Commit Confirmation Dialog */}
             <AlertDialog open={confirmSection !== null} onOpenChange={(open) => !open && setConfirmSection(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800 rounded-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("confirm_parameter_sync")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t("parameter_sync_description", { section: confirmSection || "" })}
+                            {t("parameter_sync_description", { section: getSectionName(confirmSection) })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full px-6">{t("abort_sync")}</AlertDialogCancel>
+                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full px-6 border-gray-200 dark:border-zinc-700">{t("abort_sync")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={() => confirmSection && handleSave(confirmSection)}
-                            className={cn("h-9 text-xs font-bold rounded-full px-6", activeGradient)}
+                            className={cn("h-9 text-xs font-bold rounded-full px-6 border-0 text-white cursor-pointer", activeGradient)}
                         >
                             {t("confirm_commit")}
                         </AlertDialogAction>
@@ -315,10 +346,10 @@ function CheckboxItem({ id, label, checked, onChange }: { id: string; label: str
         <div
             onClick={() => onChange(!checked)}
             className={cn(
-                "flex items-center space-x-3 group cursor-pointer p-4 rounded-lg border transition-all duration-300 min-w-[160px]",
+                "flex items-center space-x-3 group cursor-pointer p-4 rounded-xl border transition-all duration-300 min-w-[160px]",
                 checked
-                    ? "border-indigo-200 bg-indigo-50/50"
-                    : "border-gray-100 bg-white hover:border-gray-200"
+                    ? "border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/40"
+                    : "border-gray-200/80 dark:border-zinc-800 bg-white dark:bg-card/50 hover:border-gray-300 dark:hover:border-zinc-700"
             )}
         >
             <Checkbox
@@ -327,14 +358,14 @@ function CheckboxItem({ id, label, checked, onChange }: { id: string; label: str
                 onCheckedChange={(val) => onChange(!!val)}
                 className={cn(
                     "h-4 w-4 rounded transition-all",
-                    checked ? "bg-indigo-500 border-indigo-500" : "border-gray-300"
+                    checked ? "bg-indigo-500 border-indigo-500 text-white" : "border-gray-300 dark:border-zinc-700"
                 )}
             />
             <label
                 htmlFor={id}
                 className={cn(
-                    "text-xs font-semibold cursor-pointer transition-colors",
-                    checked ? "text-indigo-700" : "text-gray-600 group-hover:text-indigo-600"
+                    "text-xs font-bold cursor-pointer transition-colors select-none",
+                    checked ? "text-indigo-700 dark:text-indigo-300" : "text-gray-600 dark:text-gray-300 group-hover:text-indigo-600"
                 )}
             >
                 {label}
@@ -343,10 +374,26 @@ function CheckboxItem({ id, label, checked, onChange }: { id: string; label: str
     );
 }
 
-function InputField({ label, required, value, onChange, type = "text", icon }: { label: string; required?: boolean; value: string; onChange: (val: string) => void; type?: string; icon?: React.ReactNode }) {
+function InputField({
+    label,
+    required,
+    value,
+    onChange,
+    type = "text",
+    icon,
+    placeholder,
+}: {
+    label: string;
+    required?: boolean;
+    value: string;
+    onChange: (val: string) => void;
+    type?: string;
+    icon?: React.ReactNode;
+    placeholder?: string;
+}) {
     return (
         <div className="space-y-1.5">
-            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight flex items-center gap-1.5">
+            <Label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tight flex items-center gap-1.5">
                 {icon}
                 {label} {required && <span className="text-red-500">*</span>}
             </Label>
@@ -354,8 +401,8 @@ function InputField({ label, required, value, onChange, type = "text", icon }: {
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                className="h-9 text-xs border-gray-200 rounded-lg focus-visible:ring-indigo-500"
-                placeholder={`Enter ${label.toLowerCase()}...`}
+                className="h-9 text-xs border-gray-200 dark:border-zinc-700 rounded-lg focus-visible:ring-indigo-500 bg-white dark:bg-card text-gray-800 dark:text-gray-200"
+                placeholder={placeholder || ""}
             />
         </div>
     );

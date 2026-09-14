@@ -39,8 +39,18 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
 
   const isUserPortal = portalType === "user" || pathname?.startsWith("/user");
 
+  const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : null;
+  const branchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
+  const branchPrefix = (branchSlug && branchSlug !== "main") ? `/br/${branchSlug}` : "";
+
+  const toBranchHref = (href?: string) => {
+    if (!href || href === "#" || href.startsWith("http")) return href || "#";
+    if (href.startsWith("/br/")) return href;
+    return branchPrefix ? `${branchPrefix}${href}` : href;
+  };
+
   // Portal-specific mobile bottom navigation items
-  const navItems: NavItemConfig[] = isUserPortal
+  const rawNavItems: NavItemConfig[] = isUserPortal
     ? [
         {
           id: "home",
@@ -96,17 +106,23 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
         },
       ];
 
+  const navItems = rawNavItems.map(item => ({
+    ...item,
+    href: toBranchHref(item.href)
+  }));
+
   // Determine active item based on current pathname
   const getIsActive = (item: NavItemConfig) => {
     if (!pathname) return false;
     if (item.id === "home") {
-      return pathname === "/dashboard" || pathname === "/user/dashboard" || pathname === "/user";
+      const homeTarget = toBranchHref(isUserPortal ? "/user/dashboard" : "/dashboard");
+      return pathname === homeTarget || pathname === "/dashboard" || pathname === "/user/dashboard";
     }
     return pathname.startsWith(item.href);
   };
 
   // Quick Action links for the center Grid Button popup
-  const quickActions = isUserPortal
+  const rawQuickActions = isUserPortal
     ? [
         { title: "My Profile", href: "/user/profile", icon: User, color: "bg-blue-500/10 text-blue-600" },
         { title: "Notice Board", href: "/user/notice-board", icon: Bell, color: "bg-amber-500/10 text-amber-600" },
@@ -119,6 +135,11 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
         { title: "Notice Board", href: "/dashboard/communicate/send-sms", icon: Bell, color: "bg-amber-500/10 text-amber-600" },
         { title: "System Settings", href: "/dashboard/system-setting/general-setting", icon: Settings, color: "bg-purple-500/10 text-purple-600" },
       ];
+
+  const quickActions = rawQuickActions.map(action => ({
+    ...action,
+    href: toBranchHref(action.href)
+  }));
 
   return (
     <>

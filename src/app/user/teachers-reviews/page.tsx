@@ -32,7 +32,14 @@ import {
     ChevronLeft, ChevronRight, Loader2, Search, GraduationCap,
     Mail, Phone, Clock, DoorOpen, BookOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateSubjectName,
+    translateClassScheduleTime,
+    translateRoomNumber,
+    translateTeacherStaffName,
+} from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -58,7 +65,7 @@ interface Teacher {
     schedule: ScheduleItem[];
 }
 
-function RatingStars({ rating, size = "sm" }: { rating: number | null; size?: "sm" | "md" }) {
+function RatingStars({ rating, size = "sm", langCode = "en" }: { rating: number | null; size?: "sm" | "md"; langCode?: string }) {
     const { t } = useTranslation();
     if (rating === null) {
         return <span className="text-[11px] text-gray-400 italic">{t("not_rated")}</span>;
@@ -72,14 +79,16 @@ function RatingStars({ rating, size = "sm" }: { rating: number | null; size?: "s
                     className={cn(dim, star <= rating ? "text-[#f39c12] fill-[#f39c12]" : "text-gray-200 fill-gray-200")}
                 />
             ))}
-            <span className="ml-1 font-bold text-gray-700 text-[12px]">{rating.toFixed(1)}</span>
+            <span className="ml-1 font-bold text-gray-700 text-[12px]">{toLocaleNumber(rating.toFixed(1), langCode)}</span>
         </div>
     );
 }
 
 function StatusBadge({ status }: { status: string | null }) {
+    const { t } = useTranslation();
     if (!status) return null;
     const isApproved = status.toLowerCase() === "approved";
+    const statusLabel = isApproved ? (t("approved") || "Approved") : (t("pending") || status);
     return (
         <span
             className={cn(
@@ -89,12 +98,12 @@ function StatusBadge({ status }: { status: string | null }) {
                     : "bg-amber-50 text-amber-700 border-amber-200"
             )}
         >
-            {status}
+            {statusLabel}
         </span>
     );
 }
 
-function SelectableStars({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function SelectableStars({ value, onChange, langCode = "en" }: { value: number; onChange: (v: number) => void; langCode?: string }) {
     const [hover, setHover] = useState(0);
     return (
         <div className="flex items-center gap-1.5">
@@ -115,13 +124,18 @@ function SelectableStars({ value, onChange }: { value: number; onChange: (v: num
                     />
                 </button>
             ))}
-            <span className="ml-2 text-sm font-bold text-gray-600">{value}/5</span>
+            <span className="ml-2 text-sm font-bold text-gray-600">
+                {toLocaleNumber(value, langCode)}/{toLocaleNumber(5, langCode)}
+            </span>
         </div>
     );
 }
 
+const PAGE_SIZES = [10, 25, 50, 100];
+
 export default function UserTeachersReviewsPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [teachers, setTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -140,8 +154,7 @@ export default function UserTeachersReviewsPage() {
         try {
             const response = await api.get("/user/teachers-reviews");
             setTeachers(response.data?.data || []);
-        } catch (error) {
-            console.error("Error fetching teachers reviews:", error);
+        } catch {
             toast.error(t("failed_to_load_teachers_reviews"));
         } finally {
             setLoading(false);
@@ -256,7 +269,7 @@ export default function UserTeachersReviewsPage() {
         <div className="p-3 sm:p-4 lg:p-6 space-y-4 bg-gray-50/40 min-h-screen font-sans">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden print:shadow-none print:border-0">
                 {/* Header */}
-                <div className="border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center gap-3 bg-gradient-to-r from-indigo-50/60 to-transparent">
+                <div className="border-b border-gray-100 px-4 sm:px-6 py-4 flex items-center gap-3 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm shrink-0">
                         <GraduationCap className="h-5 w-5" />
                     </div>
@@ -284,14 +297,17 @@ export default function UserTeachersReviewsPage() {
 
                         <div className="flex items-center justify-between md:justify-end gap-2">
                             <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-9 w-16 text-[12px] border-gray-200 shadow-none rounded-lg font-medium">
-                                    <SelectValue placeholder="50" />
+                                <SelectTrigger className="h-9 min-w-16 px-2 text-[12px] border-gray-200 shadow-none rounded-lg font-medium">
+                                    <SelectValue placeholder={toLocaleNumber(50, langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    {PAGE_SIZES.map((size) => (
+                                        <SelectItem key={size} value={String(size)}>
+                                            {toLocaleNumber(size, langCode)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
 
@@ -352,7 +368,7 @@ export default function UserTeachersReviewsPage() {
                                         <TableRow key={item.id} className="text-[13px] border-b border-gray-50 last:border-0 hover:bg-indigo-50/20 transition-colors whitespace-nowrap text-gray-600 align-top">
                                             <TableCell className="py-4 px-4 font-medium text-gray-800">
                                                 <div className="flex flex-col gap-1">
-                                                    <span>{item.teacherName}</span>
+                                                    <span>{translateTeacherStaffName(item.teacherName, langCode)}</span>
                                                     {item.isClassTeacher && (
                                                         <span className="w-fit px-1.5 py-0.5 bg-[#5cb85c]/10 text-[#3d8b3d] text-[10px] rounded font-bold border border-[#5cb85c]/20">
                                                             {t("class_teacher")}
@@ -365,7 +381,9 @@ export default function UserTeachersReviewsPage() {
                                                     <span className="text-gray-300">—</span>
                                                 ) : (
                                                     item.schedule.map((s, i) => (
-                                                        <div key={i} className="mb-1 last:mb-0 text-gray-600">{s.subject}</div>
+                                                        <div key={i} className="mb-1 last:mb-0 text-gray-600">
+                                                            {translateSubjectName(s.subject, langCode)}
+                                                        </div>
                                                     ))
                                                 )}
                                             </TableCell>
@@ -374,7 +392,9 @@ export default function UserTeachersReviewsPage() {
                                                     <span className="text-gray-300">—</span>
                                                 ) : (
                                                     item.schedule.map((s, i) => (
-                                                        <div key={i} className="mb-1 last:mb-0 text-gray-500">{s.time}</div>
+                                                        <div key={i} className="mb-1 last:mb-0 text-gray-500">
+                                                            {translateClassScheduleTime(s.time, langCode)}
+                                                        </div>
                                                     ))
                                                 )}
                                             </TableCell>
@@ -383,20 +403,22 @@ export default function UserTeachersReviewsPage() {
                                                     <span className="text-gray-300">—</span>
                                                 ) : (
                                                     item.schedule.map((s, i) => (
-                                                        <div key={i} className="mb-1 last:mb-0 text-gray-600">{s.room || "—"}</div>
+                                                        <div key={i} className="mb-1 last:mb-0 text-gray-600">
+                                                            {s.room ? translateRoomNumber(s.room, langCode) : "—"}
+                                                        </div>
                                                     ))
                                                 )}
                                             </TableCell>
                                             <TableCell className="py-4 px-4 text-[12px]">
                                                 <div className="flex flex-col gap-1">
                                                     {item.email && <span className="text-gray-600">{item.email}</span>}
-                                                    {item.phone && <span className="text-gray-400">{item.phone}</span>}
+                                                    {item.phone && <span className="text-gray-400 dir-ltr text-left rtl:text-right">{toLocaleNumber(item.phone, langCode)}</span>}
                                                     {!item.email && !item.phone && <span className="text-gray-300">—</span>}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="py-4 px-4">
                                                 <div className="flex flex-col gap-1.5">
-                                                    <RatingStars rating={item.rating} />
+                                                    <RatingStars rating={item.rating} langCode={langCode} />
                                                     <StatusBadge status={item.ratingStatus} />
                                                 </div>
                                             </TableCell>
@@ -438,7 +460,7 @@ export default function UserTeachersReviewsPage() {
                                 <div key={item.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <h3 className="font-semibold text-gray-800 text-sm truncate">{item.teacherName}</h3>
+                                            <h3 className="font-semibold text-gray-800 text-sm truncate">{translateTeacherStaffName(item.teacherName, langCode)}</h3>
                                             {item.isClassTeacher && (
                                                 <span className="mt-1 inline-block px-1.5 py-0.5 bg-[#5cb85c]/10 text-[#3d8b3d] text-[10px] rounded font-bold border border-[#5cb85c]/20">
                                                     {t("class_teacher")}
@@ -458,7 +480,7 @@ export default function UserTeachersReviewsPage() {
                                     </div>
 
                                     <div className="mt-3 flex items-center justify-between">
-                                        <RatingStars rating={item.rating} size="md" />
+                                        <RatingStars rating={item.rating} size="md" langCode={langCode} />
                                         <StatusBadge status={item.ratingStatus} />
                                     </div>
 
@@ -466,9 +488,19 @@ export default function UserTeachersReviewsPage() {
                                         <div className="mt-3 space-y-1.5 border-t border-gray-50 pt-3">
                                             {item.schedule.map((s, i) => (
                                                 <div key={i} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
-                                                    <span className="flex items-center gap-1 font-medium text-gray-700"><BookOpen className="h-3 w-3" />{s.subject}</span>
-                                                    {s.time && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{s.time}</span>}
-                                                    {s.room && <span className="flex items-center gap-1"><DoorOpen className="h-3 w-3" />{s.room}</span>}
+                                                    <span className="flex items-center gap-1 font-medium text-gray-700">
+                                                        <BookOpen className="h-3 w-3" />{translateSubjectName(s.subject, langCode)}
+                                                    </span>
+                                                    {s.time && (
+                                                        <span className="flex items-center gap-1">
+                                                            <Clock className="h-3 w-3" />{translateClassScheduleTime(s.time, langCode)}
+                                                        </span>
+                                                    )}
+                                                    {s.room && (
+                                                        <span className="flex items-center gap-1">
+                                                            <DoorOpen className="h-3 w-3" />{translateRoomNumber(s.room, langCode)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -477,7 +509,7 @@ export default function UserTeachersReviewsPage() {
                                     {(item.email || item.phone) && (
                                         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-gray-50 pt-3 text-[11px] text-gray-500">
                                             {item.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{item.email}</span>}
-                                            {item.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{item.phone}</span>}
+                                            {item.phone && <span className="flex items-center gap-1 dir-ltr"><Phone className="h-3 w-3" />{toLocaleNumber(item.phone, langCode)}</span>}
                                         </div>
                                     )}
 
@@ -492,8 +524,8 @@ export default function UserTeachersReviewsPage() {
                     {/* Footer Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-gray-500 pt-2">
                         <div>
-                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
+                            {t("showing")} {totalEntries > 0 ? toLocaleNumber(startIndex + 1, langCode) : toLocaleNumber(0, langCode)} {t("to")}{" "}
+                            {toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode)} {t("of")} {toLocaleNumber(totalEntries, langCode)} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -504,7 +536,7 @@ export default function UserTeachersReviewsPage() {
                                     disabled={safePage === 1}
                                     onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                                 </Button>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                                     <Button
@@ -513,7 +545,7 @@ export default function UserTeachersReviewsPage() {
                                         size="icon-sm"
                                         onClick={() => setCurrentPage(page)}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, langCode)}
                                     </Button>
                                 ))}
                                 <Button
@@ -522,7 +554,7 @@ export default function UserTeachersReviewsPage() {
                                     disabled={safePage === totalPages}
                                     onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                                 </Button>
                             </div>
                         )}
@@ -539,13 +571,13 @@ export default function UserTeachersReviewsPage() {
                             {t("rate_teacher")}
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 text-xs">
-                            {selectedTeacher?.teacherName}
+                            {translateTeacherStaffName(selectedTeacher?.teacherName, langCode)}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-5 py-2">
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-2">{t("rating")}</label>
-                            <SelectableStars value={ratingValue} onChange={setRatingValue} />
+                            <SelectableStars value={ratingValue} onChange={setRatingValue} langCode={langCode} />
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-600 mb-2">{t("comment_optional")}</label>

@@ -50,9 +50,11 @@ import api from "@/lib/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
 import { useTranslation } from "@/hooks/use-translation";
+import { toast } from "sonner";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 
 export default function UsersPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -92,6 +94,13 @@ export default function UsersPage() {
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
     const getImageUrl = useImageUrl();
     const activeGradient = "bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 border-0";
+    const translateRole = (role?: string) => {
+        if (!role) return "";
+        const key = role.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const trans = t(key);
+        if (trans && trans !== key) return trans;
+        return role;
+    };
 
     const fetchClasses = async () => {
         try {
@@ -197,11 +206,12 @@ export default function UsersPage() {
             await api.post("/system-setting/users", data, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
+            toast.success(t("parent_added_successfully"));
             setAddDialogOpen(false);
             resetParentForm();
             fetchUsers();
         } catch (error: any) {
-            alert(error.response?.data?.message || t("failed_to_create_parent_user"));
+            toast.error(error.response?.data?.message || t("failed_to_create_parent_user"));
         } finally {
             setSavingParent(false);
         }
@@ -374,11 +384,12 @@ export default function UsersPage() {
             await api.post(`/system-setting/users/${editingUserId}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
+            toast.success(t("parent_updated_successfully"));
             setEditDialogOpen(false);
             setEditingUserId(null);
             fetchUsers();
         } catch (error: any) {
-            alert(error.response?.data?.message || t("failed_to_update_parent"));
+            toast.error(error.response?.data?.message || t("failed_to_update_parent"));
         } finally {
             setSavingEdit(false);
         }
@@ -404,10 +415,11 @@ export default function UsersPage() {
             setTo(data.to || 0);
         } catch (error) {
             console.error("Failed to fetch users:", error);
+            toast.error(t("failed_to_fetch_users"));
         } finally {
             setLoading(false);
         }
-    }, [activeTab, searchTerm, limit]);
+    }, [activeTab, searchTerm, limit, t]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -419,34 +431,38 @@ export default function UsersPage() {
     const toggleStatus = async (id: number, currentStatus: boolean) => {
         try {
             await api.patch(`/system-setting/users/${id}`, { active: !currentStatus });
+            toast.success(t("user_status_updated_successfully"));
             fetchUsers();
         } catch (error) {
             console.error("Failed to update status:", error);
+            toast.error(t("failed_to_update_status"));
         }
     };
 
     const handleAdminResetPassword = async () => {
-        if (!newPassword || newPassword.length < 8) {
-            alert(t("password_must_be_at_least_8_characters"));
+        if (!selectedUser) return;
+        if (!newPassword || newPassword.length < 6) {
+            toast.error(t("password_must_be_at_least_6_characters") || "Password must be at least 6 characters");
             return;
         }
         if (newPassword !== confirmPassword) {
-            alert(t("passwords_do_not_match"));
+            toast.error(t("passwords_do_not_match") || "Passwords do not match");
             return;
         }
 
         setIsResetting(true);
         try {
-            await api.post(`/system-setting/users/${selectedUser.id}/reset-password`, {
+            const res = await api.post(`/system-setting/users/${selectedUser.id}/reset-password`, {
                 new_password: newPassword,
                 new_password_confirmation: confirmPassword
             });
-            alert(t("password_for") + " " + selectedUser.name + " " + t("reset_successfully"));
+            toast.success(res.data?.message || (t("password_for") + " " + selectedUser.name + " " + t("reset_successfully")));
             setResetDialogOpen(false);
             setNewPassword("");
             setConfirmPassword("");
         } catch (error: any) {
-            alert(error.response?.data?.message || t("failed_to_reset_password"));
+            const msg = error.response?.data?.message || (error.response?.data?.errors ? Object.values(error.response.data.errors).flat().join(" ") : null) || t("failed_to_reset_password");
+            toast.error(msg);
         } finally {
             setIsResetting(false);
         }
@@ -454,34 +470,35 @@ export default function UsersPage() {
 
     return (
         <div className="p-4 bg-gray-50/10 min-h-screen font-sans space-y-4">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden min-h-[600px] flex flex-col">
-                {/* Header with Tabs */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <Users className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("users")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("manage_system_users_and_access")}</p>
-                        </div>
+            {/* Top Header Banner */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Users className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("users")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("manage_system_users_and_access")}</p>
                     </div>
-
-                    <Tabs value={activeTab} className="w-full md:w-auto" onValueChange={setActiveTab}>
-                        <TabsList className="bg-transparent border-b-0 h-10 p-0 space-x-6">
-                            {['Student', 'Parent', 'Staff'].map((role) => (
-                                <TabsTrigger
-                                    key={role}
-                                    value={role}
-                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-2 pb-2 h-full shadow-none bg-transparent capitalize"
-                                >
-                                    {t(role.toLowerCase())}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
                 </div>
 
+                <Tabs value={activeTab} className="w-full md:w-auto" onValueChange={setActiveTab}>
+                    <TabsList className="bg-transparent border-b-0 h-10 p-0 space-x-6">
+                        {['Student', 'Parent', 'Staff'].map((role) => (
+                            <TabsTrigger
+                                key={role}
+                                value={role}
+                                className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-2 pb-2 h-full shadow-none bg-transparent capitalize"
+                            >
+                                {t(role.toLowerCase())}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
+            </div>
+
+            {/* Table Card */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden min-h-[600px] flex flex-col">
                 {/* Toolbar */}
                 <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50">
                     {activeTab === 'Parent' && (
@@ -515,20 +532,20 @@ export default function UsersPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Copy className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><FileText className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Printer className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"><Columns className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" title={t("copy")}><Copy className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" title={t("excel")}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" title={t("pdf")}><FileText className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" title={t("print")}><Printer className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50" title={t("columns")}><Columns className="h-3.5 w-3.5" /></Button>
                         </div>
                     </div>
                 </div>
@@ -607,12 +624,12 @@ export default function UsersPage() {
                                                         {user.full_name || `${user.name} ${user.last_name || ""}`.trim() || "N/A"}
                                                     </Link>
                                                 </TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.admission_no || user.admission_number || "N/A"}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.school_class?.name || user.class || "N/A"}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.section?.name || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{toLocaleNumber(user.admission_no || user.admission_number || "", language?.short_code) || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{translateClassName(user.school_class?.name || user.class, language?.short_code) || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{translateSectionName(user.section?.name, language?.short_code) || "N/A"}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.email || "N/A"}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.username || "N/A"}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.phone || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{toLocaleNumber(user.phone, language?.short_code) || "N/A"}</TableCell>
                                             </>
                                         ) : activeTab === 'Parent' ? (
                                             <>
@@ -626,7 +643,7 @@ export default function UsersPage() {
                                                 </TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] font-medium text-indigo-500 hover:underline cursor-pointer">{user.linked_student?.guardian_name || user.guardian_name || user.name}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.full_name || (user.linked_student?.name && user.linked_student?.last_name ? `${user.linked_student.name} ${user.linked_student.last_name}` : user.linked_student?.name) || user.full_name || user.name || "N/A"}</TableCell>
-                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.guardian_phone || user.guardian_phone || user.phone || "N/A"}</TableCell>
+                                                <TableCell className="py-2 px-4 text-[12px] text-gray-500">{toLocaleNumber(user.linked_student?.guardian_phone || user.guardian_phone || user.phone, language?.short_code) || "N/A"}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.guardian_email || user.guardian_email || user.email || "N/A"}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.linked_student?.parent_username || user.parent_username || user.username || "N/A"}</TableCell>
                                             </>
@@ -644,7 +661,7 @@ export default function UsersPage() {
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">{user.username || user.email || "N/A"}</TableCell>
                                                 <TableCell className="py-2 px-4 text-[12px] text-gray-500">
                                                     <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold">
-                                                        {user.role}
+                                                        {translateRole(user.role)}
                                                     </span>
                                                 </TableCell>
                                             </>
@@ -668,8 +685,11 @@ export default function UsersPage() {
                                                     variant="ghost"
                                                     size="icon"
                                                     className="h-7 w-7 text-amber-500 hover:text-amber-600 hover:bg-amber-50"
-                                                    onClick={() => {
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
                                                         setSelectedUser(user);
+                                                        setNewPassword("");
+                                                        setConfirmPassword("");
                                                         setResetDialogOpen(true);
                                                     }}
                                                     title={t("reset_password")}
@@ -680,6 +700,7 @@ export default function UsersPage() {
                                                     className="data-[state=checked]:bg-[#6366f1] scale-75"
                                                     checked={user.active ?? true}
                                                     onCheckedChange={() => toggleStatus(user.id, user.active ?? true)}
+                                                    title={t("toggle_status")}
                                                 />
                                             </div>
                                         </TableCell>
@@ -691,7 +712,7 @@ export default function UsersPage() {
                     {!loading && users.length > 0 && (
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2 px-4 pb-4">
                             <div>
-                                {t("showing")} {from} {t("to")} {to} {t("of")} {total} {t("entries")}
+                                {t("showing")} {toLocaleNumber(from, language?.short_code)} {t("to")} {toLocaleNumber(to, language?.short_code)} {t("of")} {toLocaleNumber(total, language?.short_code)} {t("entries")}
                             </div>
                             <div className="flex gap-1">
                                 <Button
@@ -711,7 +732,7 @@ export default function UsersPage() {
                                         className={`h-7 w-7 p-0 border-gray-200 ${currentPage === page ? activeGradient : "hover:bg-indigo-50 hover:text-indigo-600"}`}
                                         onClick={() => fetchUsers(page)}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, language?.short_code)}
                                     </Button>
                                 ))}
                                 <Button
@@ -750,7 +771,7 @@ export default function UsersPage() {
                                 type="password"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder={t("enter_at_least_8_characters")}
+                                placeholder={t("enter_new_password_min_chars")}
                                 className="h-10"
                             />
                         </div>
@@ -761,7 +782,7 @@ export default function UsersPage() {
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder={t("repeat_the_new_password")}
+                                placeholder={t("repeat_new_password")}
                                 className="h-10"
                             />
                         </div>
@@ -831,7 +852,7 @@ export default function UsersPage() {
                             </div>
                             <div className="text-[11px] text-muted-foreground">
                                 <p className="font-bold">{t("profile_photo")}</p>
-                                <p>100px x 100px (optional)</p>
+                                <p>100px x 100px ({t("optional")})</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -840,7 +861,7 @@ export default function UsersPage() {
                                 <Input
                                     value={parentFormData.name}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, name: e.target.value }))}
-                                    placeholder="Parent name"
+                                    placeholder={t("enter_parent_name")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -849,7 +870,7 @@ export default function UsersPage() {
                                 <Input
                                     value={parentFormData.email}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, email: e.target.value }))}
-                                    placeholder="email@example.com"
+                                    placeholder={t("enter_email")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -860,7 +881,7 @@ export default function UsersPage() {
                                 <Input
                                     value={parentFormData.phone}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                    placeholder="Phone number"
+                                    placeholder={t("enter_phone_number")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -870,7 +891,7 @@ export default function UsersPage() {
                                     <Input
                                         value={parentFormData.username}
                                         onChange={(e) => setParentFormData(prev => ({ ...prev, username: e.target.value }))}
-                                        placeholder={parentAutoUsernameEnabled ? "Auto-generating..." : "Username"}
+                                        placeholder={parentAutoUsernameEnabled ? t("auto_generating") : t("username")}
                                         className="h-9 text-[12px]"
                                         readOnly={parentAutoUsernameEnabled}
                                     />
@@ -892,7 +913,7 @@ export default function UsersPage() {
                                 <Input
                                     value={parentFormData.guardian_name}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, guardian_name: e.target.value }))}
-                                    placeholder="Guardian name"
+                                    placeholder={t("enter_guardian_name")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -903,7 +924,7 @@ export default function UsersPage() {
                                 <Input
                                     value={parentFormData.guardian_phone}
                                     onChange={(e) => setParentFormData(prev => ({ ...prev, guardian_phone: e.target.value }))}
-                                    placeholder="Guardian phone"
+                                    placeholder={t("enter_guardian_phone")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -918,7 +939,9 @@ export default function UsersPage() {
                                 >
                                     <option value="">{t("select_class")}</option>
                                     {classes.map((c) => (
-                                        <option key={c.id} value={c.id.toString()}>{c.name}</option>
+                                        <option key={c.id} value={c.id.toString()}>
+                                            {translateClassName(c.name, language?.short_code)}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -932,7 +955,9 @@ export default function UsersPage() {
                                 >
                                     <option value="">{t("select_section")}</option>
                                     {sections.map((s) => (
-                                        <option key={s.id} value={s.id.toString()}>{s.name}</option>
+                                        <option key={s.id} value={s.id.toString()}>
+                                            {translateSectionName(s.name, language?.short_code)}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -948,7 +973,7 @@ export default function UsersPage() {
                                 <option value="">{loadingStudents ? t("loading") : t("select_student")}</option>
                                 {students.map((s: any) => (
                                     <option key={s.id} value={s.id}>
-                                        {s.name} {s.last_name || ""} ({s.admission_no || s.username || s.id})
+                                        {s.name} {s.last_name || ""} ({toLocaleNumber(s.admission_no, language?.short_code) || s.username || s.id})
                                     </option>
                                 ))}
                             </select>
@@ -1021,7 +1046,7 @@ export default function UsersPage() {
                             </div>
                             <div className="text-[11px] text-muted-foreground">
                                 <p className="font-bold">{t("profile_photo")}</p>
-                                <p>100px x 100px (optional)</p>
+                                <p>100px x 100px ({t("optional")})</p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
@@ -1030,7 +1055,7 @@ export default function UsersPage() {
                                 <Input
                                     value={editFormData.name}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                                    placeholder="Parent name"
+                                    placeholder={t("enter_parent_name")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -1039,7 +1064,7 @@ export default function UsersPage() {
                                 <Input
                                     value={editFormData.email}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
-                                    placeholder="email@example.com"
+                                    placeholder={t("enter_email")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -1050,7 +1075,7 @@ export default function UsersPage() {
                                 <Input
                                     value={editFormData.phone}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, phone: e.target.value }))}
-                                    placeholder="Phone number"
+                                    placeholder={t("enter_phone_number")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -1060,7 +1085,7 @@ export default function UsersPage() {
                                     <Input
                                         value={editFormData.username}
                                         onChange={(e) => setEditFormData(prev => ({ ...prev, username: e.target.value }))}
-                                        placeholder="Username"
+                                        placeholder={t("username")}
                                         className="h-9 text-[12px]"
                                     />
                                     <Button
@@ -1089,7 +1114,7 @@ export default function UsersPage() {
                                 <Input
                                     value={editFormData.guardian_name}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, guardian_name: e.target.value }))}
-                                    placeholder="Guardian name"
+                                    placeholder={t("enter_guardian_name")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -1100,7 +1125,7 @@ export default function UsersPage() {
                                 <Input
                                     value={editFormData.guardian_phone}
                                     onChange={(e) => setEditFormData(prev => ({ ...prev, guardian_phone: e.target.value }))}
-                                    placeholder="Guardian phone"
+                                    placeholder={t("enter_guardian_phone")}
                                     className="h-9 text-[12px]"
                                 />
                             </div>
@@ -1115,7 +1140,9 @@ export default function UsersPage() {
                                 >
                                     <option value="">{t("select_class")}</option>
                                     {editClasses.map((c) => (
-                                        <option key={c.id} value={c.id.toString()}>{c.name}</option>
+                                        <option key={c.id} value={c.id.toString()}>
+                                            {translateClassName(c.name, language?.short_code)}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -1129,7 +1156,9 @@ export default function UsersPage() {
                                 >
                                     <option value="">{t("select_section")}</option>
                                     {editSections.map((s) => (
-                                        <option key={s.id} value={s.id.toString()}>{s.name}</option>
+                                        <option key={s.id} value={s.id.toString()}>
+                                            {translateSectionName(s.name, language?.short_code)}
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -1145,7 +1174,7 @@ export default function UsersPage() {
                                 <option value="">{editLoadingStudents ? t("loading") : t("select_student")}</option>
                                 {editStudents.map((s: any) => (
                                     <option key={s.id} value={s.id}>
-                                        {s.name} {s.last_name || ""} ({s.admission_no || s.username || s.id})
+                                        {s.name} {s.last_name || ""} ({toLocaleNumber(s.admission_no, language?.short_code) || s.username || s.id})
                                     </option>
                                 ))}
                             </select>

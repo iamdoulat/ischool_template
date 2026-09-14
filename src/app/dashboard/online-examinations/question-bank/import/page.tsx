@@ -8,14 +8,16 @@ import { ArrowLeft, Download, Upload, AlertCircle } from "lucide-react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { toLocaleNumber } from "@/lib/utils";
 
 export default function ImportQuestionBankPage() {
     const router = useRouter();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
 
     const [csvFile, setCsvFile] = useState<File | null>(null);
-    const [csvData, setCsvData] = useState<any[]>([]);
+    const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
     const [loading, setLoading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
 
@@ -73,7 +75,7 @@ export default function ImportQuestionBankPage() {
             const headers = rows[0].split(',').map(h => h.trim());
             const parsedData = rows.slice(1).map(row => {
                 const values = row.split(',').map(v => v.trim());
-                const rowData: Record<string, any> = {};
+                const rowData: Record<string, string> = {};
                 headers.forEach((header, index) => {
                     rowData[header] = values[index] || "";
                 });
@@ -235,8 +237,8 @@ export default function ImportQuestionBankPage() {
                         {csvFile && (
                             <div className="mt-6 pt-4 border-t border-gray-200 w-full max-w-md text-center">
                                 <p className="text-sm font-medium text-emerald-600 flex items-center justify-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                                    {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
+                                    <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+                                    {csvFile.name} ({toLocaleNumber((csvFile.size / 1024).toFixed(1), shortCode)} KB)
                                 </p>
                             </div>
                         )}
@@ -263,14 +265,14 @@ export default function ImportQuestionBankPage() {
                     <Button 
                         variant="outline" 
                         onClick={() => router.back()}
-                        className="h-11 px-8 rounded-full text-xs font-bold uppercase tracking-widest border-gray-200"
+                        className="h-11 px-8 rounded-full text-xs font-bold uppercase tracking-widest border-gray-200 cursor-pointer"
                     >
                         {t("cancel")}
                     </Button>
                     <Button 
                         onClick={handleImport} 
                         disabled={!csvFile || loading}
-                        className={`h-11 px-8 text-xs font-bold uppercase tracking-widest ${gradientBtn}`}
+                        className={`h-11 px-8 text-xs font-bold uppercase tracking-widest cursor-pointer ${gradientBtn}`}
                     >
                         {loading ? (
                             <span className="flex items-center gap-2">

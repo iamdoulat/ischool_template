@@ -28,16 +28,21 @@ import {
     FileSpreadsheet,
     FileText,
     Printer,
-    Columns3
+    Columns3,
+    ArrowRightLeft,
+    Building2
 } from "lucide-react";
+import { TransferDialog } from "@/components/multi-branch/transfer-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const formatDate = (dateString?: string | null) => {
+const formatDate = (dateString?: string | null, langCode?: string) => {
     if (!dateString) return "-";
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
+    if (isNaN(date.getTime())) return dateString;
+    const formatted = date.toLocaleDateString('en-GB');
+    return langCode ? toLocaleNumber(formatted, langCode) : formatted;
 };
 
 
@@ -45,8 +50,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useRouter, useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
+import { tokenManager } from "@/lib/token-manager";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
@@ -125,7 +131,8 @@ export const getStudentPhoto = (student: Student | null | undefined): string => 
 
 export default function StudentDetailsPage() {
     const tt = useTranslateToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const router = useRouter();
     const searchParams = useSearchParams();
     const getImageUrl = useImageUrl();
@@ -160,6 +167,8 @@ export default function StudentDetailsPage() {
 
     // Action Dialogs
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+    const [transferStudent, setTransferStudent] = useState<Student | null>(null);
+    const [transferDialogOpen, setTransferDialogOpen] = useState(false);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -171,15 +180,23 @@ export default function StudentDetailsPage() {
             const res = await api.post(`/impersonate/student/${student.id}`);
             const data = res.data?.data;
             if (data?.access_token) {
-                const currentAdminToken = localStorage.getItem("auth_token");
+                const currentAdminToken = tokenManager.getToken() || (typeof window !== "undefined" ? localStorage.getItem("auth_token") : null);
                 if (currentAdminToken) {
-                    localStorage.setItem("admin_auth_token", currentAdminToken);
+                    await tokenManager.setAdminToken(currentAdminToken);
                 }
-                localStorage.setItem("auth_token", data.access_token);
+                await tokenManager.setToken(data.access_token);
                 localStorage.setItem("is_impersonating", "true");
                 tt.success("impersonating_student_login_successful");
+
+                // Detect branch slug from current URL or student's branch info
+                const pathMatch = typeof window !== "undefined" ? window.location.pathname.match(/^\/br\/([^\/]+)/) : null;
+                const branchSlug = pathMatch ? pathMatch[1] : (data?.user?.branch?.slug || student.branch?.slug || "");
+                const targetDashboardUrl = branchSlug && branchSlug !== "main"
+                    ? `/br/${branchSlug}/user/dashboard`
+                    : "/user/dashboard";
+
                 setTimeout(() => {
-                    window.location.href = "/user/dashboard";
+                    window.location.href = targetDashboardUrl;
                 }, 400);
             } else {
                 tt.error("failed_to_impersonate_student");
@@ -194,46 +211,56 @@ export default function StudentDetailsPage() {
 
     const handleExport = (type: "copy" | "excel" | "pdf" | "print") => {
         if (!students || students.length === 0) {
-            tt.error("no_data_to_export" || "No data to export");
+            tt.error("no_data_to_export");
             return;
         }
         const columns = [
             "#",
-            "Admission No",
-            "Student Name",
-            "Class",
-            "Section",
-            "Roll No",
-            "Father Name",
-            "Date of Birth",
-            "Gender",
-            "Category",
-            "Mobile Number",
-            "Status"
+            t("admission_no"),
+            t("student_name"),
+            t("class"),
+            t("section"),
+            t("roll_no"),
+            t("father_name"),
+            t("date_of_birth"),
+            t("gender"),
+            t("category"),
+            t("mobile_number"),
+            t("status")
         ];
         const rows = students.map((s, idx) => [
-            ((pagination.current_page - 1) * perPage) + idx + 1,
+            toLocaleNumber(((pagination.current_page - 1) * perPage) + idx + 1, langCode),
             s.admission_no || "-",
             `${s.name || ""} ${s.last_name || ""}`.trim() || "-",
-            s.school_class?.name || "-",
-            s.section?.name || "-",
-            s.roll_no || "-",
+            s.school_class?.name ? translateClassName(s.school_class.name, langCode) : "-",
+            s.section?.name ? translateSectionName(s.section.name, langCode) : "-",
+            s.roll_no ? toLocaleNumber(s.roll_no, langCode) : "-",
             s.father_name || "-",
-            formatDate(s.dob),
-            s.gender || "-",
-            s.student_category?.category_name || s.category || "-",
-            s.phone || "-",
-            s.active ? "Active" : "Disabled"
+            formatDate(s.dob, langCode),
+            s.gender?.toLowerCase() === "male"
+                ? t("male")
+                : s.gender?.toLowerCase() === "female"
+                    ? t("female")
+                    : s.gender?.toLowerCase() === "other"
+                        ? t("other")
+                        : s.gender || "-",
+            (() => {
+                const catName = s.student_category?.category_name || s.category || "";
+                if (!catName) return "-";
+                return catName.toLowerCase() === "general" ? t("preset_general") : catName;
+            })(),
+            s.phone ? toLocaleNumber(s.phone, langCode) : "-",
+            s.active ? t("active") : t("disabled")
         ]);
 
         exportData(type, {
             filename: `student-details-${new Date().toISOString().split("T")[0]}`,
-            title: "Student Details List",
+            title: t("student_details"),
             columns,
             rows,
         });
         if (type === "copy") {
-            tt.success("copied_to_clipboard" || "Copied to clipboard!");
+            tt.success("copied_to_clipboard");
         }
     };
 
@@ -271,17 +298,12 @@ export default function StudentDetailsPage() {
         }
     }, [searchParams]);
 
-    // Load students ONLY if active filter parameters are present in URL
+    // Only auto-search if URL query filters are present on page load
     useEffect(() => {
-        if (!fetchingPrereqs) {
-            const urlSearch = searchParams.get("search") || "";
-            const urlClass = searchParams.get("school_class_id") || "";
-            const urlSection = searchParams.get("section_id") || "";
-            if (urlClass || urlSearch || urlSection) {
-                handleSearch(1);
-            }
+        if (!fetchingPrereqs && hasSearched) {
+            handleSearch(1);
         }
-    }, [fetchingPrereqs]);
+    }, [fetchingPrereqs, hasSearched]);
 
     const fetchPrerequisites = async () => {
         try {
@@ -535,7 +557,7 @@ export default function StudentDetailsPage() {
                                     className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="" className="text-gray-400">{t("select_class")}</option>
-                                    {classes.map(c => <option key={c.id} value={c.id} className="text-gray-900 font-medium">{c.name}</option>)}
+                                    {classes.map(c => <option key={c.id} value={c.id} className="text-gray-900 font-medium">{translateClassName(c.name, langCode)}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
@@ -553,7 +575,7 @@ export default function StudentDetailsPage() {
                                     className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="" className="text-gray-400">{t("select_section")}</option>
-                                    {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id} className="text-gray-900 font-medium">{s.name}</option>)}
+                                    {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id} className="text-gray-900 font-medium">{translateSectionName(s.name, langCode)}</option>)}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
@@ -570,12 +592,16 @@ export default function StudentDetailsPage() {
                                     onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
                                     className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="" className="text-gray-400">{t("select_category") || "Select Category"}</option>
-                                    {categories.map(cat => (
-                                        <option key={cat.id} value={cat.category_name || cat.name || cat.id.toString()} className="text-gray-900 font-medium">
-                                            {cat.category_name || cat.name}
-                                        </option>
-                                    ))}
+                                    <option value="" className="text-gray-400">{t("select_category")}</option>
+                                    {categories.map(cat => {
+                                        const catName = cat.category_name || cat.name || cat.id.toString();
+                                        const displayCat = catName.toLowerCase() === "general" ? t("preset_general") : catName;
+                                        return (
+                                            <option key={cat.id} value={catName} className="text-gray-900 font-medium">
+                                                {displayCat}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
@@ -592,10 +618,10 @@ export default function StudentDetailsPage() {
                                     onChange={(e) => setFilters(prev => ({ ...prev, gender: e.target.value }))}
                                     className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
-                                    <option value="" className="text-gray-400">{t("select_gender") || "Select Gender"}</option>
-                                    <option value="Male" className="text-gray-900 font-medium">{t("male") || "Male"}</option>
-                                    <option value="Female" className="text-gray-900 font-medium">{t("female") || "Female"}</option>
-                                    <option value="Other" className="text-gray-900 font-medium">{t("other") || "Other"}</option>
+                                    <option value="" className="text-gray-400">{t("select_gender")}</option>
+                                    <option value="Male" className="text-gray-900 font-medium">{t("male")}</option>
+                                    <option value="Female" className="text-gray-900 font-medium">{t("female")}</option>
+                                    <option value="Other" className="text-gray-900 font-medium">{t("other")}</option>
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
@@ -671,7 +697,10 @@ export default function StudentDetailsPage() {
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {!hasSearched
                                     ? (t("search_by_class_and_section") || "Search by Class & Section to view records")
-                                    : `${pagination.total} ${pagination.total === 1 ? t("student_found") : t("students_found")}`}
+                                    : t("total_students_found_count", {
+                                        total: toLocaleNumber(pagination.total, langCode),
+                                        count: toLocaleNumber(pagination.total, langCode)
+                                    })}
                             </p>
                         </div>
                     </div>
@@ -685,10 +714,10 @@ export default function StudentDetailsPage() {
                                 onChange={(e) => handlePerPageChange(Number(e.target.value))}
                                 className="h-8 pl-3 pr-7 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white/90 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 appearance-none cursor-pointer"
                             >
-                                <option value={20}>20</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                                <option value={500}>500</option>
+                                <option value={20}>{toLocaleNumber(20, langCode)}</option>
+                                <option value={50}>{toLocaleNumber(50, langCode)}</option>
+                                <option value={100}>{toLocaleNumber(100, langCode)}</option>
+                                <option value={500}>{toLocaleNumber(500, langCode)}</option>
                             </select>
                             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                         </div>
@@ -700,7 +729,7 @@ export default function StudentDetailsPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
-                                title="Copy to clipboard"
+                                title={t("copy_to_clipboard")}
                             >
                                 <Copy className="h-3.5 w-3.5" />
                             </Button>
@@ -709,7 +738,7 @@ export default function StudentDetailsPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-gray-500 hover:text-emerald-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
-                                title="Export to Excel (.xlsx)"
+                                title={t("export_to_excel")}
                             >
                                 <FileSpreadsheet className="h-3.5 w-3.5" />
                             </Button>
@@ -718,7 +747,7 @@ export default function StudentDetailsPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-gray-500 hover:text-rose-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
-                                title="Export to PDF"
+                                title={t("export_to_pdf")}
                             >
                                 <FileText className="h-3.5 w-3.5" />
                             </Button>
@@ -727,7 +756,7 @@ export default function StudentDetailsPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
-                                title="Print Table"
+                                title={t("print_table")}
                             >
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
@@ -736,7 +765,7 @@ export default function StudentDetailsPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-7 w-7 text-gray-500 hover:text-indigo-600 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors cursor-pointer"
-                                title={viewMode === "list" ? "Switch to Details View" : "Switch to List View"}
+                                title={viewMode === "list" ? t("switch_to_details_view") : t("switch_to_list_view")}
                             >
                                 <Columns3 className="h-3.5 w-3.5" />
                             </Button>
@@ -838,7 +867,7 @@ export default function StudentDetailsPage() {
                                         {students.map((student, idx) => (
                                             <tr key={student.id} className="group hover:bg-gray-50/80 dark:hover:bg-gray-800/40 transition-colors">
                                                 <td className="px-4 py-3.5 text-xs font-bold text-gray-500 dark:text-gray-400">
-                                                    {((pagination.current_page - 1) * perPage) + idx + 1}
+                                                    {toLocaleNumber(((pagination.current_page - 1) * perPage) + idx + 1, langCode)}
                                                 </td>
                                                 <td className="px-4 py-3.5">
                                                     <Avatar className="h-9 w-9 border border-gray-200 shadow-2xs">
@@ -864,15 +893,44 @@ export default function StudentDetailsPage() {
                                                         {student.name} {student.last_name}
                                                     </span>
                                                 </td>
-                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-900 dark:text-gray-100">{student.roll_no || "-"}</td>
+                                                 <td className="px-4 py-3.5 text-xs font-semibold text-gray-900 dark:text-gray-100">{student.roll_no ? toLocaleNumber(student.roll_no, langCode) : "-"}</td>
                                                 <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
-                                                    {student.school_class?.name} {student.section?.name ? `(${student.section?.name})` : ""}
+                                                    <div>
+                                                        <span>{student.school_class?.name ? translateClassName(student.school_class.name, langCode) : ""} {student.section?.name ? `(${translateSectionName(student.section.name, langCode)})` : ""}</span>
+                                                        {student.branch ? (
+                                                            <div className="mt-0.5">
+                                                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                                                                    {student.branch.is_main ? t("main") : student.branch.branch_name}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="mt-0.5">
+                                                                <span className="text-[10px] font-bold text-gray-600 bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded">
+                                                                    {t("main")}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.father_name || "-"}</td>
-                                                <td className="px-4 py-3.5 text-xs font-medium text-gray-700 dark:text-gray-300">{formatDate(student.dob)}</td>
-                                                <td className="px-4 py-3.5 text-xs font-medium text-gray-700 dark:text-gray-300">{student.gender || "-"}</td>
-                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.student_category?.category_name || student.category || "-"}</td>
-                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.phone || "-"}</td>
+                                                <td className="px-4 py-3.5 text-xs font-medium text-gray-700 dark:text-gray-300">{formatDate(student.dob, langCode)}</td>
+                                                <td className="px-4 py-3.5 text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                    {student.gender?.toLowerCase() === "male"
+                                                        ? t("male")
+                                                        : student.gender?.toLowerCase() === "female"
+                                                            ? t("female")
+                                                            : student.gender?.toLowerCase() === "other"
+                                                                ? t("other")
+                                                                : student.gender || "-"}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">
+                                                    {(() => {
+                                                        const catName = student.student_category?.category_name || student.category || "";
+                                                        if (!catName) return "-";
+                                                        return catName.toLowerCase() === "general" ? t("preset_general") : catName;
+                                                    })()}
+                                                </td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.phone ? toLocaleNumber(student.phone, langCode) : "-"}</td>
                                                 <td className="px-4 py-3.5">
                                                     <Badge className={cn(
                                                         "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
@@ -891,7 +949,7 @@ export default function StudentDetailsPage() {
                                                             className="h-8 w-12 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 border-none text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md shrink-0 cursor-pointer active:scale-95"
                                                             onClick={() => handleImpersonate(student)}
                                                             disabled={impersonatingId === student.id}
-                                                            title="Login immediately as Student (Impersonate)"
+                                                            title={t("login_immediately_as_student")}
                                                         >
                                                             {impersonatingId === student.id ? (
                                                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -907,7 +965,7 @@ export default function StudentDetailsPage() {
                                                                 setSelectedStudent(student);
                                                                 setViewDialogOpen(true);
                                                             }}
-                                                            title="View Student"
+                                                            title={t("view_student")}
                                                         >
                                                             <Eye className="h-3.5 w-3.5" />
                                                         </Button>
@@ -916,16 +974,28 @@ export default function StudentDetailsPage() {
                                                             size="icon"
                                                             className="h-8 w-12 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 border-none text-white hover:from-emerald-600 hover:to-teal-700 transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-95"
                                                             onClick={() => handleDownloadPdf(student)}
-                                                            title="Download Admission Form PDF"
+                                                            title={t("download_admission_form_pdf")}
                                                         >
                                                             <Download className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="outline"
                                                             size="icon"
+                                                            className="h-8 w-12 rounded-lg bg-gradient-to-r from-amber-500 to-indigo-600 border-none text-white hover:from-amber-600 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-95"
+                                                            onClick={() => {
+                                                                setTransferStudent(student);
+                                                                setTransferDialogOpen(true);
+                                                            }}
+                                                            title={t("transfer_student_to_another_branch")}
+                                                        >
+                                                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="icon"
                                                             className="h-8 w-12 rounded-lg bg-gradient-to-r from-[#FF9800] to-amber-500 border-none text-white hover:from-orange-500 hover:to-amber-600 transition-all shadow-xs hover:shadow-md cursor-pointer active:scale-95"
                                                             onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
-                                                            title="Edit Student"
+                                                            title={t("edit_student")}
                                                         >
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
@@ -937,7 +1007,7 @@ export default function StudentDetailsPage() {
                                                                 setSelectedStudent(student);
                                                                 setDeleteDialogOpen(true);
                                                             }}
-                                                            title="Delete Student"
+                                                            title={t("delete_student")}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
@@ -957,9 +1027,14 @@ export default function StudentDetailsPage() {
                                     >
                                         {/* Card Top Banner with Status */}
                                         <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850 px-4 py-3 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-                                            <span className="font-mono text-[11px] font-bold text-indigo-600 bg-white/80 dark:bg-gray-800/80 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900 shadow-2xs">
-                                                {student.admission_no}
-                                            </span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-mono text-[11px] font-bold text-indigo-600 bg-white/80 dark:bg-gray-800/80 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900 shadow-2xs">
+                                                    {student.admission_no}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-indigo-600 bg-white/90 border border-indigo-200 px-2 py-0.5 rounded-full shadow-2xs">
+                                                    {student.branch ? (student.branch.is_main ? t("main") : student.branch.branch_name) : t("main")}
+                                                </span>
+                                            </div>
                                             <Badge className={cn(
                                                 "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-2xs",
                                                 student.active
@@ -989,7 +1064,13 @@ export default function StudentDetailsPage() {
                                                     {student.name} {student.last_name}
                                                 </h3>
                                                 <p className="text-[11px] font-medium text-gray-500">
-                                                    {student.gender || "-"} {student.dob ? `• ${formatDate(student.dob)}` : ""}
+                                                    {student.gender?.toLowerCase() === "male"
+                                                        ? t("male")
+                                                        : student.gender?.toLowerCase() === "female"
+                                                            ? t("female")
+                                                            : student.gender?.toLowerCase() === "other"
+                                                                ? t("other")
+                                                                : student.gender || "-"} {student.dob ? `• ${formatDate(student.dob, langCode)}` : ""}
                                                 </p>
                                             </div>
 
@@ -998,13 +1079,13 @@ export default function StudentDetailsPage() {
                                                 <div className="bg-gradient-to-br from-indigo-50/90 via-indigo-50/40 to-purple-50/60 dark:from-indigo-950/40 dark:to-purple-950/30 p-2.5 rounded-xl text-center border border-indigo-100/80 dark:border-indigo-900/50 shadow-2xs">
                                                     <p className="text-[10px] font-bold text-indigo-600/90 dark:text-indigo-400 uppercase tracking-wider">{t("class")}</p>
                                                     <p className="text-xs font-bold text-gray-900 dark:text-gray-100 line-clamp-1 mt-0.5">
-                                                        {student.school_class?.name || "-"} {student.section?.name ? `(${student.section?.name})` : ""}
+                                                        {student.school_class?.name ? translateClassName(student.school_class.name, langCode) : "-"} {student.section?.name ? `(${translateSectionName(student.section.name, langCode)})` : ""}
                                                     </p>
                                                 </div>
                                                 <div className="bg-gradient-to-br from-amber-50/90 via-orange-50/40 to-amber-50/60 dark:from-amber-950/40 dark:to-orange-950/30 p-2.5 rounded-xl text-center border border-amber-100/80 dark:border-amber-900/50 shadow-2xs">
                                                     <p className="text-[10px] font-bold text-amber-600/90 dark:text-amber-400 uppercase tracking-wider">{t("roll_no")}</p>
                                                     <p className="text-xs font-bold text-gray-900 dark:text-gray-100 line-clamp-1 mt-0.5">
-                                                        {student.roll_no || "-"}
+                                                        {student.roll_no ? toLocaleNumber(student.roll_no, langCode) : "-"}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1020,13 +1101,19 @@ export default function StudentDetailsPage() {
                                                 <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                                                     <Phone className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                                                     <span className="truncate text-gray-600 dark:text-gray-400 font-medium">
-                                                        {t("phone")}: <strong className="text-gray-900 dark:text-gray-100 font-bold">{student.phone || "-"}</strong>
+                                                        {t("phone")}: <strong className="text-gray-900 dark:text-gray-100 font-bold">{student.phone ? toLocaleNumber(student.phone, langCode) : "-"}</strong>
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
                                                     <BadgeCheck className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                                                     <span className="truncate text-gray-600 dark:text-gray-400 font-medium">
-                                                        {t("category")}: <strong className="text-gray-900 dark:text-gray-100 font-bold">{student.student_category?.category_name || student.category || "-"}</strong>
+                                                        {t("category")}: <strong className="text-gray-900 dark:text-gray-100 font-bold">
+                                                            {(() => {
+                                                                const catName = student.student_category?.category_name || student.category || "";
+                                                                if (!catName) return "-";
+                                                                return catName.toLowerCase() === "general" ? t("preset_general") : catName;
+                                                            })()}
+                                                        </strong>
                                                     </span>
                                                 </div>
                                             </div>
@@ -1040,7 +1127,7 @@ export default function StudentDetailsPage() {
                                                 className="h-8 w-8 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 border-none text-white hover:from-purple-700 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
                                                 onClick={() => handleImpersonate(student)}
                                                 disabled={impersonatingId === student.id}
-                                                title="Login as Student"
+                                                title={t("login_as_student")}
                                             >
                                                 {impersonatingId === student.id ? (
                                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1048,48 +1135,67 @@ export default function StudentDetailsPage() {
                                                     <LogIn className="h-3.5 w-3.5" />
                                                 )}
                                             </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 border-none text-white hover:from-blue-600 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
-                                                onClick={() => {
-                                                    setSelectedStudent(student);
-                                                    setViewDialogOpen(true);
-                                                }}
-                                                title="View Details"
-                                            >
-                                                <Eye className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 border-none text-white hover:from-emerald-600 hover:to-teal-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
-                                                onClick={() => handleDownloadPdf(student)}
-                                                title="Download PDF"
-                                            >
-                                                <Download className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-amber-500 border-none text-white hover:from-orange-500 hover:to-amber-600 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
-                                                onClick={() => router.push(`/dashboard/student-information/student-details/${student.id}/edit`)}
-                                                title="Edit"
-                                            >
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button
-                                                variant="outline"
-                                                size="icon"
-                                                className="h-8 w-8 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 border-none text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
-                                                onClick={() => {
-                                                    setSelectedStudent(student);
-                                                    setDeleteDialogOpen(true);
-                                                }}
-                                                title="Delete"
-                                            >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                            </Button>
+                                            <div className="flex items-center gap-1.5">
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 border-none text-white hover:from-blue-600 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
+                                                    onClick={() => {
+                                                        setSelectedStudent(student);
+                                                        setViewDialogOpen(true);
+                                                    }}
+                                                    title={t("view_details")}
+                                                >
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 border-none text-white hover:from-emerald-600 hover:to-teal-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
+                                                    onClick={() => handleDownloadPdf(student)}
+                                                    disabled={downloadingId === student.id}
+                                                    title={t("download_admission_form")}
+                                                >
+                                                    {downloadingId === student.id ? (
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Download className="h-3.5 w-3.5" />
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-600 border-none text-white hover:from-purple-600 hover:to-indigo-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
+                                                    onClick={() => {
+                                                        setSelectedStudent(student);
+                                                        setTransferDialogOpen(true);
+                                                    }}
+                                                    title={t("transfer_student")}
+                                                >
+                                                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 border-none text-white hover:from-amber-600 hover:to-orange-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
+                                                    onClick={() => router.push(`/dashboard/student-information/student-admission?id=${student.id}`)}
+                                                    title={t("edit_details")}
+                                                >
+                                                    <Edit3 className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 border-none text-white hover:from-rose-600 hover:to-red-700 transition-all shadow-xs hover:shadow-md active:scale-95 cursor-pointer"
+                                                    onClick={() => {
+                                                        setSelectedStudent(student);
+                                                        setDeleteDialogOpen(true);
+                                                    }}
+                                                    title={t("delete")}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -1097,26 +1203,23 @@ export default function StudentDetailsPage() {
                         )
                     ) : (
                         /* Empty State */
-                        <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">
-                            <div className="relative group">
-                                <div className="relative p-6 bg-gray-50 dark:bg-gray-800 rounded-3xl border border-gray-200 shadow-2xs">
-                                    <FolderSearch className="h-12 w-12 text-indigo-500" />
-                                </div>
+                        <div className="p-16 text-center">
+                            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl flex items-center justify-center mb-4 text-indigo-500 shadow-inner">
+                                <Users className="h-8 w-8" />
                             </div>
-                            <div className="space-y-1">
-                                <p className="font-bold text-base text-gray-800 dark:text-gray-100 uppercase tracking-wider">
-                                    {t("no_students_found")}
-                                </p>
-                                <p className="text-xs text-gray-500 max-w-[320px] mx-auto leading-relaxed">
-                                    {t("click_search_to_show_all_students_or_refine_your_filters")}
-                                </p>
-                            </div>
-                            <div className="flex gap-2.5 pt-2">
-                                <Button variant="outline" className="h-9 px-5 rounded-full text-xs font-bold uppercase border-gray-200" onClick={handleReset}>
-                                    <Search className="h-4 w-4 mr-1.5" />
-                                    {t("try_different_criteria")}
-                                </Button>
-                                <Button className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase shadow-md" onClick={() => window.location.href = "/dashboard/student-information/student-admission"}>
+                            <h3 className="text-base font-bold text-gray-800">
+                                {!hasSearched ? t("select_criteria_to_view") : t("no_student_found")}
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                                {!hasSearched
+                                    ? t("use_filters_above_to_find_students")
+                                    : t("no_students_match_filter_criteria")}
+                            </p>
+                            <div className="mt-6 flex justify-center gap-3">
+                                <Button
+                                    onClick={() => router.push('/dashboard/student-information/student-admission')}
+                                    className="btn-gradient text-white text-xs h-9 px-4 rounded-xl shadow-md font-semibold"
+                                >
                                     <Plus className="h-4 w-4 mr-1.5" />
                                     {t("add_new_record")}
                                 </Button>
@@ -1128,7 +1231,11 @@ export default function StudentDetailsPage() {
                 {!loading && students.length > 0 && (
                     <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                            {t("showing_x_to_y_of_z", { from: pagination.from, to: pagination.to, total: pagination.total })}
+                            {t("showing_x_to_y_of_z", {
+                                from: toLocaleNumber(pagination.from, langCode),
+                                to: toLocaleNumber(pagination.to, langCode),
+                                total: toLocaleNumber(pagination.total, langCode)
+                            })}
                         </p>
                         <div className="flex items-center gap-1.5">
                             <Button
@@ -1150,7 +1257,7 @@ export default function StudentDetailsPage() {
                                             : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
                                     )}
                                 >
-                                    {i + 1}
+                                    {toLocaleNumber(i + 1, langCode)}
                                 </Button>
                             ))}
                             <Button
@@ -1168,45 +1275,45 @@ export default function StudentDetailsPage() {
 
             {/* View Student Dialog */}
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                <DialogContent className="w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl p-0 overflow-hidden border border-gray-200/80 dark:border-gray-800 shadow-2xl rounded-3xl bg-white dark:bg-gray-900">
-                    <DialogHeader className="p-6 md:p-8 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-gray-800 dark:to-gray-850 border-b border-gray-100 dark:border-gray-800 relative">
+                <DialogContent className="w-[96vw] sm:max-w-4xl md:max-w-5xl lg:max-w-6xl p-0 overflow-hidden border border-border/80 shadow-2xl rounded-3xl bg-card">
+                    <DialogHeader className="p-6 md:p-8 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70 relative">
                         <div className="flex flex-col sm:flex-row items-center gap-6">
-                            <Avatar className="h-24 w-24 md:h-28 md:w-28 rounded-3xl border-4 border-white dark:border-gray-800 shadow-lg relative shrink-0 ring-4 ring-indigo-100/60 dark:ring-indigo-950/40">
+                            <Avatar className="h-24 w-24 md:h-28 md:w-28 rounded-3xl border-4 border-white shadow-lg relative shrink-0 ring-4 ring-indigo-200/70">
                                 <AvatarImage src={getImageUrl(getStudentPhoto(selectedStudent))} className="object-cover" />
-                                <AvatarFallback className="bg-gradient-to-br from-[#FF9800]/15 to-[#6366F1]/15 text-indigo-700 text-2xl font-black">
+                                <AvatarFallback className="bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white text-2xl font-black">
                                     {selectedStudent?.name ? selectedStudent?.name.substring(0, 2).toUpperCase() : "ST"}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="text-center sm:text-left space-y-2 flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                                    <Badge className="px-3 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-900 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+                                    <Badge className="px-3 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
                                         {t("student_profile")}
                                     </Badge>
                                     <Badge className={cn(
                                         "px-3 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-2xs",
-                                        selectedStudent?.active ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300" : "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300"
+                                        selectedStudent?.active ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
                                     )}>
                                         {selectedStudent?.active ? t("active") : t("disabled")}
                                     </Badge>
                                 </div>
-                                <DialogTitle className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 truncate">
+                                <DialogTitle className="text-2xl font-bold tracking-tight text-slate-800 truncate">
                                     {selectedStudent?.name} {selectedStudent?.last_name}
                                 </DialogTitle>
                                 <div className="flex flex-wrap justify-center sm:justify-start gap-2.5 pt-0.5">
-                                    <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-bold text-xs bg-white/90 dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-gray-700 shadow-2xs">
+                                    <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs bg-white/95 px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-xs">
                                         <BadgeCheck className="h-4 w-4 text-indigo-600 shrink-0" />
-                                        <span className="text-gray-500 font-medium">{t("admission_no")}:</span>
-                                        <strong className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{selectedStudent?.admission_no}</strong>
+                                        <span className="text-slate-500 font-medium">{t("admission_no")}:</span>
+                                        <strong className="text-indigo-600 font-mono font-bold">{selectedStudent?.admission_no}</strong>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-bold text-xs bg-white/90 dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-gray-700 shadow-2xs">
+                                    <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs bg-white/95 px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-xs">
                                         <GraduationCap className="h-4 w-4 text-indigo-600 shrink-0" />
-                                        <span>{selectedStudent?.school_class?.name || "Class"} {selectedStudent?.section?.name ? `(${selectedStudent.section.name})` : ""}</span>
+                                        <span>{selectedStudent?.school_class?.name ? `${t("class")}: ${translateClassName(selectedStudent.school_class.name, langCode)}` : t("class")} {selectedStudent?.section?.name ? `(${translateSectionName(selectedStudent.section.name, langCode)})` : ""}</span>
                                     </div>
                                     {selectedStudent?.roll_no && (
-                                        <div className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-bold text-xs bg-white/90 dark:bg-gray-800/90 px-3 py-1.5 rounded-xl border border-gray-200/80 dark:border-gray-700 shadow-2xs">
+                                        <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs bg-white/95 px-3 py-1.5 rounded-xl border border-gray-200/80 shadow-xs">
                                             <User className="h-4 w-4 text-amber-500 shrink-0" />
-                                            <span className="text-gray-500 font-medium">Roll:</span>
-                                            <strong className="text-gray-900 dark:text-gray-100">{selectedStudent.roll_no}</strong>
+                                            <span className="text-slate-500 font-medium">{t("roll_no")}:</span>
+                                            <strong className="text-slate-900">{toLocaleNumber(selectedStudent.roll_no, langCode)}</strong>
                                         </div>
                                     )}
                                 </div>
@@ -1217,37 +1324,74 @@ export default function StudentDetailsPage() {
                     <div className="p-6 md:p-8 space-y-6 max-h-[60vh] overflow-y-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Personal Info */}
-                            <div className="space-y-3.5 bg-gray-50/70 dark:bg-gray-800/40 p-5 sm:p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-2xs">
-                                <h4 className="text-[11.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                            <div className="space-y-3.5 bg-muted/30 p-5 sm:p-6 rounded-3xl border border-border/70 shadow-xs">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-2">
                                     <User className="h-4 w-4" /> {t("personal_details")}
                                 </h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob)} icon={Calendar} color="indigo" />
-                                    <InfoField label={t("gender")} value={selectedStudent?.gender} icon={User} color="purple" />
+                                    <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob, langCode)} icon={Calendar} color="indigo" />
+                                    <InfoField
+                                        label={t("gender")}
+                                        value={
+                                            selectedStudent?.gender?.toLowerCase() === "male"
+                                                ? t("male")
+                                                : selectedStudent?.gender?.toLowerCase() === "female"
+                                                    ? t("female")
+                                                    : selectedStudent?.gender?.toLowerCase() === "other"
+                                                        ? t("other")
+                                                        : selectedStudent?.gender || "-"
+                                        }
+                                        icon={User}
+                                        color="purple"
+                                    />
                                     <InfoField label={t("blood_group")} value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} color="rose" />
-                                    <InfoField label={t("religion")} value={selectedStudent?.religion || "-"} icon={BadgeCheck} color="blue" />
+                                    <InfoField
+                                        label={t("religion")}
+                                        value={
+                                            selectedStudent?.religion?.toLowerCase() === "islam"
+                                                ? t("islam")
+                                                : selectedStudent?.religion?.toLowerCase() === "hinduism"
+                                                    ? t("hinduism")
+                                                    : selectedStudent?.religion?.toLowerCase() === "christianity"
+                                                        ? t("christianity")
+                                                        : selectedStudent?.religion?.toLowerCase() === "buddhism"
+                                                            ? t("buddhism")
+                                                            : selectedStudent?.religion || "-"
+                                        }
+                                        icon={BadgeCheck}
+                                        color="blue"
+                                    />
                                 </div>
                             </div>
 
                             {/* Contact & Parent Info */}
-                            <div className="space-y-3.5 bg-gray-50/70 dark:bg-gray-800/40 p-5 sm:p-6 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-2xs">
-                                <h4 className="text-[11.5px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                            <div className="space-y-3.5 bg-muted/30 p-5 sm:p-6 rounded-3xl border border-border/70 shadow-xs">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-2">
                                     <Phone className="h-4 w-4" /> {t("contact_and_guardian")}
                                 </h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <InfoField label={t("mobile_number")} value={selectedStudent?.phone} icon={Phone} color="emerald" />
+                                    <InfoField label={t("mobile_number")} value={selectedStudent?.phone ? toLocaleNumber(selectedStudent.phone, langCode) : "-"} icon={Phone} color="emerald" />
                                     <InfoField label={t("email_address")} value={selectedStudent?.email || "-"} icon={Mail} color="blue" />
-                                    <InfoField label={t("father_name")} value={selectedStudent?.father_name} icon={User} color="amber" />
-                                    <InfoField label={t("category")} value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} color="indigo" />
+                                    <InfoField label={t("father_name")} value={selectedStudent?.father_name || "-"} icon={User} color="amber" />
+                                    <InfoField
+                                        label={t("category")}
+                                        value={(() => {
+                                            const catName = selectedStudent?.student_category?.category_name || selectedStudent?.category || "";
+                                            if (!catName) return "-";
+                                            return catName.toLowerCase() === "general" ? t("preset_general") : catName;
+                                        })()}
+                                        icon={BadgeCheck}
+                                        color="indigo"
+                                    />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <DialogFooter className="p-4 md:p-6 bg-gray-50/80 dark:bg-gray-850/80 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center gap-3">
+                    <DialogFooter className="p-4 md:p-6 bg-muted/20 border-t border-border/70 flex flex-col sm:flex-row items-center gap-3">
                         <Button
                             variant="outline"
-                            className="w-full sm:w-auto rounded-full h-10 px-6 text-xs font-bold uppercase tracking-wider border-gray-200 bg-white hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 shadow-xs cursor-pointer"
+                            className="w-full sm:w-auto rounded-xl h-10 px-6 text-xs font-bold border-border bg-background hover:bg-muted shadow-xs cursor-pointer"
                             onClick={() => setViewDialogOpen(false)}
                         >
                             {t("close")}
@@ -1255,18 +1399,18 @@ export default function StudentDetailsPage() {
                         <div className="flex items-center gap-2.5 w-full sm:w-auto sm:ml-auto">
                             {selectedStudent && (
                                 <Button
-                                    className="flex-1 sm:flex-initial rounded-full h-10 px-6 text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
+                                    className="flex-1 sm:flex-initial rounded-xl h-10 px-5 text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer border-none"
                                     onClick={() => {
                                         setViewDialogOpen(false);
                                         handleImpersonate(selectedStudent);
                                     }}
                                 >
-                                    <LogIn className="h-3.5 w-3.5 mr-1.5" />
-                                    Impersonate
+                                    <LogIn className="h-4 w-4 mr-1.5" />
+                                    {t("impersonate")}
                                 </Button>
                             )}
                             <Button
-                                className="btn-gradient text-white flex-1 sm:flex-initial rounded-full h-10 px-7 text-xs font-bold uppercase tracking-wider shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer"
+                                className="flex-1 sm:flex-initial rounded-xl h-10 px-6 text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-white shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer border-none"
                                 onClick={() => {
                                     setViewDialogOpen(false);
                                     router.push(`/dashboard/student-information/student-details/${selectedStudent?.id}/edit`);
@@ -1320,6 +1464,16 @@ export default function StudentDetailsPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <TransferDialog
+                open={transferDialogOpen}
+                onOpenChange={setTransferDialogOpen}
+                type="student"
+                record={transferStudent}
+                onSuccess={() => {
+                    handleSearch(pagination.current_page);
+                }}
+            />
         </div>
     );
 }

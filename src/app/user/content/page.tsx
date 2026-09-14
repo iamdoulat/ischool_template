@@ -16,13 +16,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
     Search, ChevronLeft, ChevronRight, Copy,
-    FileSpreadsheet, FileDown, Printer, Eye,
+    FileSpreadsheet, FileDown, Printer, Columns, Eye,
     Loader2, FileText, X, Calendar, User, Users,
     FolderOpen,
 } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
 import { useToast } from "@/components/ui/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, formatDate as formatDateUtil } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -40,7 +40,9 @@ type SharedContent = {
 const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function UserContentPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const fmt = (d: string | null | undefined) => (d ? toLocaleNumber(formatDateUtil(d), langCode) : "—");
     const [items, setItems] = useState<SharedContent[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -81,9 +83,6 @@ export default function UserContentPage() {
         };
         fetchContent();
     }, [page, limit, debouncedSearch, toast]);
-
-    const formatDate = (d: string | null) =>
-        d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" }) : "—";
 
     const isExpired = (valid_upto: string | null) =>
         valid_upto ? new Date(valid_upto) < new Date() : false;
@@ -147,7 +146,12 @@ export default function UserContentPage() {
                     <div>
                         <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("download_center")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {loading ? t("loading_shared_content") : `${total} ${t("shared_item").toLowerCase()}${total === 1 ? "" : "s"}`}
+                            {loading
+                                ? t("loading_shared_content")
+                                : (total === 1
+                                    ? (t("shared_item_count") || `${toLocaleNumber(total, langCode)} ${t("shared_item")}`)
+                                    : (t("shared_items_count") || `${toLocaleNumber(total, langCode)} ${t("shared_item")}`)
+                                ).replace("{count}", toLocaleNumber(total, langCode))}
                         </p>
                     </div>
                 </div>
@@ -164,37 +168,36 @@ export default function UserContentPage() {
                             />
                         </div>
 
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center justify-between sm:justify-end gap-2">
                             <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setPage(1); }}>
-                                <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded">
-                                    <SelectValue />
+                                <SelectTrigger className="h-8 min-w-16 px-2 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
+                                    <SelectValue placeholder={toLocaleNumber(10, langCode)}>
+                                        {toLocaleNumber(limit, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {PAGE_SIZES.map((s) => (
-                                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                                        <SelectItem key={s} value={String(s)}>{toLocaleNumber(s, langCode)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-
-                            <div className="flex items-center border border-gray-200 rounded-md overflow-hidden">
+                            <div className="flex items-center gap-1 text-gray-400">
                                 {[
                                     { icon: Copy, label: t("copy"), action: copyToClipboard },
                                     { icon: FileSpreadsheet, label: t("excel"), action: exportToExcel },
                                     { icon: FileDown, label: t("pdf"), action: exportToPDF },
                                     { icon: Printer, label: t("print"), action: () => window.print() },
-                                ].map(({ icon: Icon, label, action }, i, arr) => (
+                                    { icon: Columns, label: t("columns"), action: () => {} },
+                                ].map(({ icon: Icon, label, action }, i) => (
                                     <Button
-                                        key={label}
+                                        key={label || i}
                                         variant="ghost"
                                         size="icon"
                                         title={label}
                                         onClick={action}
-                                        className={cn(
-                                            "h-9 w-9 rounded-none hover:bg-gray-100",
-                                            i < arr.length - 1 && "border-r border-gray-200"
-                                        )}
+                                        className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all text-gray-400 hover:text-gray-600"
                                     >
-                                        <Icon className="h-4 w-4 text-gray-500" />
+                                        <Icon className="h-3.5 w-3.5" />
                                     </Button>
                                 ))}
                             </div>
@@ -246,13 +249,13 @@ export default function UserContentPage() {
                                                         <div className="text-[11px] text-gray-400 font-normal mt-1 line-clamp-1 max-w-xs">{item.description}</div>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-600">{formatDate(item.share_date)}</TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-600">{fmt(item.share_date)}</TableCell>
                                                 <TableCell className="py-3 px-4">
                                                     <span className={cn(
                                                         "text-[12px] font-medium",
                                                         expired ? "text-red-500" : "text-gray-600"
                                                     )}>
-                                                        {formatDate(item.valid_upto)}
+                                                        {fmt(item.valid_upto)}
                                                     </span>
                                                     {expired && (
                                                         <Badge className="ml-2 bg-red-100 text-red-600 border-red-200 hover:bg-red-100 text-[10px]">{t("expired")}</Badge>
@@ -306,10 +309,10 @@ export default function UserContentPage() {
                                                 )}
                                             </div>
                                             <div className="grid grid-cols-1 gap-1.5 text-[11px] text-gray-600 border-t border-gray-100 pt-2.5">
-                                                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("shared")}: {formatDate(item.share_date)}</span>
+                                                <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("shared")}: {fmt(item.share_date)}</span>
                                                 <span className="flex items-center gap-1.5">
                                                     <Calendar className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-                                                    {t("valid_upto")}: <span className={cn(expired ? "text-red-500 font-medium" : "")}>{formatDate(item.valid_upto)}</span>
+                                                    {t("valid_upto")}: <span className={cn(expired ? "text-red-500 font-medium" : "")}>{fmt(item.valid_upto)}</span>
                                                 </span>
                                                 <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.sender?.name || "—"}</span>
                                             </div>
@@ -330,47 +333,51 @@ export default function UserContentPage() {
                     {!loading && (
                         <div className="flex items-center justify-between mt-4 gap-3 flex-wrap">
                             <span className="text-[12px] text-gray-500">
-                                {total === 0 ? t("no_entries") : `${t("showing")} ${from} ${t("to")} ${to} ${t("of")} ${total} ${t("entries")}`}
+                                {total === 0
+                                    ? t("no_entries")
+                                    : `${t("showing")} ${toLocaleNumber(from, langCode)} ${t("to")} ${toLocaleNumber(to, langCode)} ${t("of")} ${toLocaleNumber(total, langCode)} ${t("entries")}`}
                             </span>
-                            <div className="flex items-center gap-1.5">
-                                <Button
-                                    size="icon"
-                                    disabled={page <= 1}
-                                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
+                            {lastPage > 1 && (
+                                <div className="flex items-center gap-1.5">
+                                    <Button
+                                        size="icon"
+                                        disabled={page <= 1}
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
 
-                                {pageNumbers.map((p, i) =>
-                                    p === "…" ? (
-                                        <span key={`e-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
-                                    ) : (
-                                        <Button
-                                            key={p}
-                                            size="icon"
-                                            onClick={() => setPage(p as number)}
-                                            className={cn(
-                                                "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
-                                                page === p
-                                                    ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
-                                                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                                            )}
-                                        >
-                                            {p}
-                                        </Button>
-                                    )
-                                )}
+                                    {pageNumbers.map((p, i) =>
+                                        p === "…" ? (
+                                            <span key={`e-${i}`} className="text-gray-400 text-[12px] px-1">…</span>
+                                        ) : (
+                                            <Button
+                                                key={p}
+                                                size="icon"
+                                                onClick={() => setPage(p as number)}
+                                                className={cn(
+                                                    "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
+                                                    page === p
+                                                        ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
+                                                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                                )}
+                                            >
+                                                {toLocaleNumber(p, langCode)}
+                                            </Button>
+                                        )
+                                    )}
 
-                                <Button
-                                    size="icon"
-                                    disabled={page >= lastPage}
-                                    onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
-                            </div>
+                                    <Button
+                                        size="icon"
+                                        disabled={page >= lastPage}
+                                        onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                                        className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </CardContent>
@@ -406,13 +413,13 @@ export default function UserContentPage() {
                         <div className="flex flex-wrap gap-4 px-5 pt-4 pb-2 text-[12px] text-gray-500">
                             <div className="flex items-center gap-1.5">
                                 <Calendar className="h-3.5 w-3.5" />
-                                <span>{t("shared")}: <span className="font-medium text-gray-700">{formatDate(selected.share_date)}</span></span>
+                                <span>{t("shared")}: <span className="font-medium text-gray-700">{fmt(selected.share_date)}</span></span>
                             </div>
                             {selected.valid_upto && (
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
                                     <span>{t("valid_upto")}: <span className={cn("font-medium", isExpired(selected.valid_upto) ? "text-red-500" : "text-gray-700")}>
-                                        {formatDate(selected.valid_upto)}
+                                        {fmt(selected.valid_upto)}
                                     </span></span>
                                 </div>
                             )}

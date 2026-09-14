@@ -3,9 +3,20 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { tokenManager } from "@/lib/token-manager";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateClassSection,
+    translateFeeName,
+    translateFeeStatus,
+    translatePaymentMode,
+    translateStudentCategory,
+    translateYesNo,
+} from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { useTranslation } from "@/hooks/use-translation";
@@ -70,12 +81,13 @@ type FeesData = {
     fees: FeeRow[];
 };
 
-function StatusBadge({ status }: { status: FeeRow["status"] }) {
+function StatusBadge({ status, langCode = "en" }: { status: FeeRow["status"]; langCode?: string }) {
+    const { t } = useTranslation();
     const map: Record<FeeRow["status"], { label: string; className: string }> = {
-        Paid: { label: "PAID", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" },
-        Unpaid: { label: "UNPAID", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" },
-        Partial: { label: "PARTIAL", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" },
-        Pending: { label: "PENDING", className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20" },
+        Paid: { label: t("paid") || translateFeeStatus("Paid", langCode), className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" },
+        Unpaid: { label: t("unpaid") || translateFeeStatus("Unpaid", langCode), className: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" },
+        Partial: { label: t("partial") || translateFeeStatus("Partial", langCode), className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" },
+        Pending: { label: t("pending") || translateFeeStatus("Pending", langCode), className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20" },
     };
     const s = map[status] || map.Unpaid;
     return (
@@ -85,7 +97,7 @@ function StatusBadge({ status }: { status: FeeRow["status"] }) {
     );
 }
 
-function CountUp({ value, prefix = "" }: { value: number; prefix?: string }) {
+function CountUp({ value, prefix = "", langCode = "en" }: { value: number; prefix?: string; langCode?: string }) {
     const [displayed, setDisplayed] = useState(0);
     useEffect(() => {
         let start = 0;
@@ -103,13 +115,14 @@ function CountUp({ value, prefix = "" }: { value: number; prefix?: string }) {
         }, step);
         return () => clearInterval(timer);
     }, [value]);
-    return <span>{prefix}{displayed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+    return <span>{prefix}{toLocaleNumber(displayed.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), langCode)}</span>;
 }
 
-const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n: number, langCode: string = "en") => toLocaleNumber(n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), langCode);
 
 export default function StudentFeesPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [data, setData] = useState<FeesData | null>(null);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<number[]>([]);
@@ -139,7 +152,7 @@ export default function StudentFeesPage() {
     const { settings } = useSettings();
 
     const fetchFees = useCallback(async () => {
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+        const token = typeof window !== 'undefined' ? (tokenManager.getToken() || await tokenManager.syncSession()) : null;
         if (!token) {
             setLoading(false);
             return;
@@ -277,7 +290,7 @@ export default function StudentFeesPage() {
                         <s.icon className="absolute -top-3 -right-3 h-20 w-20 text-white/15 rotate-12 pointer-events-none" />
                         <div className="relative z-10">
                             <p className="text-[12px] font-medium opacity-90">{s.label}</p>
-                            <p className="text-2xl font-bold mt-1"><CountUp value={s.value} prefix={cur} /></p>
+                            <p className="text-2xl font-bold mt-1"><CountUp value={s.value} prefix={cur} langCode={langCode} /></p>
                         </div>
                     </div>
                 ))}
@@ -304,13 +317,13 @@ export default function StudentFeesPage() {
                         <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
                             {[
                                 [t("name"), student.name],
-                                [t("class_section"), student.class_section],
+                                [t("class_section"), translateClassSection(student.class_section, langCode)],
                                 [t("father_name"), student.father_name || "—"],
-                                [t("admission_no"), student.admission_no || "—"],
-                                [t("mobile_number"), student.mobile || "—"],
-                                [t("roll_number"), student.roll_no || "—"],
-                                [t("category"), student.category || "—"],
-                                [t("rte"), student.rte || "—"],
+                                [t("admission_no"), toLocaleNumber(student.admission_no, langCode) || "—"],
+                                [t("mobile_number"), toLocaleNumber(student.mobile, langCode) || "—"],
+                                [t("roll_number"), toLocaleNumber(student.roll_no, langCode) || "—"],
+                                [t("category"), translateStudentCategory(student.category, langCode) || "—"],
+                                [t("rte"), translateYesNo(student.rte, langCode) || "—"],
                             ].map(([label, value]) => (
                                 <div key={label as string} className="space-y-0.5">
                                     <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide block">{label}</span>
@@ -349,7 +362,7 @@ export default function StudentFeesPage() {
                         </div>
 
                         <span className="flex items-center gap-1.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold px-4 py-1.5 rounded-[10px] shadow-sm mx-auto">
-                            {t("session")}: {session || "—"}
+                            {t("session")}: {toLocaleNumber(session, langCode) || "—"}
                         </span>
 
                         <div className="w-0 sm:w-[1px]" />
@@ -418,14 +431,14 @@ export default function StudentFeesPage() {
                                         <td></td>
                                         <td className="px-2 py-3 text-sm text-gray-700 dark:text-gray-200" colSpan={3}>{t("grand_total")}</td>
                                         <td className="px-2 py-3 text-right text-gray-800 dark:text-gray-100 whitespace-nowrap">
-                                            {cur}{fmt(totals.amount)}
-                                            {totals.fine > 0 && <span className="text-orange-500 dark:text-orange-400 ml-1">+ {fmt(totals.fine)}</span>}
+                                            {cur}{fmt(totals.amount, langCode)}
+                                            {totals.fine > 0 && <span className="text-orange-500 dark:text-orange-400 ml-1">+ {fmt(totals.fine, langCode)}</span>}
                                         </td>
                                         <td colSpan={3}></td>
-                                        <td className="px-2 py-3 text-right text-gray-700 dark:text-gray-300">{cur}{fmt(totals.discount)}</td>
-                                        <td className="px-2 py-3 text-right text-gray-700 dark:text-gray-300">{cur}{fmt(totals.fineAmt)}</td>
-                                        <td className="px-2 py-3 text-right text-green-600 dark:text-green-400">{cur}{fmt(totals.paid)}</td>
-                                        <td className="px-2 py-3 text-right text-red-600 dark:text-red-400">{cur}{fmt(totals.balance)}</td>
+                                        <td className="px-2 py-3 text-right text-gray-700 dark:text-gray-300">{cur}{fmt(totals.discount, langCode)}</td>
+                                        <td className="px-2 py-3 text-right text-gray-700 dark:text-gray-300">{cur}{fmt(totals.fineAmt, langCode)}</td>
+                                        <td className="px-2 py-3 text-right text-green-600 dark:text-green-400">{cur}{fmt(totals.paid, langCode)}</td>
+                                        <td className="px-2 py-3 text-right text-red-600 dark:text-red-400">{cur}{fmt(totals.balance, langCode)}</td>
                                         <td></td>
                                     </tr>
                                 )}
@@ -473,20 +486,20 @@ export default function StudentFeesPage() {
                                 
                                 <div style={{ textAlign: 'right', fontSize: '11.5px', color: '#475569', lineHeight: '1.6' }}>
                                     {settings?.address && (
-                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Address:</span> {settings.address}</div>
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>{t("address") || "Address"}:</span> {settings.address}</div>
                                     )}
                                     {settings?.phone && (
-                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Phone:</span> {settings.phone}</div>
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>{t("phone") || "Phone"}:</span> {toLocaleNumber(settings.phone, langCode)}</div>
                                     )}
                                     {settings?.email && (
-                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Email:</span> {settings.email}</div>
+                                        <div><span style={{ fontWeight: '600', color: '#1e293b' }}>{t("email") || "Email"}:</span> {settings.email}</div>
                                     )}
                                     {(() => {
                                         const siteUrl = (settings?.frontend_url || (typeof window !== 'undefined' ? window.location.origin : ''))
                                             .replace(/^https?:\/\//, '')
                                             .replace(/^api\./, '');
                                         return siteUrl ? (
-                                            <div><span style={{ fontWeight: '600', color: '#1e293b' }}>Website:</span> {siteUrl}</div>
+                                            <div><span style={{ fontWeight: '600', color: '#1e293b' }}>{t("website") || "Website"}:</span> {siteUrl}</div>
                                         ) : null;
                                     })()}
                                 </div>
@@ -504,15 +517,15 @@ export default function StudentFeesPage() {
                                 marginBottom: '20px' 
                             }}>
                                 <div style={{ fontSize: '12px', fontWeight: '500', color: '#94a3b8', width: '220px', textAlign: 'left' }}>
-                                    <span>Invoice No: <strong style={{ color: '#ffffff', fontWeight: '700' }}>#{invoiceData.id}</strong></span>
+                                    <span>{t("invoice_no") || "Invoice No"}: <strong style={{ color: '#ffffff', fontWeight: '700' }}>#{toLocaleNumber(invoiceData.id, langCode)}</strong></span>
                                 </div>
                                 <div style={{ textAlign: 'center', flex: 1 }}>
                                     <span style={{ fontSize: '14px', fontWeight: '800', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#ffffff' }}>
-                                        INVOICE
+                                        {t("invoice") || "INVOICE"}
                                     </span>
                                 </div>
                                 <div style={{ fontSize: '12px', fontWeight: '500', color: '#94a3b8', width: '220px', textAlign: 'right' }}>
-                                    <span>Date: <strong style={{ color: '#ffffff', fontWeight: '700' }}>{invoiceData.date}</strong></span>
+                                    <span>{t("date") || "Date"}: <strong style={{ color: '#ffffff', fontWeight: '700' }}>{toLocaleNumber(invoiceData.date, langCode)}</strong></span>
                                 </div>
                             </div>
 
@@ -521,15 +534,15 @@ export default function StudentFeesPage() {
                                 {/* Left Column: Student Details */}
                                 <div style={{ backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                     <p style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px 0' }}>
-                                        BILLED TO
+                                        {t("billed_to") || "BILLED TO"}
                                     </p>
                                     <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', margin: '0 0 6px 0' }}>
                                         {invoiceData.studentName}
                                     </h3>
                                     <div style={{ fontSize: '12px', color: '#475569', lineHeight: '1.6' }}>
-                                        <div>Admission No: <strong style={{ color: '#0f172a' }}>{invoiceData.admissionNo}</strong></div>
+                                        <div>{t("admission_no") || "Admission No"}: <strong style={{ color: '#0f172a' }}>{toLocaleNumber(invoiceData.admissionNo, langCode)}</strong></div>
                                         {invoiceData.className && (
-                                            <div>Class & Section: <strong style={{ color: '#0f172a' }}>{invoiceData.className}</strong></div>
+                                            <div>{t("class_section") || "Class & Section"}: <strong style={{ color: '#0f172a' }}>{translateClassSection(invoiceData.className, langCode)}</strong></div>
                                         )}
                                     </div>
                                 </div>
@@ -538,7 +551,7 @@ export default function StudentFeesPage() {
                                 <div style={{ backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                                         <p style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
-                                            PAYMENT DETAILS
+                                            {t("payment_details") || "PAYMENT DETAILS"}
                                         </p>
                                         <span style={{ 
                                             display: 'inline-flex', 
@@ -548,30 +561,30 @@ export default function StudentFeesPage() {
                                             padding: '0 8px', 
                                             fontSize: '10px', 
                                             fontWeight: '700', 
-                                            letterSpacing: '0.04em',
+                                            letterSpacing: '0.04em', 
                                             borderRadius: '4px', 
                                             backgroundColor: invoiceData.status === 'PAID' ? '#dcfce7' : '#fef3c7', 
                                             color: invoiceData.status === 'PAID' ? '#15803d' : '#b45309' 
                                         }}>
-                                            {invoiceData.status || 'PAID'}
+                                            {translateFeeStatus(invoiceData.status, langCode)}
                                         </span>
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
                                         <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Bank / Gateway</span>
-                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.bank_name || 'UddoktaPay'}</strong>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>{t("bank_gateway") || "Bank / Gateway"}</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{translatePaymentMode(invoiceData.bank_name, langCode) || 'UddoktaPay'}</strong>
                                         </div>
                                         <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Account No</span>
-                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.bank_account_no || 'N/A'}</strong>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>{t("account_no") || "Account No"}</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{toLocaleNumber(invoiceData.bank_account_no, langCode) || 'N/A'}</strong>
                                         </div>
                                         <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Reference / Trx ID</span>
-                                            <strong style={{ color: '#4f46e5', fontSize: '12.5px', fontFamily: 'ui-monospace, monospace' }}>{invoiceData.reference_no || 'N/A'}</strong>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>{t("reference_trx_id") || "Reference / Trx ID"}</span>
+                                            <strong style={{ color: '#4f46e5', fontSize: '12.5px', fontFamily: 'ui-monospace, monospace' }}>{toLocaleNumber(invoiceData.reference_no, langCode) || 'N/A'}</strong>
                                         </div>
                                         <div>
-                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>Payment Date</span>
-                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{invoiceData.date}</strong>
+                                            <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '2px' }}>{t("payment_date") || "Payment Date"}</span>
+                                            <strong style={{ color: '#0f172a', fontSize: '12.5px' }}>{toLocaleNumber(invoiceData.date, langCode)}</strong>
                                         </div>
                                     </div>
                                 </div>
@@ -582,17 +595,17 @@ export default function StudentFeesPage() {
                                 <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                                     <thead>
                                         <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</th>
-                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Amount</th>
+                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t("description") || "Description"}</th>
+                                            <th style={{ padding: '12px 18px', fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>{t("amount") || "Amount"}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
                                             <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9' }}>
-                                                <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '13px', margin: 0 }}>{invoiceData.detail}</p>
+                                                <p style={{ fontWeight: '600', color: '#0f172a', fontSize: '13px', margin: 0 }}>{translateFeeName(invoiceData.detail, langCode)}</p>
                                             </td>
                                             <td style={{ padding: '16px 18px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', fontWeight: '700', color: '#0f172a', fontSize: '13px' }}>
-                                                {cur}{fmt(invoiceData.amount)}
+                                                {cur}{fmt(invoiceData.amount, langCode)}
                                             </td>
                                         </tr>
                                     </tbody>
@@ -603,12 +616,12 @@ export default function StudentFeesPage() {
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
                                 <div style={{ width: '280px', backgroundColor: '#f8fafc', borderRadius: '8px', padding: '16px 20px', border: '1px solid #e2e8f0', boxSizing: 'border-box' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#64748b' }}>Subtotal</span>
-                                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{cur}{fmt(invoiceData.amount)}</span>
+                                        <span style={{ fontSize: '12.5px', fontWeight: '600', color: '#64748b' }}>{t("subtotal") || "Subtotal"}</span>
+                                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>{cur}{fmt(invoiceData.amount, langCode)}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #cbd5e1', marginTop: '8px' }}>
-                                        <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>Total Paid</span>
-                                        <span style={{ fontSize: '17px', fontWeight: '900', color: '#4f46e5' }}>{cur}{fmt(invoiceData.amount)}</span>
+                                        <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>{t("total_paid") || "Total Paid"}</span>
+                                        <span style={{ fontSize: '17px', fontWeight: '900', color: '#4f46e5' }}>{cur}{fmt(invoiceData.amount, langCode)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -617,10 +630,10 @@ export default function StudentFeesPage() {
                         {/* Footer (Always at Bottom) */}
                         <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
                             {printSettings?.footer_content ? (
-                                <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
+                                <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(printSettings.footer_content) }} />
                             ) : (
                                 <p style={{ fontSize: '11px', fontWeight: '500', color: '#94a3b8', margin: 0 }}>
-                                    This is a computer-generated receipt. Thank you for your payment!
+                                    {t("computer_generated_receipt") || "This is a computer-generated receipt. Thank you for your payment!"}
                                 </p>
                             )}
                         </div>
@@ -633,7 +646,8 @@ export default function StudentFeesPage() {
 
 function FeeRowGroup({ fee, checked, onToggle, onPay, onDownloadInvoice, delay }: { fee: FeeRow; checked: boolean; onToggle: () => void; onPay: () => void; onDownloadInvoice: (f: FeeRow, p?: Payment) => void; delay: number }) {
     const [visible, setVisible] = useState(false);
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
 
     useEffect(() => {
         const timer = setTimeout(() => setVisible(true), delay);
@@ -654,12 +668,12 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, onDownloadInvoice, delay }
                     <input type="checkbox" checked={checked} onChange={onToggle} className="rounded cursor-pointer accent-[#6366F1]" />
                 </td>
                 <td className="px-2 py-2.5">
-                    <span className="text-[#6366F1] dark:text-indigo-400 font-semibold">{fee.name} ({fee.code})</span>
+                    <span className="text-[#6366F1] dark:text-indigo-400 font-semibold">{translateFeeName(fee.name, langCode)} ({fee.code ? toLocaleNumber(fee.code, langCode) : ""})</span>
                 </td>
-                <td className="px-2 py-2.5 text-gray-600 dark:text-gray-300 whitespace-nowrap">{fee.due_date}</td>
+                <td className="px-2 py-2.5 text-gray-600 dark:text-gray-300 whitespace-nowrap">{toLocaleNumber(fee.due_date, langCode)}</td>
                 <td className="px-2 py-2.5">
                     <div className="flex items-center gap-1.5">
-                        <StatusBadge status={fee.status} />
+                        <StatusBadge status={fee.status} langCode={langCode} />
                         {fee.status !== "Paid" && fee.status !== "Pending" && (
                             <button
                                 onClick={onPay}
@@ -671,20 +685,20 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, onDownloadInvoice, delay }
                     </div>
                 </td>
                 <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                    <span className="text-gray-700 dark:text-gray-200 font-medium">{fmt(fee.amount)}</span>
-                    {fee.fine > 0 && <span className="text-orange-500 dark:text-orange-400 ml-1">+ {fmt(fee.fine)}</span>}
+                    <span className="text-gray-700 dark:text-gray-200 font-medium">{fmt(fee.amount, langCode)}</span>
+                    {fee.fine > 0 && <span className="text-orange-500 dark:text-orange-400 ml-1">+ {fmt(fee.fine, langCode)}</span>}
                 </td>
                 <td colSpan={3}></td>
-                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.discount)}</td>
-                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.fine_amount)}</td>
-                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.paid_amount)}</td>
-                <td className="px-2 py-2.5 text-right font-medium text-gray-700 dark:text-gray-200">{fee.balance > 0 ? fmt(fee.balance) : "—"}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.discount, langCode)}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.fine_amount, langCode)}</td>
+                <td className="px-2 py-2.5 text-right text-gray-600 dark:text-gray-300">{fmt(fee.paid_amount, langCode)}</td>
+                <td className="px-2 py-2.5 text-right font-medium text-gray-700 dark:text-gray-200">{fee.balance > 0 ? fmt(fee.balance, langCode) : "—"}</td>
                 <td className="px-2 py-2.5 text-center">
                     {fee.paid_amount > 0 ? (
                         <button
                             onClick={() => onDownloadInvoice(fee)}
                             className="p-1.5 rounded-lg text-slate-700 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all inline-flex items-center justify-center shadow-xs"
-                            title="Download Invoice"
+                            title={t("download_invoice") || "Download Invoice"}
                         >
                             <Download className="h-4 w-4" />
                         </button>
@@ -702,22 +716,22 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, onDownloadInvoice, delay }
                     <td></td>
                     <td className="px-2 py-1.5 text-[#6366F1] dark:text-indigo-400 font-medium">
                         <div className="flex items-center gap-1.5">
-                            <span>{p.payment_id}</span>
+                            <span>{toLocaleNumber(p.payment_id, langCode)}</span>
                             <button
                                 onClick={() => onDownloadInvoice(fee, p)}
                                 className="p-0.5 rounded text-slate-400 hover:text-indigo-600 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all inline-flex items-center justify-center"
-                                title="Download Receipt"
+                                title={t("download_receipt") || "Download Receipt"}
                             >
                                 <Download className="h-3 w-3" />
                             </button>
                         </div>
                     </td>
-                    <td className="px-2 py-1.5">{p.mode}</td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">{p.date}</td>
-                    <td className="px-2 py-1.5 text-right">{p.discount > 0 ? fmt(p.discount) : "0.00"}</td>
-                    <td className="px-2 py-1.5 text-right">{p.fine > 0 ? fmt(p.fine) : "0.00"}</td>
-                    <td className="px-2 py-1.5 text-right">{fmt(p.paid)}</td>
-                    <td className="px-2 py-1.5 text-right">{fmt(p.balance)}</td>
+                    <td className="px-2 py-1.5">{translatePaymentMode(p.mode, langCode)}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{toLocaleNumber(p.date, langCode)}</td>
+                    <td className="px-2 py-1.5 text-right">{p.discount > 0 ? fmt(p.discount, langCode) : toLocaleNumber("0.00", langCode)}</td>
+                    <td className="px-2 py-1.5 text-right">{p.fine > 0 ? fmt(p.fine, langCode) : toLocaleNumber("0.00", langCode)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmt(p.paid, langCode)}</td>
+                    <td className="px-2 py-1.5 text-right">{fmt(p.balance, langCode)}</td>
                     <td></td>
                 </tr>
             ))}
@@ -726,7 +740,8 @@ function FeeRowGroup({ fee, checked, onToggle, onPay, onDownloadInvoice, delay }
 }
 
 function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; open: boolean; onClose: () => void; onSuccess: () => void }) {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const { toast } = useToast();
     const { selectedCurrency } = useCurrency();
     const cur = selectedCurrency?.symbol || "$";
@@ -746,7 +761,7 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
 
     useEffect(() => {
         if (open) {
-            const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+            const token = typeof window !== 'undefined' ? (tokenManager.getToken() || tokenManager.hasToken()) : null;
             if (token) {
                 setLoading(true);
                 api.get("/user/payment-gateways", { skipGlobalErrorHandler: true })
@@ -788,7 +803,7 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
         }
 
         if (isAmountExceeded) {
-            toast({ variant: "destructive", title: t("error"), description: `Amount cannot exceed the remaining due of ${cur}${fmt(fee.balance)}.` });
+            toast({ variant: "destructive", title: t("error"), description: `Amount cannot exceed the remaining due of ${cur}${fmt(fee.balance, langCode)}.` });
             return;
         }
 
@@ -828,9 +843,9 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                 <DialogHeader className="p-5 sm:p-6 pb-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shrink-0">
                     <DialogTitle className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                         <CreditCard className="h-5 w-5 shrink-0" />
-                        <span className="truncate">{t("pay_fee")} - {fee?.name}</span>
+                        <span className="truncate">{t("pay_fee")} - {translateFeeName(fee?.name, langCode)}</span>
                     </DialogTitle>
-                    <p className="text-xs text-white/80">{fee?.code ? `Fee Code: ${fee.code}` : "Fee Payment"}</p>
+                    <p className="text-xs text-white/80">{fee?.code ? `${t("fee_code")}: ${toLocaleNumber(fee.code, langCode)}` : t("fee_payment")}</p>
                 </DialogHeader>
 
                 {loading ? (
@@ -841,16 +856,16 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                             {fee && (
                                 <div className="grid grid-cols-3 gap-2 p-3 bg-muted/40 rounded-lg border border-muted/60 text-center">
                                     <div className="flex flex-col justify-center">
-                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Total Fee</span>
-                                        <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">{cur}{fmt(fee.amount)}</span>
+                                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{t("total_fees") || "Total Fee"}</span>
+                                        <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">{cur}{fmt(fee.amount, langCode)}</span>
                                     </div>
                                     <div className="border-x border-muted/60 flex flex-col justify-center px-1">
-                                        <span className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider">Paid</span>
-                                        <span className="text-xs sm:text-sm font-bold text-emerald-600 mt-0.5">{cur}{fmt(fee.paid_amount)}</span>
+                                        <span className="text-[10px] text-emerald-600 uppercase font-bold tracking-wider">{t("paid") || "Paid"}</span>
+                                        <span className="text-xs sm:text-sm font-bold text-emerald-600 mt-0.5">{cur}{fmt(fee.paid_amount, langCode)}</span>
                                     </div>
                                     <div className="flex flex-col justify-center">
-                                        <span className="text-[10px] text-amber-600 uppercase font-bold tracking-wider">Balance Due</span>
-                                        <span className="text-xs sm:text-sm font-bold text-amber-600 mt-0.5">{cur}{fmt(fee.balance)}</span>
+                                        <span className="text-[10px] text-amber-600 uppercase font-bold tracking-wider">{t("balance_due") || "Balance Due"}</span>
+                                        <span className="text-xs sm:text-sm font-bold text-amber-600 mt-0.5">{cur}{fmt(fee.balance, langCode)}</span>
                                     </div>
                                 </div>
                             )}
@@ -863,7 +878,7 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {gateways.map(g => (
-                                        <option key={g.provider} value={g.provider}>{g.name}</option>
+                                        <option key={g.provider} value={g.provider}>{translatePaymentMode(g.name, langCode) || g.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -880,7 +895,7 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                                                         onClick={() => setAmount(fee.balance.toFixed(2))}
                                                         className="text-[10px] text-primary hover:underline font-semibold"
                                                     >
-                                                        Pay Full
+                                                        {t("pay_full") || "Pay Full"}
                                                     </button>
                                                 )}
                                             </div>
@@ -897,11 +912,11 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                                             {fee && (
                                                 <p className="text-[10px] text-muted-foreground">
                                                     {numAmount > 0 && numAmount < fee.balance ? (
-                                                        <span className="text-amber-600 font-medium">Partial payment. Remaining: {cur}{fmt(remainingAfterPay)}</span>
+                                                        <span className="text-amber-600 font-medium">{t("partial_payment") || "Partial payment"}. {t("remaining") || "Remaining"}: {cur}{fmt(remainingAfterPay, langCode)}</span>
                                                     ) : isAmountExceeded ? (
-                                                        <span className="text-destructive font-medium">Exceeds remaining due of {cur}{fmt(fee.balance)}</span>
+                                                        <span className="text-destructive font-medium">{t("amount_exceeds_due") || "Exceeds remaining due of"} {cur}{fmt(fee.balance, langCode)}</span>
                                                     ) : (
-                                                        <span>Enter partial or full remaining amount.</span>
+                                                        <span>{t("enter_partial_or_full_amount") || "Enter partial or full remaining amount."}</span>
                                                     )}
                                                 </p>
                                             )}
@@ -918,16 +933,16 @@ function PaymentModal({ fee, open, onClose, onSuccess }: { fee: FeeRow | null; o
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label className="text-xs font-semibold">{t("reference_no")}</Label>
-                                        <Input value={referenceNo} onChange={e => setReferenceNo(e.target.value)} placeholder="Transaction ID / Slip No / Reference" className="h-10" />
+                                        <Input value={referenceNo} onChange={e => setReferenceNo(e.target.value)} placeholder={t("reference_placeholder") || "Transaction ID / Slip No / Reference"} className="h-10" />
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-semibold">{t("bank_name")}</Label>
-                                            <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. Chase Bank" className="h-10" />
+                                            <Input value={bankName} onChange={e => setBankName(e.target.value)} placeholder={t("eg_bank_name") || "e.g. Chase Bank"} className="h-10" />
                                         </div>
                                         <div className="space-y-1.5">
                                             <Label className="text-xs font-semibold">{t("bank_account_no")}</Label>
-                                            <Input value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} placeholder="Account No" className="h-10" />
+                                            <Input value={bankAccountNo} onChange={e => setBankAccountNo(e.target.value)} placeholder={t("account_no") || "Account No"} className="h-10" />
                                         </div>
                                     </div>
                                     <div className="space-y-1.5">

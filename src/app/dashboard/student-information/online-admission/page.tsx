@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -54,10 +54,15 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     );
 }
 
-const formatDate = (dateString?: string | null) => {
+const formatDate = (dateString?: string | null, langCode: string = "en") => {
     if (!dateString) return "-";
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? dateString : date.toLocaleDateString('en-GB');
+    if (isNaN(date.getTime())) return dateString;
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear());
+    const formatted = `${day}/${month}/${year}`;
+    return toLocaleNumber(formatted, langCode);
 };
 
 
@@ -68,6 +73,8 @@ interface OnlineAdmission {
     first_name: string;
     last_name: string;
     middle_name?: string;
+    branch_id?: string | number;
+    branch?: { id: number; branch_name: string; branch_code?: string; slug?: string };
     school_class?: { name: string };
     section?: { name: string };
     school_class_id?: string;
@@ -94,7 +101,7 @@ export default function OnlineAdmissionPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const tt = useTranslateToast();
-    const { t } = useTranslation();
+    const { t, language, isRtl } = useTranslation();
     const router = useRouter();
     const { settings } = useSettings();
 
@@ -330,7 +337,7 @@ export default function OnlineAdmissionPage() {
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("online_admission_list")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{total} {t(total === 1 ? "application" : "applications")} {t("total")}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("total_applications_count", { count: toLocaleNumber(total ?? 0, language?.short_code) })}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -347,7 +354,7 @@ export default function OnlineAdmissionPage() {
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-4">
-                                <span className="text-sm font-semibold text-muted-foreground">50</span>
+                                <span className="text-sm font-semibold text-muted-foreground">{toLocaleNumber(50, language?.short_code)}</span>
                                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             </div>
                             <div className="flex gap-1">
@@ -363,10 +370,11 @@ export default function OnlineAdmissionPage() {
                     {/* Table */}
                     <div className="overflow-x-auto rounded-lg border border-muted/50 relative min-h-[200px]">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            <thead className="bg-muted/50 text-xs font-bold tracking-wider text-muted-foreground">
                                 <tr>
                                     <Th>{t("reference_no")}</Th>
                                     <Th>{t("student_name")}</Th>
+                                    <Th>{t("branch") || "Campus Branch"}</Th>
                                     <Th>{t("class")}</Th>
                                     <Th>{t("section")}</Th>
                                     <Th>{t("father_name")}</Th>
@@ -383,23 +391,32 @@ export default function OnlineAdmissionPage() {
                             </thead>
                             <tbody className="divide-y divide-muted/30">
                                 {loading ? (
-                                    <TableSkeleton rows={5} cols={14} />
+                                    <TableSkeleton rows={5} cols={15} />
                                 ) : admissions.length === 0 ? (
                                     <tr>
-                                        <td colSpan={14} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
+                                        <td colSpan={15} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
                                     </tr>
                                 ) : (
                                     admissions.map((student) => (
                                         <tr key={student.id} className="hover:bg-muted/10 transition-colors">
-                                            <Td><span className="font-semibold text-primary/80">{student.reference_no}</span></Td>
+                                            <Td><span className="font-semibold text-primary/80">{toLocaleNumber(student.reference_no, language?.short_code)}</span></Td>
                                             <Td className="font-semibold">{student.first_name} {student.last_name}</Td>
-                                            <Td>{student.school_class?.name || ""}</Td>
-                                            <Td>{student.section?.name || ""}</Td>
+                                            <Td>
+                                                {student.branch ? (
+                                                    <span className="font-semibold text-[11px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md whitespace-nowrap">
+                                                        {student.branch.branch_name}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs italic">{t("main_branch") || "Main Campus"}</span>
+                                                )}
+                                            </Td>
+                                            <Td>{translateClassName(student.school_class?.name, language?.short_code)}</Td>
+                                            <Td>{translateSectionName(student.section?.name, language?.short_code)}</Td>
                                             <Td>{student.father_name || "-"}</Td>
-                                            <Td>{formatDate(student.dob)}</Td>
+                                            <Td>{formatDate(student.dob, language?.short_code)}</Td>
                                             <Td>{student.gender || "-"}</Td>
                                             <Td>{student.student_category?.category_name || student.category || "-"}</Td>
-                                            <Td>{student.phone}</Td>
+                                            <Td>{toLocaleNumber(student.phone, language?.short_code)}</Td>
                                             <Td>
                                                 <Badge className={cn(
                                                     "font-bold text-[10px] px-2 py-0.5 whitespace-nowrap",
@@ -407,7 +424,7 @@ export default function OnlineAdmissionPage() {
                                                         ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200"
                                                         : "bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200"
                                                 )}>
-                                                    {student.form_status}
+                                                    {student.form_status === "Submitted" ? t("submitted") : (student.form_status === "Enrolled" ? t("enrolled") : student.form_status)}
                                                 </Badge>
                                             </Td>
                                             <Td>
@@ -417,7 +434,7 @@ export default function OnlineAdmissionPage() {
                                                         ? "bg-green-100 text-green-700 hover:bg-green-100/80 border-green-200"
                                                         : "bg-red-100 text-red-700 hover:bg-red-100/80 border-red-200"
                                                 )}>
-                                                    {student.payment_status}
+                                                    {student.payment_status === "Paid" ? t("paid") : (student.payment_status === "Unpaid" ? t("unpaid") : student.payment_status)}
                                                 </Badge>
                                             </Td>
                                             <Td>
@@ -433,7 +450,7 @@ export default function OnlineAdmissionPage() {
                                                     )}
                                                 </div>
                                             </Td>
-                                            <Td>{new Date(student.created_at).toLocaleDateString()}</Td>
+                                            <Td>{formatDate(student.created_at, language?.short_code)}</Td>
                                             <Td className="text-right print:hidden">
                                                 <div className="flex justify-end gap-1">
                                                     {!student.is_enrolled && (
@@ -460,7 +477,11 @@ export default function OnlineAdmissionPage() {
                     </div>
 
                     <div className="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium print:hidden">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{t("showing_x_to_y_of_z", { from, to, total })}</p>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{t("showing_x_to_y_of_z", {
+                            from: toLocaleNumber(from, language?.short_code),
+                            to: toLocaleNumber(to, language?.short_code),
+                            total: toLocaleNumber(total, language?.short_code)
+                        })}</p>
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="outline"
@@ -469,7 +490,7 @@ export default function OnlineAdmissionPage() {
                                 onClick={() => currentPage > 1 && fetchAdmissions(currentPage - 1)}
                                 disabled={currentPage === 1}
                             >
-                                <ChevronLeft className="h-4 w-4" />
+                                {isRtl ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                             </Button>
 
                             {Array.from({ length: lastPage || 1 }, (_, i) => i + 1).map((page) => (
@@ -483,7 +504,7 @@ export default function OnlineAdmissionPage() {
                                     )}
                                     onClick={() => fetchAdmissions(page)}
                                 >
-                                    {page}
+                                    {toLocaleNumber(page, language?.short_code)}
                                 </Button>
                             ))}
 
@@ -494,7 +515,7 @@ export default function OnlineAdmissionPage() {
                                 onClick={() => currentPage < lastPage && fetchAdmissions(currentPage + 1)}
                                 disabled={currentPage === lastPage}
                             >
-                                <ChevronRight className="h-4 w-4" />
+                                {isRtl ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </Button>
                         </div>
                     </div>
@@ -530,22 +551,22 @@ export default function OnlineAdmissionPage() {
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{t("student_info")}</h4>
                                     <InfoRow label={t("full_name")} value={`${selectedAdmission.first_name} ${selectedAdmission.middle_name || ""} ${selectedAdmission.last_name}`} />
-                                    <InfoRow label={t("date_of_birth")} value={formatDate(selectedAdmission.dob)} />
+                                    <InfoRow label={t("date_of_birth")} value={formatDate(selectedAdmission.dob, language?.short_code)} />
                                     <InfoRow label={t("gender")} value={selectedAdmission.gender} />
-                                    <InfoRow label={t("mobile")} value={selectedAdmission.phone} />
+                                    <InfoRow label={t("mobile")} value={toLocaleNumber(selectedAdmission.phone, language?.short_code)} />
                                     <InfoRow label={t("email")} value={selectedAdmission.email} />
-                                    <InfoRow label={t("class")} value={selectedAdmission.school_class?.name} />
-                                    <InfoRow label={t("section")} value={selectedAdmission.section?.name} />
+                                    <InfoRow label={t("class")} value={translateClassName(selectedAdmission.school_class?.name, language?.short_code)} />
+                                    <InfoRow label={t("section")} value={translateSectionName(selectedAdmission.section?.name, language?.short_code)} />
                                 </div>
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{t("parent_info")}</h4>
                                     <InfoRow label={t("father_name")} value={selectedAdmission.father_name} />
-                                    <InfoRow label={t("father_mobile")} value={selectedAdmission.father_phone} />
+                                    <InfoRow label={t("father_mobile")} value={toLocaleNumber(selectedAdmission.father_phone, language?.short_code)} />
                                     <InfoRow label={t("mother_name")} value={selectedAdmission.mother_name} />
-                                    <InfoRow label={t("mother_mobile")} value={selectedAdmission.mother_phone} />
+                                    <InfoRow label={t("mother_mobile")} value={toLocaleNumber(selectedAdmission.mother_phone, language?.short_code)} />
                                     <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-4">{t("status")}</h4>
-                                    <InfoRow label={t("form_status")} value={selectedAdmission.form_status} />
-                                    <InfoRow label={t("payment_status")} value={selectedAdmission.payment_status} />
+                                    <InfoRow label={t("form_status")} value={selectedAdmission.form_status === "Submitted" ? t("submitted") : (selectedAdmission.form_status === "Enrolled" ? t("enrolled") : selectedAdmission.form_status)} />
+                                    <InfoRow label={t("payment_status")} value={selectedAdmission.payment_status === "Paid" ? t("paid") : (selectedAdmission.payment_status === "Unpaid" ? t("unpaid") : selectedAdmission.payment_status)} />
                                 </div>
                             </div>
                         </div>

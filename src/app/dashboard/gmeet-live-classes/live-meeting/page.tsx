@@ -23,17 +23,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import {
     Search, ChevronLeft, ChevronRight,
     ArrowUpDown, List, Plus, X, Copy, FileSpreadsheet,
-    FileBox, Printer, Columns, ExternalLink, Video
+    FileText, FileCode, Printer, Columns, Video, Pencil, Trash2, Save, Users
 } from "lucide-react";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatTime, toLocaleNumber, translateRoleName } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -46,6 +46,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 interface GmeetMeeting {
     id: string;
@@ -55,13 +58,14 @@ interface GmeetMeeting {
     duration: number;
     created_by: string;
     status: string;
-    creator?: { name: string; last_name: string; employee_id: string };
+    creator?: { id?: number; name: string; last_name: string; role?: string; employee_id: string };
     total_join: number;
     meeting_url?: string;
 }
 
 export default function LiveMeetingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const { settings } = useSettings();
     const tf = settings?.time_format === "12" ? "12" : "24" as const;
     const [searchTerm, setSearchTerm] = useState("");
@@ -102,6 +106,7 @@ export default function LiveMeetingPage() {
 
     useEffect(() => {
         fetchMeetings();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage, itemsPerPage, searchTerm]);
 
     const fetchCriteria = async () => {
@@ -138,7 +143,7 @@ export default function LiveMeetingPage() {
         }
     };
 
-    // Staff List selector — real DB criteria only
+    // Staff List selector — real DB criteria
     const getResolvedStaffList = () => {
         return (criteria.staff || []).map(s => ({
             id: s.id,
@@ -153,6 +158,15 @@ export default function LiveMeetingPage() {
             setSelectedStaffIds(selectedStaffIds.filter(x => x !== id));
         } else {
             setSelectedStaffIds([...selectedStaffIds, id]);
+        }
+    };
+
+    const handleSelectAllStaff = () => {
+        const staffList = getResolvedStaffList();
+        if (selectedStaffIds.length === staffList.length) {
+            setSelectedStaffIds([]);
+        } else {
+            setSelectedStaffIds(staffList.map(s => s.id));
         }
     };
 
@@ -246,34 +260,122 @@ export default function LiveMeetingPage() {
     };
 
     const handleOpenJoinList = (item: GmeetMeeting) => {
-        // Real data only — host/creator joined record from DB
         const list: any[] = [];
         if (item.creator) {
             list.push({
                 name: `${item.creator.name} ${item.creator.last_name ?? ''}`.trim(),
-                role: t("host"),
+                role: item.creator.role || t("host"),
                 id: item.creator.employee_id || item.created_by,
-                last_join: formatDateTime(item.date_time),
+                last_join: formatDisplayDateTime(item.date_time),
             });
         }
         setActiveJoinList(list);
         setJoinModalOpen(true);
     };
 
-    // Date time parser helper to format as MM/DD/YYYY HH:MM:SS
-    const formatDateTime = (dtStr: string) => {
+    // Date time parser helper to format as DD/MM/YYYY HH:MM
+    const formatDisplayDateTime = (dtStr: string) => {
         try {
             const d = new Date(dtStr);
             if (isNaN(d.getTime())) return dtStr;
             const pad = (n: number) => n.toString().padStart(2, '0');
-            const mm = pad(d.getMonth() + 1);
-            const dd = pad(d.getDate());
-            const yyyy = d.getFullYear();
-            return `${mm}/${dd}/${yyyy} ${formatTime(d, tf)}`;
+            const dd = toLocaleNumber(pad(d.getDate()), shortCode);
+            const mm = toLocaleNumber(pad(d.getMonth() + 1), shortCode);
+            const yyyy = toLocaleNumber(d.getFullYear().toString(), shortCode);
+            const timeStr = toLocaleNumber(formatTime(d, tf), shortCode);
+            return (
+                <div className="flex flex-col text-slate-700 dark:text-slate-200 text-xs font-medium leading-tight">
+                    <span>{`${dd}/${mm}/${yyyy}`}</span>
+                    <span className="text-gray-400 dark:text-gray-400 text-[11px] mt-0.5">{timeStr}</span>
+                </div>
+            );
         } catch {
             return dtStr;
         }
     };
+
+    // Export helpers
+    const exportData = meetings.map(item => ({
+        [t("meeting_title")]: item.title || "—",
+        [t("description")]: item.description || "—",
+        [t("meeting_date_time")]: item.date_time || "—",
+        [t("meeting_duration_minutes")]: item.duration,
+        [t("created_by")]: item.creator ? `${item.creator.name} ${item.creator.last_name || ""} (${item.creator.role || ""})` : t("self"),
+        [t("status")]: t(item.status || "awaited")
+    }));
+
+    const handleCopy = () => {
+        if (meetings.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const text = meetings.map(i => `${i.title}\t${i.description || ""}\t${i.date_time}\t${i.duration}\t${i.creator?.name || t("self")}\t${i.status}`).join('\n');
+        navigator.clipboard.writeText(text);
+        toast.success(t("data_copied_to_clipboard"));
+    };
+
+    const handleExportExcel = () => {
+        if (meetings.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, t("live_meeting") || "LiveMeetings");
+        XLSX.writeFile(wb, "gmeet_live_meetings.xlsx");
+        toast.success(t("exported_to_excel"));
+    };
+
+    const handleExportCSV = () => {
+        if (meetings.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "gmeet_live_meetings.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(t("exported_to_csv"));
+    };
+
+    const handleExportPDF = () => {
+        if (meetings.length === 0) {
+            toast.info(t("no_data_found"));
+            return;
+        }
+        const doc = new jsPDF("landscape");
+        doc.text(t("live_meeting"), 14, 15);
+        autoTable(doc, {
+            head: [[t("meeting_title"), t("description"), t("meeting_date_time"), t("meeting_duration_minutes"), t("created_by"), t("status")]],
+            body: meetings.map(i => [
+                i.title || "—",
+                i.description || "—",
+                i.date_time || "—",
+                i.duration,
+                i.creator ? `${i.creator.name} ${i.creator.last_name || ""}` : t("self"),
+                t(i.status || "awaited")
+            ]),
+            startY: 20,
+        });
+        doc.save("gmeet_live_meetings.pdf");
+        toast.success(t("exported_to_pdf"));
+    };
+
+    const toolbarActions = [
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportExcel, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: FileCode, onClick: handleExportPDF, title: t("pdf") || "PDF" },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
+    ];
 
     // Calculate pagination variables
     const sizeNum = parseInt(itemsPerPage, 10) || 50;
@@ -290,67 +392,69 @@ export default function LiveMeetingPage() {
     const resolvedStaffList = getResolvedStaffList();
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
+        <div className="space-y-6">
             
             {/* Gradient card header */}
-            <div className="rounded-xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <div className="rounded-xl border-[0.5px] border-gray-300 dark:border-zinc-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 dark:border-b dark:border-zinc-800">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Video className="h-5 w-5" />
                         </span>
                         <div className="min-w-0">
-                            <h1 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("live_meeting")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("host_google_meet_sessions_with_staff")}</p>
+                            <h1 className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-100 leading-none">{t("live_meeting")}</h1>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{t("host_google_meet_sessions_with_staff")}</p>
                         </div>
                     </div>
                     <Button
                         onClick={() => { resetForm(); setOpen(true); }}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-4 h-9 text-xs font-bold rounded-full shadow-[0_4px_12px_rgba(99,102,241,0.25)] flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-5 h-9 text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                     >
                         <Plus className="h-4 w-4" />
-                        {t("add")}
+                        {t("add_live_meeting")}
                     </Button>
                 </div>
             </div>
 
             {/* Table Card Panel */}
-            <div className="bg-white rounded shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px]">
+            <div className="bg-white dark:bg-card/40 rounded-xl shadow-sm border border-gray-200 dark:border-zinc-800 p-5 space-y-4 overflow-hidden min-h-[500px]">
 
                 {/* Table Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-3">
+                <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 border-b border-gray-100 dark:border-zinc-800 pb-4">
                     <div className="relative w-full md:w-64">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                         <Input
-                            placeholder={t("search")}
+                            placeholder={t("search_placeholder") || t("search")}
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
                                 setCurrentPage(1);
                             }}
-                            className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                            className="pl-9 h-9 text-xs border-gray-200 dark:border-zinc-800 focus-visible:ring-indigo-500 rounded-md"
                         />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{t("rows")}</span>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{t("rows")}</span>
                             <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold">
-                                    <SelectValue placeholder="50" />
+                                <SelectTrigger className="w-[72px] h-9 text-xs bg-white dark:bg-card border border-gray-200 dark:border-zinc-800">
+                                    <SelectValue placeholder={toLocaleNumber("50", shortCode)}>
+                                        {toLocaleNumber(itemsPerPage, shortCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber("10", shortCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber("25", shortCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
-                                <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                    <Icon className="h-3.5 w-3.5" />
+                        <div className="flex items-center border rounded-md p-0.5 bg-white/90 dark:bg-card border-gray-200 dark:border-zinc-800 shadow-xs text-gray-500">
+                            {toolbarActions.map((action, i) => (
+                                <Button key={i} variant="ghost" size="icon" onClick={action.onClick} title={action.title} className="h-7 w-7 text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded">
+                                    <action.Icon className="h-3.5 w-3.5" />
                                 </Button>
                             ))}
                         </div>
@@ -358,26 +462,26 @@ export default function LiveMeetingPage() {
                 </div>
 
                 {/* Table */}
-                <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
+                <div className="rounded-md border border-gray-200 dark:border-zinc-800 overflow-x-auto custom-scrollbar">
                     <Table className="min-w-[1100px]">
-                        <TableHeader className="bg-transparent border-b border-gray-100">
-                            <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">{t("meeting_title")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">{t("description")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">{t("date_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">{t("class_duration_minutes")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">{t("created_by")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">{t("status")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-right">{t("action")}</TableHead>
+                        <TableHeader className="bg-gray-50 dark:bg-zinc-900/50 text-xs uppercase">
+                            <TableRow className="hover:bg-transparent whitespace-nowrap text-gray-600 dark:text-gray-300">
+                                <TableHead className="py-3 px-4 font-semibold">{t("meeting_title")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 font-semibold">{t("description")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 font-semibold">{t("meeting_date_time")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-center">{t("meeting_duration_minutes")}</TableHead>
+                                <TableHead className="py-3 px-4 font-semibold">{t("created_by")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-center">{t("status")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 font-semibold text-right">{t("action")}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                [...Array(6)].map((_, i) => (
-                                    <TableRow key={i} className="border-b border-gray-50">
-                                        {[...Array(7)].map((_, j) => (
+                                Array.from({ length: 6 }).map((_, i) => (
+                                    <TableRow key={i} className="border-b border-gray-50 dark:border-zinc-800/50">
+                                        {Array.from({ length: 7 }).map((_, j) => (
                                             <TableCell key={j} className="py-3 px-4">
-                                                <div className="h-3 w-full max-w-[120px] rounded bg-gray-100 animate-pulse" />
+                                                <div className="h-3 w-full max-w-[120px] rounded bg-gray-200/70 dark:bg-zinc-800 animate-pulse" />
                                             </TableCell>
                                         ))}
                                     </TableRow>
@@ -390,25 +494,35 @@ export default function LiveMeetingPage() {
                                 </TableRow>
                             ) : (
                                 meetings.map((item, idx) => (
-                                    <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                        <TableCell className="py-3 px-4 text-gray-700 font-medium">{item.title}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-500 max-w-[250px] truncate" title={item.description}>{item.description || "-"}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600">{formatDateTime(item.date_time)}</TableCell>
-                                        <TableCell className="py-3 px-4 text-center text-gray-700 font-medium">{item.duration}</TableCell>
-                                        <TableCell className="py-3 px-4 text-gray-600">{t("self")}</TableCell>
-                                        <TableCell className="py-3 px-4">
-                                            <Select defaultValue={item.status || "awaited"} onValueChange={(val) => handleStatusChange(item.id, val)}>
-                                                <SelectTrigger className="h-7 w-24 text-[10px] border-gray-200 text-gray-700 bg-white rounded">
+                                    <TableRow key={item.id || idx} className="text-xs border-b border-gray-100 dark:border-zinc-800/60 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
+                                        <TableCell className="py-3.5 px-4 text-gray-800 dark:text-gray-200 font-semibold cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" onClick={() => handleEdit(item)}>
+                                            {item.title}
+                                        </TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-500 dark:text-gray-400 max-w-[250px] truncate" title={item.description}>
+                                            {item.description || "—"}
+                                        </TableCell>
+                                        <TableCell className="py-3.5 px-4">{formatDisplayDateTime(item.date_time)}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-center font-bold text-indigo-600 dark:text-indigo-400">
+                                            {toLocaleNumber(item.duration, shortCode)}
+                                        </TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-700 dark:text-gray-300">
+                                            {item.creator
+                                                ? `${item.creator.name} ${item.creator.last_name ?? ''} (${translateRoleName(item.creator.role || "Staff", shortCode)} : ${toLocaleNumber(item.creator.employee_id || item.created_by, shortCode)})`
+                                                : t("self")}
+                                        </TableCell>
+                                        <TableCell className="py-3.5 px-4 text-center">
+                                            <Select value={item.status || "awaited"} onValueChange={(val) => handleStatusChange(item.id, val)}>
+                                                <SelectTrigger className="h-7 w-28 text-xs font-semibold bg-white dark:bg-card border-gray-200 dark:border-zinc-800 rounded mx-auto shadow-none">
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="awaited">{t("awaited")}</SelectItem>
-                                                    <SelectItem value="finished">{t("finished")}</SelectItem>
-                                                    <SelectItem value="cancelled">{t("cancelled")}</SelectItem>
+                                                <SelectContent className="rounded shadow-xl">
+                                                    <SelectItem value="awaited" className="text-amber-600 dark:text-amber-400 font-medium">{t("awaited")}</SelectItem>
+                                                    <SelectItem value="finished" className="text-emerald-600 dark:text-emerald-400 font-medium">{t("finished")}</SelectItem>
+                                                    <SelectItem value="cancelled" className="text-rose-600 dark:text-rose-400 font-medium">{t("cancelled")}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
-                                        <TableCell className="py-3 px-4 text-right">
+                                        <TableCell className="py-3.5 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 {/* Start Meeting */}
                                                 <Button 
@@ -419,29 +533,38 @@ export default function LiveMeetingPage() {
                                                             toast.error(t("no_join_meeting_url_configured"));
                                                         }
                                                     }}
-                                                    className="bg-[#4caf50] hover:bg-[#43a047] text-white px-2.5 h-6 text-[10px] font-bold rounded shadow-none flex items-center gap-1 active:scale-95 transition-all"
-                                                    title={t("start_live_session")}
+                                                    className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white px-3 h-7 text-xs font-bold rounded-md shadow-sm flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                                                    title={t("start")}
                                                 >
-                                                    <ExternalLink className="h-3 w-3" />
+                                                    <Video className="h-3.5 w-3.5" />
                                                     {t("start")}
                                                 </Button>
 
                                                 {/* Join List */}
                                                 <Button
                                                     onClick={() => handleOpenJoinList(item)}
-                                                    className="bg-[#7e57c2] hover:bg-[#7048b6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center transition-all active:scale-95"
+                                                    className="h-7 w-7 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md p-0 shadow-sm active:scale-95 transition-all"
                                                     title={t("view_join_list")}
                                                 >
                                                     <List className="h-3.5 w-3.5" />
                                                 </Button>
 
+                                                {/* Edit */}
+                                                <Button 
+                                                    onClick={() => handleEdit(item)}
+                                                    className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-md p-0 shadow-sm active:scale-95 transition-all"
+                                                    title={t("edit_live_meeting")}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+
                                                 {/* Delete */}
                                                 <Button 
                                                     onClick={() => setDeleteId(item.id)}
-                                                    className="bg-[#6366F1] hover:bg-[#5558e6] text-white p-0 h-6 w-6 rounded shadow-none flex items-center justify-center active:scale-95 transition-all"
-                                                    title={t("delete_meeting")}
+                                                    className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md p-0 shadow-sm active:scale-95 transition-all"
+                                                    title={t("delete_live_meeting")}
                                                 >
-                                                    <X className="h-3.5 w-3.5" />
+                                                    <Trash2 className="h-3.5 w-3.5" />
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -453,169 +576,228 @@ export default function LiveMeetingPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-3 border-t border-gray-100 dark:border-zinc-800">
                     <div>
-                        {t("showing_x_to_y_of_z", { from: totalEntries > 0 ? startIndex + 1 : 0, to: Math.min(startIndex + sizeNum, totalEntries), total: totalEntries })}
-                        {searchTerm && ` (${t("filtered_from_x_total_entries", { total: totalEntries })})`}
+                        {t("showing_x_to_y_of_z", { 
+                            from: toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, shortCode), 
+                            to: toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), shortCode), 
+                            total: toLocaleNumber(totalEntries, shortCode) 
+                        })}
+                        {searchTerm && ` (${t("filtered_from_total_entries", { total: toLocaleNumber(totalEntries, shortCode) })})`}
                     </div>
 
                     {totalEntries > 0 && (
-                        <div className="flex items-center gap-1.5">
-                            <button
+                        <div className="flex items-center gap-1">
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 disabled={safePage === 1}
                                 onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-card border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-gray-300 shadow-sm disabled:opacity-40"
                             >
                                 <ChevronLeft className="h-4 w-4" />
-                            </button>
+                            </Button>
 
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                <button
+                                <Button
                                     key={page}
+                                    size="sm"
                                     onClick={() => setCurrentPage(page)}
                                     className={cn(
-                                        "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
+                                        "h-8 w-8 p-0 rounded-[10px] text-xs font-bold shadow-sm transition-all",
                                         safePage === page
-                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
-                                            : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md"
+                                            : "bg-white dark:bg-card text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800"
                                     )}
                                 >
-                                    {page}
-                                </button>
+                                    {toLocaleNumber(page, shortCode)}
+                                </Button>
                             ))}
 
-                            <button
+                            <Button
+                                variant="outline"
+                                size="sm"
                                 disabled={safePage === totalPages}
                                 onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-card border border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-gray-300 shadow-sm disabled:opacity-40"
                             >
                                 <ChevronRight className="h-4 w-4" />
-                            </button>
+                            </Button>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* Add/Edit Dialog */}
+            {/* Add/Edit Modal */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="rounded border border-gray-100 shadow-2xl max-w-4xl p-0 overflow-hidden bg-white">
-                    <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
-                        <DialogHeader>
-                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">
-                                {editMode ? t("edit_live_meeting") : t("add_live_meeting")}
-                            </DialogTitle>
-                        </DialogHeader>
-                        <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white transition-colors cursor-pointer">
+                <DialogContent className="max-w-[780px] p-0 overflow-hidden bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 shadow-2xl rounded-2xl">
+                    
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Video className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                                <DialogTitle className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-100 leading-none">
+                                    {editMode ? t("edit_live_meeting") : t("add_live_meeting")}
+                                </DialogTitle>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                                    {t("host_google_meet_sessions_with_staff")}
+                                </p>
+                            </div>
+                        </div>
+                        <Button 
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setOpen(false)} 
+                            className="h-8 w-8 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                        >
                             <X className="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
 
-                    {/* Dual panel Grid matching screenshot exactly */}
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-6 text-xs text-gray-700">
+                    {/* Dual panel Grid */}
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-5 gap-6 text-xs max-h-[75vh] overflow-y-auto custom-scrollbar">
                         
                         {/* Left Column - Form Fields (3/5) */}
                         <div className="md:col-span-3 space-y-4">
                             {/* Title */}
-                            <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-gray-600">{t("meeting_title")} <span className="text-red-500">*</span></Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("meeting_title")} <span className="text-red-500">*</span></Label>
                                 <Input 
                                     value={formData.title}
                                     onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                    className="h-9 border-gray-200 rounded text-xs shadow-none" 
+                                    className="h-9 border-gray-200 dark:border-zinc-800 focus-visible:ring-indigo-500 text-xs rounded-lg" 
                                 />
                             </div>
 
                             {/* Date/Time + Duration */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <Label className="text-[11px] font-semibold text-gray-600">{t("meeting_date_time")} <span className="text-red-500">*</span></Label>
-                                    <Input 
-                                        type="datetime-local"
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("meeting_date_time")} <span className="text-red-500">*</span></Label>
+                                    <DateTimePicker 
                                         value={formData.date_time}
-                                        onChange={(e) => setFormData({...formData, date_time: e.target.value})}
-                                        className="h-9 border-gray-200 rounded text-xs shadow-none" 
+                                        onChange={(val) => setFormData({...formData, date_time: val})}
+                                        placeholder={t("select_date_and_time") || "DD/MM/YYYY HH:MM"}
+                                        className="h-9 text-xs rounded-lg"
                                     />
                                 </div>
-                                <div className="space-y-1">
-                                    <Label className="text-[11px] font-semibold text-gray-600">{t("meeting_duration_minutes")} <span className="text-red-500">*</span></Label>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("meeting_duration_minutes")} <span className="text-red-500">*</span></Label>
                                     <Input 
                                         type="number"
                                         value={formData.duration}
                                         onChange={(e) => setFormData({...formData, duration: parseInt(e.target.value) || 0})}
-                                        className="h-9 border-gray-200 rounded text-xs shadow-none" 
+                                        placeholder="45"
+                                        className="h-9 border-gray-200 dark:border-zinc-800 focus-visible:ring-indigo-500 text-xs rounded-lg" 
                                     />
                                 </div>
                             </div>
 
                             {/* Gmeet URL */}
-                            <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-gray-600">
-                                    {t("gmeet_url")} ({t("how_to_get")} <span className="text-indigo-600 hover:underline cursor-pointer font-medium">{t("gmeet_url_question")}</span>) <span className="text-red-500">*</span>
-                                </Label>
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between items-center text-xs font-semibold text-gray-600 dark:text-gray-300">
+                                    <span>
+                                        {t("gmeet_url")} ({t("how_to_get")}{" "}
+                                        <a href="https://meet.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold">
+                                            {t("gmeet_url")}
+                                        </a>? ) <span className="text-red-500">*</span>
+                                    </span>
+                                </div>
                                 <Input 
                                     value={formData.meeting_url}
                                     onChange={(e) => setFormData({...formData, meeting_url: e.target.value})}
-                                    placeholder=""
-                                    className="h-9 border-gray-200 rounded text-xs shadow-none" 
+                                    placeholder="https://meet.google.com/..."
+                                    className="h-9 border-gray-200 dark:border-zinc-800 focus-visible:ring-indigo-500 text-xs rounded-lg" 
                                 />
                             </div>
 
                             {/* Description */}
-                            <div className="space-y-1">
-                                <Label className="text-[11px] font-semibold text-gray-600">{t("description")}</Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("description")}</Label>
                                 <Textarea 
                                     value={formData.description}
                                     onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                    className="min-h-[80px] border-gray-200 rounded text-xs shadow-none resize-none p-3" 
+                                    rows={3}
+                                    className="border-gray-200 dark:border-zinc-800 text-xs rounded-lg resize-none p-3" 
                                 />
                             </div>
                         </div>
 
                         {/* Right Column - Staff List (2/5) */}
                         <div className="md:col-span-2 space-y-2 flex flex-col">
-                            <Label className="text-[11px] font-semibold text-gray-600">{t("staff_list")} <span className="text-red-500">*</span></Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("staff_list")} <span className="text-red-500">*</span></Label>
+                                {resolvedStaffList.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleSelectAllStaff}
+                                        className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-medium cursor-pointer"
+                                    >
+                                        {selectedStaffIds.length === resolvedStaffList.length ? t("deselect_all") || "Deselect All" : t("select_all") || "Select All"}
+                                    </button>
+                                )}
+                            </div>
                             
-                            <div className="border border-gray-200 rounded p-3 flex-1 min-h-[220px] max-h-[260px] overflow-y-auto space-y-2.5 custom-scrollbar bg-white">
-                                {resolvedStaffList.map((staff, idx) => (
-                                    <label key={staff.id || idx} className="flex items-start gap-2 text-xs text-gray-700 cursor-pointer select-none">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={selectedStaffIds.includes(staff.id)}
-                                            onChange={() => handleToggleStaff(staff.id)}
-                                            className="h-3.5 w-3.5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 accent-indigo-600 mt-0.5 cursor-pointer"
-                                        />
-                                        <span>{staff.name} ({staff.role} : {staff.code})</span>
-                                    </label>
-                                ))}
+                            <div className="border border-gray-200 dark:border-zinc-800 rounded-xl p-3.5 flex-1 min-h-[220px] max-h-[300px] overflow-y-auto space-y-2.5 custom-scrollbar bg-gray-50/50 dark:bg-card/50">
+                                {resolvedStaffList.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full py-8 text-gray-400 text-xs">
+                                        <Users className="h-6 w-6 mb-1 opacity-50" />
+                                        <span>{t("no_staff_members_found") || "No staff members found"}</span>
+                                    </div>
+                                ) : (
+                                    resolvedStaffList.map((staff, idx) => (
+                                        <label key={staff.id || idx} className="flex items-start gap-2.5 text-xs text-gray-700 dark:text-gray-200 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-zinc-800/60 p-1.5 rounded-lg transition-colors">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedStaffIds.includes(staff.id)}
+                                                onChange={() => handleToggleStaff(staff.id)}
+                                                className="h-3.5 w-3.5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 accent-indigo-600 mt-0.5 cursor-pointer"
+                                            />
+                                            <span className="leading-tight">
+                                                {staff.name} <span className="text-gray-500 dark:text-gray-400 font-normal">({translateRoleName(staff.role, shortCode)} : {toLocaleNumber(staff.code, shortCode)})</span>
+                                            </span>
+                                        </label>
+                                    ))
+                                )}
                             </div>
                         </div>
 
                     </div>
 
-                    <div className="p-4 bg-gray-50 border-t border-gray-150 flex justify-end">
+                    {/* Footer */}
+                    <div className="bg-gray-50/80 dark:bg-zinc-900 px-5 py-3.5 border-t border-gray-100 dark:border-zinc-800 flex justify-end gap-2">
+                        <Button 
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                            className="h-9 px-5 rounded-full text-xs font-bold"
+                        >
+                            {t("cancel")}
+                        </Button>
                         <Button 
                             onClick={handleSave} 
                             disabled={submitting}
-                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-5 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm"
+                            className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
                         >
-                            {submitting ? t("saving") : t("save")}
+                            <Save className="h-4 w-4" /> {submitting ? t("saving") : (editMode ? t("update") : t("save"))}
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
-            <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-                <AlertDialogContent className="rounded border border-gray-150 shadow-2xl p-6 bg-white max-w-sm text-xs text-gray-700">
+            <AlertDialog open={!!deleteId} onOpenChange={(isOpen) => !isOpen && setDeleteId(null)}>
+                <AlertDialogContent className="sm:max-w-[400px]">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-sm font-bold text-gray-800">{t("delete_live_meeting")}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-xs text-gray-500 mt-2 leading-relaxed">
+                        <AlertDialogTitle>{t("delete_live_meeting")}</AlertDialogTitle>
+                        <AlertDialogDescription>
                             {t("are_you_sure_permanently_delete_meeting")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6 gap-2">
-                        <AlertDialogCancel className="h-8 border-gray-200 text-xs rounded">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-600 hover:bg-rose-700 text-white h-8 text-xs font-bold rounded border-0">
+                    <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-full text-xs h-9 px-5">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 rounded-full text-xs h-9 px-5 text-white">
                             {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -624,81 +806,70 @@ export default function LiveMeetingPage() {
 
             {/* Join List Modal */}
             <Dialog open={joinModalOpen} onOpenChange={setJoinModalOpen}>
-                <DialogContent className="max-w-[800px] p-0 overflow-hidden bg-white border border-gray-200 shadow-2xl rounded">
+                <DialogContent className="max-w-[800px] p-0 overflow-hidden bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 shadow-2xl rounded-2xl">
                     
                     {/* Header */}
-                    <div className="bg-[#7e57c2] text-white p-4 font-semibold text-sm flex justify-between items-center">
-                        <DialogHeader>
-                            <DialogTitle className="text-white text-sm font-semibold tracking-tight">{t("join_list")}</DialogTitle>
-                        </DialogHeader>
-                        <button 
+                    <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Users className="h-5 w-5" />
+                            </span>
+                            <div className="min-w-0">
+                                <DialogTitle className="text-base font-bold tracking-tight text-slate-800 dark:text-slate-100 leading-none">
+                                    {t("join_list")}
+                                </DialogTitle>
+                                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                                    {t("live_meeting")}
+                                </p>
+                            </div>
+                        </div>
+                        <Button 
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setJoinModalOpen(false)} 
-                            className="text-white/80 hover:text-white transition-colors cursor-pointer"
+                            className="h-8 w-8 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-zinc-800"
                         >
                             <X className="h-4 w-4" />
-                        </button>
+                        </Button>
                     </div>
 
                     {/* Table Toolbar */}
-                    <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-100">
-                        <div className="relative w-full md:w-48">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                    <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-100 dark:border-zinc-800">
+                        <div className="relative w-full md:w-56">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder={t("search")}
+                                placeholder={t("search_placeholder") || t("search")}
                                 value={joinSearchTerm}
                                 onChange={(e) => setJoinSearchTerm(e.target.value)}
-                                className="pl-8 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
+                                className="pl-9 h-9 text-xs border-gray-200 dark:border-zinc-800 focus-visible:ring-indigo-500 rounded-md"
                             />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-1.5 mr-2">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
-                                    <Button key={i} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                ))}
-                            </div>
                         </div>
                     </div>
 
                     {/* Modal Grid content */}
-                    <div className="p-4 space-y-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
-                        <div className="rounded border border-gray-100 overflow-x-auto">
+                    <div className="p-5 space-y-4 max-h-[55vh] overflow-y-auto custom-scrollbar">
+                        <div className="rounded-md border border-gray-200 dark:border-zinc-800 overflow-x-auto">
                             <Table className="min-w-[700px]">
-                                <TableHeader className="bg-transparent border-b border-gray-100">
-                                    <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2.5 px-4">{t("staff")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                        <TableHead className="py-2.5 px-4 text-right">{t("last_join")}</TableHead>
+                                <TableHeader className="bg-gray-50 dark:bg-zinc-900/50 text-xs uppercase">
+                                    <TableRow className="hover:bg-transparent whitespace-nowrap text-gray-600 dark:text-gray-300">
+                                        <TableHead className="py-3 px-4 font-semibold">{t("staff")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                        <TableHead className="py-3 px-4 font-semibold text-right">{t("last_join")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredJoinList.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center py-8 text-gray-400 uppercase text-[10px] tracking-wider">
+                                            <TableCell colSpan={2} className="text-center py-10 text-gray-400 uppercase text-[10px] tracking-wider">
                                                 {t("no_session_join_records")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         filteredJoinList.map((user, uidx) => (
-                                            <TableRow key={uidx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                                <TableCell className="py-2.5 px-4 text-gray-700 font-medium">
-                                                    {user.name} ({user.role} : {user.id})
+                                            <TableRow key={uidx} className="text-xs border-b border-gray-100 dark:border-zinc-800/60 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 whitespace-nowrap">
+                                                <TableCell className="py-3 px-4 text-gray-800 dark:text-gray-200 font-semibold">
+                                                    {user.name} <span className="text-gray-500 dark:text-gray-400 font-normal">({translateRoleName(user.role, shortCode)} : {toLocaleNumber(user.id, shortCode)})</span>
                                                 </TableCell>
-                                                <TableCell className="py-2.5 px-4 text-right text-gray-600 font-medium">
+                                                <TableCell className="py-3 px-4 text-right text-gray-600 dark:text-gray-300 font-medium">
                                                     {user.last_join}
                                                 </TableCell>
                                             </TableRow>
@@ -709,22 +880,26 @@ export default function LiveMeetingPage() {
                         </div>
 
                         {/* Modal Footer pagination */}
-                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
+                        <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                {t("showing_x_to_y_of_z", { from: 1, to: filteredJoinList.length, total: filteredJoinList.length })}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <button className="h-7 w-7 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl active:scale-95 border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none" disabled>
-                                    <ChevronLeft className="h-3.5 w-3.5" />
-                                </button>
-                                <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-xl shadow">
-                                    1
-                                </button>
-                                <button className="h-7 w-7 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl active:scale-95 border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none" disabled>
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                </button>
+                                {t("showing_x_to_y_of_z", { 
+                                    from: toLocaleNumber(filteredJoinList.length > 0 ? 1 : 0, shortCode), 
+                                    to: toLocaleNumber(filteredJoinList.length, shortCode), 
+                                    total: toLocaleNumber(filteredJoinList.length, shortCode) 
+                                })}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="bg-gray-50/80 dark:bg-zinc-900 px-5 py-3 border-t border-gray-100 dark:border-zinc-800 flex justify-end">
+                        <Button
+                            variant="outline"
+                            onClick={() => setJoinModalOpen(false)}
+                            className="h-8 px-4 rounded-full text-xs font-semibold"
+                        >
+                            {t("close")}
+                        </Button>
                     </div>
 
                 </DialogContent>

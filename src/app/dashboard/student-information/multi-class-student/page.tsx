@@ -7,11 +7,9 @@ import {
     FileText,
     FileSpreadsheet,
     Copy,
-    Columns,
     Loader2,
     Trash2,
     Plus,
-    UserCircle,
     ChevronLeft,
     ChevronRight,
     User,
@@ -19,8 +17,9 @@ import {
     Filter,
     GraduationCap,
     Phone,
-    AlertCircle,
-    Users
+    Users,
+    Building,
+    Layers
 } from "lucide-react";
 import {
     Dialog,
@@ -33,12 +32,17 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName, toLocaleNumber } from "@/lib/utils";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -63,9 +67,11 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
             {Array.from({ length: rows }).map((_, i) => (
                 <tr key={i} className="border-b border-muted/30">
                     {Array.from({ length: cols }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
-                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
-                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        <td key={j} className="px-4 py-3.5">
+                            <div
+                                className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }}
+                            />
                         </td>
                     ))}
                 </tr>
@@ -92,21 +98,42 @@ interface MultiClassRecord {
     section: { name: string };
 }
 
+interface ClassItem {
+    id: number;
+    name: string;
+    [key: string]: unknown;
+}
+
+interface SectionItem {
+    id: number;
+    name: string;
+    [key: string]: unknown;
+}
+
+interface StudentItem {
+    id: number;
+    name: string;
+    last_name?: string;
+    admission_no?: string;
+    [key: string]: unknown;
+}
+
 export default function MultiClassStudentPage() {
     const getImageUrl = useImageUrl();
     const [records, setRecords] = useState<MultiClassRecord[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [classes, setClasses] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
+    const [classes, setClasses] = useState<ClassItem[]>([]);
+    const [sections, setSections] = useState<SectionItem[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRecords, setTotalRecords] = useState(0);
+    const [limit, setLimit] = useState("20");
     const [searched, setSearched] = useState(false);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-    const [allStudents, setAllStudents] = useState<any[]>([]);
+    const [allStudents, setAllStudents] = useState<StudentItem[]>([]);
     const [addFormData, setAddFormData] = useState({
         user_id: "",
         school_class_id: "",
@@ -119,7 +146,7 @@ export default function MultiClassStudentPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
-    const { t } = useTranslation();
+    const { t, language, isRtl } = useTranslation();
     const tt = useTranslateToast();
 
     const fetchDropdowns = useCallback(async () => {
@@ -135,7 +162,7 @@ export default function MultiClassStudentPage() {
         }
     }, []);
 
-    const [dialogSections, setDialogSections] = useState<any[]>([]);
+    const [dialogSections, setDialogSections] = useState<SectionItem[]>([]);
 
     const fetchSections = async (classId: string, isDialog = false) => {
         if (!classId) {
@@ -153,7 +180,7 @@ export default function MultiClassStudentPage() {
         }
     };
 
-    const fetchRecords = useCallback(async (pg = currentPage, kw = searchTerm) => {
+    const fetchRecords = useCallback(async (pg = 1, kw = "", lim = limit) => {
         setLoading(true);
         try {
             const response = await api.get("/multi-class-students", {
@@ -162,7 +189,7 @@ export default function MultiClassStudentPage() {
                     section_id: selectedSection || undefined,
                     search: kw || undefined,
                     page: pg,
-                    limit: 50
+                    limit: Number(lim)
                 }
             });
             const data = response.data.data;
@@ -176,7 +203,7 @@ export default function MultiClassStudentPage() {
         } finally {
             setLoading(false);
         }
-    }, [selectedClass, selectedSection, tt]);
+    }, [selectedClass, selectedSection, limit, tt]);
 
     useEffect(() => {
         fetchDropdowns();
@@ -184,15 +211,18 @@ export default function MultiClassStudentPage() {
 
     // Export functions
     const exportToCopy = () => {
-        if (records.length === 0) return;
+        if (records.length === 0) {
+            tt.error("no_data_found");
+            return;
+        }
         const headers = ["#", t("admission_no"), t("student_name"), t("class"), t("section"), t("category"), t("mobile_number")];
         const rows = records.map((r, idx) => [
-            (currentPage - 1) * 50 + idx + 1,
+            (currentPage - 1) * Number(limit) + idx + 1,
             r.student?.admission_no || "-",
             `${r.student?.name || ""} ${r.student?.last_name || ""}`.trim(),
-            r.school_class?.name || "-",
-            r.section?.name || "-",
-            r.student?.student_category?.category_name || r.student?.category || "General",
+            translateClassName(r.school_class?.name, language?.short_code) || "-",
+            translateSectionName(r.section?.name, language?.short_code) || "-",
+            r.student?.student_category?.category_name || r.student?.category || t("general"),
             r.student?.phone || "-"
         ]);
         const text = [headers.join("\t"), ...rows.map(row => row.join("\t"))].join("\n");
@@ -201,13 +231,16 @@ export default function MultiClassStudentPage() {
     };
 
     const exportToExcel = () => {
-        if (records.length === 0) return;
+        if (records.length === 0) {
+            tt.error("no_data_found");
+            return;
+        }
         const data = records.map((r, idx) => ({
-            "#": (currentPage - 1) * 50 + idx + 1,
+            "#": (currentPage - 1) * Number(limit) + idx + 1,
             [t("admission_no")]: r.student?.admission_no || "-",
             [t("student_name")]: `${r.student?.name || ""} ${r.student?.last_name || ""}`.trim(),
-            [t("class")]: `${r.school_class?.name || ""} (${r.section?.name || ""})`,
-            [t("category")]: r.student?.student_category?.category_name || r.student?.category || "General",
+            [t("class")]: `${translateClassName(r.school_class?.name, language?.short_code) || ""} (${translateSectionName(r.section?.name, language?.short_code) || ""})`,
+            [t("category")]: r.student?.student_category?.category_name || r.student?.category || t("general"),
             [t("mobile_number")]: r.student?.phone || "-"
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
@@ -218,17 +251,20 @@ export default function MultiClassStudentPage() {
     };
 
     const exportToPDF = () => {
-        if (records.length === 0) return;
+        if (records.length === 0) {
+            tt.error("no_data_found");
+            return;
+        }
         const doc = new jsPDF();
-        doc.text("Multi Class Student List", 14, 15);
+        doc.text(t("multi_class_student_list"), 14, 15);
         autoTable(doc, {
             head: [["#", t("adm_no"), t("student_name"), t("class"), t("category"), t("mobile")]],
             body: records.map((r, idx) => [
-                (currentPage - 1) * 50 + idx + 1,
+                (currentPage - 1) * Number(limit) + idx + 1,
                 r.student?.admission_no || "-",
                 `${r.student?.name || ""} ${r.student?.last_name || ""}`.trim(),
-                `${r.school_class?.name || ""} (${r.section?.name || ""})`,
-                r.student?.student_category?.category_name || r.student?.category || "General",
+                `${translateClassName(r.school_class?.name, language?.short_code) || ""} (${translateSectionName(r.section?.name, language?.short_code) || ""})`,
+                r.student?.student_category?.category_name || r.student?.category || t("general"),
                 r.student?.phone || "-"
             ]),
             startY: 20
@@ -249,7 +285,7 @@ export default function MultiClassStudentPage() {
             await api.delete(`/multi-class-students/${deleteId}`);
             tt.success("enrollment_removed_successfully");
             fetchRecords(currentPage, searchTerm);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_remove_enrollment");
         } finally {
             setDeleting(false);
@@ -273,7 +309,7 @@ export default function MultiClassStudentPage() {
             setAddFormData({ user_id: "", school_class_id: "", section_id: "" });
             fetchRecords(currentPage, searchTerm);
         } catch (error) {
-            const message = (error as any)?.response?.data?.message || t("failed_to_assign_student");
+            const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || t("failed_to_assign_student");
             tt.error(message);
         } finally {
             setLoading(false);
@@ -281,119 +317,129 @@ export default function MultiClassStudentPage() {
     };
 
     return (
-        <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen">
-            {/* Top Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
-                <div className="flex items-center gap-2.5">
+        <div className="p-3 sm:p-5 pt-1 sm:pt-2 space-y-4 max-w-[1600px] mx-auto animate-in fade-in duration-300 pb-20">
+            {/* Top Page Header Banner with Signature Gradient */}
+            <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4 flex flex-row items-center justify-between gap-3 no-print">
+                <div className="flex items-center gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <GitBranch className="h-5 w-5" />
+                        <GitBranch className="h-4 w-4" />
                     </span>
                     <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">
+                        <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-800 leading-none">
                             {t("multi_class_student")}
                         </h1>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                            {t("manage_students_enrolled_in_additional_classes") || "Manage students enrolled in additional classes and sections"}
+                        <p className="text-xs text-slate-600 mt-1 font-medium">
+                            {t("manage_students_enrolled_in_additional_classes")}
                         </p>
                     </div>
                 </div>
-                <Button
-                    onClick={() => setIsAddDialogOpen(true)}
-                    className="btn-gradient text-white px-5 h-9 text-xs gap-1.5 shadow-md rounded-full font-bold uppercase tracking-wider cursor-pointer"
-                >
-                    <Plus className="h-4 w-4" /> {t("add_multi_class_enrollment") || "Add Enrollment"}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={() => setIsAddDialogOpen(true)}
+                        className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20 text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all cursor-pointer border-none"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span>{t("add_multi_class_enrollment")}</span>
+                    </Button>
+                </div>
             </div>
 
-            {/* Select Criteria Card (Balanced 3-column row) */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 no-print">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            {/* Select Criteria Card */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card overflow-hidden pt-0 no-print">
+                <CardHeader className="flex flex-row items-center gap-3 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Filter className="h-5 w-5" />
+                        <Filter className="h-4 w-4" />
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
                             {t("select_criteria")}
                         </CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_by_class_and_section")}</p>
+                        <p className="text-xs text-slate-500 font-medium mt-1">{t("filter_by_class_and_section")}</p>
                     </div>
                 </CardHeader>
-                <CardContent className="px-5 pb-5">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+
+                <CardContent className="p-5 sm:p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 items-end">
                         {/* Class */}
-                        <div className="md:col-span-4 space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                {t("class")} <span className="text-red-500">*</span>
-                            </Label>
-                            <Select
+                        <div className="lg:col-span-4 space-y-1.5 group">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                <Building className="h-3.5 w-3.5 text-indigo-600" />
+                                {t("class")} <span className="text-destructive">*</span>
+                            </label>
+                            <select
                                 value={selectedClass}
-                                onValueChange={(val) => {
+                                onChange={(e) => {
+                                    const val = e.target.value;
                                     setSelectedClass(val);
                                     setSelectedSection("");
                                     fetchSections(val);
                                 }}
+                                className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-xs sm:text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
                             >
-                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder={t("select")} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                                <option value="">{t("select_class")}</option>
+                                {classes.map(c => (
+                                    <option key={c.id} value={c.id.toString()}>
+                                        {translateClassName(c.name, language?.short_code)}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Section */}
-                        <div className="md:col-span-3 space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                        <div className="lg:col-span-3 space-y-1.5 group">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                <Layers className="h-3.5 w-3.5 text-indigo-600" />
                                 {t("section")}
-                            </Label>
-                            <Select
+                            </label>
+                            <select
                                 value={selectedSection}
-                                onValueChange={setSelectedSection}
+                                onChange={(e) => setSelectedSection(e.target.value)}
                                 disabled={!selectedClass}
+                                className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-xs sm:text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium disabled:opacity-50"
                             >
-                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder={!selectedClass ? t("select_class_first") : t("select")} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                                <option value="">{!selectedClass ? t("select_class_first") : t("select_section")}</option>
+                                {sections.map(s => (
+                                    <option key={s.id} value={s.id.toString()}>
+                                        {translateSectionName(s.name, language?.short_code)}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Search By Student */}
-                        <div className="md:col-span-3 space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                {t("search_by_student") || "Search By Student"}
-                            </Label>
+                        <div className="lg:col-span-3 space-y-1.5 group">
+                            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                <User className="h-3.5 w-3.5 text-indigo-600" />
+                                {t("search_by_student")}
+                            </label>
                             <div className="relative">
-                                <Search className="absolute left-3 top-3 h-3.5 w-3.5 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                 <Input
-                                    placeholder={t("student_name_or_admission_no") || "Name or Adm No..."}
+                                    placeholder={t("student_name_or_admission_no")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && fetchRecords(1, searchTerm)}
-                                    className="pl-8 h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none"
+                                    onKeyDown={(e) => e.key === "Enter" && fetchRecords(1, searchTerm, limit)}
+                                    className="pl-8.5 h-10 rounded-xl bg-background border-border/80 text-xs font-medium"
                                 />
                             </div>
                         </div>
 
                         {/* Search CTA */}
-                        <div className="md:col-span-2">
+                        <div className="lg:col-span-2">
                             <Button
                                 onClick={() => {
                                     if (!selectedClass) {
-                                        tt.error("please_select_class_and_section_first");
+                                        tt.error("please_select_class_and_section");
                                         return;
                                     }
                                     setCurrentPage(1);
-                                    fetchRecords(1, searchTerm);
+                                    fetchRecords(1, searchTerm, limit);
                                 }}
                                 disabled={loading}
-                                className="btn-gradient text-white gap-2 h-10 px-6 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full w-full cursor-pointer"
+                                className="h-10 w-full rounded-xl font-bold text-xs bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
                             >
-                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                {t("search")}
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <Search className="h-4 w-4 shrink-0" />}
+                                <span>{t("search")}</span>
                             </Button>
                         </div>
                     </div>
@@ -402,87 +448,106 @@ export default function MultiClassStudentPage() {
 
             {/* Results Table Section */}
             {(searched || loading) ? (
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                    <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <div className="flex items-center gap-2.5">
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card overflow-hidden pt-0 animate-in slide-in-from-bottom-3 duration-300">
+                    <CardHeader className="flex flex-row items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70">
+                        <div className="flex items-center gap-3">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <GitBranch className="h-5 w-5" />
+                                <GitBranch className="h-4 w-4" />
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
                                     {t("multi_class_student_list")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                    {t("records_count", { count: totalRecords })}
+                                <p className="text-xs text-slate-500 font-medium mt-1">
+                                    {t("x_results_found", { count: toLocaleNumber(totalRecords, language?.short_code) })}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Export Toolbar */}
-                        <div className="flex items-center gap-1 text-gray-400">
-                            <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
-                                <FileSpreadsheet className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
-                                <FileText className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => window.print()} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
-                                <Printer className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Columns">
-                                <Columns className="h-4 w-4" />
-                            </Button>
+                        {/* Export Toolbar & Row Selector */}
+                        <div className="flex items-center gap-2">
+                            <Select
+                                value={limit}
+                                onValueChange={(val) => {
+                                    setLimit(val);
+                                    setCurrentPage(1);
+                                    fetchRecords(1, searchTerm, val);
+                                }}
+                            >
+                                <SelectTrigger className="w-[72px] h-8 text-xs font-semibold rounded-lg border-gray-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs focus:ring-1 focus:ring-primary/20 cursor-pointer">
+                                    <SelectValue placeholder={toLocaleNumber(limit, language?.short_code)}>
+                                        {toLocaleNumber(limit, language?.short_code)}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="20">{toLocaleNumber(20, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex items-center border border-gray-200/80 dark:border-slate-800 rounded-lg p-0.5 bg-white dark:bg-slate-900 shadow-xs">
+                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-md transition-colors cursor-pointer" title={t("copy")}>
+                                    <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-md transition-colors cursor-pointer" title={t("export_excel")}>
+                                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors cursor-pointer" title={t("export_pdf")}>
+                                    <FileText className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button onClick={() => window.print()} variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors cursor-pointer" title={t("print")}>
+                                    <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
                         </div>
                     </CardHeader>
 
-                    <CardContent className="px-5 pb-5 space-y-4">
-                        {/* Enhanced Table */}
-                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-xs">
+                    <CardContent className="p-0">
+                        <div className="overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-gray-50/90 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300">
-                                    <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
-                                        <TableHead className="py-3 px-3 w-[60px]">#</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[260px]">{t("student_name")}</TableHead>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/40 border-b border-border/70 hover:bg-muted/40 text-xs font-bold">
+                                        <TableHead className="py-3 px-4 w-[60px]">#</TableHead>
+                                        <TableHead className="py-3 px-4 min-w-[240px]">{t("student_name")}</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[160px]">{t("class")}</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[130px]">{t("category")}</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[150px]">{t("mobile_number")}</TableHead>
-                                        <TableHead className="py-3 px-4 text-right w-[100px]">{t("action")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-right pr-6 w-[100px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
-                                <TableBody>
+                                <TableBody className="divide-y divide-border/50 text-xs">
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={6} />
                                     ) : records.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
+                                            <TableCell colSpan={6} className="px-4 py-16 text-center text-xs font-bold text-muted-foreground">
                                                 {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         records.map((record, idx) => {
-                                            const student = record.student || ({} as any);
+                                            const student = record.student || ({} as unknown as MultiClassRecord["student"]);
                                             const photoUrl = getImageUrl(student.student_photo || student.avatar || student.photo || student.image);
 
                                             return (
                                                 <TableRow
                                                     key={record.id}
-                                                    className="text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 hover:bg-indigo-50/20 transition-colors group align-middle"
+                                                    className="hover:bg-muted/20 transition-colors"
                                                 >
                                                     {/* Serial Number */}
-                                                    <TableCell className="py-3.5 px-3 font-bold text-gray-400 text-xs">
-                                                        {(currentPage - 1) * 50 + idx + 1}
+                                                    <TableCell className="py-3.5 px-4 font-bold text-muted-foreground text-xs">
+                                                        {toLocaleNumber((currentPage - 1) * Number(limit) + idx + 1, language?.short_code)}
                                                     </TableCell>
 
                                                     {/* Student Avatar & Name */}
                                                     <TableCell className="py-3.5 px-4">
                                                         <div className="flex items-center gap-3">
-                                                            <Avatar className="h-10 w-10 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                                            <Avatar className="h-9 w-9 rounded-xl border border-border/80 shrink-0 overflow-hidden bg-muted">
                                                                 <AvatarImage
                                                                     src={photoUrl}
-                                                                    alt={student.name || "Student"}
+                                                                    alt={student.name || t("student")}
                                                                     className="object-cover h-full w-full"
                                                                 />
                                                                 <AvatarFallback className="bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white font-bold text-xs flex items-center justify-center">
@@ -490,11 +555,11 @@ export default function MultiClassStudentPage() {
                                                                 </AvatarFallback>
                                                             </Avatar>
                                                             <div>
-                                                                <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
+                                                                <p className="font-bold text-foreground text-sm">
                                                                     {student.name} {student.last_name || ""}
                                                                 </p>
-                                                                <span className="inline-flex items-center gap-1 font-mono text-[10.5px] text-gray-500 font-semibold">
-                                                                    {student.admission_no || "N/A"}
+                                                                <span className="font-mono text-[10.5px] text-muted-foreground font-semibold">
+                                                                    #{student.admission_no ? toLocaleNumber(student.admission_no, language?.short_code) : "N/A"}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -502,35 +567,35 @@ export default function MultiClassStudentPage() {
 
                                                     {/* Class & Section */}
                                                     <TableCell className="py-3.5 px-4">
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800">
                                                             <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
-                                                            {record.school_class?.name} ({record.section?.name})
+                                                            {translateClassName(record.school_class?.name, language?.short_code)} ({translateSectionName(record.section?.name, language?.short_code)})
                                                         </span>
                                                     </TableCell>
 
                                                     {/* Category */}
                                                     <TableCell className="py-3.5 px-4">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 text-[10.5px] font-bold uppercase tracking-wider border border-indigo-100 dark:border-indigo-800">
-                                                            {student.student_category?.category_name || student.category || "General"}
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-[10.5px] font-bold tracking-wide">
+                                                            {student.student_category?.category_name || student.category || t("general")}
                                                         </span>
                                                     </TableCell>
 
                                                     {/* Mobile Number */}
-                                                    <TableCell className="py-3.5 px-4 text-gray-600 dark:text-gray-300">
+                                                    <TableCell className="py-3.5 px-4 text-foreground">
                                                         <div className="flex items-center gap-1.5 text-xs font-medium font-mono">
-                                                            <Phone className="h-3.5 w-3.5 text-gray-400" />
-                                                            {student.phone || "—"}
+                                                            <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                                            {student.phone ? toLocaleNumber(student.phone, language?.short_code) : "—"}
                                                         </div>
                                                     </TableCell>
 
                                                     {/* Action */}
-                                                    <TableCell className="py-3.5 px-4 text-right">
+                                                    <TableCell className="py-3.5 px-4 text-right pr-6">
                                                         <Button
                                                             onClick={() => confirmDeleteRecord(record.id)}
                                                             size="icon"
                                                             variant="ghost"
-                                                            className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs cursor-pointer"
-                                                            title="Remove Enrollment"
+                                                            className="h-7 w-7 rounded-lg text-white shadow-xs active:scale-95 transition-all bg-gradient-to-r from-rose-500 to-red-600 hover:opacity-90 flex items-center justify-center border-none p-0 cursor-pointer ml-auto"
+                                                            title={t("delete")}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
@@ -544,31 +609,31 @@ export default function MultiClassStudentPage() {
                         </div>
 
                         {/* Pagination Footer */}
-                        {!loading && records.length > 0 && (
-                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
+                        {!loading && (
+                            <div className="p-4 sm:p-5 border-t border-border/70 bg-muted/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground font-semibold">
                                 <div>
                                     {t("showing_x_to_y_of_z", {
-                                        from: (currentPage - 1) * 50 + 1,
-                                        to: Math.min(currentPage * 50, totalRecords),
-                                        total: totalRecords
+                                        from: toLocaleNumber(totalRecords === 0 ? 0 : (currentPage - 1) * Number(limit) + 1, language?.short_code),
+                                        to: toLocaleNumber(Math.min(currentPage * Number(limit), totalRecords), language?.short_code),
+                                        total: toLocaleNumber(totalRecords, language?.short_code)
                                     })}
                                 </div>
-                                <div className="flex gap-1.5">
+                                <div className="flex items-center gap-1.5">
                                     <Button
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40"
-                                        disabled={currentPage === 1 || loading}
+                                        variant="outline"
+                                        className="h-8 w-8 p-0 rounded-xl border-border/70 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
+                                        disabled={currentPage === 1 || loading || totalRecords === 0}
                                         onClick={() => {
                                             const newPg = currentPage - 1;
                                             setCurrentPage(newPg);
-                                            fetchRecords(newPg, searchTerm);
+                                            fetchRecords(newPg, searchTerm, limit);
                                         }}
                                     >
-                                        <ChevronLeft className="h-4 w-4" />
+                                        {isRtl ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                                     </Button>
 
-                                    {[...Array(totalPages)].map((_, i) => {
-                                        const page = i + 1;
+                                    {Array.from({ length: Math.max(totalPages, 1) }, (_, i) => i + 1).map((page) => {
                                         if (
                                             page === 1 ||
                                             page === totalPages ||
@@ -579,40 +644,41 @@ export default function MultiClassStudentPage() {
                                                     key={page}
                                                     size="sm"
                                                     className={cn(
-                                                        "h-8 w-8 p-0 rounded-[10px] text-xs font-black shadow-sm transition-all",
+                                                        "h-8 w-8 p-0 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs",
                                                         currentPage === page
-                                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0"
-                                                            : "bg-white border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+                                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-none shadow-indigo-500/20"
+                                                            : "bg-card border border-border/80 text-foreground hover:bg-muted"
                                                     )}
                                                     onClick={() => {
                                                         setCurrentPage(page);
-                                                        fetchRecords(page, searchTerm);
+                                                        fetchRecords(page, searchTerm, limit);
                                                     }}
-                                                    disabled={loading}
+                                                    disabled={loading || totalRecords === 0}
                                                 >
-                                                    {page}
+                                                    {toLocaleNumber(page, language?.short_code)}
                                                 </Button>
                                             );
                                         } else if (
                                             page === currentPage - 2 ||
                                             page === currentPage + 2
                                         ) {
-                                            return <span key={page} className="text-gray-400 self-center px-1">...</span>;
+                                            return <span key={page} className="text-muted-foreground self-center px-1">...</span>;
                                         }
                                         return null;
                                     })}
 
                                     <Button
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40"
-                                        disabled={currentPage === totalPages || loading}
+                                        variant="outline"
+                                        className="h-8 w-8 p-0 rounded-xl border-border/70 text-muted-foreground hover:bg-card active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
+                                        disabled={currentPage >= totalPages || loading || totalRecords === 0}
                                         onClick={() => {
                                             const newPg = currentPage + 1;
                                             setCurrentPage(newPg);
-                                            fetchRecords(newPg, searchTerm);
+                                            fetchRecords(newPg, searchTerm, limit);
                                         }}
                                     >
-                                        <ChevronRight className="h-4 w-4" />
+                                        {isRtl ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </Button>
                                 </div>
                             </div>
@@ -620,28 +686,28 @@ export default function MultiClassStudentPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-300 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 shadow-sm print:hidden">
-                    <div className="p-4 bg-indigo-50 dark:bg-gray-700 rounded-full mb-3 text-indigo-400">
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-card rounded-2xl border border-dashed border-border shadow-xs print:hidden">
+                    <div className="p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-full mb-3 text-indigo-500">
                         <Users className="h-8 w-8" />
                     </div>
-                    <p className="text-xs font-bold uppercase tracking-wider text-gray-500">{t("no_data_selected") || "No Criteria Selected"}</p>
-                    <p className="text-[11px] text-gray-400 mt-1">{t("select_class_and_section_then_click_search")}</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-foreground">{t("no_data_selected") || "No Criteria Selected"}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">{t("select_class_and_section_then_click_search")}</p>
                 </div>
             )}
 
             {/* Add Enrollment Dialog */}
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
-                    <DialogHeader className="p-5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden rounded-2xl border border-border shadow-2xl bg-card">
+                    <DialogHeader className="p-5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-border">
                         <div className="flex items-center gap-3">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                 <Plus className="h-5 w-5" />
                             </span>
                             <div>
-                                <DialogTitle className="text-base font-bold text-gray-800 tracking-tight leading-none">
+                                <DialogTitle className="text-base font-bold text-slate-800 tracking-tight leading-none">
                                     {t("add_multi_class_enrollment")}
                                 </DialogTitle>
-                                <DialogDescription className="text-xs text-gray-500 mt-1">
+                                <DialogDescription className="text-xs text-slate-600 mt-1">
                                     {t("enroll_a_student_into_additional_class_and_section")}
                                 </DialogDescription>
                             </div>
@@ -652,20 +718,20 @@ export default function MultiClassStudentPage() {
                         <div className="p-6 space-y-4">
                             {/* Student Search & Select */}
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                    {t("select_student")} <span className="text-red-500">*</span>
+                                <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                    {t("select_student")} <span className="text-destructive">*</span>
                                 </Label>
                                 <div className="relative mb-2">
-                                    <Search className="absolute left-3 top-3 h-3.5 w-3.5 text-gray-400" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                                     <Input
                                         placeholder={t("filter_students_by_name_or_admission_no")}
-                                        className="pl-8 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg"
+                                        className="pl-8.5 h-9 text-xs rounded-xl bg-background border-border/80"
                                         value={studentSearch}
                                         onChange={(e) => setStudentSearch(e.target.value)}
                                     />
                                 </div>
                                 <select
-                                    className="flex h-10 w-full rounded-lg border border-gray-200 bg-gray-50/30 px-3 py-2 text-xs focus:ring-indigo-500 cursor-pointer"
+                                    className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-primary/20 cursor-pointer"
                                     value={addFormData.user_id}
                                     onChange={(e) => setAddFormData({ ...addFormData, user_id: e.target.value })}
                                     required
@@ -673,12 +739,12 @@ export default function MultiClassStudentPage() {
                                     <option value="">{t("select_student")}</option>
                                     {allStudents
                                         .filter(s =>
-                                            `${s.name} ${s.last_name || ""} ${s.admission_no}`.toLowerCase().includes(studentSearch.toLowerCase())
+                                            `${s.name} ${s.last_name || ""} ${s.admission_no || ""}`.toLowerCase().includes(studentSearch.toLowerCase())
                                         )
                                         .slice(0, 100)
                                         .map(s => (
                                             <option key={s.id} value={s.id}>
-                                                {s.name} {s.last_name || ""} ({s.admission_no})
+                                                {s.name} {s.last_name || ""} {s.admission_no ? `(#${toLocaleNumber(s.admission_no, language?.short_code)})` : ""}
                                             </option>
                                         ))
                                     }
@@ -688,11 +754,11 @@ export default function MultiClassStudentPage() {
                             {/* Additional Class & Section */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                        {t("additional_class")} <span className="text-red-500">*</span>
+                                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                        {t("additional_class")} <span className="text-destructive">*</span>
                                     </Label>
                                     <select
-                                        className="flex h-10 w-full rounded-lg border border-gray-200 bg-gray-50/30 px-3 py-2 text-xs focus:ring-indigo-500 cursor-pointer"
+                                        className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-primary/20 cursor-pointer"
                                         value={addFormData.school_class_id}
                                         onChange={(e) => {
                                             const val = e.target.value;
@@ -702,39 +768,47 @@ export default function MultiClassStudentPage() {
                                         required
                                     >
                                         <option value="">{t("select_class")}</option>
-                                        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        {classes.map(c => (
+                                            <option key={c.id} value={c.id.toString()}>
+                                                {translateClassName(c.name, language?.short_code)}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                        {t("additional_section")} <span className="text-red-500">*</span>
+                                    <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                        {t("additional_section")} <span className="text-destructive">*</span>
                                     </Label>
                                     <select
-                                        className="flex h-10 w-full rounded-lg border border-gray-200 bg-gray-50/30 px-3 py-2 text-xs focus:ring-indigo-500 cursor-pointer"
+                                        className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-primary/20 cursor-pointer"
                                         value={addFormData.section_id}
                                         onChange={(e) => setAddFormData({ ...addFormData, section_id: e.target.value })}
                                         required
                                     >
                                         <option value="">{t("select_section")}</option>
-                                        {dialogSections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        {dialogSections.map(s => (
+                                            <option key={s.id} value={s.id.toString()}>
+                                                {translateSectionName(s.name, language?.short_code)}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
                         </div>
 
-                        <DialogFooter className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
+                        <DialogFooter className="p-4 bg-muted/20 border-t border-border flex items-center justify-end gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="h-9 px-4 rounded-full text-xs font-bold uppercase border-gray-200"
+                                className="h-9 px-4 rounded-xl text-xs font-bold cursor-pointer"
                                 onClick={() => setIsAddDialogOpen(false)}
                             >
                                 {t("cancel")}
                             </Button>
                             <Button
                                 type="submit"
-                                className="btn-gradient text-white h-9 px-6 rounded-full text-xs font-bold uppercase shadow-md"
+                                className="h-9 px-6 rounded-xl text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20 cursor-pointer border-none"
                                 disabled={loading}
                             >
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
@@ -747,17 +821,17 @@ export default function MultiClassStudentPage() {
 
             {/* Remove Enrollment Confirmation Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-2xl border border-border shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">
-                            {t("are_you_sure") || "Remove Multi-Class Enrollment?"}
+                        <AlertDialogTitle className="text-lg font-bold text-foreground">
+                            {t("are_you_sure")}
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            {t("are_you_sure_remove_enrollment") || "Are you sure you want to remove this additional class assignment for this student?"}
+                        <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed mt-2">
+                            {t("are_you_sure_remove_enrollment")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel disabled={deleting} className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200">
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel disabled={deleting} className="h-9 rounded-xl text-xs font-bold">
                             {t("cancel")}
                         </AlertDialogCancel>
                         <AlertDialogAction
@@ -765,7 +839,7 @@ export default function MultiClassStudentPage() {
                                 e.preventDefault();
                                 handleDelete();
                             }}
-                            className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md"
+                            className="bg-rose-600 hover:bg-rose-700 text-white h-9 rounded-xl text-xs font-bold border-none"
                             disabled={deleting}
                         >
                             {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}

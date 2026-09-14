@@ -958,5 +958,84 @@ export const handlers = [
       status: 'success',
       message: 'Book returned successfully',
     });
+  }),
+
+  // User Library Books
+  http.get('*/api/v1/library/books', async ({ request }) => {
+    const url = new URL(request.url);
+    const search = (url.searchParams.get('search') || '').toLowerCase();
+    const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+
+    const allBooks = [
+      {
+        id: 1,
+        title: "English For Today",
+        book_number: "12345",
+        isbn_number: "978-0-123456-47-2",
+        publisher: "NCTB",
+        author: "NCTB",
+        subject: "English",
+        rack_number: "A3",
+        qty: 10,
+        available: 0,
+        price: 50.00,
+        post_date: "2026-01-15",
+        created_at: "2026-01-15T00:00:00.000000Z",
+      },
+      {
+        id: 2,
+        title: "Anondo Path (Bangla Rapid Reader)",
+        book_number: "12346",
+        isbn_number: "978-0-987654-32-1",
+        publisher: "NCTB",
+        author: "Board Authors",
+        subject: "Bangla",
+        rack_number: "B1",
+        qty: 15,
+        available: 8,
+        price: 35.00,
+        post_date: "2026-02-10",
+        created_at: "2026-02-10T00:00:00.000000Z",
+      },
+      {
+        id: 3,
+        title: "Secondary Mathematics",
+        book_number: "12347",
+        isbn_number: "978-1-234567-89-0",
+        publisher: "NCTB",
+        author: "Prof. Dr. M. Rahman",
+        subject: "Mathematics",
+        rack_number: "C2",
+        qty: 20,
+        available: 12,
+        price: 65.00,
+        post_date: "2026-02-20",
+        created_at: "2026-02-20T00:00:00.000000Z",
+      },
+    ];
+
+    const filtered = allBooks.filter(b =>
+      !search ||
+      b.title.toLowerCase().includes(search) ||
+      (b.author && b.author.toLowerCase().includes(search)) ||
+      (b.publisher && b.publisher.toLowerCase().includes(search)) ||
+      (b.subject && b.subject.toLowerCase().includes(search)) ||
+      (b.book_number && b.book_number.toLowerCase().includes(search))
+    );
+
+    const total = filtered.length;
+    const start = (page - 1) * limit;
+    const data = filtered.slice(start, start + limit);
+
+    return HttpResponse.json({
+      status: 'success',
+      data: data,
+      current_page: page,
+      last_page: Math.ceil(total / limit) || 1,
+      total: total,
+      from: total > 0 ? start + 1 : 0,
+      to: total > 0 ? Math.min(start + limit, total) : 0,
+    });
   })
 ]

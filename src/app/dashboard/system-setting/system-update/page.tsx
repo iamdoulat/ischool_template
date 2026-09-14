@@ -18,14 +18,7 @@ import {
     X,
     FileText
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { useState, useEffect, useRef } from "react";
@@ -51,11 +44,14 @@ interface RemoteUpdateInfo {
     message?: string;
 }
 
+type ActiveTab = "status" | "upload" | "guidelines";
+
 export default function SystemUpdatePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { settings } = useSettings();
     const { toast: uiToast } = useUiToast();
 
+    const [activeTab, setActiveTab] = useState<ActiveTab>("status");
     const [currentVersion, setCurrentVersion] = useState<string>(settings?.app_version || "1.0.0");
     const [systemInfo, setSystemInfo] = useState<VersionInfo | null>(null);
     const [loadingCheck, setLoadingCheck] = useState<boolean>(false);
@@ -99,14 +95,14 @@ export default function SystemUpdatePage() {
                 const updateData: RemoteUpdateInfo = response.data.data;
                 setRemoteUpdate(updateData);
                 if (updateData.has_update) {
-                    toast.info(`New version ${updateData.latest_version} available!`);
+                    toast.info(`${t("new_version_ready")} ${updateData.latest_version}`);
                 } else {
-                    toast.success(response.data.message || t("you_are_using_latest_version") || "You are using the latest version.");
+                    toast.success(response.data.message || t("system_up_to_date"));
                 }
             }
         } catch (error) {
             console.error("Failed to check for updates:", error);
-            toast.error("Failed to connect to update server.");
+            toast.error(t("error") || "Failed to connect to update server.");
         } finally {
             setLoadingCheck(false);
         }
@@ -116,7 +112,7 @@ export default function SystemUpdatePage() {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             if (!file.name.endsWith('.zip')) {
-                toast.error("Please upload a valid .zip update file.");
+                toast.error(t("upload_package_desc"));
                 return;
             }
             setSelectedFile(file);
@@ -139,7 +135,7 @@ export default function SystemUpdatePage() {
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             const file = e.dataTransfer.files[0];
             if (!file.name.endsWith('.zip')) {
-                toast.error("Please upload a valid .zip update file.");
+                toast.error(t("upload_package_desc"));
                 return;
             }
             setSelectedFile(file);
@@ -148,7 +144,7 @@ export default function SystemUpdatePage() {
 
     const handleUploadUpdate = async () => {
         if (!selectedFile) {
-            toast.error("Please select an update.zip file first.");
+            toast.error(t("upload_package_desc"));
             return;
         }
 
@@ -157,16 +153,16 @@ export default function SystemUpdatePage() {
         setUpdatedFilesList([]);
         setMigrationsRunList([]);
         setUpdateProgress(15);
-        setCurrentStep("Uploading update.zip package...");
-        setExecutionLogs(["[Start] Preparing update.zip package for installation..."]);
+        setCurrentStep(t("upload_update_package"));
+        setExecutionLogs([`[Start] ${t("upload_update_package")}`]);
 
         const formData = new FormData();
         formData.append("update_file", selectedFile);
 
         try {
             setUpdateProgress(40);
-            setCurrentStep("Extracting package & overwriting backend files...");
-            setExecutionLogs(prev => [...prev, "[Processing] Extracting backend & database files..."]);
+            setCurrentStep(t("updating_system"));
+            setExecutionLogs(prev => [...prev, `[Processing] ${t("updating_system")}`]);
 
             const response = await api.post("/system-setting/system-update/upload", formData, {
                 headers: {
@@ -178,12 +174,12 @@ export default function SystemUpdatePage() {
                 const resData = response.data.data;
                 const newVer = resData.version || currentVersion;
                 setUpdateProgress(100);
-                setCurrentStep("Update process completed successfully!");
+                setCurrentStep(t("system_update_completed"));
 
                 if (resData.logs && Array.isArray(resData.logs)) {
                     setExecutionLogs(resData.logs);
                 } else {
-                    setExecutionLogs(prev => [...prev, `[Success] System updated to version ${newVer}`]);
+                    setExecutionLogs(prev => [...prev, `[Success] ${t("system_updated_to_version")} ${newVer}`]);
                 }
 
                 if (resData.updated_files && Array.isArray(resData.updated_files)) {
@@ -196,15 +192,14 @@ export default function SystemUpdatePage() {
                 setCurrentVersion(newVer);
                 setUpdateSuccessVersion(newVer);
 
-                // Display prominent success toast notifications across both toast engines
-                toast.success(`🎉 System Update Completed Successfully!`, {
-                    description: resData.message || `System updated to version ${newVer}. All files and database migrations were executed cleanly.`,
+                toast.success(`🎉 ${t("system_update_completed")}`, {
+                    description: resData.message || `${t("system_updated_to_version")} ${newVer}.`,
                     duration: 8000,
                 });
 
                 uiToast({
-                    title: "System Update Completed!",
-                    description: `Successfully updated system to version ${newVer}.`,
+                    title: t("system_update_completed"),
+                    description: `${t("system_updated_to_version")} ${newVer}.`,
                 });
 
                 setSelectedFile(null);
@@ -213,9 +208,9 @@ export default function SystemUpdatePage() {
         } catch (error: any) {
             console.error("System update failed:", error);
             setUpdateProgress(0);
-            setCurrentStep("Update process failed.");
+            setCurrentStep(t("error") || "Failed");
             
-            const errorMessage = error.response?.data?.message || "Failed to process system update. Please verify update.zip file.";
+            const errorMessage = error.response?.data?.message || t("error") || "Failed to process system update. Please verify update.zip file.";
             const logs = error.response?.data?.data || [errorMessage];
             setExecutionLogs(Array.isArray(logs) ? logs : [errorMessage]);
             toast.error(errorMessage);
@@ -230,12 +225,12 @@ export default function SystemUpdatePage() {
         setUpdatedFilesList([]);
         setMigrationsRunList([]);
         setUpdateProgress(20);
-        setCurrentStep("Downloading update package from remote server...");
-        setExecutionLogs(["[Start] Initiating remote package download..."]);
+        setCurrentStep(t("updating_system"));
+        setExecutionLogs([`[Start] ${t("updating_system")}`]);
 
         try {
             setUpdateProgress(50);
-            setCurrentStep("Processing ZIP package, executing DB migrations...");
+            setCurrentStep(t("updating_system"));
 
             const response = await api.post("/system-setting/system-update/install-remote", {
                 download_url: downloadUrl
@@ -245,7 +240,7 @@ export default function SystemUpdatePage() {
                 const resData = response.data.data;
                 const newVer = resData.version || currentVersion;
                 setUpdateProgress(100);
-                setCurrentStep("Remote update completed!");
+                setCurrentStep(t("system_update_completed"));
 
                 if (resData.logs && Array.isArray(resData.logs)) {
                     setExecutionLogs(resData.logs);
@@ -262,15 +257,14 @@ export default function SystemUpdatePage() {
                 setRemoteUpdate(null);
                 setUpdateSuccessVersion(newVer);
 
-                // Display prominent success toast notifications across both toast engines
-                toast.success(`🎉 System Upgrade Completed Successfully!`, {
-                    description: `System successfully upgraded to version ${newVer}. All files and database migrations were executed cleanly.`,
+                toast.success(`🎉 ${t("system_update_completed")}`, {
+                    description: `${t("system_updated_to_version")} ${newVer}.`,
                     duration: 8000,
                 });
 
                 uiToast({
-                    title: "System Update Completed!",
-                    description: `Successfully updated system to version ${newVer}.`,
+                    title: t("system_update_completed"),
+                    description: `${t("system_updated_to_version")} ${newVer}.`,
                 });
 
                 fetchSystemVersion();
@@ -278,7 +272,7 @@ export default function SystemUpdatePage() {
         } catch (error: any) {
             console.error("Remote update failed:", error);
             setUpdateProgress(0);
-            setCurrentStep("Remote update failed.");
+            setCurrentStep(t("error") || "Failed");
             const errorMessage = error.response?.data?.message || error.message || "Failed to complete remote update.";
             setExecutionLogs(prev => [...prev, `[Error] ${errorMessage}`]);
             toast.error(errorMessage);
@@ -289,128 +283,105 @@ export default function SystemUpdatePage() {
 
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <Card className="pt-0 overflow-hidden flex flex-col min-h-[400px]">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-6 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F3F4FE] to-[#EFF0FD] border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
-                            <RefreshCw className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">
-                                {t("system_update") || "System Update"}
-                            </h1>
-                            <p className="text-xs text-gray-500 mt-1">
-                                Automate backend code updates and database migrations via ZIP package or direct URL.
-                            </p>
-                        </div>
+            {/* Standalone Edge-to-Edge Page Header Banner per AGENTS.md rule */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F3F4FE] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <RefreshCw className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">
+                            {t("system_update")}
+                        </h1>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {t("system_update_desc")}
+                        </p>
                     </div>
-                    <Button 
-                        variant="gradient" 
-                        className="px-6 h-9 text-xs uppercase font-semibold tracking-wider shadow-sm transition-all hover:shadow-md"
-                        onClick={handleCheckUpdate}
-                        disabled={loadingCheck || updating}
-                    >
-                        {loadingCheck ? (
-                            <>
-                                <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />
-                                Checking...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                                Check For Update
-                            </>
-                        )}
-                    </Button>
                 </div>
+                <Button 
+                    variant="gradient" 
+                    className="px-5 h-9 text-xs uppercase font-semibold tracking-wider shadow-sm transition-all hover:shadow-md"
+                    onClick={handleCheckUpdate}
+                    disabled={loadingCheck || updating}
+                >
+                    {loadingCheck ? (
+                        <>
+                            <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            {t("checking")}
+                        </>
+                    ) : (
+                        <>
+                            <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                            {t("check_for_update")}
+                        </>
+                    )}
+                </Button>
+            </div>
 
-                <CardContent className="p-6 space-y-6">
-                    {/* System Information & Version Overview */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Current System Version */}
-                        <div className="bg-gradient-to-br from-indigo-50/70 to-blue-50/50 border border-indigo-100 p-5 rounded-xl flex flex-col justify-between shadow-sm">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-800/80">
-                                        Current Version
-                                    </span>
-                                    <h3 className="text-2xl font-black text-indigo-950 mt-1 tracking-tight">
-                                        v{currentVersion}
-                                    </h3>
-                                </div>
-                                <span className="p-2.5 bg-indigo-500/10 rounded-lg text-indigo-600">
-                                    <Server className="h-6 w-6" />
-                                </span>
-                            </div>
-                            <p className="text-[11px] text-indigo-800/80 mt-3 leading-snug">
-                                Running on production branch. Updates add new features, security patches, and database migrations.
-                            </p>
-                        </div>
+            {/* High-Contrast Segmented Navigation Tabs */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-gray-100/90 dark:bg-gray-800/90 rounded-xl border border-gray-200 dark:border-gray-700 w-full sm:w-fit overflow-x-auto">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("status")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap",
+                        activeTab === "status"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <Server className="h-3.5 w-3.5" />
+                    <span>{t("system_version_status")}</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("upload")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap",
+                        activeTab === "upload"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <UploadCloud className="h-3.5 w-3.5" />
+                    <span>{t("manual_package_upload")}</span>
+                    {selectedFile && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-white/30 text-white">
+                            {toLocaleNumber(1, language?.short_code)}
+                        </span>
+                    )}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("guidelines")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap",
+                        activeTab === "guidelines"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <Info className="h-3.5 w-3.5" />
+                    <span>{t("update_guidelines")}</span>
+                </button>
+            </div>
 
-                        {/* Environment Specs */}
-                        <div className="bg-gray-50/70 border border-gray-200/80 p-5 rounded-xl flex flex-col justify-between shadow-sm">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                                        Environment Specs
-                                    </span>
-                                    <h4 className="text-sm font-bold text-gray-800 mt-1">
-                                        PHP {systemInfo?.php_version || "8.2+"} • Laravel {systemInfo?.laravel_version || "12.x"}
-                                    </h4>
-                                </div>
-                                <span className="p-2.5 bg-gray-200/60 rounded-lg text-gray-700">
-                                    <Database className="h-6 w-6" />
-                                </span>
-                            </div>
-                            <div className="text-[11px] text-gray-600 mt-3 space-y-1">
-                                <p className="flex items-center gap-1.5">
-                                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                                    ZIP Extension: {systemInfo?.zip_enabled !== false ? (
-                                        <span className="text-emerald-600 font-semibold">Enabled</span>
-                                    ) : (
-                                        <span className="text-amber-600 font-semibold inline-flex items-center gap-1">
-                                            <AlertCircle className="h-3 w-3" /> Missing
-                                        </span>
-                                    )}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Automated Upgrader Status */}
-                        <div className="bg-gradient-to-br from-amber-50/70 to-orange-50/50 border border-amber-200/80 p-5 rounded-xl flex flex-col justify-between shadow-sm">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-800/80">
-                                        Updater Status
-                                    </span>
-                                    <h4 className="text-sm font-bold text-amber-900 mt-1">
-                                        {remoteUpdate?.has_update ? "New Version Ready" : "System Fully Up To Date"}
-                                    </h4>
-                                </div>
-                                <span className="p-2.5 bg-amber-500/10 rounded-lg text-amber-700">
-                                    <Sparkles className="h-6 w-6" />
-                                </span>
-                            </div>
-                            <p className="text-[11px] text-amber-800/80 mt-3 leading-snug">
-                                Upload <code className="bg-amber-100 text-amber-900 px-1 py-0.5 rounded font-mono text-[10px]">update.zip</code> to automatically extract new backend code and run database migrations.
-                            </p>
-                        </div>
-                    </div>
-
+            {/* Tab 1: System Status & Version Overview */}
+            {activeTab === "status" && (
+                <div className="space-y-6 animate-in fade-in-50 duration-200">
                     {/* Success Alert Banner when update is completed */}
                     {updateSuccessVersion && (
-                        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300 shadow-sm">
+                        <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 flex items-center justify-between gap-4 shadow-sm">
                             <div className="flex items-center gap-3">
                                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-md">
                                     <CheckCircle2 className="h-6 w-6" />
                                 </span>
                                 <div>
                                     <h4 className="text-sm font-bold text-emerald-950 dark:text-emerald-200">
-                                        System Update Completed Successfully!
+                                        {t("system_update_completed")}
                                     </h4>
                                     <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
-                                        Your iSchool application has been successfully updated to version <strong className="font-bold">{updateSuccessVersion}</strong>. All backend code and database migrations were executed cleanly.
+                                        {t("system_updated_to_version")} <strong className="font-bold">{updateSuccessVersion}</strong>.
                                     </p>
                                 </div>
                             </div>
@@ -420,7 +391,7 @@ export default function SystemUpdatePage() {
                                 onClick={() => setUpdateSuccessVersion(null)}
                                 className="text-emerald-700 dark:text-emerald-300 border-emerald-300 hover:bg-emerald-100 rounded-lg text-xs font-bold"
                             >
-                                Dismiss
+                                {t("dismiss")}
                             </Button>
                         </div>
                     )}
@@ -431,10 +402,10 @@ export default function SystemUpdatePage() {
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
                                 <div className="space-y-1">
                                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400 text-indigo-950 font-extrabold text-[11px] rounded-full uppercase tracking-wider shadow">
-                                        <Sparkles className="h-3 w-3" /> Update v{remoteUpdate.latest_version} Available
+                                        <Sparkles className="h-3 w-3" /> {t("update_available")} v{remoteUpdate.latest_version}
                                     </div>
                                     <h3 className="text-lg font-bold text-white pt-1">
-                                        Upgrade iSchool Backend & Database
+                                        {t("upgrade_backend_database")}
                                     </h3>
                                     {remoteUpdate.changelog && (
                                         <p className="text-xs text-indigo-200 line-clamp-2 max-w-xl">
@@ -450,14 +421,92 @@ export default function SystemUpdatePage() {
                                         className="bg-amber-500 hover:bg-amber-400 text-indigo-950 font-bold px-6 h-10 shadow-md text-xs uppercase"
                                     >
                                         <DownloadCloud className="mr-2 h-4 w-4" />
-                                        Install v{remoteUpdate.latest_version} Now
+                                        {t("install_now")} (v{remoteUpdate.latest_version})
                                     </Button>
                                 )}
                             </div>
                         </div>
                     )}
 
-                    {/* Manual ZIP Package Upload Section */}
+                    {/* System Information & Version Overview 3 Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Current System Version */}
+                        <div className="bg-gradient-to-br from-indigo-50/70 to-blue-50/50 border border-indigo-100 p-5 rounded-xl flex flex-col justify-between shadow-sm">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-800/80">
+                                        {t("current_version")}
+                                    </span>
+                                    <h3 className="text-2xl font-black text-indigo-950 mt-1 tracking-tight">
+                                        v{currentVersion}
+                                    </h3>
+                                </div>
+                                <span className="p-2.5 bg-indigo-500/10 rounded-lg text-indigo-600">
+                                    <Server className="h-6 w-6" />
+                                </span>
+                            </div>
+                            <p className="text-[11px] text-indigo-800/80 mt-3 leading-snug">
+                                {t("production_branch_desc")}
+                            </p>
+                        </div>
+
+                        {/* Environment Specs */}
+                        <div className="bg-gray-50/70 border border-gray-200/80 p-5 rounded-xl flex flex-col justify-between shadow-sm">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                                        {t("environment_specs")}
+                                    </span>
+                                    <h4 className="text-sm font-bold text-gray-800 mt-1">
+                                        PHP {systemInfo?.php_version || "8.2+"} • Laravel {systemInfo?.laravel_version || "12.x"}
+                                    </h4>
+                                </div>
+                                <span className="p-2.5 bg-gray-200/60 rounded-lg text-gray-700">
+                                    <Database className="h-6 w-6" />
+                                </span>
+                            </div>
+                            <div className="text-[11px] text-gray-600 mt-3 space-y-1">
+                                <p className="flex items-center gap-1.5">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                                    {t("zip_extension")}: {systemInfo?.zip_enabled !== false ? (
+                                        <span className="text-emerald-600 font-semibold">{t("active") || "Active"}</span>
+                                    ) : (
+                                        <span className="text-amber-600 font-semibold inline-flex items-center gap-1">
+                                            <AlertCircle className="h-3 w-3" /> {t("missing")}
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Automated Upgrader Status */}
+                        <div className="bg-gradient-to-br from-amber-50/70 to-orange-50/50 border border-amber-200/80 p-5 rounded-xl flex flex-col justify-between shadow-sm">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-800/80">
+                                        {t("updater_status")}
+                                    </span>
+                                    <h4 className="text-sm font-bold text-amber-900 mt-1">
+                                        {remoteUpdate?.has_update 
+                                            ? t("new_version_ready") 
+                                            : t("system_up_to_date")}
+                                    </h4>
+                                </div>
+                                <span className="p-2.5 bg-amber-500/10 rounded-lg text-amber-700">
+                                    <Sparkles className="h-6 w-6" />
+                                </span>
+                            </div>
+                            <p className="text-[11px] text-amber-800/80 mt-3 leading-snug">
+                                {t("upload_update_zip_desc")}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Tab 2: Manual ZIP Package Upload Section */}
+            {activeTab === "upload" && (
+                <div className="space-y-6 animate-in fade-in-50 duration-200">
                     <div className="border border-gray-200 rounded-xl p-6 bg-white shadow-xs space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
@@ -466,10 +515,10 @@ export default function SystemUpdatePage() {
                                 </div>
                                 <div>
                                     <h2 className="text-sm font-bold text-gray-800">
-                                        Upload Update Package (.zip)
+                                        {t("upload_update_package")}
                                     </h2>
                                     <p className="text-xs text-gray-500">
-                                        Select or drag the official system update file containing new backend scripts and database migrations.
+                                        {t("upload_package_desc")}
                                     </p>
                                 </div>
                             </div>
@@ -506,7 +555,7 @@ export default function SystemUpdatePage() {
                                     <div className="text-center">
                                         <p className="text-sm font-bold text-gray-800">{selectedFile.name}</p>
                                         <p className="text-xs text-gray-500">
-                                            {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for installation
+                                            {toLocaleNumber((selectedFile.size / (1024 * 1024)).toFixed(2), language?.short_code)} MB • {t("ready_for_installation")}
                                         </p>
                                     </div>
                                     <Button
@@ -519,7 +568,7 @@ export default function SystemUpdatePage() {
                                             setSelectedFile(null);
                                         }}
                                     >
-                                        <X className="h-3.5 w-3.5 mr-1" /> Remove File
+                                        <X className="h-3.5 w-3.5 mr-1" /> {t("remove_file")}
                                     </Button>
                                 </div>
                             ) : (
@@ -529,10 +578,10 @@ export default function SystemUpdatePage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-semibold text-gray-700">
-                                            Click to browse or drag and drop <code className="bg-gray-100 px-1 py-0.5 rounded text-indigo-600 font-mono">update.zip</code> file
+                                            {t("drag_drop_zip")}
                                         </p>
                                         <p className="text-xs text-gray-400 mt-1">
-                                            Maximum ZIP package size: 100MB
+                                            {t("max_zip_size")}
                                         </p>
                                     </div>
                                 </>
@@ -551,12 +600,12 @@ export default function SystemUpdatePage() {
                                     {updating ? (
                                         <>
                                             <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                            Updating System...
+                                            {t("updating_system")}
                                         </>
                                     ) : (
                                         <>
                                             <Sparkles className="mr-2 h-4 w-4" />
-                                            Upload & Execute Update
+                                            {t("upload_execute_update")}
                                         </>
                                     )}
                                 </Button>
@@ -574,22 +623,22 @@ export default function SystemUpdatePage() {
                                     </div>
                                     <div>
                                         <h3 className="text-sm font-bold text-emerald-950">
-                                            Updated Files & Database Summary
+                                            {t("updated_files_summary")}
                                         </h3>
                                         <p className="text-xs text-emerald-700">
-                                            {updatedFilesList.length} standalone file{updatedFilesList.length > 1 ? 's' : ''} updated cleanly across backend & migrations.
+                                            {toLocaleNumber(updatedFilesList.length, language?.short_code)} {t("standalone_files_updated")}
                                         </p>
                                     </div>
                                 </div>
                                 <span className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full uppercase tracking-wider">
-                                    {updatedFilesList.length} Files Modified
+                                    {toLocaleNumber(updatedFilesList.length, language?.short_code)} {t("files_modified") || "Files Modified"}
                                 </span>
                             </div>
 
                             {/* Standalone Files Grid Badges */}
                             <div className="space-y-2">
                                 <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider block">
-                                    Standalone Updated Files:
+                                    {t("standalone_updated_files") || "Standalone Updated Files:"}
                                 </span>
                                 <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
                                     {updatedFilesList.map((fileItem, idx) => (
@@ -614,7 +663,7 @@ export default function SystemUpdatePage() {
                             {migrationsRunList.length > 0 && (
                                 <div className="pt-2 border-t border-emerald-200/80 space-y-2">
                                     <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider block">
-                                        Database Migrations Executed:
+                                        {t("database_migrations_executed")}
                                     </span>
                                     <div className="flex flex-wrap gap-2">
                                         {migrationsRunList.map((mig, idx) => (
@@ -635,18 +684,18 @@ export default function SystemUpdatePage() {
                             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                                 <div className="flex items-center gap-2 text-slate-300">
                                     <Terminal className="h-4 w-4 text-indigo-400" />
-                                    <span className="font-bold text-xs">Update Execution Progress & Output Log</span>
+                                    <span className="font-bold text-xs">{t("update_output_log")}</span>
                                 </div>
                                 <span className="text-[11px] text-slate-400">
-                                    Status: <span className="text-amber-400 font-semibold">{currentStep}</span>
+                                    {t("status_label")}: <span className="text-amber-400 font-semibold">{currentStep}</span>
                                 </span>
                             </div>
 
                             {updating && (
                                 <div className="space-y-1.5 pt-1">
                                     <div className="flex justify-between text-[11px] text-slate-400">
-                                        <span>Executing Upgrade Tasks</span>
-                                        <span>{updateProgress}%</span>
+                                        <span>{t("executing_upgrade_tasks")}</span>
+                                        <span>{toLocaleNumber(updateProgress, language?.short_code)}%</span>
                                     </div>
                                     <Progress value={updateProgress} className="h-2 bg-slate-800" />
                                 </div>
@@ -684,22 +733,26 @@ export default function SystemUpdatePage() {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
 
-                    {/* How Update Package Works Instructions */}
-                    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5 space-y-3">
-                        <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
-                            <Info className="h-4 w-4 text-blue-600" />
-                            <span>System Update Package Guidelines & Directory Structure</span>
+            {/* Tab 3: Update Guidelines & Documentation */}
+            {activeTab === "guidelines" && (
+                <div className="animate-in fade-in-50 duration-200">
+                    <div className="bg-blue-50/60 border border-blue-200/80 rounded-xl p-6 space-y-4">
+                        <div className="flex items-center gap-2.5 text-blue-900 font-bold text-sm">
+                            <Info className="h-5 w-5 text-blue-600" />
+                            <span>{t("guidelines_title")}</span>
                         </div>
-                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-blue-950/80 leading-relaxed pl-6 list-disc">
-                            <li>Place updated backend PHP files inside the ZIP archive. Existing files will be replaced automatically.</li>
-                            <li>Put database migrations inside <code className="bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-mono">database/migrations/</code> to run <code className="bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-mono">php artisan migrate --force</code>.</li>
-                            <li>Include an optional <code className="bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-mono">version.json</code> file to set the new version string e.g. <code className="bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-mono">&#123;"version": "1.1.0"&#125;</code>.</li>
-                            <li>Sensitive environment files (<code className="bg-blue-100 text-blue-900 px-1 py-0.5 rounded font-mono">.env</code>), uploads, and vendor folders are strictly protected during extraction.</li>
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-blue-950/90 leading-relaxed pl-5 list-disc">
+                            <li className="leading-normal">{t("guideline_1")}</li>
+                            <li className="leading-normal">{t("guideline_2")}</li>
+                            <li className="leading-normal">{t("guideline_3")}</li>
+                            <li className="leading-normal">{t("guideline_4")}</li>
                         </ul>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            )}
         </div>
     );
 }

@@ -66,8 +66,7 @@ export default function UserCBSEExamResultPage() {
         try {
             const response = await api.get("/user/cbse-exam-result");
             setExamData(response.data?.data || []);
-        } catch (error) {
-            console.error("Error fetching CBSE exam results:", error);
+        } catch {
             toast.error(t("failed_to_load_exam_results"));
         } finally {
             setLoading(false);

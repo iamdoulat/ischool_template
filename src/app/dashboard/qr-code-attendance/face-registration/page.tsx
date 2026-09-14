@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateRoleName, translateClassName, translateSectionName } from "@/lib/utils";
 import Link from "next/link";
 import {
   UserCheck, Camera, ShieldAlert, Loader2, Search,
@@ -81,7 +81,7 @@ function buildCameraProxyUrl(settings: QrSettings): string | null {
 
 export default function FaceRegistrationPage() {
   const getImageUrl = useImageUrl();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
 
   const [pageMode, setPageMode] = useState<PageMode>('register');
   const [loadingModels, setLoadingModels] = useState(true);
@@ -147,7 +147,7 @@ export default function FaceRegistrationPage() {
         setLoadingModels(false);
       } catch (error) {
         console.error("Error loading models:", error);
-        toast.error(t("failed_to_load_ai_models"));
+        toast.error(t("failed_to_load_ai_models") || "Failed to load AI face recognition models");
         setLoadingModels(false);
       }
     };
@@ -241,16 +241,16 @@ export default function FaceRegistrationPage() {
     setPullingZkData(true);
     try {
       if (zkDevices.length === 0) {
-        toast.error("No ZKTeco face devices found. Please configure in Settings.");
+        toast.error(t("no_zkteco_devices_toast") || "No ZKTeco face devices found. Please configure in Settings.");
         return;
       }
       for (const dev of zkDevices) {
         await api.post(`/zkteco/devices/${dev.id}/pull`).catch(() => {});
       }
       await fetchZkData();
-      toast.success("Synchronized and processed latest ZKTeco Face logs.");
-    } catch (e) {
-      toast.error("Failed to pull ZKTeco Face data.");
+      toast.success(t("synced_zkteco_logs_toast") || "Synchronized and processed latest ZKTeco Face logs.");
+    } catch {
+      toast.error(t("failed_pull_zkteco_toast") || "Failed to pull ZKTeco Face data.");
     } finally {
       setPullingZkData(false);
     }
@@ -327,7 +327,7 @@ export default function FaceRegistrationPage() {
       return;
     }
 
-    toast.error(t("no_camera_found_use_photo_upload"));
+    toast.error(t("no_camera_found_use_photo_upload") || "No camera found, please use photo upload");
     setIsCameraActive(false);
     setCaptureMode(null);
   };
@@ -408,7 +408,7 @@ export default function FaceRegistrationPage() {
                 ctx.strokeRect(box.x, box.y, box.width, box.height);
                 ctx.fillStyle = "#10B981";
                 ctx.font = "bold 14px Inter, sans-serif";
-                ctx.fillText(`✓ ${foundUser?.name || 'Verified'} (${confidence}%)`, box.x, Math.max(box.y - 10, 20));
+                ctx.fillText(`✓ ${foundUser?.name || t("verified") || 'Verified'} (${toLocaleNumber(confidence, language?.short_code)}%)`, box.x, Math.max(box.y - 10, 20));
               }
             } else {
               setVerifiedUser(null);
@@ -418,7 +418,7 @@ export default function FaceRegistrationPage() {
                 ctx.strokeRect(box.x, box.y, box.width, box.height);
                 ctx.fillStyle = "#EF4444";
                 ctx.font = "12px Inter, sans-serif";
-                ctx.fillText("Unrecognized Face", box.x, Math.max(box.y - 10, 20));
+                ctx.fillText(t("unrecognized_face") || "Unrecognized Face", box.x, Math.max(box.y - 10, 20));
               }
             }
           } else {
@@ -476,11 +476,11 @@ export default function FaceRegistrationPage() {
   // Register face to DB
   const handleRegisterFace = async () => {
     if (!selectedUser) {
-      toast.error(t("select_person_first"));
+      toast.error(t("select_person_first") || "Select person first");
       return;
     }
     if (!descriptorRef.current) {
-      toast.error(t("no_face_detected"));
+      toast.error(t("no_face_detected") || "No face detected");
       return;
     }
     setCapturing(true);
@@ -491,7 +491,7 @@ export default function FaceRegistrationPage() {
         face_descriptor: descriptorArray,
       });
       if (res.data?.success) {
-        toast.success(res.data.message || t("face_registered_successfully"));
+        toast.success(res.data.message || t("face_registered_successfully") || "Face registered successfully");
         const updated = { ...selectedUser, has_face: true, face_descriptor: descriptorArray };
         setSelectedUser(updated);
         setUsers(prev => prev.map(u => u.id === selectedUser.id ? updated : u));
@@ -499,7 +499,7 @@ export default function FaceRegistrationPage() {
         clearUpload();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || t("failed_to_register_face"));
+      toast.error(err.response?.data?.message || t("failed_to_register_face") || "Failed to register face");
     } finally {
       setCapturing(false);
     }
@@ -508,20 +508,21 @@ export default function FaceRegistrationPage() {
   // Remove face biometric data
   const handleRemoveFace = async () => {
     if (!selectedUser) return;
-    if (!confirm(`Are you sure you want to remove face biometric data for ${selectedUser.name}?`)) return;
+    const confirmMsg = t("remove_face_confirm_msg", { name: selectedUser.name }) || `Are you sure you want to remove face biometric data for ${selectedUser.name}?`;
+    if (!confirm(confirmMsg)) return;
 
     setRemovingFace(true);
     try {
       const res = await api.post("/attendance/face-remove", { user_id: selectedUser.id });
       if (res.data?.success) {
-        toast.success(res.data.message || "Face data removed.");
+        toast.success(res.data.message || t("face_data_removed_success") || "Face data removed.");
         const updated = { ...selectedUser, has_face: false, face_descriptor: undefined };
         setSelectedUser(updated);
         setUsers(prev => prev.map(u => u.id === selectedUser.id ? updated : u));
         loadRegisteredFaces();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to remove face data");
+      toast.error(err.response?.data?.message || t("failed_to_remove_face_data") || "Failed to remove face data");
     } finally {
       setRemovingFace(false);
     }
@@ -532,11 +533,13 @@ export default function FaceRegistrationPage() {
     setMarkingAttendance(true);
     try {
       const res = await api.post('/attendance/qr-scan', { code: String(userId) });
-      toast.success(`Attendance ${res.data.status || 'marked'} for ${res.data.user?.name || 'user'}`);
+      const statusText = res.data.status || 'marked';
+      const userName = res.data.user?.name || verifiedUser?.user?.name || 'user';
+      toast.success(t("attendance_marked_success", { status: statusText, name: userName }) || `Attendance ${statusText} for ${userName}`);
       const audio = new Audio('/sounds/success.mp3');
       audio.play().catch(() => {});
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to mark attendance");
+      toast.error(err.response?.data?.message || t("failed_to_mark_attendance") || "Failed to mark attendance");
       const audio = new Audio('/sounds/error.mp3');
       audio.play().catch(() => {});
     } finally {
@@ -547,26 +550,26 @@ export default function FaceRegistrationPage() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header with Mode Switcher */}
-      <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+      <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
               <Sparkles className="h-5 w-5" />
             </span>
             <div>
               <h1 className="text-base font-bold tracking-tight text-slate-800 leading-tight">
                 {pageMode === 'register'
-                  ? t("ai_biometric_face_registration")
+                  ? (t("ai_biometric_face_registration") || "AI Biometric Face Registration")
                   : pageMode === 'verify'
-                    ? "Mobile Front Camera Face Verification"
-                    : "ZKTeco Face Attendance Device System"}
+                    ? (t("mobile_front_camera_face_verification") || "Mobile Front Camera Face Verification")
+                    : (t("zkteco_face_attendance_device_system") || "ZKTeco Face Attendance Device System")}
               </h1>
               <p className="text-[11px] text-gray-500 mt-0.5">
                 {pageMode === 'register'
-                  ? "Enroll student & staff facial geometry using mobile phone front camera or photo upload."
+                  ? (t("enroll_face_subtitle") || "Enroll student & staff facial geometry using mobile phone front camera or photo upload.")
                   : pageMode === 'verify'
-                    ? "Live real-time facial verification & attendance matching via mobile front camera."
-                    : "Live ZKTeco Visible Light Face Recognition (SpeedFace / ProFace / uFace) ADMS push integration."}
+                    ? (t("live_face_verification_subtitle") || "Live real-time facial verification & attendance matching via mobile front camera.")
+                    : (t("zkteco_device_subtitle") || "Live ZKTeco Visible Light Face Recognition (SpeedFace / ProFace / uFace) ADMS push integration.")}
               </p>
             </div>
           </div>
@@ -583,7 +586,7 @@ export default function FaceRegistrationPage() {
               )}
             >
               <UserCheck className="w-3.5 h-3.5" />
-              Enroll Face
+              {t("enroll_face_tab") || "Enroll Face"}
             </button>
             <button
               onClick={() => { setPageMode('verify'); stopCamera(); startCamera('user'); }}
@@ -595,7 +598,7 @@ export default function FaceRegistrationPage() {
               )}
             >
               <ScanFace className="w-3.5 h-3.5" />
-              Verify (Front Cam)
+              {t("verify_front_cam_tab") || "Verify (Front Cam)"}
             </button>
             <button
               onClick={() => { setPageMode('zkteco'); stopCamera(); }}
@@ -607,7 +610,7 @@ export default function FaceRegistrationPage() {
               )}
             >
               <Cpu className="w-3.5 h-3.5" />
-              ZKTeco Face Device
+              {t("zkteco_face_device_tab") || "ZKTeco Face Device"}
             </button>
           </div>
         </div>
@@ -636,34 +639,34 @@ export default function FaceRegistrationPage() {
           <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col gap-4">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-indigo-500" />
-              {t("select_person")}
+              {t("select_person") || "Select Person"}
             </h2>
             <div className="space-y-3">
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                 <Input
-                  placeholder={t("search_by_name_id_roll")}
+                  placeholder={t("search_by_name_id_roll") || "Search by name, roll, or ID..."}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="pl-9 h-10 border-slate-200 focus-visible:ring-indigo-500"
                 />
               </div>
               <div className="flex gap-2">
-                <Button variant={roleFilter === "all" ? "default" : "outline"} onClick={() => setRoleFilter("all")} className="flex-1 h-8 text-xs font-semibold">{t("all")}</Button>
-                <Button variant={roleFilter === "Student" ? "default" : "outline"} onClick={() => setRoleFilter("Student")} className="flex-1 h-8 text-xs font-semibold">{t("students")}</Button>
-                <Button variant={roleFilter === "Staff" ? "default" : "outline"} onClick={() => setRoleFilter("Staff")} className="flex-1 h-8 text-xs font-semibold">{t("staff")}</Button>
+                <Button variant={roleFilter === "all" ? "default" : "outline"} onClick={() => setRoleFilter("all")} className="flex-1 h-8 text-xs font-semibold">{t("all") || "All"}</Button>
+                <Button variant={roleFilter === "Student" ? "default" : "outline"} onClick={() => setRoleFilter("Student")} className="flex-1 h-8 text-xs font-semibold">{t("students") || "Students"}</Button>
+                <Button variant={roleFilter === "Staff" ? "default" : "outline"} onClick={() => setRoleFilter("Staff")} className="flex-1 h-8 text-xs font-semibold">{t("staff") || "Staff"}</Button>
               </div>
             </div>
 
             <div className="border border-slate-100 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
               {searching ? (
                 <div className="p-6 text-center text-slate-400 text-xs flex justify-center items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> {t("searching")}
+                  <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> {t("searching") || "Searching..."}
                 </div>
               ) : users.length === 0 ? (
                 <div className="p-8 text-center text-slate-400 text-xs">
                   <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  {searchQuery ? t("no_matching_users_found") : t("type_above_to_search")}
+                  {searchQuery ? (t("no_matching_users_found") || "No matching users found") : (t("type_above_to_search") || "Type above to search")}
                 </div>
               ) : (
                 users.map(user => (
@@ -686,19 +689,21 @@ export default function FaceRegistrationPage() {
                       <div>
                         <h4 className="font-semibold text-slate-800 text-xs leading-snug">{user.name}</h4>
                         <span className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                          <span className="px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-medium">{user.role}</span>
+                          <span className="px-1.5 py-0.2 bg-slate-100 rounded text-slate-600 font-medium">
+                            {translateRoleName(user.role, language?.short_code)}
+                          </span>
                           <span>•</span>
-                          <span>{user.role === 'Student' ? `${t("reg")}: ${user.admission_no || 'N/A'}` : `ID: ${user.staff_id || 'N/A'}`}</span>
+                          <span>{user.role === 'Student' ? `${t("admission_no_label") || 'Adm'}: ${toLocaleNumber(user.admission_no || '', language?.short_code) || 'N/A'}` : `${t("staff_id_label") || 'ID'}: ${toLocaleNumber(user.staff_id || '', language?.short_code) || 'N/A'}`}</span>
                         </span>
                       </div>
                     </div>
                     {user.has_face ? (
                       <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border border-emerald-200">
-                        <CheckCircle className="w-3 h-3" /> Enrolled
+                        <CheckCircle className="w-3 h-3" /> {t("enrolled_badge") || "Enrolled"}
                       </span>
                     ) : (
                       <span className="text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 border border-rose-200">
-                        <ShieldAlert className="w-3 h-3" /> No Face
+                        <ShieldAlert className="w-3 h-3" /> {t("no_face_badge") || "No Face"}
                       </span>
                     )}
                   </div>
@@ -711,7 +716,7 @@ export default function FaceRegistrationPage() {
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col gap-4">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <Camera className="w-4 h-4 text-indigo-500" />
-              {t("ai_face_capture")}
+              {t("ai_face_capture") || "AI Face Capture"}
             </h2>
 
             {!selectedUser ? (
@@ -733,9 +738,15 @@ export default function FaceRegistrationPage() {
                       </div>
                     )}
                     <div>
-                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">{selectedUser.role}</span>
+                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                        {translateRoleName(selectedUser.role, language?.short_code)}
+                      </span>
                       <h3 className="text-sm font-bold text-slate-800 leading-tight">{selectedUser.name}</h3>
-                      <p className="text-[11px] text-slate-500">{selectedUser.role === 'Student' ? `Admission No: ${selectedUser.admission_no || 'N/A'}` : `Staff ID: ${selectedUser.staff_id || 'N/A'}`}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {selectedUser.role === 'Student'
+                          ? `${t("admission_no_label") || 'Admission No'}: ${toLocaleNumber(selectedUser.admission_no, language?.short_code) || 'N/A'}`
+                          : `${t("staff_id_label") || 'Staff ID'}: ${toLocaleNumber(selectedUser.staff_id, language?.short_code) || 'N/A'}`}
+                      </p>
                     </div>
                   </div>
 
@@ -743,7 +754,7 @@ export default function FaceRegistrationPage() {
                     {selectedUser.has_face ? (
                       <>
                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" /> Enrolled
+                          <CheckCircle className="w-3.5 h-3.5" /> {t("enrolled_badge") || "Enrolled"}
                         </span>
                         <Button
                           size="sm"
@@ -751,14 +762,14 @@ export default function FaceRegistrationPage() {
                           onClick={handleRemoveFace}
                           disabled={removingFace}
                           className="h-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50 text-xs"
-                          title="Remove Face Data"
+                          title={t("remove_face_data_tooltip") || "Remove Face Data"}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </>
                     ) : (
                       <span className="text-xs font-bold text-rose-500 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full inline-flex items-center gap-1">
-                        <AlertCircle className="w-3.5 h-3.5" /> Not Enrolled
+                        <AlertCircle className="w-3.5 h-3.5" /> {t("not_enrolled_badge") || "Not Enrolled"}
                       </span>
                     )}
                   </div>
@@ -775,7 +786,7 @@ export default function FaceRegistrationPage() {
                       className={cn("h-8 text-xs font-bold gap-1.5", captureMode === 'webcam' && "bg-indigo-600 text-white")}
                     >
                       <Smartphone className="w-3.5 h-3.5" />
-                      Mobile / Front Cam
+                      {t("mobile_front_cam_btn") || "Mobile / Front Cam"}
                     </Button>
                     <Button
                       variant={captureMode === 'upload' ? 'default' : 'outline'}
@@ -784,7 +795,7 @@ export default function FaceRegistrationPage() {
                       className={cn("h-8 text-xs font-bold gap-1.5", captureMode === 'upload' && "bg-indigo-600 text-white")}
                     >
                       <Upload className="w-3.5 h-3.5" />
-                      {t("upload_photo")}
+                      {t("upload_photo") || "Upload Photo"}
                     </Button>
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
                   </div>
@@ -797,7 +808,7 @@ export default function FaceRegistrationPage() {
                       className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all border border-slate-200"
                     >
                       <RefreshCw className="h-3 w-3" />
-                      <span>{facingMode === 'user' ? 'Front Cam 🤳' : 'Back Cam 📷'}</span>
+                      <span>{facingMode === 'user' ? (t("front_cam_label") || 'Front Cam 🤳') : (t("back_cam_label") || 'Back Cam 📷')}</span>
                     </button>
                   )}
                 </div>
@@ -820,7 +831,7 @@ export default function FaceRegistrationPage() {
                           ref={uploadImgRef}
                           src={uploadedImage}
                           className="w-full h-full object-contain"
-                          alt={t("uploaded")}
+                          alt={t("uploaded") || "Uploaded"}
                           onLoad={(e) => { uploadImgRef.current = e.currentTarget; startFaceDetectionLoop(e.currentTarget); }}
                         />
                       )}
@@ -832,7 +843,7 @@ export default function FaceRegistrationPage() {
                       {/* Status pill overlay */}
                       <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-sm border border-slate-700 px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 shadow">
                         <span className={cn("w-2 h-2 rounded-full", faceDetected ? "bg-emerald-400 animate-pulse" : "bg-amber-400")} />
-                        {faceDetected ? "Face Aligned - Ready" : "Align face inside frame"}
+                        {faceDetected ? (t("face_aligned_ready") || "Face Aligned - Ready") : (t("align_face_inside_frame") || "Align face inside frame")}
                       </div>
                     </>
                   ) : (
@@ -840,16 +851,16 @@ export default function FaceRegistrationPage() {
                       <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-800 text-indigo-400 mb-3 shadow-inner">
                         <Smartphone className="w-7 h-7" />
                       </div>
-                      <h4 className="font-bold text-slate-200 text-sm">Mobile Front Camera Ready</h4>
+                      <h4 className="font-bold text-slate-200 text-sm">{t("mobile_front_camera_ready") || "Mobile Front Camera Ready"}</h4>
                       <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                        Click "Mobile / Front Cam" to turn on your front camera and scan facial landmarks.
+                        {t("turn_on_front_cam_hint") || "Click \"Mobile / Front Cam\" to turn on your front camera and scan facial landmarks."}
                       </p>
                       <Button
                         size="sm"
                         onClick={() => startCamera('user')}
                         className="mt-4 h-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-bold text-xs gap-1.5 shadow"
                       >
-                        <Camera className="w-3.5 h-3.5" /> Turn On Front Camera
+                        <Camera className="w-3.5 h-3.5" /> {t("turn_on_front_camera_btn") || "Turn On Front Camera"}
                       </Button>
                     </div>
                   )}
@@ -869,9 +880,9 @@ export default function FaceRegistrationPage() {
                       )}
                     >
                       {capturing ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /> Saving Biometric Vector...</>
+                        <><Loader2 className="w-4 h-4 animate-spin" /> {t("saving_biometric_vector") || "Saving Biometric Vector..."}</>
                       ) : (
-                        <><UserCheck2 className="w-4 h-4" /> Save Face Biometrics for {selectedUser.name}</>
+                        <><UserCheck2 className="w-4 h-4" /> {t("save_face_biometrics_for_user", { name: selectedUser.name }) || `Save Face Biometrics for ${selectedUser.name}`}</>
                       )}
                     </Button>
                     <Button
@@ -880,7 +891,7 @@ export default function FaceRegistrationPage() {
                       disabled={capturing}
                       className="h-11 border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 text-xs font-semibold"
                     >
-                      {captureMode === 'upload' ? t("clear_photo") : t("close_feed")}
+                      {captureMode === 'upload' ? (t("clear_photo") || "Clear Photo") : (t("close_feed") || "Close Feed")}
                     </Button>
                   </div>
                 )}
@@ -896,7 +907,7 @@ export default function FaceRegistrationPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                 <ScanFace className="w-4 h-4 text-emerald-600" />
-                Live Face Recognition Stream
+                {t("live_face_recognition_stream") || "Live Face Recognition Stream"}
               </h2>
               {isCameraActive && (
                 <button
@@ -905,7 +916,7 @@ export default function FaceRegistrationPage() {
                   className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all border border-slate-200"
                 >
                   <RefreshCw className="h-3 w-3" />
-                  <span>{facingMode === 'user' ? 'Front Cam 🤳' : 'Back Cam 📷'}</span>
+                  <span>{facingMode === 'user' ? (t("front_cam_label") || 'Front Cam 🤳') : (t("back_cam_label") || 'Back Cam 📷')}</span>
                 </button>
               )}
             </div>
@@ -928,7 +939,11 @@ export default function FaceRegistrationPage() {
                   {/* Top Status */}
                   <div className="absolute top-3 left-3 bg-slate-900/85 backdrop-blur-sm border border-slate-700 px-3 py-1 rounded-full text-xs font-semibold text-white flex items-center gap-2 shadow">
                     <span className={cn("w-2 h-2 rounded-full", verifiedUser ? "bg-emerald-400 animate-pulse" : faceDetected ? "bg-amber-400" : "bg-slate-400")} />
-                    {verifiedUser ? `Matched: ${verifiedUser.user.name}` : faceDetected ? "Analyzing Facial Match..." : "Position Face in Front Camera"}
+                    {verifiedUser
+                      ? (t("matched_status_pill", { name: verifiedUser.user.name }) || `Matched: ${verifiedUser.user.name}`)
+                      : faceDetected
+                        ? (t("analyzing_facial_match") || "Analyzing Facial Match...")
+                        : (t("position_face_in_front_camera") || "Position Face in Front Camera")}
                   </div>
                 </>
               ) : (
@@ -936,16 +951,16 @@ export default function FaceRegistrationPage() {
                   <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center border border-slate-800 text-emerald-400 mb-3">
                     <ScanFace className="w-7 h-7" />
                   </div>
-                  <h4 className="font-bold text-slate-200 text-sm">Face Verification Offline</h4>
+                  <h4 className="font-bold text-slate-200 text-sm">{t("face_verification_offline") || "Face Verification Offline"}</h4>
                   <p className="text-xs text-slate-400 mt-1 max-w-xs">
-                    Start the front camera to perform real-time biometric matching against enrolled users.
+                    {t("start_front_cam_verify_desc") || "Start the front camera to perform real-time biometric matching against enrolled users."}
                   </p>
                   <Button
                     size="sm"
                     onClick={() => startCamera('user')}
                     className="mt-4 h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5 shadow"
                   >
-                    <Camera className="w-3.5 h-3.5" /> Start Front Camera Verification
+                    <Camera className="w-3.5 h-3.5" /> {t("start_front_cam_verify_btn") || "Start Front Camera Verification"}
                   </Button>
                 </div>
               )}
@@ -959,7 +974,7 @@ export default function FaceRegistrationPage() {
                   onClick={stopCamera}
                   className="w-full h-9 border-slate-200 text-slate-600 text-xs font-semibold"
                 >
-                  Stop Camera Stream
+                  {t("stop_camera_stream_btn") || "Stop Camera Stream"}
                 </Button>
               </div>
             )}
@@ -969,7 +984,7 @@ export default function FaceRegistrationPage() {
           <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col gap-4">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              Verification Result
+              {t("verification_result_title") || "Verification Result"}
             </h2>
 
             {verifiedUser ? (
@@ -993,16 +1008,16 @@ export default function FaceRegistrationPage() {
 
                 <div>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    {verifiedUser.user.role} Verified
+                    {t("role_verified_badge", { role: translateRoleName(verifiedUser.user.role, language?.short_code) }) || `${translateRoleName(verifiedUser.user.role, language?.short_code)} Verified`}
                   </span>
                   <h3 className="text-lg font-bold text-slate-900 mt-1">{verifiedUser.user.name}</h3>
                   <p className="text-xs text-slate-600 mt-0.5">
                     {verifiedUser.user.role === 'Student'
-                      ? `Admission No: ${verifiedUser.user.admission_no || 'N/A'}`
-                      : `Staff ID: ${verifiedUser.user.staff_id || 'N/A'}`}
+                      ? `${t("admission_no_label") || 'Admission No'}: ${toLocaleNumber(verifiedUser.user.admission_no, language?.short_code) || 'N/A'}`
+                      : `${t("staff_id_label") || 'Staff ID'}: ${toLocaleNumber(verifiedUser.user.staff_id, language?.short_code) || 'N/A'}`}
                   </p>
                   <p className="text-xs font-bold text-emerald-700 mt-2">
-                    Match Confidence: {verifiedUser.confidence}%
+                    {t("match_confidence_percent", { percent: toLocaleNumber(verifiedUser.confidence, language?.short_code) }) || `Match Confidence: ${toLocaleNumber(verifiedUser.confidence, language?.short_code)}%`}
                   </p>
                 </div>
 
@@ -1012,22 +1027,25 @@ export default function FaceRegistrationPage() {
                     disabled={markingAttendance}
                     className="w-full h-11 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-bold text-xs gap-1.5 shadow"
                   >
-                    {markingAttendance ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    Mark Attendance for {verifiedUser.user.name}
+                    {markingAttendance ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> {t("marking_attendance_btn") || "Marking Attendance..."}</>
+                    ) : (
+                      <><CheckCircle className="w-4 h-4" /> {t("mark_attendance_for_user", { name: verifiedUser.user.name }) || `Mark Attendance for ${verifiedUser.user.name}`}</>
+                    )}
                   </Button>
                 </div>
               </div>
             ) : (
               <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10 text-center flex flex-col items-center justify-center min-h-[300px]">
                 <User className="w-12 h-12 text-slate-300 mb-2" />
-                <h4 className="text-sm font-bold text-slate-700">Awaiting Face Recognition</h4>
+                <h4 className="text-sm font-bold text-slate-700">{t("awaiting_face_recognition") || "Awaiting Face Recognition"}</h4>
                 <p className="text-xs text-slate-400 mt-1 max-w-xs">
                   {isCameraActive
-                    ? "Face the front camera directly with adequate lighting."
-                    : "Turn on the front camera stream to begin matching."}
+                    ? (t("face_camera_directly_hint") || "Face the front camera directly with adequate lighting.")
+                    : (t("turn_on_stream_matching_hint") || "Turn on the front camera stream to begin matching.")}
                 </p>
                 <div className="mt-4 text-[11px] text-slate-500 font-medium bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-                  Total Enrolled Faces in Database: {registeredFaces.length}
+                  {t("total_enrolled_faces_in_db", { count: toLocaleNumber(registeredFaces.length, language?.short_code) }) || `Total Enrolled Faces in Database: ${toLocaleNumber(registeredFaces.length, language?.short_code)}`}
                 </div>
               </div>
             )}
@@ -1040,38 +1058,40 @@ export default function FaceRegistrationPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-semibold uppercase">ZKTeco Hardware</span>
+                <span className="text-[11px] font-semibold uppercase">{t("zkteco_hardware_metric") || "ZKTeco Hardware"}</span>
                 <HardDrive className="h-4 w-4 text-indigo-500" />
               </div>
-              <p className="text-xl font-bold text-slate-800">{zkSummary.total_devices || zkDevices.length}</p>
-              <span className="text-[10px] text-emerald-600 font-medium">{zkSummary.online_devices || 0} Online</span>
+              <p className="text-xl font-bold text-slate-800">{toLocaleNumber(zkSummary.total_devices || zkDevices.length, language?.short_code)}</p>
+              <span className="text-[10px] text-emerald-600 font-medium">
+                {t("devices_online_count", { count: toLocaleNumber(zkSummary.online_devices || 0, language?.short_code) }) || `${toLocaleNumber(zkSummary.online_devices || 0, language?.short_code)} Online`}
+              </span>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-semibold uppercase">Today Face Punches</span>
+                <span className="text-[11px] font-semibold uppercase">{t("today_face_punches_metric") || "Today Face Punches"}</span>
                 <Activity className="h-4 w-4 text-indigo-500" />
               </div>
-              <p className="text-xl font-bold text-slate-800">{zkSummary.today_punches || zkLogs.length}</p>
-              <span className="text-[10px] text-slate-500">Live ADMS Push Stream</span>
+              <p className="text-xl font-bold text-slate-800">{toLocaleNumber(zkSummary.today_punches || zkLogs.length, language?.short_code)}</p>
+              <span className="text-[10px] text-slate-500">{t("live_adms_push_stream") || "Live ADMS Push Stream"}</span>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-semibold uppercase">Matched Students</span>
+                <span className="text-[11px] font-semibold uppercase">{t("matched_students_metric") || "Matched Students"}</span>
                 <CheckCircle2 className="h-4 w-4 text-emerald-500" />
               </div>
-              <p className="text-xl font-bold text-emerald-600">{zkSummary.matched_punches || 0}</p>
-              <span className="text-[10px] text-emerald-600 font-medium">Mapped to Class/Roll</span>
+              <p className="text-xl font-bold text-emerald-600">{toLocaleNumber(zkSummary.matched_punches || 0, language?.short_code)}</p>
+              <span className="text-[10px] text-emerald-600 font-medium">{t("mapped_to_class_roll") || "Mapped to Class/Roll"}</span>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between text-slate-400 mb-1">
-                <span className="text-[11px] font-semibold uppercase">Recognition Match Rate</span>
+                <span className="text-[11px] font-semibold uppercase">{t("recognition_match_rate_metric") || "Recognition Match Rate"}</span>
                 <Sparkles className="h-4 w-4 text-amber-500" />
               </div>
-              <p className="text-xl font-bold text-slate-800">{zkSummary.match_rate || 100}%</p>
-              <span className="text-[10px] text-indigo-600 font-medium">SpeedFace / ProFace / SenseFace</span>
+              <p className="text-xl font-bold text-slate-800">{toLocaleNumber(zkSummary.match_rate || 100, language?.short_code)}%</p>
+              <span className="text-[10px] text-indigo-600 font-medium">{t("supported_hardware_subtext") || "SpeedFace / ProFace / SenseFace"}</span>
             </div>
           </div>
 
@@ -1082,13 +1102,13 @@ export default function FaceRegistrationPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                   <Cpu className="w-4 h-4 text-indigo-600" />
-                  ZKTeco Face Terminals ({zkDevices.length})
+                  {t("zkteco_face_terminals_count", { count: toLocaleNumber(zkDevices.length, language?.short_code) }) || `ZKTeco Face Terminals (${toLocaleNumber(zkDevices.length, language?.short_code)})`}
                 </h2>
                 <Link
                   href="/dashboard/qr-code-attendance/setting"
                   className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold inline-flex items-center gap-1"
                 >
-                  <Settings2 className="w-3.5 h-3.5" /> Hardware Settings
+                  <Settings2 className="w-3.5 h-3.5" /> {t("hardware_settings_link") || "Hardware Settings"}
                 </Link>
               </div>
 
@@ -1096,13 +1116,13 @@ export default function FaceRegistrationPage() {
               <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3.5 text-xs text-slate-600 space-y-1">
                 <p className="font-bold text-indigo-900 flex items-center gap-1.5">
                   <Wifi className="w-3.5 h-3.5 text-indigo-600" />
-                  ADMS Face Attendance Cloud Push Endpoint:
+                  {t("adms_face_cloud_push_endpoint") || "ADMS Face Attendance Cloud Push Endpoint:"}
                 </p>
                 <code className="block bg-white p-1.5 rounded border border-indigo-200 text-indigo-700 font-mono text-[11px] select-all">
                   /api/v1/zkteco/cdata
                 </code>
                 <p className="text-[10px] text-slate-500">
-                  Compatible with ZKTeco SpeedFace V5L, ProFace X, SenseFace 7A, MB20, uFace 800 & ZKBioAccess.
+                  {t("zkteco_compatibility_desc") || "Compatible with ZKTeco SpeedFace V5L, ProFace X, SenseFace 7A, MB20, uFace 800 & ZKBioAccess."}
                 </p>
               </div>
 
@@ -1111,11 +1131,11 @@ export default function FaceRegistrationPage() {
                 {zkDevices.length === 0 ? (
                   <div className="p-8 text-center border border-dashed rounded-xl text-slate-400 text-xs">
                     <HardDrive className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    No ZKTeco hardware devices registered yet.
+                    {t("no_zkteco_devices_registered") || "No ZKTeco hardware devices registered yet."}
                     <div className="mt-2">
                       <Link href="/dashboard/qr-code-attendance/setting">
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-                          <ExternalLink className="w-3 h-3" /> Add Device in Settings
+                          <ExternalLink className="w-3 h-3" /> {t("add_device_in_settings_btn") || "Add Device in Settings"}
                         </Button>
                       </Link>
                     </div>
@@ -1136,7 +1156,7 @@ export default function FaceRegistrationPage() {
                         </div>
                         <p className="text-[11px] text-slate-500 font-mono">SN: {dev.serial_number}</p>
                         <p className="text-[10px] text-slate-400">
-                          {dev.school_class ? `Class ${dev.school_class.name}` : 'All Classes'} {dev.section ? `(${dev.section.name})` : ''} • {dev.location || 'Entrance Gate'}
+                          {dev.school_class ? `${t("class") || 'Class'} ${translateClassName(dev.school_class.name, language?.short_code)}` : (t("all_classes") || 'All Classes')} {dev.section ? `(${translateSectionName(dev.section.name, language?.short_code)})` : ''} • {dev.location || (t("entrance_gate") || 'Entrance Gate')}
                         </p>
                       </div>
                       <span className={cn(
@@ -1145,7 +1165,7 @@ export default function FaceRegistrationPage() {
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : "bg-slate-100 text-slate-600 border-slate-200"
                       )}>
-                        {dev.status === 'online' || dev.is_online ? 'Online' : 'Offline'}
+                        {dev.status === 'online' || dev.is_online ? (t("online_status") || 'Online') : (t("offline_status") || 'Offline')}
                       </span>
                     </div>
                   ))
@@ -1158,7 +1178,7 @@ export default function FaceRegistrationPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
                   <Activity className="w-4 h-4 text-indigo-600" />
-                  Live ZKTeco Face & Biometric Logs
+                  {t("live_zkteco_logs_title") || "Live ZKTeco Face & Biometric Logs"}
                 </h2>
                 <Button
                   size="sm"
@@ -1168,7 +1188,7 @@ export default function FaceRegistrationPage() {
                   className="h-8 text-xs font-semibold gap-1.5 border-slate-200"
                 >
                   <ArrowDownToLine className={cn("w-3.5 h-3.5 text-indigo-600", pullingZkData && "animate-spin")} />
-                  {pullingZkData ? "Syncing..." : "Sync / Pull Device Logs"}
+                  {pullingZkData ? (t("syncing_device_logs_btn") || "Syncing...") : (t("sync_pull_device_logs_btn") || "Sync / Pull Device Logs")}
                 </Button>
               </div>
 
@@ -1176,22 +1196,22 @@ export default function FaceRegistrationPage() {
               <div className="border border-slate-100 rounded-xl overflow-hidden">
                 {fetchingZkData ? (
                   <div className="p-8 text-center text-slate-400 text-xs flex justify-center items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> Loading ZKTeco Feed...
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> {t("loading_zkteco_feed") || "Loading ZKTeco Feed..."}
                   </div>
                 ) : zkLogs.length === 0 ? (
                   <div className="p-8 text-center text-slate-400 text-xs">
                     <AlertCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    No punch records received today from ZKTeco devices yet.
+                    {t("no_zkteco_records_today") || "No punch records received today from ZKTeco devices yet."}
                   </div>
                 ) : (
                   <Table>
                     <TableHeader className="bg-slate-50/70">
                       <TableRow>
-                        <TableHead className="text-[11px] font-bold">User / Roll</TableHead>
-                        <TableHead className="text-[11px] font-bold">Method</TableHead>
-                        <TableHead className="text-[11px] font-bold">Device SN</TableHead>
-                        <TableHead className="text-[11px] font-bold">Time</TableHead>
-                        <TableHead className="text-[11px] font-bold text-right">Status</TableHead>
+                        <TableHead className="text-[11px] font-bold">{t("user_roll_col") || "User / Roll"}</TableHead>
+                        <TableHead className="text-[11px] font-bold">{t("verification_method_col") || "Method"}</TableHead>
+                        <TableHead className="text-[11px] font-bold">{t("device_sn_col") || "Device SN"}</TableHead>
+                        <TableHead className="text-[11px] font-bold">{t("time_col") || "Time"}</TableHead>
+                        <TableHead className="text-[11px] font-bold text-right">{t("status_col") || "Status"}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-slate-100">
@@ -1211,7 +1231,7 @@ export default function FaceRegistrationPage() {
                                   {log.student?.name || `PIN: ${log.user_pin}`}
                                 </p>
                                 <p className="text-[10px] text-slate-400">
-                                  {log.student?.school_class?.name ? `Class ${log.student.school_class.name}` : ''} {log.student?.section?.name ? `(${log.student.section.name})` : ''}
+                                  {log.student?.school_class?.name ? `${t("class") || 'Class'} ${translateClassName(log.student.school_class.name, language?.short_code)}` : ''} {log.student?.section?.name ? `(${translateSectionName(log.student.section.name, language?.short_code)})` : ''}
                                 </p>
                               </div>
                             </div>
@@ -1224,19 +1244,19 @@ export default function FaceRegistrationPage() {
                                 : "bg-indigo-50 text-indigo-700 border-indigo-200"
                             )}>
                               {String(log.verify_type) === '15' || String(log.verify_type) === '111' || log.verify_type === 'face'
-                                ? 'Face Recognition 👤'
+                                ? (t("method_face_recognition") || 'Face Recognition 👤')
                                 : String(log.verify_type) === '1'
-                                  ? 'Fingerprint 👆'
+                                  ? (t("method_fingerprint") || 'Fingerprint 👆')
                                   : String(log.verify_type) === '4'
-                                    ? 'RFID/NFC Card 💳'
-                                    : 'Biometric 🔐'}
+                                    ? (t("method_rfid_card") || 'RFID/NFC Card 💳')
+                                    : (t("method_biometric") || 'Biometric 🔐')}
                             </span>
                           </TableCell>
                           <TableCell className="py-2.5 font-mono text-[10px] text-slate-500">
                             {log.device_serial || 'ZK-DEV'}
                           </TableCell>
                           <TableCell className="py-2.5 text-[11px] text-slate-600 whitespace-nowrap">
-                            {log.punch_time ? new Date(log.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Just now'}
+                            {log.punch_time ? new Date(log.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : (t("just_now") || 'Just now')}
                           </TableCell>
                           <TableCell className="py-2.5 text-right">
                             <span className={cn(
@@ -1245,7 +1265,7 @@ export default function FaceRegistrationPage() {
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-amber-100 text-amber-800"
                             )}>
-                              {log.status === 'matched' ? '✓ Present' : 'Unmatched'}
+                              {log.status === 'matched' ? (t("present_status_badge") || '✓ Present') : (t("unmatched_status_badge") || 'Unmatched')}
                             </span>
                           </TableCell>
                         </TableRow>

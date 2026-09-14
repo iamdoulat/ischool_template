@@ -11,12 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Search, Plus, Pencil, Copy, FileSpreadsheet, FileBox, FileText, Printer,
     CheckCircle2, Loader2, Calendar, CalendarCheck, Filter, XCircle, Eye, Trash2,
-    Clock, Check, X, Users, AlertCircle, FileCheck, FileX, RefreshCw
+    Clock, Users, AlertCircle, FileCheck, FileX
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useImageUrl } from "@/lib/image-url";
 import { useTranslation } from "@/hooks/use-translation";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     Dialog,
     DialogContent,
@@ -41,7 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 
 interface LeaveRequest {
     id: number;
@@ -88,11 +89,13 @@ function TableSkeleton({ cols }: { cols: number }) {
 
 export default function ApproveLeavePage() {
     const getImageUrl = useImageUrl();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
-    const [selectedClass, setSelectedClass] = useState("");
-    const [selectedSection, setSelectedSection] = useState("");
+    const [selectedClass, setSelectedClass] = useState("all");
+    const [selectedSection, setSelectedSection] = useState("all");
 
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [loading, setLoading] = useState(false);
@@ -129,6 +132,44 @@ export default function ApproveLeavePage() {
     const [savingLeave, setSavingLeave] = useState(false);
     const [editingLeaveId, setEditingLeaveId] = useState<number | null>(null);
 
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        const match = name.match(/^Class\s+(\d+)$/i);
+        if (match) {
+            const key = `class_${match[1]}`;
+            const trans = t(key);
+            if (trans && trans !== key) return trans;
+            return `${t("class")} ${toLocaleNumber(match[1], shortCode)}`;
+        }
+        const key = name.toLowerCase().replace(/\s+/g, "_");
+        const trans = t(key);
+        return trans && trans !== key ? trans : toLocaleNumber(name, shortCode);
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        return toLocaleNumber(name, shortCode);
+    };
+
+    const formatDateDisplay = (dateStr?: string) => {
+        if (!dateStr) return "—";
+        const cleanStr = dateStr.substring(0, 10);
+        const parts = cleanStr.split("-");
+        if (parts.length === 3) {
+            const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return toLocaleNumber(formatted, shortCode);
+        }
+        return toLocaleNumber(cleanStr, shortCode);
+    };
+
+    const getStatusLabel = (status: string) => {
+        const lower = status.toLowerCase();
+        if (lower === "approved") return t("approved");
+        if (lower === "disapproved") return t("disapproved");
+        if (lower === "pending") return t("pending");
+        return status;
+    };
+
     const fetchClasses = async () => {
         try {
             const response = await api.get("/academics/classes?no_paginate=true");
@@ -156,8 +197,8 @@ export default function ApproveLeavePage() {
         try {
             const response = await api.get("/attendance/approve-leave", {
                 params: {
-                    school_class_id: selectedClass || undefined,
-                    section_id: selectedSection || undefined,
+                    school_class_id: selectedClass !== "all" ? selectedClass : undefined,
+                    section_id: selectedSection !== "all" ? selectedSection : undefined,
                     search: searchTerm || undefined
                 }
             });
@@ -179,13 +220,13 @@ export default function ApproveLeavePage() {
     }, [fetchLeaves]);
 
     useEffect(() => {
-        if (selectedClass) {
+        if (selectedClass && selectedClass !== "all") {
             const cls = classes.find(c => c.id.toString() === selectedClass);
             setSections(cls?.sections || []);
-            setSelectedSection("");
+            setSelectedSection("all");
         } else {
             setSections([]);
-            setSelectedSection("");
+            setSelectedSection("all");
         }
     }, [selectedClass, classes]);
 
@@ -232,13 +273,13 @@ export default function ApproveLeavePage() {
                 admin_remark: adminRemark
             });
             if (response.data.success || response.status === 200) {
-                toast.success(status === "Approved" ? "Leave request approved successfully" : "Leave request marked as disapproved");
+                toast.success(status === "Approved" ? t("leave_request_approved_successfully") || "Leave request approved successfully" : t("leave_request_marked_disapproved") || "Leave request marked as disapproved");
                 setStatusDialogOpen(false);
                 fetchLeaves();
             }
         } catch (error) {
             console.error("Error updating status:", error);
-            toast.error("Failed to update status");
+            toast.error(t("failed_to_update_status") || "Failed to update status");
         } finally {
             setUpdatingStatus(false);
         }
@@ -250,12 +291,12 @@ export default function ApproveLeavePage() {
         try {
             const response = await api.delete(`/attendance/approve-leave/${leaveToDelete}`);
             if (response.data.success || response.status === 200) {
-                toast.success("Leave record removed successfully");
+                toast.success(t("leave_record_removed_successfully") || "Leave record removed successfully");
                 fetchLeaves();
             }
         } catch (error) {
             console.error("Error deleting leave:", error);
-            toast.error("Failed to delete leave request");
+            toast.error(t("failed_to_delete_leave_request") || "Failed to delete leave request");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);
@@ -265,7 +306,7 @@ export default function ApproveLeavePage() {
 
     const handleSaveLeave = async () => {
         if (!newLeaveStudent || !newLeaveType || !newLeaveApplyDate || !newLeaveFromDate || !newLeaveToDate || !newLeaveStatus) {
-            toast.error("Please fill all required fields");
+            toast.error(t("please_fill_all_required_fields") || "Please fill all required fields");
             return;
         }
 
@@ -280,7 +321,7 @@ export default function ApproveLeavePage() {
                     },
                 });
                 if (checkRes.data?.data?.exists) {
-                    toast.error("Student already has an overlapping leave application");
+                    toast.error(t("student_already_has_overlapping_leave") || "Student already has an overlapping leave application");
                     return;
                 }
             } catch {
@@ -313,7 +354,7 @@ export default function ApproveLeavePage() {
             }
 
             if (response.data.success || response.status === 200 || response.status === 201) {
-                toast.success(editingLeaveId ? "Leave request updated successfully" : "Leave request created successfully");
+                toast.success(editingLeaveId ? (t("leave_request_updated_successfully") || "Leave request updated successfully") : (t("leave_request_created_successfully") || "Leave request created successfully"));
                 setAddDialogOpen(false);
                 resetForm();
                 fetchLeaves();
@@ -321,7 +362,7 @@ export default function ApproveLeavePage() {
         } catch (error) {
             console.error("Error saving leave:", error);
             const err = error as { response?: { data?: { message?: string } } };
-            toast.error(err?.response?.data?.message || "Failed to submit leave request");
+            toast.error(err?.response?.data?.message || t("failed_to_save_leave") || "Failed to submit leave request");
         } finally {
             setSavingLeave(false);
         }
@@ -387,7 +428,7 @@ export default function ApproveLeavePage() {
 
     // Export helpers
     const exportToCopy = () => {
-        if (filteredLeaves.length === 0) { toast.error("No records to copy"); return; }
+        if (filteredLeaves.length === 0) { toast.error(t("no_records_to_copy") || "No records to copy"); return; }
         const text = [
             "Student\tAdmission No\tClass\tLeave Type\tApply Date\tDuration\tDays\tStatus\tReason",
             ...filteredLeaves.map((r) =>
@@ -395,19 +436,19 @@ export default function ApproveLeavePage() {
             )
         ].join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
     };
 
     const exportToExcel = (isCsv = false) => {
-        if (filteredLeaves.length === 0) { toast.error("No records to export"); return; }
+        if (filteredLeaves.length === 0) { toast.error(t("no_records_to_export") || "No records to export"); return; }
         const mapped = filteredLeaves.map((r) => ({
             "Student Name": r.user.name,
             "Admission No": r.user.admission_no,
             "Class": `${r.user.school_class?.name || ''} (${r.user.section?.name || ''})`,
             "Leave Type": r.leave_type?.name,
-            "Apply Date": r.apply_date,
-            "From": r.leave_from,
-            "To": r.leave_to,
+            "Apply Date": formatDateDisplay(r.apply_date),
+            "From": formatDateDisplay(r.leave_from),
+            "To": formatDateDisplay(r.leave_to),
             "Days": r.days,
             "Status": r.status,
             "Reason": r.reason || "-",
@@ -416,32 +457,32 @@ export default function ApproveLeavePage() {
         const ws = XLSX.utils.json_to_sheet(mapped);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Leave Requests");
-        if (isCsv) { XLSX.writeFile(wb, "leave_requests.csv", { bookType: "csv" }); toast.success("CSV downloaded"); }
-        else { XLSX.writeFile(wb, "leave_requests.xlsx"); toast.success("Excel file downloaded"); }
+        if (isCsv) { XLSX.writeFile(wb, "leave_requests.csv", { bookType: "csv" }); toast.success(t("csv_downloaded") || "CSV downloaded"); }
+        else { XLSX.writeFile(wb, "leave_requests.xlsx"); toast.success(t("excel_file_downloaded") || "Excel file downloaded"); }
     };
 
     const exportToPDF = () => {
-        if (filteredLeaves.length === 0) { toast.error("No records to export"); return; }
+        if (filteredLeaves.length === 0) { toast.error(t("no_records_to_export") || "No records to export"); return; }
         const doc = new jsPDF("landscape");
         const head = [["Student", "Class", "Leave Type", "Apply Date", "Duration", "Days", "Status"]];
         const body = filteredLeaves.map((r) => [
             r.user.name,
             `${r.user.school_class?.name || ''} (${r.user.section?.name || ''})`,
             r.leave_type?.name || '',
-            r.apply_date?.substring(0, 10) || '',
-            `${r.leave_from?.substring(0, 10)} - ${r.leave_to?.substring(0, 10)}`,
+            formatDateDisplay(r.apply_date),
+            `${formatDateDisplay(r.leave_from)} - ${formatDateDisplay(r.leave_to)}`,
             r.days,
             r.status
         ]);
         autoTable(doc, { head, body, theme: "grid" });
         doc.save("leave_requests.pdf");
-        toast.success("PDF downloaded");
+        toast.success(t("pdf_downloaded") || "PDF downloaded");
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
+        <div className="w-full space-y-6 p-4 lg:p-6 font-sans bg-gray-50/10 min-h-screen">
             {/* Master Header Banner */}
-            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm overflow-hidden">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
                     <div className="flex items-center gap-3">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
@@ -449,13 +490,13 @@ export default function ApproveLeavePage() {
                         </span>
                         <div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                Student Leave Approvals & Absence Permissions
+                                {t("student_leave_approvals")}
                                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                                    Leave Management
+                                    {t("leave_management")}
                                 </span>
                             </h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                Review, approve, disapprove, and record student leave applications and excused absence permissions.
+                                {t("student_leave_subtitle")}
                             </p>
                         </div>
                     </div>
@@ -466,21 +507,21 @@ export default function ApproveLeavePage() {
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-5 h-9 text-xs font-bold rounded-lg shadow-sm active:scale-95 flex items-center gap-1.5 border-0 cursor-pointer"
                         >
                             <Plus className="h-4 w-4" />
-                            {t("apply_leave") || "Record Student Leave"}
+                            {t("record_student_leave")}
                         </Button>
                     </div>
                 </div>
             </div>
 
             {/* Criteria Selection Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
+            <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center justify-between gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
                             <Filter className="h-4 w-4" />
                         </span>
                         <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
-                            {t("select_criteria") || "Filter Selection Criteria"}
+                            {t("select_criteria")}
                         </CardTitle>
                     </div>
                 </CardHeader>
@@ -489,15 +530,17 @@ export default function ApproveLeavePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
                         {/* Class */}
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-slate-700">{t("class") || "Class"}</Label>
+                            <Label className="text-xs font-bold text-slate-700">{t("class")}</Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder="All Classes" />
+                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg cursor-pointer">
+                                    <SelectValue placeholder={t("all_classes")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Classes</SelectItem>
+                                    <SelectItem value="all" className="cursor-pointer">{t("all_classes")}</SelectItem>
                                     {classes.map(cls => (
-                                        <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                        <SelectItem key={cls.id} value={cls.id.toString()} className="cursor-pointer">
+                                            {getLocalizedClassName(cls.name)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -505,15 +548,17 @@ export default function ApproveLeavePage() {
 
                         {/* Section */}
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-slate-700">{t("section") || "Section"}</Label>
+                            <Label className="text-xs font-bold text-slate-700">{t("section")}</Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass || selectedClass === "all"}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder="All Sections" />
+                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg cursor-pointer">
+                                    <SelectValue placeholder={t("all_sections")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Sections</SelectItem>
+                                    <SelectItem value="all" className="cursor-pointer">{t("all_sections")}</SelectItem>
                                     {sections.map(sec => (
-                                        <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                        <SelectItem key={sec.id} value={sec.id.toString()} className="cursor-pointer">
+                                            {getLocalizedSectionName(sec.name)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -527,7 +572,7 @@ export default function ApproveLeavePage() {
                                 className="w-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                             >
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                                {t("search") || "Filter Requests"}
+                                {loading ? t("searching") : t("search")}
                             </Button>
                         </div>
                     </div>
@@ -536,57 +581,57 @@ export default function ApproveLeavePage() {
 
             {/* Leave Metrics Ribbon */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+                <Card className="border border-slate-200 shadow-2xs rounded-xl bg-white p-4">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
                             <Calendar className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Applications</p>
-                            <p className="text-lg font-extrabold text-slate-800">{stats.total}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("total_applications")}</p>
+                            <p className="text-lg font-extrabold text-slate-800">{toLocaleNumber(stats.total, shortCode)}</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+                <Card className="border border-slate-200 shadow-2xs rounded-xl bg-white p-4">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
                             <Clock className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending Review</p>
-                            <p className="text-lg font-extrabold text-amber-700">{stats.pending}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("pending_review")}</p>
+                            <p className="text-lg font-extrabold text-amber-700">{toLocaleNumber(stats.pending, shortCode)}</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+                <Card className="border border-slate-200 shadow-2xs rounded-xl bg-white p-4">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
                             <FileCheck className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Approved Leaves</p>
-                            <p className="text-lg font-extrabold text-emerald-700">{stats.approved}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("approved_leaves")}</p>
+                            <p className="text-lg font-extrabold text-emerald-700">{toLocaleNumber(stats.approved, shortCode)}</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+                <Card className="border border-slate-200 shadow-2xs rounded-xl bg-white p-4">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600">
                             <FileX className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Disapproved</p>
-                            <p className="text-lg font-extrabold text-rose-700">{stats.disapproved}</p>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">{t("disapproved")}</p>
+                            <p className="text-lg font-extrabold text-rose-700">{toLocaleNumber(stats.disapproved, shortCode)}</p>
                         </div>
                     </div>
                 </Card>
             </div>
 
             {/* Leave Requests Table Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
+            <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
                 {/* Table Header / Toolbar */}
                 <CardHeader className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                     <div className="flex items-center gap-2.5">
@@ -594,21 +639,21 @@ export default function ApproveLeavePage() {
                             <Users className="h-4 w-4" />
                         </span>
                         <CardTitle className="text-sm font-bold text-slate-800">
-                            Leave Requests Ledger ({filteredLeaves.length})
+                            {t("leave_requests_ledger")} ({toLocaleNumber(filteredLeaves.length, shortCode)})
                         </CardTitle>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
                         {/* Status Filter */}
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="h-8 w-32 text-xs bg-white border-slate-200">
-                                <SelectValue placeholder="All Status" />
+                            <SelectTrigger className="h-8 w-32 text-xs bg-white border-slate-200 cursor-pointer">
+                                <SelectValue placeholder={t("all_status")} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="pending">Pending Only</SelectItem>
-                                <SelectItem value="approved">Approved</SelectItem>
-                                <SelectItem value="disapproved">Disapproved</SelectItem>
+                                <SelectItem value="all" className="cursor-pointer">{t("all_status")}</SelectItem>
+                                <SelectItem value="pending" className="cursor-pointer">{t("pending_only")}</SelectItem>
+                                <SelectItem value="approved" className="cursor-pointer">{t("approved")}</SelectItem>
+                                <SelectItem value="disapproved" className="cursor-pointer">{t("disapproved")}</SelectItem>
                             </SelectContent>
                         </Select>
 
@@ -616,7 +661,7 @@ export default function ApproveLeavePage() {
                         <div className="relative w-full sm:w-56">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                             <Input
-                                placeholder="Search student or admission..."
+                                placeholder={t("search_student_or_adm")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
@@ -625,55 +670,55 @@ export default function ApproveLeavePage() {
 
                         {/* Per page */}
                         <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                            <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200">
+                            <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200 cursor-pointer">
                                 <SelectValue placeholder="50" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="20">20</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
+                                <SelectItem value="20" className="cursor-pointer">{toLocaleNumber(20, shortCode)}</SelectItem>
+                                <SelectItem value="50" className="cursor-pointer">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                <SelectItem value="100" className="cursor-pointer">{toLocaleNumber(100, shortCode)}</SelectItem>
                             </SelectContent>
                         </Select>
 
                         {/* Multi-format export toolbar */}
-                        <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
+                        <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-2xs">
                             <button
                                 type="button"
                                 onClick={exportToCopy}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Copy Table"
+                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                title="Copy"
                             >
                                 <Copy className="h-3.5 w-3.5" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => exportToExcel(false)}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Export Excel"
+                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                title="Excel"
                             >
                                 <FileSpreadsheet className="h-3.5 w-3.5" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => exportToExcel(true)}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Export CSV"
+                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                title="CSV"
                             >
                                 <FileBox className="h-3.5 w-3.5" />
                             </button>
                             <button
                                 type="button"
                                 onClick={exportToPDF}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Export PDF"
+                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                title="PDF"
                             >
                                 <FileText className="h-3.5 w-3.5" />
                             </button>
                             <button
                                 type="button"
                                 onClick={() => window.print()}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all"
-                                title="Print List"
+                                className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all cursor-pointer"
+                                title="Print"
                             >
                                 <Printer className="h-3.5 w-3.5" />
                             </button>
@@ -687,14 +732,14 @@ export default function ApproveLeavePage() {
                         <Table>
                             <TableHeader className="bg-slate-50/80 border-b border-slate-200">
                                 <TableRow>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[200px]">Student Profile</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Class / Section</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Leave Category</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Apply Date</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[180px]">Leave Duration</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Status</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Doc</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-right pr-6 min-w-[120px]">Actions</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[200px]">{t("student_profile")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("class_section")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("leave_category")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("apply_date")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[180px]">{t("leave_duration")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("status")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("doc")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-right pr-6 min-w-[120px]">{t("actions")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody className="divide-y divide-slate-100">
@@ -704,8 +749,8 @@ export default function ApproveLeavePage() {
                                     <TableRow>
                                         <TableCell colSpan={8} className="text-center py-20 text-slate-400">
                                             <AlertCircle className="h-10 w-10 mx-auto mb-2 text-slate-300" />
-                                            <p className="text-xs font-bold text-slate-600">No leave requests found</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5">Click &quot;Record Student Leave&quot; above to submit an excused absence.</p>
+                                            <p className="text-xs font-bold text-slate-600">{t("no_leave_requests_found")}</p>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">{t("click_record_student_leave")}</p>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -728,7 +773,7 @@ export default function ApproveLeavePage() {
                                                             {item.user.name}
                                                         </p>
                                                         <span className="text-[10px] font-mono text-slate-400">
-                                                            Adm: {item.user.admission_no}
+                                                            {t("admission_no")}: {toLocaleNumber(item.user.admission_no, shortCode)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -737,21 +782,21 @@ export default function ApproveLeavePage() {
                                             {/* Class / Section */}
                                             <TableCell className="py-3 px-4 text-xs font-semibold text-slate-700">
                                                 <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px]">
-                                                    {item.user.school_class?.name || "Class"} ({item.user.section?.name || "A"})
+                                                    {getLocalizedClassName(item.user.school_class?.name)} ({getLocalizedSectionName(item.user.section?.name)})
                                                 </span>
                                             </TableCell>
 
                                             {/* Leave Type */}
                                             <TableCell className="py-3 px-4">
                                                 <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 px-2.5 py-0.5 text-[10px] font-bold rounded-md">
-                                                    {item.leave_type?.name || "General Leave"}
+                                                    {item.leave_type?.name || t("general_leave") || "General Leave"}
                                                 </Badge>
                                             </TableCell>
 
                                             {/* Apply Date */}
                                             <TableCell className="py-3 px-4 text-xs font-medium text-slate-600">
                                                 <span className="font-mono text-[11px]">
-                                                    {item.apply_date ? new Date(item.apply_date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' }) : "—"}
+                                                    {formatDateDisplay(item.apply_date)}
                                                 </span>
                                             </TableCell>
 
@@ -761,11 +806,11 @@ export default function ApproveLeavePage() {
                                                     <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-800">
                                                         <Calendar className="h-3 w-3 text-indigo-500" />
                                                         <span>
-                                                            {item.leave_from ? new Date(item.leave_from).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : ""} - {item.leave_to ? new Date(item.leave_to).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : ""}
+                                                            {formatDateDisplay(item.leave_from)} - {formatDateDisplay(item.leave_to)}
                                                         </span>
                                                     </div>
                                                     <span className="text-[10px] font-bold text-indigo-600">
-                                                        {item.days} {item.days === 1 ? "day" : "days"} duration
+                                                        {t(item.days === 1 ? "day_duration" : "days_duration", { count: toLocaleNumber(item.days, shortCode) })}
                                                     </span>
                                                 </div>
                                             </TableCell>
@@ -780,7 +825,7 @@ export default function ApproveLeavePage() {
                                                             ? "bg-rose-50 text-rose-700 border-rose-200"
                                                             : "bg-amber-50 text-amber-700 border-amber-200"
                                                 )}>
-                                                    {item.status}
+                                                    {getStatusLabel(item.status)}
                                                 </span>
                                             </TableCell>
 
@@ -791,8 +836,8 @@ export default function ApproveLeavePage() {
                                                         size="sm"
                                                         variant="ghost"
                                                         onClick={() => window.open(getImageUrl(item.attachment), '_blank')}
-                                                        className="h-7 w-7 p-0 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                                                        title="View Attachment Document"
+                                                        className="h-7 w-7 p-0 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer"
+                                                        title="View Document"
                                                     >
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
@@ -812,17 +857,17 @@ export default function ApproveLeavePage() {
                                                                 setStatusDialogOpen(true);
                                                             }}
                                                             size="sm"
-                                                            className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg text-[10px] font-bold shadow-2xs transition-all active:scale-95 border-0"
+                                                            className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg text-[10px] font-bold shadow-2xs transition-all active:scale-95 border-0 cursor-pointer"
                                                         >
-                                                            Review
+                                                            {t("review")}
                                                         </Button>
                                                     )}
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => handleEdit(item)}
-                                                        className="h-7 w-7 p-0 border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 rounded-lg"
-                                                        title="Edit Leave Request"
+                                                        className="h-7 w-7 p-0 border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 rounded-lg cursor-pointer"
+                                                        title="Edit"
                                                     >
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
@@ -833,8 +878,8 @@ export default function ApproveLeavePage() {
                                                             setLeaveToDelete(item.id);
                                                             setDeleteDialogOpen(true);
                                                         }}
-                                                        className="h-7 w-7 p-0 border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-lg"
-                                                        title="Delete Leave Request"
+                                                        className="h-7 w-7 p-0 border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-lg cursor-pointer"
+                                                        title="Delete"
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
@@ -851,14 +896,14 @@ export default function ApproveLeavePage() {
 
             {/* Review Status Dialog */}
             <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-                <DialogContent className="max-w-md rounded-2xl p-6">
+                <DialogContent className="max-w-md rounded-2xl p-6 bg-white">
                     <DialogHeader>
                         <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
                             <CalendarCheck className="h-5 w-5 text-indigo-600" />
-                            Review Leave Application
+                            {t("review_leave_application")}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-slate-500">
-                            Evaluate student excuse details and record institutional approval.
+                            {t("review_leave_desc")}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -866,23 +911,25 @@ export default function ApproveLeavePage() {
                         <div className="space-y-3.5 py-2 text-xs">
                             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 gap-2">
                                 <div>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Student</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">{t("student_profile")}</p>
                                     <p className="font-bold text-slate-800">{selectedLeave.user.name}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Class & Section</p>
-                                    <p className="font-semibold text-slate-700">{selectedLeave.user.school_class?.name} ({selectedLeave.user.section?.name})</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">{t("class_section")}</p>
+                                    <p className="font-semibold text-slate-700">
+                                        {getLocalizedClassName(selectedLeave.user.school_class?.name)} ({getLocalizedSectionName(selectedLeave.user.section?.name)})
+                                    </p>
                                 </div>
                                 <div className="col-span-2 pt-1 border-t border-slate-100">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Absence Reason</p>
-                                    <p className="italic text-slate-600 mt-0.5">&ldquo;{selectedLeave.reason || "No specific reason provided"}&rdquo;</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase">{t("absence_reason")}</p>
+                                    <p className="italic text-slate-600 mt-0.5">&ldquo;{selectedLeave.reason || "—"}&rdquo;</p>
                                 </div>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Official Admin Remark</Label>
+                                <Label className="text-xs font-bold text-slate-700">{t("official_admin_remark")}</Label>
                                 <Textarea
-                                    placeholder="Enter administrative comments or approval conditions..."
+                                    placeholder={t("admin_remark_placeholder")}
                                     value={adminRemark}
                                     onChange={(e) => setAdminRemark(e.target.value)}
                                     rows={3}
@@ -897,18 +944,18 @@ export default function ApproveLeavePage() {
                             variant="outline"
                             onClick={() => handleUpdateStatus("Disapproved")}
                             disabled={updatingStatus}
-                            className="text-xs font-bold text-rose-600 border-rose-200 hover:bg-rose-50 rounded-lg gap-1"
+                            className="text-xs font-bold text-rose-600 border-rose-200 hover:bg-rose-50 rounded-lg gap-1 cursor-pointer"
                         >
                             {updatingStatus ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <XCircle className="h-3.5 w-3.5" />}
-                            Disapprove
+                            {t("disapprove")}
                         </Button>
                         <Button
                             onClick={() => handleUpdateStatus("Approved")}
                             disabled={updatingStatus}
-                            className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg shadow-sm gap-1 border-0"
+                            className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg shadow-sm gap-1 border-0 cursor-pointer"
                         >
                             {updatingStatus ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                            Approve Leave
+                            {t("approve_leave")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -919,56 +966,62 @@ export default function ApproveLeavePage() {
                 setAddDialogOpen(open);
                 if (!open) resetForm();
             }}>
-                <DialogContent className="max-w-xl rounded-2xl p-6 max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-xl rounded-2xl p-6 max-h-[85vh] overflow-y-auto bg-white">
                     <DialogHeader>
                         <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
                             <Plus className="h-5 w-5 text-indigo-600" />
-                            {editingLeaveId ? "Edit Student Leave Record" : "Record New Student Leave Application"}
+                            {editingLeaveId ? t("edit_student_leave_record") : t("record_new_student_leave")}
                         </DialogTitle>
                         <DialogDescription className="text-xs text-slate-500">
-                            Submit student excuse permission details to the attendance ledger.
+                            {t("record_leave_desc")}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-2 text-xs">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Class <span className="text-rose-500">*</span></Label>
+                                <Label className="text-xs font-bold text-slate-700">{t("class")} <span className="text-rose-500">*</span></Label>
                                 <Select value={newLeaveClass} onValueChange={setNewLeaveClass}>
-                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
-                                        <SelectValue placeholder="Select Class" />
+                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200 cursor-pointer">
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {classes.map(cls => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="cursor-pointer">
+                                                {getLocalizedClassName(cls.name)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Section <span className="text-rose-500">*</span></Label>
+                                <Label className="text-xs font-bold text-slate-700">{t("section")} <span className="text-rose-500">*</span></Label>
                                 <Select value={newLeaveSection} onValueChange={setNewLeaveSection} disabled={!newLeaveClass}>
-                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
-                                        <SelectValue placeholder="Select Section" />
+                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200 cursor-pointer">
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {newLeaveSections.map(sec => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="cursor-pointer">
+                                                {getLocalizedSectionName(sec.name)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Student <span className="text-rose-500">*</span></Label>
+                                <Label className="text-xs font-bold text-slate-700">{t("student_profile")} <span className="text-rose-500">*</span></Label>
                                 <Select value={newLeaveStudent} onValueChange={setNewLeaveStudent} disabled={!newLeaveSection}>
-                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
-                                        <SelectValue placeholder="Select Student" />
+                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200 cursor-pointer">
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {students.map(s => (
-                                            <SelectItem key={s.id} value={s.id.toString()}>{s.name} {s.last_name || ''}</SelectItem>
+                                            <SelectItem key={s.id} value={s.id.toString()} className="cursor-pointer">
+                                                {s.name} {s.last_name || ''}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -977,54 +1030,56 @@ export default function ApproveLeavePage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Leave Type <span className="text-rose-500">*</span></Label>
+                                <Label className="text-xs font-bold text-slate-700">{t("leave_type")} <span className="text-rose-500">*</span></Label>
                                 <Select value={newLeaveType} onValueChange={setNewLeaveType}>
-                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
-                                        <SelectValue placeholder="Select Type" />
+                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200 cursor-pointer">
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {leaveTypes.map(lt => (
-                                            <SelectItem key={lt.id} value={lt.id.toString()}>{lt.name}</SelectItem>
+                                            <SelectItem key={lt.id} value={lt.id.toString()} className="cursor-pointer">
+                                                {lt.name}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Apply Date <span className="text-rose-500">*</span></Label>
-                                <Input
-                                    type="date"
+                                <Label className="text-xs font-bold text-slate-700">{t("apply_date")} <span className="text-rose-500">*</span></Label>
+                                <DatePicker
                                     value={newLeaveApplyDate}
-                                    onChange={(e) => setNewLeaveApplyDate(e.target.value)}
-                                    className="h-9 text-xs bg-white border-slate-200"
+                                    onChange={(val) => setNewLeaveApplyDate(val)}
+                                    placeholder="DD/MM/YYYY"
+                                    className="h-9 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg cursor-pointer shadow-xs"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Leave From <span className="text-rose-500">*</span></Label>
-                                <Input
-                                    type="date"
+                                <Label className="text-xs font-bold text-slate-700">{t("leave_from")} <span className="text-rose-500">*</span></Label>
+                                <DatePicker
                                     value={newLeaveFromDate}
-                                    onChange={(e) => setNewLeaveFromDate(e.target.value)}
-                                    className="h-9 text-xs bg-white border-slate-200"
+                                    onChange={(val) => setNewLeaveFromDate(val)}
+                                    placeholder="DD/MM/YYYY"
+                                    className="h-9 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg cursor-pointer shadow-xs"
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Leave To <span className="text-rose-500">*</span></Label>
-                                <Input
-                                    type="date"
+                                <Label className="text-xs font-bold text-slate-700">{t("leave_to")} <span className="text-rose-500">*</span></Label>
+                                <DatePicker
                                     value={newLeaveToDate}
-                                    onChange={(e) => setNewLeaveToDate(e.target.value)}
-                                    className="h-9 text-xs bg-white border-slate-200"
+                                    onChange={(val) => setNewLeaveToDate(val)}
+                                    placeholder="DD/MM/YYYY"
+                                    className="h-9 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg cursor-pointer shadow-xs"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-slate-700">Reason for Absence</Label>
+                            <Label className="text-xs font-bold text-slate-700">{t("reason_for_absence")}</Label>
                             <Textarea
                                 placeholder="Explain reason for leave application..."
                                 value={newLeaveReason}
@@ -1036,41 +1091,41 @@ export default function ApproveLeavePage() {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Initial Status <span className="text-rose-500">*</span></Label>
+                                <Label className="text-xs font-bold text-slate-700">{t("initial_status")} <span className="text-rose-500">*</span></Label>
                                 <Select value={newLeaveStatus} onValueChange={setNewLeaveStatus}>
-                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
-                                        <SelectValue placeholder="Select Status" />
+                                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200 cursor-pointer">
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Pending">Pending</SelectItem>
-                                        <SelectItem value="Approved">Approved</SelectItem>
-                                        <SelectItem value="Disapproved">Disapproved</SelectItem>
+                                        <SelectItem value="Pending" className="cursor-pointer">{t("pending")}</SelectItem>
+                                        <SelectItem value="Approved" className="cursor-pointer">{t("approved")}</SelectItem>
+                                        <SelectItem value="Disapproved" className="cursor-pointer">{t("disapproved")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-bold text-slate-700">Attach Document</Label>
+                                <Label className="text-xs font-bold text-slate-700">{t("attach_document")}</Label>
                                 <Input
                                     type="file"
                                     onChange={(e) => setNewLeaveAttachment(e.target.files?.[0] || null)}
-                                    className="h-9 text-xs bg-white border-slate-200 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-slate-100"
+                                    className="h-9 text-xs bg-white border-slate-200 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-slate-100 cursor-pointer"
                                 />
                             </div>
                         </div>
                     </div>
 
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => setAddDialogOpen(false)} className="text-xs">
-                            Cancel
+                        <Button variant="outline" onClick={() => setAddDialogOpen(false)} className="text-xs cursor-pointer">
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleSaveLeave}
                             disabled={savingLeave}
-                            className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg shadow-sm gap-1 border-0"
+                            className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-lg shadow-sm gap-1 border-0 cursor-pointer"
                         >
                             {savingLeave ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                            {editingLeaveId ? "Update Leave" : "Submit Leave Record"}
+                            {editingLeaveId ? t("update_leave") : t("submit_leave_record")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1082,20 +1137,20 @@ export default function ApproveLeavePage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
                             <Trash2 className="h-5 w-5 text-rose-600" />
-                            Delete Leave Request?
+                            {t("delete_leave_request")}
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-xs text-slate-500">
-                            This will permanently remove the student&apos;s leave record and revert their absence mark.
+                            {t("delete_leave_desc")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-2 sm:gap-0">
-                        <AlertDialogCancel className="text-xs font-semibold rounded-lg">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="text-xs font-semibold rounded-lg cursor-pointer">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={confirmDelete}
                             disabled={deleting}
-                            className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm"
+                            className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                         >
-                            {deleting ? "Deleting..." : "Yes, Delete"}
+                            {deleting ? t("deleting") : t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

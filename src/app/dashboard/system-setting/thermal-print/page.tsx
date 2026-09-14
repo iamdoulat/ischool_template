@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Printer, Eye, RotateCcw, CheckCircle2, XCircle } from "lucide-react";
 import api from "@/lib/api";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import {
@@ -49,7 +50,7 @@ export default function ThermalPrintPage() {
             }
         } catch (error) {
             console.error("Failed to fetch settings:", error);
-            sonnerToast.error("Failed to load thermal print settings");
+            sonnerToast.error(t("failed_load_thermal_print_settings"));
         } finally {
             setLoading(false);
         }
@@ -59,17 +60,17 @@ export default function ThermalPrintPage() {
         const newErrors: Record<string, string> = {};
 
         if (!settings.school_name.trim()) {
-            newErrors.school_name = "School name is required";
+            newErrors.school_name = t("school_name_is_required");
         } else if (settings.school_name.length > 255) {
-            newErrors.school_name = "School name must not exceed 255 characters";
+            newErrors.school_name = t("school_name_max_limit");
         }
 
         if (settings.address && settings.address.length > 1000) {
-            newErrors.address = "Address must not exceed 1000 characters";
+            newErrors.address = t("address_max_limit");
         }
 
         if (settings.footer_text && settings.footer_text.length > 1000) {
-            newErrors.footer_text = "Footer text must not exceed 1000 characters";
+            newErrors.footer_text = t("footer_text_max_limit");
         }
 
         setErrors(newErrors);
@@ -78,7 +79,7 @@ export default function ThermalPrintPage() {
 
     const handleSave = async () => {
         if (!validateForm()) {
-            sonnerToast.error("Please fix validation errors");
+            sonnerToast.error(t("please_fix_validation_errors"));
             return;
         }
 
@@ -86,17 +87,17 @@ export default function ThermalPrintPage() {
         try {
             const res = await api.post("system-setting/thermal-print-settings", settings);
             if (res.data?.status === "success") {
-                sonnerToast.success("Thermal print settings saved successfully");
-                toast("success", t("settings_saved_successfully"));
+                sonnerToast.success(t("thermal_print_settings_saved_success"));
+                toast("success", t("thermal_print_settings_saved_success"));
                 fetchSettings();
             }
         } catch (error: any) {
             if (error.response?.data?.errors) {
                 setErrors(error.response.data.errors);
-                sonnerToast.error("Validation failed. Please check the form.");
+                sonnerToast.error(t("validation_failed_check_form"));
             } else {
-                sonnerToast.error("Failed to save settings");
-                toast("error", t("failed_to_save"));
+                sonnerToast.error(t("failed_to_save_settings"));
+                toast("error", t("failed_to_save_settings"));
             }
             console.error(error);
         } finally {
@@ -105,7 +106,7 @@ export default function ThermalPrintPage() {
     };
 
     const handleReset = async () => {
-        if (!confirm("Are you sure you want to reset to default settings?")) {
+        if (!confirm(t("confirm_reset_thermal_settings"))) {
             return;
         }
 
@@ -115,10 +116,10 @@ export default function ThermalPrintPage() {
             if (res.data?.status === "success") {
                 setSettings(res.data.data);
                 setErrors({});
-                sonnerToast.success("Settings reset to defaults");
+                sonnerToast.success(t("settings_reset_to_defaults"));
             }
         } catch (error) {
-            sonnerToast.error("Failed to reset settings");
+            sonnerToast.error(t("failed_reset_settings"));
             console.error(error);
         } finally {
             setResetting(false);
@@ -132,7 +133,7 @@ export default function ThermalPrintPage() {
                 printWindow.document.write(`
                     <html>
                         <head>
-                            <title>Thermal Print Preview</title>
+                            <title>${t("thermal_print_preview")}</title>
                             <style>
                                 body {
                                     font-family: 'Courier New', monospace;
@@ -162,51 +163,51 @@ export default function ThermalPrintPage() {
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-
-                {/* Gradient Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <Printer className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
-                                {t("thermal_print")}
-                            </h1>
-                            <p className="text-[11px] text-gray-500 mt-1">
-                                {t("configure_thermal_receipt_print_settings")}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            onClick={() => setShowPreview(true)}
-                            variant="outline"
-                            size="sm"
-                            disabled={loading}
-                            className="text-[11px] h-8 gap-1.5"
-                        >
-                            <Eye className="h-3.5 w-3.5" />
-                            Preview
-                        </Button>
-                        <Button
-                            onClick={handleReset}
-                            variant="outline"
-                            size="sm"
-                            disabled={loading || resetting}
-                            className="text-[11px] h-8 gap-1.5"
-                        >
-                            {resetting ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                                <RotateCcw className="h-3.5 w-3.5" />
-                            )}
-                            Reset
-                        </Button>
+            {/* Page Header Banner */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Printer className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("thermal_print")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("configure_thermal_receipt_print_settings")}
+                        </p>
                     </div>
                 </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={() => setShowPreview(true)}
+                        variant="outline"
+                        size="sm"
+                        disabled={loading}
+                        className="text-[11px] h-8 gap-1.5"
+                    >
+                        <Eye className="h-3.5 w-3.5" />
+                        {t("preview")}
+                    </Button>
+                    <Button
+                        onClick={handleReset}
+                        variant="outline"
+                        size="sm"
+                        disabled={loading || resetting}
+                        className="text-[11px] h-8 gap-1.5"
+                    >
+                        {resetting ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                            <RotateCcw className="h-3.5 w-3.5" />
+                        )}
+                        {t("reset")}
+                    </Button>
+                </div>
+            </div>
 
+            {/* Settings Card */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden flex flex-col">
                 {loading ? (
                     /* Form Skeleton */
                     <div className="w-full p-8 space-y-6 animate-pulse">
@@ -239,12 +240,12 @@ export default function ThermalPrintPage() {
                                 {settings.status ? (
                                     <>
                                         <CheckCircle2 className="h-3.5 w-3.5" />
-                                        Enabled
+                                        {t("enabled")}
                                     </>
                                 ) : (
                                     <>
                                         <XCircle className="h-3.5 w-3.5" />
-                                        Disabled
+                                        {t("disabled")}
                                     </>
                                 )}
                             </span>
@@ -268,7 +269,7 @@ export default function ThermalPrintPage() {
                                 className={`h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded ${
                                     errors.school_name ? 'border-red-500' : ''
                                 }`}
-                                placeholder="Enter school name"
+                                placeholder={t("enter_school_name")}
                             />
                             {errors.school_name && (
                                 <p className="text-[10px] text-red-500">{errors.school_name}</p>
@@ -293,12 +294,12 @@ export default function ThermalPrintPage() {
                                 className={`min-h-[100px] text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded resize-y ${
                                     errors.address ? 'border-red-500' : ''
                                 }`}
-                                placeholder="Enter school address (use <br> for line breaks)"
+                                placeholder={t("enter_school_address_placeholder")}
                             />
                             {errors.address && (
                                 <p className="text-[10px] text-red-500">{errors.address}</p>
                             )}
-                            <p className="text-[10px] text-gray-500">Use &lt;br&gt; tags for line breaks in thermal print</p>
+                            <p className="text-[10px] text-gray-500">{t("use_br_tags_for_line_breaks")}</p>
                         </div>
                     </div>
 
@@ -319,7 +320,7 @@ export default function ThermalPrintPage() {
                                 className={`min-h-[80px] text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded resize-y ${
                                     errors.footer_text ? 'border-red-500' : ''
                                 }`}
-                                placeholder="Enter footer text for receipts"
+                                placeholder={t("enter_footer_text_placeholder")}
                             />
                             {errors.footer_text && (
                                 <p className="text-[10px] text-red-500">{errors.footer_text}</p>
@@ -334,7 +335,7 @@ export default function ThermalPrintPage() {
                     <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-10 h-10 text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5"
                     >
                         {saving ? (
                             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("saving")}...</>
@@ -349,9 +350,9 @@ export default function ThermalPrintPage() {
             <Dialog open={showPreview} onOpenChange={setShowPreview}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Thermal Print Preview</DialogTitle>
+                        <DialogTitle>{t("thermal_print_preview")}</DialogTitle>
                         <DialogDescription>
-                            Preview of how your thermal receipt will appear
+                            {t("preview_thermal_receipt_desc")}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
@@ -361,11 +362,11 @@ export default function ThermalPrintPage() {
                             style={{ width: '280px', margin: '0 auto' }}
                         >
                             <div className="border-b-2 border-dashed border-gray-400 pb-3">
-                                <h3 className="font-bold text-sm uppercase">{settings.school_name || "School Name"}</h3>
+                                <h3 className="font-bold text-sm uppercase">{settings.school_name || t("school_name")}</h3>
                                 <div
                                     className="text-[10px] mt-2 text-gray-700"
                                     dangerouslySetInnerHTML={{
-                                        __html: settings.address?.replace(/<br>/gi, '\n') || "School Address"
+                                        __html: sanitizeHtml(settings.address?.replace(/<br>/gi, '\n') || t("address"))
                                     }}
                                     style={{ whiteSpace: 'pre-line' }}
                                 />
@@ -373,41 +374,41 @@ export default function ThermalPrintPage() {
                             <div className="py-3 border-b-2 border-dashed border-gray-400">
                                 <div className="text-left space-y-1">
                                     <div className="flex justify-between">
-                                        <span>Receipt No:</span>
+                                        <span>{t("receipt_no")}</span>
                                         <span className="font-semibold">#12345</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span>Date:</span>
+                                        <span>{t("receipt_date")}</span>
                                         <span>{new Date().toLocaleDateString()}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span>Student:</span>
-                                        <span>John Doe</span>
+                                        <span>{t("student")}</span>
+                                        <span>{t("sample_student_name")}</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="py-3 border-b-2 border-dashed border-gray-400">
                                 <div className="text-left space-y-1">
                                     <div className="flex justify-between font-semibold">
-                                        <span>Description</span>
-                                        <span>Amount</span>
+                                        <span>{t("receipt_description")}</span>
+                                        <span>{t("receipt_amount")}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span>Tuition Fee</span>
+                                        <span>{t("tuition_fee")}</span>
                                         <span>$500.00</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span>Library Fee</span>
+                                        <span>{t("library_fee")}</span>
                                         <span>$50.00</span>
                                     </div>
                                     <div className="flex justify-between font-bold pt-2 border-t">
-                                        <span>Total:</span>
+                                        <span>{t("total")}:</span>
                                         <span>$550.00</span>
                                     </div>
                                 </div>
                             </div>
                             <div className="pt-2 text-[10px] text-gray-600">
-                                {settings.footer_text || "Thank you!"}
+                                {settings.footer_text || t("thank_you")}
                             </div>
                         </div>
                         <div className="flex justify-end gap-2">
@@ -416,15 +417,15 @@ export default function ThermalPrintPage() {
                                 variant="outline"
                                 size="sm"
                             >
-                                Close
+                                {t("close")}
                             </Button>
                             <Button
                                 onClick={handlePrint}
                                 size="sm"
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 text-white"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
                             >
                                 <Printer className="h-3.5 w-3.5 mr-1.5" />
-                                Test Print
+                                {t("test_print")}
                             </Button>
                         </div>
                     </div>

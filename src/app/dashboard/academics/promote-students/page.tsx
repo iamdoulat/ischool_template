@@ -30,7 +30,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { getImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName, toLocaleNumber } from "@/lib/utils";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -83,7 +83,7 @@ interface Section {
 
 export default function PromoteStudentsPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
 
     // Dropdown Data
@@ -264,6 +264,23 @@ export default function PromoteStudentsPage() {
 
     return (
         <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen">
+            {/* Header/Title Banner */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <TrendingUp className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">
+                            {t("promote_students")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("promote_students_desc") || "Promote students to next academic session and class"}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             {/* Select Criteria Section */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
@@ -276,7 +293,8 @@ export default function PromoteStudentsPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                        {/* Academic Session */}
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("academic_session")} <span className="text-red-500">*</span>
@@ -287,11 +305,13 @@ export default function PromoteStudentsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sessions.map(s => (
-                                        <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
+                                        <SelectItem key={s.id} value={s.id.toString()}>{toLocaleNumber(s.session, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* Class */}
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("class")} <span className="text-red-500">*</span>
@@ -302,11 +322,13 @@ export default function PromoteStudentsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                        <SelectItem key={c.id} value={c.id.toString()}>{translateClassName(c.name, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* Section */}
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("section")} <span className="text-red-500">*</span>
@@ -317,21 +339,23 @@ export default function PromoteStudentsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {filteredSections.map(s => (
-                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.id.toString()}>{translateSectionName(s.name, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
-                    <div className="flex justify-end mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
-                        <Button
-                            onClick={handleSearch}
-                            disabled={searching || loading}
-                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
-                        >
-                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            {t("search")}
-                        </Button>
+
+                        {/* Search Button */}
+                        <div>
+                            <Button
+                                onClick={handleSearch}
+                                disabled={searching || loading}
+                                className="w-full btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full cursor-pointer"
+                            >
+                                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -380,7 +404,8 @@ export default function PromoteStudentsPage() {
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {t("x_of_y_students_selected", { selected: selectedStudentIds.length, total: students.length })}
+                                    {t("x_of_y_students_selected_for_promotion", { selected: toLocaleNumber(selectedStudentIds.length, language?.short_code), total: toLocaleNumber(students.length, language?.short_code) }) ||
+                                     t("x_of_y_students_selected", { selected: toLocaleNumber(selectedStudentIds.length, language?.short_code), total: toLocaleNumber(students.length, language?.short_code) })}
                                 </p>
                             </div>
                         </div>
@@ -388,10 +413,10 @@ export default function PromoteStudentsPage() {
                         {/* Summary Badges */}
                         <div className="flex items-center gap-2">
                             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-bold px-2.5 py-1">
-                                {passCount} Pass • {failCount} Fail
+                                {toLocaleNumber(passCount, language?.short_code)} {t("pass") || "Pass"} • {toLocaleNumber(failCount, language?.short_code)} {t("fail") || "Fail"}
                             </Badge>
                             <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold px-2.5 py-1">
-                                {continueCount} Continue • {leaveCount} Leave
+                                {toLocaleNumber(continueCount, language?.short_code)} {t("continue") || "Continue"} • {toLocaleNumber(leaveCount, language?.short_code)} {t("leave") || "Leave"}
                             </Badge>
                         </div>
                     </CardHeader>
@@ -412,31 +437,31 @@ export default function PromoteStudentsPage() {
                                     <button
                                         type="button"
                                         onClick={() => setAllResults("pass")}
-                                        className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 transition-colors"
+                                        className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200 transition-colors cursor-pointer"
                                     >
-                                        All Pass
+                                        {t("all_pass") || "All Pass"}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setAllResults("fail")}
-                                        className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 font-bold hover:bg-rose-200 transition-colors"
+                                        className="px-2.5 py-1 rounded-md bg-rose-100 text-rose-800 font-bold hover:bg-rose-200 transition-colors cursor-pointer"
                                     >
-                                        All Fail
+                                        {t("all_fail") || "All Fail"}
                                     </button>
                                     <span className="text-gray-300">|</span>
                                     <button
                                         type="button"
                                         onClick={() => setAllStatuses("continue")}
-                                        className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-bold hover:bg-indigo-200 transition-colors"
+                                        className="px-2.5 py-1 rounded-md bg-indigo-100 text-indigo-800 font-bold hover:bg-indigo-200 transition-colors cursor-pointer"
                                     >
-                                        All Continue
+                                        {t("all_continue") || "All Continue"}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setAllStatuses("leave")}
-                                        className="px-2 py-0.5 rounded-md bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition-colors"
+                                        className="px-2.5 py-1 rounded-md bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition-colors cursor-pointer"
                                     >
-                                        All Leave
+                                        {t("all_leave") || "All Leave"}
                                     </button>
                                 </div>
                             </div>
@@ -452,7 +477,7 @@ export default function PromoteStudentsPage() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {sessions.map(s => (
-                                                <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>
+                                                <SelectItem key={s.id} value={s.id.toString()}>{toLocaleNumber(s.session, language?.short_code)}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -467,7 +492,7 @@ export default function PromoteStudentsPage() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {classes.map(c => (
-                                                <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                                <SelectItem key={c.id} value={c.id.toString()}>{translateClassName(c.name, language?.short_code)}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -482,7 +507,7 @@ export default function PromoteStudentsPage() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {promoteFilteredSections.map(s => (
-                                                <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                                <SelectItem key={s.id} value={s.id.toString()}>{translateSectionName(s.name, language?.short_code)}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -499,7 +524,7 @@ export default function PromoteStudentsPage() {
                                             <Checkbox
                                                 checked={selectedStudentIds.length === students.length && students.length > 0}
                                                 onCheckedChange={toggleSelectAll}
-                                                className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600"
+                                                className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600 shadow-2xs"
                                             />
                                         </TableHead>
                                         <TableHead className="py-3 px-4 min-w-[240px]">{t("student_name")}</TableHead>
@@ -520,20 +545,20 @@ export default function PromoteStudentsPage() {
                                             <TableRow
                                                 key={student.id}
                                                 className={cn(
-                                                    "text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 transition-colors",
+                                                    "text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 transition-colors align-middle",
                                                     isSelected ? "bg-indigo-50/30 dark:bg-indigo-950/20" : "hover:bg-gray-50/50"
                                                 )}
                                             >
-                                                <TableCell className="px-4">
+                                                <TableCell className="px-4 align-middle">
                                                     <Checkbox
                                                         checked={isSelected}
                                                         onCheckedChange={() => toggleSelectStudent(student.id)}
-                                                        className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600"
+                                                        className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600 shadow-2xs"
                                                     />
                                                 </TableCell>
 
                                                 {/* Student with Real Picture / Avatar and Admission No */}
-                                                <TableCell className="py-3.5 px-4">
+                                                <TableCell className="py-3.5 px-4 align-middle">
                                                     <div className="flex items-center gap-3">
                                                         <Avatar className="h-10 w-10 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xs shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-800">
                                                             <AvatarImage
@@ -550,14 +575,14 @@ export default function PromoteStudentsPage() {
                                                                 {student.name} {student.last_name || ""}
                                                             </p>
                                                             <span className="inline-flex items-center gap-1 font-mono text-[10.5px] text-gray-500 font-semibold">
-                                                                {student.admission_no}
+                                                                {toLocaleNumber(student.admission_no, language?.short_code)}
                                                             </span>
                                                         </div>
                                                     </div>
                                                 </TableCell>
 
                                                 {/* Father Name */}
-                                                <TableCell className="py-3.5 px-4 text-gray-600 dark:text-gray-300">
+                                                <TableCell className="py-3.5 px-4 text-gray-600 dark:text-gray-300 align-middle">
                                                     <div className="flex items-center gap-1.5 text-xs font-medium">
                                                         <User className="h-3.5 w-3.5 text-gray-400" />
                                                         {student.father_name || "—"}
@@ -565,15 +590,15 @@ export default function PromoteStudentsPage() {
                                                 </TableCell>
 
                                                 {/* DOB */}
-                                                <TableCell className="py-3.5 px-4 text-gray-600 dark:text-gray-300">
+                                                <TableCell className="py-3.5 px-4 text-gray-600 dark:text-gray-300 align-middle">
                                                     <div className="flex items-center gap-1.5 text-xs font-medium">
                                                         <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                                                        {student.dob || "—"}
+                                                        {student.dob ? toLocaleNumber(student.dob, language?.short_code) : "—"}
                                                     </div>
                                                 </TableCell>
 
                                                 {/* Current Result Segment Buttons */}
-                                                <TableCell className="py-3.5 px-4">
+                                                <TableCell className="py-3.5 px-4 align-middle">
                                                     <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800">
                                                         <button
                                                             type="button"
@@ -586,7 +611,7 @@ export default function PromoteStudentsPage() {
                                                             )}
                                                         >
                                                             <Check className="h-3 w-3" />
-                                                            Pass
+                                                            {t("pass") || "Pass"}
                                                         </button>
                                                         <button
                                                             type="button"
@@ -599,13 +624,13 @@ export default function PromoteStudentsPage() {
                                                             )}
                                                         >
                                                             <X className="h-3 w-3" />
-                                                            Fail
+                                                            {t("fail") || "Fail"}
                                                         </button>
                                                     </div>
                                                 </TableCell>
 
                                                 {/* Next Session Status Segment Buttons */}
-                                                <TableCell className="py-3.5 px-4">
+                                                <TableCell className="py-3.5 px-4 align-middle">
                                                     <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800">
                                                         <button
                                                             type="button"
@@ -618,7 +643,7 @@ export default function PromoteStudentsPage() {
                                                             )}
                                                         >
                                                             <ArrowRight className="h-3 w-3" />
-                                                            Continue
+                                                            {t("continue") || "Continue"}
                                                         </button>
                                                         <button
                                                             type="button"
@@ -631,7 +656,7 @@ export default function PromoteStudentsPage() {
                                                             )}
                                                         >
                                                             <LogOut className="h-3 w-3" />
-                                                            Leave
+                                                            {t("leave") || "Leave"}
                                                         </button>
                                                     </div>
                                                 </TableCell>
@@ -643,17 +668,18 @@ export default function PromoteStudentsPage() {
                         </div>
 
                         {/* Bottom Actions */}
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                             <div className="text-xs text-gray-500 font-bold">
-                                {selectedStudentIds.length} of {students.length} students selected for promotion
+                                {t("x_students_selected_for_promotion", { selected: toLocaleNumber(selectedStudentIds.length, language?.short_code), total: toLocaleNumber(students.length, language?.short_code) }) ||
+                                 `${toLocaleNumber(selectedStudentIds.length, language?.short_code)} of ${toLocaleNumber(students.length, language?.short_code)} students selected for promotion`}
                             </div>
                             <Button
                                 onClick={handlePromote}
                                 disabled={promoting || selectedStudentIds.length === 0}
-                                className="btn-gradient text-white px-8 h-10 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center gap-2"
+                                className="btn-gradient text-white px-8 h-10 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center gap-2 cursor-pointer"
                             >
                                 {promoting && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {t("promote")} ({selectedStudentIds.length})
+                                {t("promote")} ({toLocaleNumber(selectedStudentIds.length, language?.short_code)})
                             </Button>
                         </div>
                     </CardContent>
@@ -661,13 +687,13 @@ export default function PromoteStudentsPage() {
             )}
 
             {!hasSearched && !searching && students.length === 0 && (
-                <div className="bg-white rounded-lg shadow-sm border p-12 flex flex-col items-center justify-center text-center space-y-4">
-                    <div className="p-4 bg-indigo-50 rounded-full">
-                        <Search className="h-8 w-8 text-indigo-400 opacity-50" />
+                <div className="bg-white dark:bg-gray-800/80 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-16 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="p-4 bg-indigo-50 dark:bg-gray-700 rounded-full">
+                        <Search className="h-8 w-8 text-indigo-400 opacity-60" />
                     </div>
                     <div className="space-y-1">
-                        <h3 className="text-sm font-semibold text-gray-700">{t("no_students_found")}</h3>
-                        <p className="text-xs text-gray-500 max-w-xs">{t("select_criteria_and_search_for_students")}</p>
+                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("no_students_found")}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">{t("select_criteria_and_search_for_students")}</p>
                     </div>
                 </div>
             )}

@@ -7,16 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, Search, Loader2, Filter, ListChecks, Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Loader2, Filter, ListChecks, Download, Copy, FileSpreadsheet, FileText, FileCode, Printer, Columns } from "lucide-react";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber } from "@/lib/utils";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 import html2canvas from "html2canvas-pro";
 import { useSettings } from "@/components/providers/settings-provider";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -45,17 +48,36 @@ interface IncomeRecord {
     amount: number;
 }
 
+interface PrintSettingItem {
+    type: string;
+    header_image_url?: string | null;
+    footer_content?: string;
+    [key: string]: unknown;
+}
+
+interface InvoiceData {
+    type: string;
+    id: string;
+    date: string;
+    reference_no: string;
+    studentName: string;
+    admissionNo: string;
+    detail: string;
+    amount: number;
+}
+
 export default function SearchIncomePage() {
     const { symbol, formatCurrency } = useCurrencyFormatter();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const [searchType, setSearchType] = useState("all");
     const [keyword, setKeyword] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [incomes, setIncomes] = useState<IncomeRecord[]>([]);
     const [loading, setLoading] = useState(false);
-    const [invoiceData, setInvoiceData] = useState<any>(null);
-    const [printSettings, setPrintSettings] = useState<any>(null);
+    const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
+    const [printSettings, setPrintSettings] = useState<PrintSettingItem | null>(null);
     const { settings } = useSettings();
     
     // Pagination state
@@ -112,11 +134,13 @@ export default function SearchIncomePage() {
             try {
                 const res = await api.get('system-setting/print-settings');
                 if (res.data?.status === 'success') {
-                    const invoiceSetting = res.data.data.find((s: any) => s.type === 'Invoice');
+                    const invoiceSetting = res.data.data.find((s: PrintSettingItem) => s.type === 'Invoice');
                     setPrintSettings(invoiceSetting);
                     currentSettings = invoiceSetting;
                 }
-            } catch (e) {}
+            } catch {
+                // silently fail
+            }
         }
 
         setInvoiceData({
@@ -142,14 +166,82 @@ export default function SearchIncomePage() {
                     pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
                     pdf.save(`invoice_${income.invoice_number || income.id}.pdf`);
                     toast.success(t("invoice_downloaded") || "Invoice downloaded successfully");
-                } catch (e: any) {
+                } catch (e: unknown) {
                     console.error("PDF Gen Error:", e);
-                    toast.error(`Failed to generate PDF: ${e.message || 'Unknown error'}`);
+                    const msg = e instanceof Error ? e.message : 'Unknown error';
+                    toast.error(`Failed to generate PDF: ${msg}`);
                 } finally {
                     setInvoiceData(null);
                 }
             }
         }, 500);
+    };
+
+    const exportData = incomes.map(item => ({
+        'Name': item.name,
+        'Description': item.description,
+        'Invoice Number': item.invoice_number,
+        'Date': item.date,
+        'Income Head': item.income_head_name,
+        'Amount': formatCurrency(item.amount)
+    }));
+
+    const exportToExcel = () => {
+        if (incomes.length === 0) {
+            toast.info(t("no_data_found") || "No data to export");
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Incomes");
+        XLSX.writeFile(wb, "incomes.xlsx");
+        toast.success(t("exported_to_excel") || "Exported to Excel");
+    };
+
+    const exportToCSV = () => {
+        if (incomes.length === 0) {
+            toast.info(t("no_data_found") || "No data to export");
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "incomes.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(t("exported_to_csv") || "Exported to CSV");
+    };
+
+    const exportToPDF = () => {
+        if (incomes.length === 0) {
+            toast.info(t("no_data_found") || "No data to export");
+            return;
+        }
+        const doc = new jsPDF();
+        doc.text(t("income_list"), 14, 15);
+        autoTable(doc, {
+            head: [[t("name"), t("invoice_number"), t("income_head"), t("date"), t("amount")]],
+            body: incomes.map(item => [item.name, item.invoice_number, item.income_head_name, formatDate(item.date), formatCurrency(item.amount)]),
+            startY: 20,
+        });
+        doc.save("incomes.pdf");
+        toast.success(t("exported_to_pdf") || "Exported to PDF");
+    };
+
+    const copyToClipboard = () => {
+        if (exportData.length === 0) {
+            toast.info(t("no_data_found") || "No data to copy");
+            return;
+        }
+        const text = exportData.map(d => Object.values(d).join('\t')).join('\n');
+        const header = Object.keys(exportData[0] || {}).join('\t');
+        navigator.clipboard.writeText(header + '\n' + text);
+        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
     };
 
     const handlePeriodSearch = () => {
@@ -180,79 +272,91 @@ export default function SearchIncomePage() {
                         <p className="text-[11px] text-gray-500 mt-1">{t("search_income_by_type_or_keyword")}</p>
                     </div>
                 </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <CardContent className="pt-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Search Type Column */}
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="search-type" className="text-xs font-semibold text-gray-600">
-                                    {t("search_type")} <span className="text-red-500">*</span>
-                                </Label>
-                                <Select value={searchType} onValueChange={setSearchType}>
-                                    <SelectTrigger id="search-type">
-                                        <SelectValue placeholder={t("select")} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">{t("all")}</SelectItem>
-                                        <SelectItem value="today">{t("today")}</SelectItem>
-                                        <SelectItem value="this-week">{t("this_week")}</SelectItem>
-                                        <SelectItem value="last-week">{t("last_week")}</SelectItem>
-                                        <SelectItem value="this-month">{t("this_month")}</SelectItem>
-                                        <SelectItem value="last-month">{t("last_month")}</SelectItem>
-                                        <SelectItem value="last-3-months">{t("last_3_months")}</SelectItem>
-                                        <SelectItem value="last-6-months">{t("last_6_months")}</SelectItem>
-                                        <SelectItem value="last-12-months">{t("last_12_months")}</SelectItem>
-                                        <SelectItem value="this-year">{t("this_year")}</SelectItem>
-                                        <SelectItem value="last-year">{t("last_year")}</SelectItem>
-                                        <SelectItem value="period">{t("period")}</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                        <div className="space-y-2">
+                            <Label htmlFor="search-type" className="text-xs font-semibold text-gray-600">
+                                {t("search_type")} <span className="text-red-500">*</span>
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                    <Select value={searchType} onValueChange={setSearchType}>
+                                        <SelectTrigger id="search-type" className="h-9">
+                                            <SelectValue placeholder={t("select")} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">{t("all")}</SelectItem>
+                                            <SelectItem value="today">{t("today")}</SelectItem>
+                                            <SelectItem value="this-week">{t("this_week")}</SelectItem>
+                                            <SelectItem value="last-week">{t("last_week")}</SelectItem>
+                                            <SelectItem value="this-month">{t("this_month")}</SelectItem>
+                                            <SelectItem value="last-month">{t("last_month")}</SelectItem>
+                                            <SelectItem value="last-3-months">{t("last_3_months")}</SelectItem>
+                                            <SelectItem value="last-6-months">{t("last_6_months")}</SelectItem>
+                                            <SelectItem value="last-12-months">{t("last_12_months")}</SelectItem>
+                                            <SelectItem value="this-year">{t("this_year")}</SelectItem>
+                                            <SelectItem value="last-year">{t("last_year")}</SelectItem>
+                                            <SelectItem value="period">{t("period")}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {searchType !== "period" && (
+                                    <Button
+                                        onClick={handlePeriodSearch}
+                                        disabled={loading}
+                                        className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all shrink-0"
+                                    >
+                                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                        {t("search")}
+                                    </Button>
+                                )}
                             </div>
 
                             {searchType === "period" && (
-                                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-semibold text-gray-600">{t("start_date")}</Label>
-                                        <DatePicker value={startDate} onChange={(val) => setStartDate(val)} />
+                                <div className="pt-2 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-semibold text-gray-600">{t("start_date")}</Label>
+                                            <DatePicker value={startDate} onChange={(val) => setStartDate(val)} />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-semibold text-gray-600">{t("end_date")}</Label>
+                                            <DatePicker value={endDate} onChange={(val) => setEndDate(val)} />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-semibold text-gray-600">{t("end_date")}</Label>
-                                        <DatePicker value={endDate} onChange={(val) => setEndDate(val)} />
+                                    <div className="flex justify-end">
+                                        <Button
+                                            onClick={handlePeriodSearch}
+                                            disabled={loading}
+                                            className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                                        >
+                                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                            {t("search")}
+                                        </Button>
                                     </div>
                                 </div>
                             )}
-
-                            <div className="flex justify-end">
-                                <Button
-                                    onClick={handlePeriodSearch}
-                                    disabled={loading}
-                                    className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
-                                >
-                                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                    {t("search")}
-                                </Button>
-                            </div>
                         </div>
 
                         {/* Search Input Column */}
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="search-text" className="text-xs font-semibold text-gray-600">
-                                    {t("search")} <span className="text-red-500">*</span>
-                                </Label>
+                        <div className="space-y-2">
+                            <Label htmlFor="search-text" className="text-xs font-semibold text-gray-600">
+                                {t("search")} <span className="text-red-500">*</span>
+                            </Label>
+                            <div className="flex items-center gap-2">
                                 <Input
                                     id="search-text"
                                     placeholder={t("search_by_income_name_invoice")}
                                     value={keyword}
                                     onChange={(e) => setKeyword(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleKeywordSearch()}
+                                    className="h-9"
                                 />
-                            </div>
-                            <div className="flex justify-end">
                                 <Button
                                     onClick={handleKeywordSearch}
                                     disabled={loading}
-                                    className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
+                                    className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all shrink-0"
                                 >
                                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                                     {t("search")}
@@ -264,13 +368,85 @@ export default function SearchIncomePage() {
             </Card>
 
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <ListChecks className="h-5 w-5" />
-                    </span>
-                    <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_list")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{totalRecords} {totalRecords === 1 ? t("record_found") : t("records_found")}</p>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <ListChecks className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_list")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(totalRecords, shortCode)} {totalRecords === 1 ? t("record_found") : t("records_found")}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Select value={String(perPage)} onValueChange={(val) => { setPerPage(Number(val)); setCurrentPage(1); }}>
+                            <SelectTrigger className="h-8 w-[68px] text-xs bg-white border border-gray-200 shadow-xs">
+                                <SelectValue placeholder={toLocaleNumber("20", shortCode)}>
+                                    {toLocaleNumber(String(perPage), shortCode)}
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="20">{toLocaleNumber("20", shortCode)}</SelectItem>
+                                <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
+                                <SelectItem value="200">{toLocaleNumber("200", shortCode)}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <div className="flex items-center border rounded-md p-0.5 bg-white/90 border-gray-200 shadow-xs text-gray-500">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                                onClick={copyToClipboard}
+                                title={t("copy") || "Copy"}
+                            >
+                                <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                                onClick={exportToExcel}
+                                title="Excel"
+                            >
+                                <FileSpreadsheet className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                                onClick={exportToCSV}
+                                title="CSV"
+                            >
+                                <FileText className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                                onClick={exportToPDF}
+                                title="PDF"
+                            >
+                                <FileCode className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                                onClick={() => window.print()}
+                                title={t("print") || "Print"}
+                            >
+                                <Printer className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
+                                title={t("columns") || "Columns"}
+                            >
+                                <Columns className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -316,8 +492,8 @@ export default function SearchIncomePage() {
                                             <TableCell className="font-medium text-gray-700 py-3">{income.name}</TableCell>
                                             <TableCell className="text-gray-600">{income.invoice_number}</TableCell>
                                             <TableCell className="text-gray-600">{income.income_head_name}</TableCell>
-                                            <TableCell className="text-gray-600">{formatDate(income.date)}</TableCell>
-                                            <TableCell className="text-gray-600 text-right font-semibold">{formatCurrency(income.amount)}</TableCell>
+                                            <TableCell className="text-gray-600">{toLocaleNumber(formatDate(income.date), shortCode)}</TableCell>
+                                            <TableCell className="text-gray-600 text-right font-semibold">{toLocaleNumber(formatCurrency(income.amount), shortCode)}</TableCell>
                                             <TableCell className="text-center">
                                                 {income.invoice_number ? (
                                                     <Button
@@ -339,35 +515,19 @@ export default function SearchIncomePage() {
                         </Table>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 font-medium pt-2 gap-4">
-                        <div className="flex items-center gap-4">
-                            <div>
-                                {t("showing_x_to_y_of_z", { 
-                                    from: totalRecords > 0 ? startIndex + 1 : 0, 
-                                    to: endIndex, 
-                                    total: totalRecords 
-                                })}
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <span>{t("show") || "Show"}:</span>
-                                <Select value={String(perPage)} onValueChange={(val) => { setPerPage(Number(val)); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-7 w-[70px] text-xs bg-white border border-gray-200">
-                                        <SelectValue placeholder="20" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="20">20</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                        <SelectItem value="200">200</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
+                        <div>
+                            {t("showing_x_to_y_of_z", { 
+                                from: toLocaleNumber(totalRecords > 0 ? startIndex + 1 : 0, shortCode), 
+                                to: toLocaleNumber(endIndex, shortCode), 
+                                total: toLocaleNumber(totalRecords, shortCode) 
+                            })}
                         </div>
-                        <div className="flex gap-1">
+                        <div className="flex items-center gap-1">
                             <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm"
+                                className="h-7 w-7 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
                                 disabled={activePage === 1}
                                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                             >
@@ -384,13 +544,17 @@ export default function SearchIncomePage() {
                                 }
                                 return (
                                     <Button 
-                                        key={pageNum}
-                                        variant={activePage === pageNum ? "default" : "outline"} 
+                                        key={pageNum} 
                                         size="sm" 
-                                        className={`h-8 w-8 p-0 rounded-[10px] shadow-sm ${activePage === pageNum ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white" : "bg-white border border-gray-200 text-gray-600"}`}
+                                        className={cn(
+                                            "h-7 w-7 p-0 rounded-[10px] text-xs font-bold transition-all",
+                                            activePage === pageNum
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md"
+                                                : "bg-white border border-gray-200 text-gray-600 shadow-sm hover:bg-gray-100"
+                                        )}
                                         onClick={() => setCurrentPage(pageNum)}
                                     >
-                                        {pageNum}
+                                        {toLocaleNumber(pageNum, shortCode)}
                                     </Button>
                                 );
                             })}
@@ -398,8 +562,8 @@ export default function SearchIncomePage() {
                             <Button 
                                 variant="outline" 
                                 size="sm" 
-                                className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm"
-                                disabled={activePage === totalPages}
+                                className="h-7 w-7 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                disabled={activePage === totalPages || totalPages === 0}
                                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -511,7 +675,7 @@ export default function SearchIncomePage() {
                         {/* Footer */}
                         <div style={{ textAlign: 'center', paddingTop: '32px', borderTop: '1px solid #e2e8f0' }}>
                             {printSettings?.footer_content ? (
-                                <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: printSettings.footer_content }} />
+                                <div style={{ fontSize: '14px', color: '#64748b', lineHeight: '1.5' }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(printSettings.footer_content) }} />
                             ) : (
                                 <p style={{ fontSize: '14px', fontWeight: '500', color: '#64748b', margin: 0 }}>Thank you for your payment!</p>
                             )}

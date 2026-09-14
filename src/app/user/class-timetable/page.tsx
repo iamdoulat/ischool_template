@@ -9,7 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
-import { cn } from "@/lib/utils";
+import { useSettings } from "@/components/providers/settings-provider";
+import {
+    cn,
+    toLocaleNumber,
+    translateClassName,
+    translateSectionName,
+    translateSubjectName,
+    translateDayName,
+    translateDayShortName,
+} from "@/lib/utils";
 
 type Period = {
     id: number;
@@ -35,15 +44,72 @@ const DAY_COLORS: Record<string, { card: string; header: string; accent: string;
 
 const TODAY_NAME = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
+// ── Format time range with localized digits & 12h/24h format ──
+function formatTimeRange(timeStr: string, langCode: string, timeFormat: "12" | "24") {
+    if (!timeStr) return "";
+    const parts = timeStr.split("-").map(p => p.trim());
+    const formatSingleTime = (t: string) => {
+        if (!t) return "";
+        const m = t.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*(AM|PM))?$/i);
+        if (m) {
+            let h = parseInt(m[1], 10);
+            const min = m[2];
+            const ampm = m[3] ? m[3].toUpperCase() : undefined;
+            if (ampm) {
+                if (ampm === "PM" && h < 12) h += 12;
+                if (ampm === "AM" && h === 12) h = 0;
+            }
+            if (timeFormat === "12") {
+                const p = h >= 12 ? "PM" : "AM";
+                const h12 = h % 12 || 12;
+                return `${toLocaleNumber(h12, langCode)}:${toLocaleNumber(min, langCode)} ${p}`;
+            }
+            const hh = h.toString().padStart(2, "0");
+            return `${toLocaleNumber(hh, langCode)}:${toLocaleNumber(min, langCode)}`;
+        }
+        return toLocaleNumber(t, langCode);
+    };
+
+    if (parts.length === 2) {
+        return `${formatSingleTime(parts[0])} - ${formatSingleTime(parts[1])}`;
+    }
+    return toLocaleNumber(timeStr, langCode);
+}
+
+// ── Format teacher string with localized staff code ──
+function formatTeacher(teacherStr: string, langCode: string) {
+    if (!teacherStr) return "";
+    return teacherStr.replace(/\(([^)]+)\)/g, (match, code) => {
+        return `(${toLocaleNumber(code.trim(), langCode)})`;
+    });
+}
+
 /* ── Animated period card ── */
-function PeriodCard({ period, colors, delay }: { period: Period; colors: typeof DAY_COLORS[string]; delay: number }) {
+function PeriodCard({
+    period,
+    colors,
+    delay,
+    langCode,
+    timeFormat,
+}: {
+    period: Period;
+    colors: typeof DAY_COLORS[string];
+    delay: number;
+    langCode: string;
+    timeFormat: "12" | "24";
+}) {
     const { t } = useTranslation();
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
-        const t = setTimeout(() => setVisible(true), delay);
-        return () => clearTimeout(t);
+        const timer = setTimeout(() => setVisible(true), delay);
+        return () => clearTimeout(timer);
     }, [delay]);
+
+    const formattedTime = formatTimeRange(period.time, langCode, timeFormat);
+    const translatedSubject = translateSubjectName(period.subject, langCode);
+    const formattedTeacherStr = formatTeacher(period.teacher, langCode);
+    const formattedRoom = toLocaleNumber(period.room, langCode);
 
     return (
         <div
@@ -60,22 +126,22 @@ function PeriodCard({ period, colors, delay }: { period: Period; colors: typeof 
                 <div className="space-y-1.5 min-w-0 flex-1">
                     <div className="flex items-start gap-1.5">
                         <BookOpen className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                        <span className={cn("font-bold leading-tight text-[12px]", colors.text)}>{period.subject}</span>
+                        <span className={cn("font-bold leading-tight text-[12px]", colors.text)}>{translatedSubject}</span>
                     </div>
                     <div className="flex items-start gap-1.5">
                         <Clock className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                        <span className={cn("leading-tight text-[11px] font-medium", colors.text)}>{period.time}</span>
+                        <span className={cn("leading-tight text-[11px] font-medium", colors.text)}>{formattedTime}</span>
                     </div>
                     {period.teacher && (
                         <div className="flex items-start gap-1.5">
                             <User className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                            <span className={cn("leading-tight text-[11px]", colors.text)}>{period.teacher}</span>
+                            <span className={cn("leading-tight text-[11px]", colors.text)}>{formattedTeacherStr}</span>
                         </div>
                     )}
                     {period.room && (
                         <div className="flex items-start gap-1.5">
                             <Building className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                            <span className={cn("leading-tight text-[11px]", colors.text)}>{t("room")} {period.room}</span>
+                            <span className={cn("leading-tight text-[11px]", colors.text)}>{t("room")}: {formattedRoom}</span>
                         </div>
                     )}
                 </div>
@@ -85,7 +151,11 @@ function PeriodCard({ period, colors, delay }: { period: Period; colors: typeof 
 }
 
 export default function UserClassTimetablePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const { settings } = useSettings();
+    const timeFormat = settings?.time_format === "12" ? "12" : ("24" as const);
+
     const [timetable, setTimetable] = useState<Timetable>({});
     const [className, setClassName] = useState<string | null>(null);
     const [sectionName, setSectionName] = useState<string | null>(null);
@@ -99,7 +169,6 @@ export default function UserClassTimetablePage() {
                 const res = await api.get("/user/class-timetable").catch(() => ({ data: { success: false, data: { class_name: null, section_name: null, timetable: {} } } }));
                 if (res.data.success) {
                     const payload = res.data.data ?? {};
-                    // New shape: { class_name, section_name, timetable }. Fall back to legacy flat map.
                     if (payload && typeof payload === "object" && "timetable" in payload) {
                         setTimetable(payload.timetable ?? {});
                         setClassName(payload.class_name ?? null);
@@ -120,6 +189,9 @@ export default function UserClassTimetablePage() {
     }, [toast, t]);
 
     const totalPeriods = DAYS.reduce((acc, d) => acc + (timetable[d]?.length ?? 0), 0);
+    const localizedTotalPeriods = toLocaleNumber(totalPeriods, langCode);
+    const translatedClsName = translateClassName(className, langCode);
+    const translatedSecName = translateSectionName(sectionName, langCode);
 
     return (
         <div className="p-4 lg:p-6 animate-in fade-in duration-500">
@@ -130,28 +202,28 @@ export default function UserClassTimetablePage() {
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <CalendarDays className="h-5 w-5" />
                         </span>
-                        <div className="min-w-0">
+                        <div className="min-w-0 space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                                <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("class_timetable")}</h1>
+                                <h1 className="text-[16px] font-bold text-gray-800 dark:text-zinc-100 leading-snug truncate">{t("class_timetable")}</h1>
                                 {!loading && (className || sectionName) && (
                                     <span className="inline-flex items-center gap-1 rounded-full bg-white/70 border border-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-600">
-                                        {className || "—"}{sectionName ? ` · ${t("sec")} ${sectionName}` : ""}
+                                        {translatedClsName || "—"}{sectionName ? ` · ${translatedSecName}` : ""}
                                     </span>
                                 )}
                             </div>
-                            <p className="text-[11px] text-gray-500 mt-1">
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
                                 {loading
                                     ? t("loading_schedule")
                                     : (className || sectionName)
-                                        ? `${t("your_schedule_for")} ${className ?? ""}${sectionName ? ` — ${t("section")} ${sectionName}` : ""} · ${totalPeriods} ${totalPeriods === 1 ? t("period") : t("periods")}`
-                                        : `${totalPeriods} ${totalPeriods === 1 ? t("period") : t("periods")} ${t("scheduled_this_week")}`}
+                                        ? `${t("your_schedule_for")} ${translatedClsName}${sectionName ? ` — ${translatedSecName}` : ""} · ${localizedTotalPeriods} ${totalPeriods === 1 ? t("period") : t("periods")}`
+                                        : `${localizedTotalPeriods} ${totalPeriods === 1 ? t("period") : t("periods")} ${t("scheduled_this_week")}`}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
                         title={t("print")}
-                        className="h-9 shrink-0 ml-auto px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
+                        className="h-9 shrink-0 ml-auto px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden cursor-pointer"
                     >
                         <Printer className="h-4 w-4" />
                         <span className="hidden sm:inline">{t("print")}</span>
@@ -178,8 +250,8 @@ export default function UserClassTimetablePage() {
                                     <p className="text-sm mt-1 text-gray-400">
                                         {t("the_admin_hasnt_scheduled_classes_for")}{" "}
                                         <span className="font-semibold text-indigo-500">
-                                            {className ?? ""}
-                                            {sectionName ? ` — ${t("section")} ${sectionName}` : ""}
+                                            {translatedClsName}
+                                            {sectionName ? ` — ${translatedSecName}` : ""}
                                         </span>{" "}
                                         {t("yet")}.
                                     </p>
@@ -195,23 +267,24 @@ export default function UserClassTimetablePage() {
                                     const isToday = day === TODAY_NAME;
                                     const isActive = day === activeDay;
                                     const colors = DAY_COLORS[day];
+                                    const localizedDayShort = translateDayShortName(day, langCode);
                                     return (
                                         <button
                                             key={day}
                                             onClick={() => setActiveDay(day)}
                                             className={cn(
-                                                "flex flex-col items-center px-4 py-3 text-[12px] font-semibold whitespace-nowrap border-b-2 transition-all duration-200 min-w-[80px]",
+                                                "flex flex-col items-center px-4 py-3 text-[12px] font-semibold whitespace-nowrap border-b-2 transition-all duration-200 min-w-[80px] cursor-pointer",
                                                 isActive
                                                     ? `border-[#6366F1] ${colors.text} bg-gradient-to-b from-transparent to-indigo-50/40`
                                                     : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50",
                                             )}
                                         >
-                                            <span>{day.slice(0, 3)}</span>
+                                            <span>{localizedDayShort}</span>
                                             <span className={cn(
                                                 "text-[10px] mt-0.5 font-medium px-1.5 py-px rounded-full",
                                                 isToday ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white" : "text-gray-400"
                                             )}>
-                                                {isToday ? t("today") : `${count} ${t("cls")}`}
+                                                {isToday ? t("today") : `${toLocaleNumber(count, langCode)} ${t("cls")}`}
                                             </span>
                                         </button>
                                     );
@@ -221,19 +294,19 @@ export default function UserClassTimetablePage() {
                             {/* ── Mobile / single-day view ── */}
                             <div className="p-4 print:hidden">
                                 <div className="flex items-center gap-2 mb-4">
-                                    <span className="text-[13px] font-bold text-gray-700">{activeDay}</span>
+                                    <span className="text-[13px] font-bold text-gray-700">{translateDayName(activeDay, langCode)}</span>
                                     {activeDay === TODAY_NAME && (
                                         <span className="text-[11px] px-2 py-0.5 rounded-full text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-semibold">{t("today")}</span>
                                     )}
                                     <span className="text-[11px] text-gray-400 ml-auto">
-                                        {timetable[activeDay]?.length ?? 0} {(timetable[activeDay]?.length ?? 0) !== 1 ? t("periods") : t("period")}
+                                        {toLocaleNumber(timetable[activeDay]?.length ?? 0, langCode)} {(timetable[activeDay]?.length ?? 0) !== 1 ? t("periods") : t("period")}
                                     </span>
                                 </div>
 
                                 {(timetable[activeDay]?.length ?? 0) === 0 ? (
                                     <div className="flex items-center gap-2 rounded-lg border border-gray-200 p-4 text-gray-400">
                                         <XCircle className="h-4 w-4 text-red-400 shrink-0" />
-                                        <span className="text-[13px]">{t("no_classes_scheduled_for")} {activeDay}.</span>
+                                        <span className="text-[13px]">{t("no_classes_scheduled_for")} {translateDayName(activeDay, langCode)}.</span>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -243,6 +316,8 @@ export default function UserClassTimetablePage() {
                                                 period={period}
                                                 colors={DAY_COLORS[activeDay]}
                                                 delay={i * 60}
+                                                langCode={langCode}
+                                                timeFormat={timeFormat}
                                             />
                                         ))}
                                     </div>
@@ -256,7 +331,7 @@ export default function UserClassTimetablePage() {
                                         <tr>
                                             {DAYS.map((day) => (
                                                 <th key={day} className="border border-gray-300 px-2 py-2 bg-gray-100 font-bold text-gray-700 text-left">
-                                                    {day}
+                                                    {translateDayName(day, langCode)}
                                                 </th>
                                             ))}
                                         </tr>
@@ -273,10 +348,10 @@ export default function UserClassTimetablePage() {
                                                             <div className="space-y-2">
                                                                 {periods.map((p) => (
                                                                     <div key={p.id} className="border border-gray-200 rounded p-1.5">
-                                                                        <p className="font-semibold">{p.subject}</p>
-                                                                        <p className="text-gray-600">{p.time}</p>
-                                                                        {p.teacher && <p className="text-gray-500">{p.teacher}</p>}
-                                                                        {p.room && <p className="text-gray-500">{t("room")}: {p.room}</p>}
+                                                                        <p className="font-semibold">{translateSubjectName(p.subject, langCode)}</p>
+                                                                        <p className="text-gray-600">{formatTimeRange(p.time, langCode, timeFormat)}</p>
+                                                                        {p.teacher && <p className="text-gray-500">{formatTeacher(p.teacher, langCode)}</p>}
+                                                                        {p.room && <p className="text-gray-500">{t("room")}: {toLocaleNumber(p.room, langCode)}</p>}
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -295,3 +370,4 @@ export default function UserClassTimetablePage() {
         </div>
     );
 }
+

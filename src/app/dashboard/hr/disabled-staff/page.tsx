@@ -51,6 +51,7 @@ import {
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -110,7 +111,86 @@ function CardSkeleton({ count = 6 }: { count?: number }) {
 export default function DisabledStaffPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
+    const getLocalizedRoleName = (roleName?: string) => {
+        if (!roleName) return "";
+        const key = roleName.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        if (trans && trans !== key && trans !== roleName) return trans;
+        const roleMapBn: Record<string, string> = {
+            super_admin: "সুপার অ্যাডমিন",
+            superadmin: "সুপার অ্যাডমিন",
+            admin: "অ্যাডমিন",
+            teacher: "শিক্ষক",
+            accountant: "হিসাবরক্ষক",
+            librarian: "গ্রন্থাগারিক",
+            receptionist: "রিসেপশনিস্ট",
+            driver: "ড্রাইভার",
+            staff: "স্টাফ",
+            branch_admin: "ব্রাঞ্চ অ্যাডমিন",
+            principal: "অধ্যক্ষ",
+            vice_principal: "উপাধ্যক্ষ",
+            headmaster: "প্রধান শিক্ষক",
+            head_master: "প্রধান শিক্ষক",
+            assistant_teacher: "সহকারী শিক্ষক",
+            security_guard: "নিরাপত্তা প্রহরী",
+            cleaner: "পরিচ্ছন্নতাকর্মী",
+            clerk: "অফিস সহকারী",
+            student: "শিক্ষার্থী",
+            parent: "অভিভাবক",
+        };
+        const roleMapAr: Record<string, string> = {
+            super_admin: "المشرف العام",
+            superadmin: "المشرف العام",
+            admin: "مدير النظام",
+            teacher: "معلم",
+            accountant: "محاسب",
+            librarian: "أمين المكتبة",
+            receptionist: "موظف الاستقبال",
+            driver: "سائق",
+            staff: "موظف",
+            branch_admin: "مدير الفرع",
+            principal: "المدير",
+            vice_principal: "نائب المدير",
+            headmaster: "ناظر المدرسة",
+            head_master: "ناظر المدرسة",
+            assistant_teacher: "معلم مساعد",
+            security_guard: "حارس أمن",
+            cleaner: "عامل نظافة",
+            clerk: "كاتب",
+            student: "طالب",
+            parent: "ولي أمر",
+        };
+        const roleMapHi: Record<string, string> = {
+            super_admin: "सुपर एडमिन",
+            superadmin: "सुपर एडमिन",
+            admin: "एडमिन",
+            teacher: "शिक्षक",
+            accountant: "लेखाकार",
+            librarian: "पुस्तकालय अध्यक्ष",
+            receptionist: "रिसेप्शनिस्ट",
+            driver: "चालक",
+            staff: "स्टाफ",
+            branch_admin: "शाखा व्यवस्थापक",
+            principal: "प्रधानाचार्य",
+            vice_principal: "उप-प्रधानाचार्य",
+            headmaster: "मुख्याध्यापक",
+            head_master: "मुख्याध्यापक",
+            assistant_teacher: "सहायक शिक्षक",
+            security_guard: "सुरक्षा गार्ड",
+            cleaner: "सफाई कर्मचारी",
+            clerk: "लिपिक",
+            student: "छात्र",
+            parent: "अभिभावक",
+        };
+        if (shortCode === "bn" && roleMapBn[key]) return roleMapBn[key];
+        if (shortCode === "ar" && roleMapAr[key]) return roleMapAr[key];
+        if (shortCode === "hi" && roleMapHi[key]) return roleMapHi[key];
+        return trans || roleName;
+    };
+
     const [viewMode, setViewMode] = useState<"card" | "list">("card");
     const [staffList, setStaffList] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
@@ -176,8 +256,13 @@ export default function DisabledStaffPage() {
         loadInitialData();
     }, []);
 
+    const roleClean = (currentUser?.role || "").toLowerCase().replace(/[_\s]/g, "");
+    const isAdmin = currentUser && (roleClean.includes("admin") || roleClean.includes("superadmin"));
+
     const hasPerm = (permission: string) => {
-        if (!currentUser || !currentUser.permissions) return false;
+        if (!currentUser) return false;
+        if (isAdmin) return true;
+        if (!currentUser.permissions) return false;
         if (currentUser.permissions.includes("all")) return true;
         return currentUser.permissions.includes(permission);
     };
@@ -268,19 +353,31 @@ export default function DisabledStaffPage() {
     };
 
     return (
-        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <div className="flex justify-between items-center">
-                <h1 className="flex items-center gap-2 text-xl font-medium text-gray-800">
-                    <UserX className="h-6 w-6 text-[#6366F1]" />
-                    {t("disabled_staff")}
-                </h1>
-            </div>
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* ── Page Header Card with Gradient Colors ──────────────────────── */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] overflow-hidden py-0 gap-0">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0 px-4 py-2.5 bg-transparent border-0">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <UserX className="h-4.5 w-4.5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-sm font-bold tracking-tight text-slate-800 leading-none">
+                                {t("disabled_staff")}
+                            </CardTitle>
+                            <p className="text-[10.5px] text-gray-500 mt-0.5">
+                                {t("review_and_manage_disabled_staff_directory")}
+                            </p>
+                        </div>
+                    </div>
+                </CardHeader>
+            </Card>
 
             {/* Select Criteria Section */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Filter className="h-5 w-5" />
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-4 w-4" />
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
@@ -288,28 +385,33 @@ export default function DisabledStaffPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <div className="space-y-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                     {t("role")}
                                 </Label>
                                 <Select value={selectedRole} onValueChange={setSelectedRole}>
-                                    <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 transition-all rounded-lg">
-                                        <SelectValue placeholder={t("select_role")} />
+                                    <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 transition-all rounded-lg cursor-pointer bg-white">
+                                        <SelectValue placeholder={t("all_roles")}>
+                                            {selectedRole === "Select" ? t("all_roles") : getLocalizedRoleName(selectedRole)}
+                                        </SelectValue>
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Select">{t("all_roles")}</SelectItem>
+                                    <SelectContent className="rounded-lg border-gray-100">
+                                        <SelectItem value="Select" className="cursor-pointer">{t("all_roles")}</SelectItem>
                                         {roles.map((role) => (
-                                            <SelectItem key={role.name} value={role.name}>
-                                                {role.name}
+                                            <SelectItem key={role.name} value={role.name} className="cursor-pointer">
+                                                {getLocalizedRoleName(role.name)}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="flex justify-end">
-                                <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
+                                <Button
+                                    onClick={handleSearch}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white gap-2 h-10 px-8 text-sm font-bold rounded-full shadow-md active:scale-95 transition-all cursor-pointer border-0"
+                                >
                                     <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </div>
@@ -317,7 +419,7 @@ export default function DisabledStaffPage() {
 
                         <div className="space-y-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                     {t("search_by_keyword")}
                                 </Label>
                                 <Input
@@ -325,11 +427,14 @@ export default function DisabledStaffPage() {
                                     onChange={(e) => setKeyword(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                     placeholder={t("search_by_staff_id_name_role")}
-                                    className="h-11 border-gray-200 text-sm focus-visible:ring-indigo-500 rounded-lg"
+                                    className="h-11 border-gray-200 text-sm focus-visible:ring-indigo-500 rounded-lg bg-white"
                                 />
                             </div>
                             <div className="flex justify-end">
-                                <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
+                                <Button
+                                    onClick={handleSearch}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white gap-2 h-10 px-8 text-sm font-bold rounded-full shadow-md active:scale-95 transition-all cursor-pointer border-0"
+                                >
                                     <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
                             </div>
@@ -340,14 +445,14 @@ export default function DisabledStaffPage() {
 
             {/* Staff View Section */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                     <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <UserX className="h-5 w-5" />
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <UserX className="h-4 w-4" />
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("disabled_staff")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{staffList.length} {staffList.length === 1 ? t("disabled_member") : t("disabled_members")}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(staffList.length, shortCode)} {staffList.length === 1 ? t("disabled_member") : t("disabled_members")}</p>
                         </div>
                     </div>
                 </CardHeader>
@@ -357,13 +462,13 @@ export default function DisabledStaffPage() {
                             <TabsList className="bg-transparent h-14 gap-8 p-0">
                                 <TabsTrigger
                                     value="card"
-                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
+                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all cursor-pointer"
                                 >
                                     <LayoutGrid className="h-4 w-4 mr-2" /> {t("card_view")}
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="list"
-                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
+                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all cursor-pointer"
                                 >
                                     <ListIcon className="h-4 w-4 mr-2" /> {t("list_view")}
                                 </TabsTrigger>
@@ -372,24 +477,24 @@ export default function DisabledStaffPage() {
                             {/* Pagination Controls Top */}
                             {totalPages > 1 && (
                                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                                    <span className="mr-2 text-xs font-medium">{`${t("page")} ${currentPage} ${t("of")} ${totalPages}`}</span>
+                                    <span className="mr-2 text-xs font-medium">{`${t("page")} ${toLocaleNumber(currentPage, shortCode)} ${t("of")} ${toLocaleNumber(totalPages, shortCode)}`}</span>
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        className="h-8 w-8 rounded-[10px] border-gray-200"
+                                        className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30 cursor-pointer border-0"
                                         onClick={handlePrevPage}
                                         disabled={currentPage === 1}
                                     >
-                                        <ChevronLeft className="h-4 w-4" />
+                                        <ChevronLeft className="h-4 w-4 text-white" />
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="icon"
-                                        className="h-8 w-8 rounded-[10px] border-gray-200"
+                                        className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30 cursor-pointer border-0"
                                         onClick={handleNextPage}
                                         disabled={currentPage === totalPages}
                                     >
-                                        <ChevronRight className="h-4 w-4" />
+                                        <ChevronRight className="h-4 w-4 text-white" />
                                     </Button>
                                 </div>
                             )}
@@ -428,14 +533,14 @@ export default function DisabledStaffPage() {
                                                         </h3>
                                                     </div>
                                                     <div className="text-[11px] font-bold text-red-500 mt-0.5">
-                                                        {person.staff_id || t("not_available")} • {t("disabled")}
+                                                        {toLocaleNumber(person.staff_id, shortCode) || t("not_available")} • {t("disabled")}
                                                     </div>
                                                 </div>
 
                                                 <div className="space-y-1 mt-2">
                                                     <div className="flex items-center gap-2 text-[10px] font-medium text-gray-500">
                                                         <Phone className="h-3 w-3 text-gray-400" />
-                                                        <span>{person.phone || t("no_phone")}</span>
+                                                        <span>{toLocaleNumber(person.phone, shortCode) || t("no_phone")}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] font-medium text-gray-500">
                                                         <MapPin className="h-3 w-3 text-gray-400" />
@@ -445,7 +550,7 @@ export default function DisabledStaffPage() {
 
                                                 <div className="flex flex-wrap gap-1 mt-3">
                                                     <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
-                                                        {person.role}
+                                                        {getLocalizedRoleName(person.role)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -453,11 +558,11 @@ export default function DisabledStaffPage() {
                                             {(hasPerm("human-resource.staff.edit") || hasPerm("human-resource.staff.delete")) && (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <button className="absolute top-3 right-2 p-1 text-gray-400 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50">
+                                                        <button className="absolute top-3 right-2 p-1 text-gray-400 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50 cursor-pointer">
                                                             <MoreVertical className="h-4 w-4" />
                                                         </button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-40">
+                                                    <DropdownMenuContent align="end" className="w-40 rounded-lg">
                                                         {hasPerm("human-resource.staff.edit") && (
                                                             <DropdownMenuItem
                                                                 onClick={() => handleEnableClick(person)}
@@ -465,8 +570,6 @@ export default function DisabledStaffPage() {
                                                             >
                                                                 <CheckCircle className="h-4 w-4 mr-2" />
                                                                 {t("enable_staff")}
-                                                                <Edit className="h-4 w-4 mr-2" />
-                                                                Edit
                                                             </DropdownMenuItem>
                                                         )}
                                                         {hasPerm("human-resource.staff.delete") && (
@@ -475,7 +578,7 @@ export default function DisabledStaffPage() {
                                                                 className="cursor-pointer text-red-600 focus:text-red-600"
                                                             >
                                                                 <Trash2 className="h-4 w-4 mr-2" />
-                                                                Delete
+                                                                {t("delete")}
                                                             </DropdownMenuItem>
                                                         )}
                                                     </DropdownMenuContent>
@@ -493,16 +596,16 @@ export default function DisabledStaffPage() {
                         </TabsContent>
 
                         <TabsContent value="list" className="p-0 m-0">
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
+                            <div className="overflow-x-auto custom-scrollbar">
+                                <table className="w-full min-w-[900px]">
+                                    <thead className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("staff_id")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("name")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("role")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("phone")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("department")}</th>
-                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">{t("actions")}</th>
+                                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">{t("staff_id")}</th>
+                                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">{t("name")}</th>
+                                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">{t("role")}</th>
+                                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">{t("phone")}</th>
+                                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">{t("department")}</th>
+                                            <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">{t("actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-100">
@@ -514,9 +617,9 @@ export default function DisabledStaffPage() {
                                             </tr>
                                         ) : (
                                             currentData.map((person) => (
-                                                <tr key={person.id} className="hover:bg-gray-50 transition-colors group opacity-80 hover:opacity-100">
+                                                <tr key={person.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white group opacity-80 hover:opacity-100">
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-bold text-red-500">{person.staff_id || t("not_available")}</div>
+                                                        <div className="text-sm font-bold text-red-500">{toLocaleNumber(person.staff_id, shortCode) || t("not_available")}</div>
                                                         <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase">{t("disabled")}</span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -538,13 +641,13 @@ export default function DisabledStaffPage() {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full uppercase">
-                                                            {person.role}
+                                                            {getLocalizedRoleName(person.role)}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center gap-2 text-sm text-gray-500">
                                                             <Phone className="h-4 w-4 text-gray-400" />
-                                                            <span>{person.phone || "N/A"}</span>
+                                                            <span>{toLocaleNumber(person.phone, shortCode) || "N/A"}</span>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -554,11 +657,11 @@ export default function DisabledStaffPage() {
                                                         {(hasPerm("human-resource.staff.edit") || hasPerm("human-resource.staff.delete")) && (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50">
+                                                                    <button className="p-2 text-gray-400 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50 cursor-pointer">
                                                                         <MoreVertical className="h-4 w-4" />
                                                                     </button>
                                                                 </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-40">
+                                                                <DropdownMenuContent align="end" className="w-40 rounded-lg">
                                                                     {hasPerm("human-resource.staff.edit") && (
                                                                         <DropdownMenuItem
                                                                             onClick={() => handleEnableClick(person)}
@@ -566,8 +669,6 @@ export default function DisabledStaffPage() {
                                                                         >
                                                                             <CheckCircle className="h-4 w-4 mr-2" />
                                                                             {t("enable_staff")}
-                                                                            <Edit className="h-4 w-4 mr-2" />
-                                                                            Edit
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     {hasPerm("human-resource.staff.delete") && (
@@ -576,7 +677,7 @@ export default function DisabledStaffPage() {
                                                                             className="cursor-pointer text-red-600 focus:text-red-600"
                                                                         >
                                                                             <Trash2 className="h-4 w-4 mr-2" />
-                                                                            Delete
+                                                                            {t("delete")}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                 </DropdownMenuContent>
@@ -594,16 +695,18 @@ export default function DisabledStaffPage() {
                             {totalPages > 1 && currentData.length > 0 && (
                                 <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50/50">
                                     <p className="text-sm text-gray-500">
-                                        Showing <span className="font-medium text-gray-900">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium text-gray-900">{Math.min(currentPage * itemsPerPage, staffList.length)}</span> of <span className="font-medium text-gray-900">{staffList.length}</span> entries
+                                        {shortCode === "bn"
+                                            ? `দেখাচ্ছে ${toLocaleNumber((currentPage - 1) * itemsPerPage + 1, shortCode)} থেকে ${toLocaleNumber(Math.min(currentPage * itemsPerPage, staffList.length), shortCode)}, মোট ${toLocaleNumber(staffList.length, shortCode)} টি এন্ট্রি`
+                                            : `Showing ${(currentPage - 1) * itemsPerPage + 1} to ${Math.min(currentPage * itemsPerPage, staffList.length)} of ${staffList.length} entries`}
                                     </p>
                                     <div className="flex gap-2">
                                         <Button
                                             variant="outline"
                                             onClick={handlePrevPage}
                                             disabled={currentPage === 1}
-                                            className="h-9 px-4 text-sm bg-white border border-gray-200 text-gray-600 rounded-[10px]"
+                                            className="h-9 px-4 text-sm bg-white border border-gray-200 text-gray-600 rounded-[10px] cursor-pointer disabled:opacity-30"
                                         >
-                                            Previous
+                                            {t("previous")}
                                         </Button>
                                         <div className="flex items-center gap-1">
                                             {Array.from({ length: totalPages }).map((_, i) => (
@@ -611,9 +714,14 @@ export default function DisabledStaffPage() {
                                                     key={i}
                                                     variant={currentPage === i + 1 ? "default" : "outline"}
                                                     onClick={() => setCurrentPage(i + 1)}
-                                                    className={`h-9 w-9 p-0 rounded-[10px] ${currentPage === i + 1 ? 'bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
+                                                    className={cn(
+                                                        "h-9 w-9 p-0 rounded-[10px] text-xs font-bold transition-all cursor-pointer",
+                                                        currentPage === i + 1
+                                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md scale-105 border-0"
+                                                            : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
+                                                    )}
                                                 >
-                                                    {i + 1}
+                                                    {toLocaleNumber(i + 1, shortCode)}
                                                 </Button>
                                             ))}
                                         </div>
@@ -621,9 +729,9 @@ export default function DisabledStaffPage() {
                                             variant="outline"
                                             onClick={handleNextPage}
                                             disabled={currentPage === totalPages}
-                                            className="h-9 px-4 text-sm bg-white border border-gray-200 text-gray-600 rounded-[10px]"
+                                            className="h-9 px-4 text-sm bg-white border border-gray-200 text-gray-600 rounded-[10px] cursor-pointer disabled:opacity-30"
                                         >
-                                            Next
+                                            {t("next")}
                                         </Button>
                                     </div>
                                 </div>

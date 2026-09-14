@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,23 +24,28 @@ import {
 import { Input } from "@/components/ui/input";
 import {
     Search,
-    FileText,
     Trophy,
     Copy,
     FileSpreadsheet,
     FileBox,
     Printer,
-    Columns,
+    FileText,
+    Monitor,
+    Filter,
     ChevronLeft,
     ChevronRight,
-    ArrowUpDown,
-    Plus,
-    Monitor,
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+    cn, 
+    toLocaleNumber, 
+    translateClassName, 
+    translateSectionName, 
+    translateSubjectName, 
+    translateExamName 
+} from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/components/providers/language-provider";
 
 function TableSkeleton({ cols }: { cols: number }) {
     return (
@@ -58,6 +64,9 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 export default function ExaminationsReportPage() {
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
+
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(false);
     const [criteria, setCriteria] = useState<any>({ exam_groups: [], sessions: [], classes: [] });
@@ -69,6 +78,8 @@ export default function ExaminationsReportPage() {
     const [selectedSection, setSelectedSection] = useState("");
     const [reportData, setReportData] = useState<any[]>([]);
     const [subjects, setSubjects] = useState<any[]>([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
 
     useEffect(() => {
         fetchCriteria();
@@ -78,8 +89,8 @@ export default function ExaminationsReportPage() {
         try {
             const res = await api.get("reports/examinations/criteria");
             setCriteria(res.data);
-        } catch (error) {
-            toast.error("Failed to load criteria");
+        } catch {
+            toast.error(t("failed_to_fetch_report") || "Failed to fetch report");
         }
     };
 
@@ -90,12 +101,12 @@ export default function ExaminationsReportPage() {
         try {
             const res = await api.get(`reports/examinations/exams/${val}`);
             setExams(res.data);
-        } catch (error) {}
+        } catch {}
     };
 
     const handleSearch = async () => {
         if (!selectedExam || !selectedClass || !selectedSection) {
-            toast.warning("Please select Exam, Class and Section");
+            toast.warning(t("please_select_a_class") || "Please select exam, class and section");
             return;
         }
         setLoading(true);
@@ -107,10 +118,12 @@ export default function ExaminationsReportPage() {
                     section_id: selectedSection 
                 }
             });
-            setReportData(res.data.data);
-            setSubjects(res.data.subjects);
-            toast.success("Rank report generated");
-        } catch (error) {
+            setReportData(res.data.data || []);
+            setSubjects(res.data.subjects || []);
+            setCurrentPage(1);
+            toast.success(t("rank_report") || "Rank report loaded");
+        } catch {
+            toast.error(t("failed_to_fetch_report") || "Failed to fetch report");
         } finally {
             setLoading(false);
         }
@@ -122,12 +135,20 @@ export default function ExaminationsReportPage() {
 
     const handleExport = (type: string) => {
         if (reportData.length === 0) {
-            toast.warning("No data to export");
+            toast.warning(t("no_data_available_in_table") || "No data available in table");
             return;
         }
-        toast.success(`Exporting as ${type.toUpperCase()}...`);
         
-        const headers = ["Rank", "Admission No", "Roll Number", "Student Name", ...subjects.map(s => s.name), "Grand Total", "Percent", "Result"];
+        const headers = [
+            t("rank") || "Rank", 
+            t("admission_no") || "Admission No", 
+            t("roll_number") || "Roll Number", 
+            t("student_name") || "Student Name", 
+            ...subjects.map(s => translateSubjectName(s.name, langCode)), 
+            t("grand_total") || "Grand Total", 
+            t("percent") || "Percent", 
+            t("result") || "Result"
+        ];
         const rows = reportData.map(row => [
             row.rank,
             row.admission_no,
@@ -136,7 +157,7 @@ export default function ExaminationsReportPage() {
             ...subjects.map(s => row.marks[s.id] || 0),
             `${row.total_marks}/${row.max_total}`,
             `${row.percent}%`,
-            row.result
+            /pass/i.test(row.result) ? (t("passed") || "Passed") : (t("failed") || "Failed")
         ]);
 
         const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
@@ -151,240 +172,334 @@ export default function ExaminationsReportPage() {
         document.body.removeChild(a);
     };
 
+    const filteredData = reportData.filter(row =>
+        row.student_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        row.admission_no?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const totalPages = Math.max(1, Math.ceil(filteredData.length / pageSize));
+    const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
     return (
-        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
-            {/* Gradient header card with report-type tab */}
-            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Trophy className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Examinations Report</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Exam rank and result reports</p>
-                            </div>
-                        </div>
-                        <Link
-                            href="/user/examinations"
-                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
-                        >
-                            <Monitor className="h-3.5 w-3.5" />
-                            Student Portal View
-                        </Link>
+        <div className="space-y-6 pb-20">
+            {/* Standalone Edge-to-Edge Gradient Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Trophy className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("examinations_report") || "Examinations Report"}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("examinations_report_description") || "View student rankings, exam results, and subject marks report"}
+                        </p>
                     </div>
-                </CardHeader>
-                <CardContent className="p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        <div className="flex items-center gap-3 p-3 rounded-lg border border-indigo-200 bg-indigo-50/50 shadow-sm cursor-pointer">
-                            <div className="p-2 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white">
-                                <Trophy className="h-4 w-4" />
-                            </div>
-                            <span className="text-[10px] font-bold tracking-tight uppercase text-indigo-700">
-                                Rank Report
-                            </span>
+                </div>
+                <Link
+                    href="/user/examinations"
+                    className="flex items-center gap-1.5 h-8 px-4 rounded-full text-white text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] transition-all active:scale-95 shadow-md shrink-0"
+                >
+                    <Monitor className="h-3.5 w-3.5" />
+                    {t("student_portal_view") || "Student Portal View"}
+                </Link>
+            </div>
+
+            {/* Navigation Grid of Tab Links */}
+            <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-indigo-200 bg-indigo-50/50 shadow-xs ring-1 ring-indigo-200 cursor-pointer">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                            <Trophy className="h-4 w-4" />
                         </div>
+                        <span className="text-xs font-bold tracking-tight text-[#6366f1]">
+                            {t("rank_report") || "Rank Report"}
+                        </span>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* Select Criteria Section */}
-            <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 gap-4 items-end">
+            <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                    <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                        <Filter className="h-4 w-4" />
+                    </span>
+                    <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        {t("select_criteria") || "Select Criteria"}
+                    </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 items-end">
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Exam Group <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-semibold text-gray-600">
+                            {t("exam_group") || "Exam Group"} <span className="text-red-500">*</span>
+                        </Label>
                         <Select value={selectedGroup} onValueChange={handleGroupChange}>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
+                            <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                <SelectValue placeholder={t("select") || "Select"}>
+                                    {selectedGroup ? translateExamName(criteria.exam_groups.find((g: any) => g.id.toString() === selectedGroup)?.name, langCode) : (t("select") || "Select")}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                {criteria.exam_groups.map((g: any) => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                                {criteria.exam_groups.map((g: any) => (
+                                    <SelectItem key={g.id} value={g.id.toString()}>
+                                        {translateExamName(g.name, langCode)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Exam <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-semibold text-gray-600">
+                            {t("exam") || "Exam"} <span className="text-red-500">*</span>
+                        </Label>
                         <Select value={selectedExam} onValueChange={setSelectedExam}>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
+                            <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                <SelectValue placeholder={t("select") || "Select"}>
+                                    {selectedExam ? translateExamName(exams.find((e: any) => e.id.toString() === selectedExam)?.name, langCode) : (t("select") || "Select")}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                {exams.map((e: any) => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
+                                {exams.map((e: any) => (
+                                    <SelectItem key={e.id} value={e.id.toString()}>
+                                        {translateExamName(e.name, langCode)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Session <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-semibold text-gray-600">
+                            {t("session") || "Session"} <span className="text-red-500">*</span>
+                        </Label>
                         <Select value={selectedSession} onValueChange={setSelectedSession}>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
+                            <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                <SelectValue placeholder={t("select") || "Select"}>
+                                    {selectedSession ? toLocaleNumber(criteria.sessions.find((s: any) => s.id.toString() === selectedSession || s.session === selectedSession)?.session || selectedSession, langCode) : (t("select") || "Select")}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                {criteria.sessions.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>)}
+                                {criteria.sessions.map((s: any) => (
+                                    <SelectItem key={s.id} value={s.id.toString()}>
+                                        {toLocaleNumber(s.session, langCode)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-semibold text-gray-600">
+                            {t("class") || "Class"} <span className="text-red-500">*</span>
+                        </Label>
                         <Select value={selectedClass} onValueChange={setSelectedClass}>
-                            <SelectTrigger className="h-8 border-indigo-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
+                            <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                <SelectValue placeholder={t("select_class") || "Select Class"}>
+                                    {selectedClass ? translateClassName(criteria.classes.find((c: any) => c.id.toString() === selectedClass)?.name, langCode) : (t("select_class") || "Select Class")}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                {criteria.classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                {criteria.classes.map((c: any) => (
+                                    <SelectItem key={c.id} value={c.id.toString()}>
+                                        {translateClassName(c.name, langCode)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                        <Label className="text-[11px] font-semibold text-gray-600">
+                            {t("section") || "Section"} <span className="text-red-500">*</span>
+                        </Label>
                         <Select value={selectedSection} onValueChange={setSelectedSection}>
-                            <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                <SelectValue placeholder="Select" />
+                            <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                <SelectValue placeholder={t("select") || "Select"}>
+                                    {selectedSection === "all" ? (t("all_sections") || "All Sections") : (selectedSection ? translateSectionName(filteredSections.find((s: any) => s.id.toString() === selectedSection)?.name, langCode) : (t("select") || "Select"))}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Select</SelectItem>
-                                {filteredSections.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                <SelectItem value="all">{t("all_sections") || "All Sections"}</SelectItem>
+                                {filteredSections.map((s: any) => (
+                                    <SelectItem key={s.id} value={s.id.toString()}>
+                                        {translateSectionName(s.name, langCode)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-2">
                     <Button 
                         onClick={handleSearch}
                         disabled={loading}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
+                        className="h-9 px-6 text-xs font-bold rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider"
                     >
-                        <Search className="h-4 w-4" />
-                        {loading ? "Searching..." : "Search"}
+                        <Search className="h-3.5 w-3.5" />
+                        {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                     </Button>
                 </div>
             </div>
 
             {/* Student List Section */}
-            <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student List</h2>
-
-                {/* Table Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="relative w-full md:w-64">
-                        <Input
-                            placeholder="Search"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
-                        />
+            <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden flex flex-col justify-between min-h-[480px]">
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                        <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                            <Trophy className="h-4 w-4" />
+                        </span>
+                        <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                            {t("rank_report") || "Rank Report"}
+                        </h2>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-7 w-12 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none ring-0">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                </SelectContent>
-                            </Select>
+                    {/* Table Toolbar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                            <Input
+                                placeholder={t("search") || "Search"}
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setCurrentPage(1);
+                                }}
+                                className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500"
+                            />
                         </div>
-                        <div className="flex items-center gap-1 text-gray-400">
-                            <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                            <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                            <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                            <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                            <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded"><Printer className="h-3.5 w-3.5" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-gray-100 rounded"><Columns className="h-3.5 w-3.5" /></Button>
+
+                        <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                            <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                            <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                            <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                            <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                            <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                         </div>
                     </div>
-                </div>
 
-                {/* Results Table */}
-                <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-[1500px]">
-                        <TableHeader className="bg-gray-50 text-xs uppercase">
-                            <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">Rank</TableHead>
-                                <TableHead className="py-3 px-4">Admission No</TableHead>
-                                <TableHead className="py-3 px-4">Roll Number</TableHead>
-                                <TableHead className="py-3 px-4">Student Name</TableHead>
-                                {subjects.map(sub => (
-                                    <TableHead key={sub.id} className="py-3 px-4 text-center">
-                                        {sub.name} ({sub.min_marks}/{sub.max_marks})
-                                    </TableHead>
-                                ))}
-                                <TableHead className="py-3 px-4 text-center">Grand Total</TableHead>
-                                <TableHead className="py-3 px-4 text-center">Percent (%)</TableHead>
-                                <TableHead className="py-3 px-4 text-right">Result</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? <TableSkeleton cols={11 + subjects.length} /> : reportData.length > 0 ? (
-                                reportData.filter(row =>
-                                    row.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                    row.admission_no.toLowerCase().includes(searchTerm.toLowerCase())
-                                ).map((row, i) => (
-                                    <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                        <TableCell className="py-3 px-4 font-bold text-indigo-600">{row.rank}</TableCell>
-                                        <TableCell className="py-3 px-4">{row.admission_no}</TableCell>
-                                        <TableCell className="py-3 px-4">{row.roll_no}</TableCell>
-                                        <TableCell className="py-3 px-4 font-medium">{row.student_name}</TableCell>
-                                        {subjects.map(sub => (
-                                            <TableCell key={sub.id} className="py-3 px-4 text-center">
-                                                {row.marks[sub.id] || 0}
+                    {/* Results Table */}
+                    <div className="rounded-xl border border-gray-200/80 overflow-x-auto shadow-2xs">
+                        <Table className="min-w-[1200px]">
+                            <TableHeader className="bg-gray-50/75 text-xs uppercase">
+                                <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200">
+                                    <TableHead className="py-2.5 px-4">{t("rank") || "Rank"}</TableHead>
+                                    <TableHead className="py-2.5 px-4">{t("admission_no") || "Admission No"}</TableHead>
+                                    <TableHead className="py-2.5 px-4">{t("roll_number") || "Roll Number"}</TableHead>
+                                    <TableHead className="py-2.5 px-4">{t("student_name") || "Student Name"}</TableHead>
+                                    {subjects.map(sub => (
+                                        <TableHead key={sub.id} className="py-2.5 px-4 text-center font-bold">
+                                            {translateSubjectName(sub.name, langCode)} ({toLocaleNumber(sub.min_marks, langCode)}/{toLocaleNumber(sub.max_marks, langCode)})
+                                        </TableHead>
+                                    ))}
+                                    <TableHead className="py-2.5 px-4 text-center">{t("grand_total") || "Grand Total"}</TableHead>
+                                    <TableHead className="py-2.5 px-4 text-center">{t("percent") || "Percent"}</TableHead>
+                                    <TableHead className="py-2.5 px-4 text-right">{t("result") || "Result"}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? <TableSkeleton cols={7 + subjects.length} /> : paginatedData.length > 0 ? (
+                                    paginatedData.map((row, i) => (
+                                        <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-colors">
+                                            <TableCell className="py-3 px-4 font-bold text-indigo-600">{toLocaleNumber(row.rank, langCode)}</TableCell>
+                                            <TableCell className="py-3 px-4 font-medium">{row.admission_no}</TableCell>
+                                            <TableCell className="py-3 px-4">{row.roll_no ? toLocaleNumber(row.roll_no, langCode) : "-"}</TableCell>
+                                            <TableCell className="py-3 px-4 font-semibold text-gray-800">{row.student_name}</TableCell>
+                                            {subjects.map(sub => (
+                                                <TableCell key={sub.id} className="py-3 px-4 text-center font-medium">
+                                                    {toLocaleNumber(row.marks?.[sub.id] ?? 0, langCode)}
+                                                </TableCell>
+                                            ))}
+                                            <TableCell className="py-3 px-4 text-center font-bold text-gray-800">
+                                                {toLocaleNumber(row.total_marks, langCode)} / {toLocaleNumber(row.max_total, langCode)}
                                             </TableCell>
-                                        ))}
-                                        <TableCell className="py-3 px-4 text-center font-bold">{row.total_marks} / {row.max_total}</TableCell>
-                                        <TableCell className="py-3 px-4 text-center">
-                                            <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold", 
-                                                row.percent >= 80 ? "bg-emerald-100 text-emerald-700" : 
-                                                row.percent >= 40 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                                            )}>
-                                                {row.percent}%
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="py-3 px-4 text-right">
-                                            <span className={cn("font-bold", row.result === 'Pass' ? "text-emerald-500" : "text-red-500")}>
-                                                {row.result}
-                                            </span>
+                                            <TableCell className="py-3 px-4 text-center">
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded text-[9px] font-bold shadow-2xs", 
+                                                    row.percent >= 80 ? "bg-emerald-100 text-emerald-700" : 
+                                                    row.percent >= 40 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                                                )}>
+                                                    {toLocaleNumber(row.percent, langCode)}%
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-right">
+                                                <span className={cn(
+                                                    "px-2 py-0.5 rounded text-[9px] font-bold inline-block shadow-2xs", 
+                                                    /pass/i.test(row.result) ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"
+                                                )}>
+                                                    {/pass/i.test(row.result) ? (t("passed") || "উত্তীর্ণ") : (t("failed") || "অনুত্তীর্ণ")}
+                                                </span>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow className="hover:bg-transparent h-64">
+                                        <TableCell colSpan={7 + subjects.length} className="text-center py-12">
+                                            <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
+                                                <p className="text-rose-400 font-bold mb-2 uppercase text-[10px] tracking-widest">{t("no_data_available_in_table") || "No data available in table"}</p>
+                                                <div className="w-14 h-14 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100 shadow-inner">
+                                                    <Trophy className="h-7 w-7 text-gray-300" />
+                                                </div>
+                                                <p className="text-gray-500 font-medium text-[11px]">
+                                                    {t("search_with_different_criteria") || "Add new record or search with different criteria."}
+                                                </p>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            ) : (
-                                <TableRow className="hover:bg-transparent h-64">
-                                    <TableCell colSpan={11 + subjects.length} className="text-center py-12">
-                                        <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                            <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest">No data available in table</p>
-                                            <div className="relative">
-                                                <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                    <Trophy className="h-8 w-8 text-gray-200" />
-                                                </div>
-                                                <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full border border-indigo-50 flex items-center justify-center">
-                                                    <Plus className="h-3 w-3 text-indigo-300" />
-                                                </div>
-                                            </div>
-                                            <p className="text-emerald-500 font-bold text-[10px] flex items-center gap-1">
-                                                <span className="text-lg">←</span> Add new record or search with different criteria.
-                                            </p>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2 border-t border-gray-50">
-                    <div>Showing {reportData.length} to {reportData.length} of {reportData.length} entries</div>
+                {/* Footer with Pagination placed at the bottom edge */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-100 text-[11px] text-gray-500 mt-6">
+                    <div>
+                        {t("showing_x_to_y_of_z", {
+                            from: toLocaleNumber(filteredData.length > 0 ? (currentPage - 1) * pageSize + 1 : 0, langCode),
+                            to: toLocaleNumber(Math.min(currentPage * pageSize, filteredData.length), langCode),
+                            total: toLocaleNumber(filteredData.length, langCode),
+                        })}
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-7 w-7 rounded-lg border-gray-200 disabled:opacity-40" 
+                            disabled={currentPage <= 1}
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageNum) => (
+                            <Button
+                                key={pageNum}
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={cn(
+                                    "h-7 px-2.5 text-[11px] font-bold rounded-lg transition-all",
+                                    currentPage === pageNum 
+                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs" 
+                                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                )}
+                            >
+                                {toLocaleNumber(pageNum, langCode)}
+                            </Button>
+                        ))}
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-7 w-7 rounded-lg border-gray-200 disabled:opacity-40" 
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
+

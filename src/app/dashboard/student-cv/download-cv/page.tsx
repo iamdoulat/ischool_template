@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useLanguage } from "@/components/providers/language-provider";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -13,23 +14,31 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Card, CardContent, CardHeader, CardTitle,
-} from "@/components/ui/card";
-import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Copy, FileSpreadsheet, Printer,
+  Copy, FileSpreadsheet, FileBox, FileText, Printer,
   ChevronLeft, ChevronRight, Search, Download,
   Loader2, FileUser, Users, Eye, Phone, Calendar,
-  GraduationCap, AlertCircle
+  GraduationCap, AlertCircle, Settings
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import {
+  cn,
+  toLocaleNumber,
+  translateClassName,
+  translateSectionName,
+  translateGender,
+  translateStudentCategory,
+} from "@/lib/utils";
 import { StudentCVTemplate, generateDefaultAvatarDataUri, type StudentCVData } from "./StudentCVTemplate";
 import { downloadStudentCVAsPdf } from "./cvDownload";
 import { getImageUrl } from "@/lib/image-url";
+import Link from "next/link";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 async function convertImageToBase64(url: string | null | undefined): Promise<string | undefined> {
   if (!url || !url.trim()) return undefined;
@@ -101,6 +110,7 @@ interface Student {
 }
 
 export default function DownloadCVPage() {
+  const { t, language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
   const [criteria, setCriteria] = useState<any[]>([]);
@@ -137,11 +147,11 @@ export default function DownloadCVPage() {
       setCurrentPage(1);
     } catch (error) {
       console.error("Failed to fetch students", error);
-      toast.error("Failed to load student list");
+      toast.error(t("failed_to_load_students") || "Failed to load student list");
     } finally {
       setSearching(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchCriteria = useCallback(async () => {
     setLoading(true);
@@ -161,11 +171,11 @@ export default function DownloadCVPage() {
       }
     } catch (error) {
       console.error("Failed to fetch criteria", error);
-      toast.error("Failed to load criteria");
+      toast.error(t("failed_to_load_classes") || "Failed to load criteria");
     } finally {
       setLoading(false);
     }
-  }, [fetchStudentsForClassSection]);
+  }, [fetchStudentsForClassSection, t]);
 
   useEffect(() => {
     fetchCriteria();
@@ -196,10 +206,13 @@ export default function DownloadCVPage() {
           templateRef.current!,
           `CV_${cvData.name?.replace(/\s+/g, "_") || "student"}.pdf`
         );
-        toast.success(`CV downloaded for ${cvData.name}`);
+        toast.success(
+          t("cv_downloaded_for_student", { name: cvData.name }) ||
+          `CV downloaded for ${cvData.name}`
+        );
       } catch (err) {
         console.error("PDF generation failed", err);
-        toast.error("Failed to generate CV PDF");
+        toast.error(t("failed_to_generate_cv_pdf") || "Failed to generate CV PDF");
       } finally {
         setDownloadingId(null);
         setPendingDownload(false);
@@ -211,11 +224,11 @@ export default function DownloadCVPage() {
       generate();
     });
     return () => cancelAnimationFrame(raf);
-  }, [pendingDownload, cvData]);
+  }, [pendingDownload, cvData, t]);
 
   const handleSearch = async () => {
     if (!selectedClass) {
-      toast.error("Please select Class");
+      toast.error(t("please_select_all_criteria") || "Please select Class");
       return;
     }
     fetchStudentsForClassSection(selectedClass, selectedSection);
@@ -325,10 +338,10 @@ export default function DownloadCVPage() {
       setPendingDownload(true);
     } catch (err) {
       console.error("Download failed", err);
-      toast.error("Failed to download CV");
+      toast.error(t("failed_to_download_cv") || "Failed to download CV");
       setDownloadingId(null);
     }
-  }, [downloadingId]);
+  }, [downloadingId, t]);
 
   /** Preview CV in interactive modal */
   const handlePreviewCV = async (student: Student) => {
@@ -338,7 +351,7 @@ export default function DownloadCVPage() {
       const detail = await prepareCvDetail(student);
       setPreviewStudent(detail);
     } catch {
-      toast.error("Failed to load CV preview");
+      toast.error(t("failed_to_load_cv_preview") || "Failed to load CV preview");
       setPreviewOpen(false);
     } finally {
       setLoadingPreview(false);
@@ -359,7 +372,8 @@ export default function DownloadCVPage() {
       const d = new Date(dobStr);
       if (isNaN(d.getTime())) return dobStr;
       const pad = (n: number) => n.toString().padStart(2, '0');
-      return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+      const formatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+      return toLocaleNumber(formatted, language?.short_code);
     } catch { return dobStr; }
   };
 
@@ -372,31 +386,77 @@ export default function DownloadCVPage() {
 
   // Copy table to clipboard
   const handleCopyTable = () => {
-    const header = "Admission No\tStudent Name\tDate Of Birth\tGender\tCategory\tMobile Number\n";
+    if (filteredStudents.length === 0) {
+      toast.error(t("no_data_available_in_table") || "No data to copy");
+      return;
+    }
+    const header = `${t("admission_no") || "Admission No"}\t${t("student_profile") || "Student Name"}\t${t("date_of_birth") || "Date Of Birth"}\t${t("gender") || "Gender"}\t${t("category") || "Category"}\t${t("mobile_number") || "Mobile Number"}\n`;
     const rows = filteredStudents.map(s =>
-      `${s.admission_no}\t${s.name}\t${formatDob(s.dob)}\t${s.gender}\t${s.student_category?.category_name || s.category || '-'}\t${s.phone || '-'}`
+      `${s.admission_no}\t${s.name}\t${formatDob(s.dob)}\t${translateGender(s.gender, language?.short_code)}\t${translateStudentCategory(s.student_category?.category_name || s.category, language?.short_code) || s.student_category?.category_name || s.category || '-'}\t${s.phone ? toLocaleNumber(s.phone, language?.short_code) : '-'}`
     ).join("\n");
     navigator.clipboard.writeText(header + rows);
-    toast.success("Student list copied to clipboard!");
+    toast.success(t("student_directory_copied_to_clipboard") || "Student directory copied to clipboard!");
   };
 
-  // Export CSV
-  const handleExportCsv = () => {
-    const header = "Admission No,Student Name,Date Of Birth,Gender,Category,Mobile Number\n";
-    const rows = filteredStudents.map(s =>
-      `"${s.admission_no}","${s.name}","${formatDob(s.dob)}","${s.gender}","${s.student_category?.category_name || s.category || '-'}","${s.phone || '-'}"`
-    ).join("\n");
-    const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `student_cv_list_${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    toast.success("CSV file downloaded!");
+  // Export Excel / CSV
+  const handleExportExcel = (isCsv = false) => {
+    if (filteredStudents.length === 0) {
+      toast.error(t("no_data_available_in_table") || "No data to export");
+      return;
+    }
+    const mapped = filteredStudents.map(s => ({
+      [t("admission_no") || "Admission No"]: s.admission_no,
+      [t("student_profile") || "Student Name"]: `${s.name} ${s.last_name || ""}`.trim(),
+      [t("date_of_birth") || "Date Of Birth"]: formatDob(s.dob),
+      [t("gender") || "Gender"]: translateGender(s.gender, language?.short_code),
+      [t("category") || "Category"]: translateStudentCategory(s.student_category?.category_name || s.category, language?.short_code) || s.student_category?.category_name || s.category || "-",
+      [t("mobile_number") || "Mobile Number"]: s.phone ? toLocaleNumber(s.phone, language?.short_code) : "-",
+      [t("class") || "Class"]: s.school_class?.name ? translateClassName(s.school_class.name, language?.short_code) : "-",
+      [t("section") || "Section"]: s.section?.name ? translateSectionName(s.section.name, language?.short_code) : "-",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(mapped);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Student CV List");
+    if (isCsv) {
+      XLSX.writeFile(wb, `student_cv_list_${new Date().toISOString().slice(0, 10)}.csv`, { bookType: "csv" });
+      toast.success(t("csv_file_downloaded") || "CSV file downloaded!");
+    } else {
+      XLSX.writeFile(wb, `student_cv_list_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(t("excel_downloaded") || "Excel file downloaded!");
+    }
+  };
+
+  // Export PDF
+  const handleExportPdf = () => {
+    if (filteredStudents.length === 0) {
+      toast.error(t("no_data_available_in_table") || "No data to export");
+      return;
+    }
+    const doc = new jsPDF();
+    const head = [[
+      t("admission_no") || "Admission No",
+      t("student_profile") || "Student Name",
+      t("date_of_birth") || "Date Of Birth",
+      t("gender") || "Gender",
+      t("category") || "Category",
+      t("mobile_number") || "Mobile Number",
+    ]];
+    const body = filteredStudents.map(s => [
+      s.admission_no,
+      `${s.name} ${s.last_name || ""}`.trim(),
+      formatDob(s.dob),
+      translateGender(s.gender, language?.short_code),
+      translateStudentCategory(s.student_category?.category_name || s.category, language?.short_code) || s.student_category?.category_name || s.category || "-",
+      s.phone ? toLocaleNumber(s.phone, language?.short_code) : "-",
+    ]);
+    autoTable(doc, { head, body, theme: "grid" });
+    doc.save(`student_cv_list_${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success(t("pdf_downloaded") || "PDF downloaded");
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
+    <div className="w-full space-y-4 pb-12">
 
       {/* ── Off-screen CV Template (hidden, used only for PDF capture) ── */}
       <div
@@ -412,56 +472,74 @@ export default function DownloadCVPage() {
         {cvData && <StudentCVTemplate ref={templateRef} data={cvData} />}
       </div>
 
-      {/* ── Master Header Banner ── */}
-      <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
+      {/* ── Master Page Header Banner ── */}
+      <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
-              <FileUser className="h-6 w-6" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+              <FileUser className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                Download Student Curriculum Vitae (CV)
+              <h1 className="text-base font-bold tracking-tight text-gray-800 leading-none flex items-center gap-2 flex-wrap">
+                {t("download_student_cv_title") || "Download Student Curriculum Vitae (CV)"}
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                  Academic Portfolios
+                  {t("academic_portfolios") || "Academic Portfolios"}
                 </span>
               </h1>
               <p className="text-[11px] text-gray-500 mt-1">
-                Filter by academic class and section to generate, preview, and download standardized student resumes & portfolios.
+                {t("download_student_cv_description") || "Filter by academic class and section to generate, preview, and download standardized student resumes & portfolios."}
               </p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <Link href="/dashboard/student-cv/build-cv">
+              <Button
+                variant="outline"
+                className="h-8 px-3 text-xs font-semibold rounded-lg border-gray-200 bg-white hover:bg-gray-50 text-gray-700 gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Eye className="h-3.5 w-3.5 text-indigo-600" />
+                <span>{t("build_cv") || "Build CV"}</span>
+              </Button>
+            </Link>
+            <Link href="/dashboard/student-cv/setting">
+              <Button
+                className="h-8 px-3.5 text-xs font-bold rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-xs gap-1.5 cursor-pointer active:scale-95 transition-all"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                <span>{t("cv_settings") || "CV Settings"}</span>
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
 
       {/* ── Criteria Selection Card ── */}
-      <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
-        <CardHeader className="flex flex-row items-center justify-between gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
-              <GraduationCap className="h-4 w-4" />
-            </span>
-            <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
-              Filter Selection Criteria
-            </CardTitle>
-          </div>
-        </CardHeader>
+      <div className="border border-gray-100 shadow-sm rounded-lg bg-white overflow-hidden">
+        <div className="flex items-center gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+            <GraduationCap className="h-4 w-4" />
+          </span>
+          <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-800">
+            {t("filter_selection_criteria") || "Filter Selection Criteria"}
+          </h2>
+        </div>
 
-        <CardContent className="p-5">
+        <div className="p-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
             {/* Class Select */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700">
-                Class <span className="text-rose-500">*</span>
+              <Label className="text-xs font-bold text-gray-700">
+                {t("class") || "Class"} <span className="text-rose-500">*</span>
               </Label>
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                  <SelectValue placeholder="Select Class" />
+                <SelectTrigger className="h-9 text-xs bg-white border-gray-200 focus:ring-indigo-500 rounded-lg">
+                  <SelectValue placeholder={t("select_class") || "Select Class"} />
                 </SelectTrigger>
                 <SelectContent>
                   {criteria.map((c: any) => (
                     <SelectItem key={c.id} value={c.id.toString()}>
-                      {c.name}
+                      {translateClassName(c.name, language?.short_code)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -470,15 +548,17 @@ export default function DownloadCVPage() {
 
             {/* Section Select */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700">Section</Label>
+              <Label className="text-xs font-bold text-gray-700">
+                {t("section") || "Section"}
+              </Label>
               <Select value={selectedSection} onValueChange={setSelectedSection}>
-                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                  <SelectValue placeholder="Select Section" />
+                <SelectTrigger className="h-9 text-xs bg-white border-gray-200 focus:ring-indigo-500 rounded-lg">
+                  <SelectValue placeholder={t("select_section") || "Select Section"} />
                 </SelectTrigger>
                 <SelectContent>
                   {sections.map((s: any) => (
                     <SelectItem key={s.id} value={s.id.toString()}>
-                      {s.name}
+                      {translateSectionName(s.name, language?.short_code)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -493,110 +573,126 @@ export default function DownloadCVPage() {
                 className="w-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
               >
                 {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                Search Students
+                {t("search_students") || "Search Students"}
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ── Table Card ── */}
-      <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
-        {/* Table Header / Toolbar */}
-        <CardHeader className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
-              <Users className="h-4 w-4" />
-            </span>
-            <CardTitle className="text-sm font-bold text-slate-800">
-              Student Directory List ({filteredStudents.length})
-            </CardTitle>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Search Input */}
-            <div className="relative w-full sm:w-56">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input
-                placeholder="Search by name or admission no..."
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
-              />
+      <div className="border border-gray-100 shadow-sm rounded-lg bg-white overflow-hidden flex flex-col justify-between min-h-[460px]">
+        <div>
+          {/* Table Header / Toolbar */}
+          <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                <Users className="h-4 w-4" />
+              </span>
+              <h3 className="text-sm font-bold text-gray-800">
+                {t("student_directory_list") || "Student Directory List"} ({toLocaleNumber(filteredStudents.length, language?.short_code)})
+              </h3>
             </div>
 
-            {/* Per page */}
-            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-              <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200">
-                <SelectValue placeholder="50" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-                <SelectItem value="100">100</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Search Input */}
+              <div className="relative w-full sm:w-56">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                <Input
+                  placeholder={t("search_by_name_or_admission_no") || "Search by name or admission no..."}
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                  className="pl-8 h-8 text-xs bg-white border-gray-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
+                />
+              </div>
 
-            {/* Multi-format export toolbar */}
-            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
-              <button
-                type="button"
-                onClick={handleCopyTable}
-                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                title="Copy Table"
-              >
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                title="Export CSV"
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all"
-                title="Print List"
-              >
-                <Printer className="h-3.5 w-3.5" />
-              </button>
+              {/* Per page */}
+              <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
+                <SelectTrigger className="h-8 w-20 text-xs bg-white border-gray-200">
+                  <SelectValue placeholder="50" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                  <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                  <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                  <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Multi-format export toolbar */}
+              <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white shadow-xs">
+                <button
+                  type="button"
+                  onClick={handleCopyTable}
+                  className="p-1.5 hover:bg-gray-100 text-gray-600 border-r border-gray-200 transition-all cursor-pointer"
+                  title={t("copy") || "Copy Table"}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportExcel(false)}
+                  className="p-1.5 hover:bg-gray-100 text-gray-600 border-r border-gray-200 transition-all cursor-pointer"
+                  title={t("export_excel") || "Export Excel"}
+                >
+                  <FileSpreadsheet className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportExcel(true)}
+                  className="p-1.5 hover:bg-gray-100 text-gray-600 border-r border-gray-200 transition-all cursor-pointer"
+                  title={t("export_csv") || "Export CSV"}
+                >
+                  <FileBox className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  className="p-1.5 hover:bg-gray-100 text-gray-600 border-r border-gray-200 transition-all cursor-pointer"
+                  title={t("export_pdf") || "Export PDF"}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="p-1.5 hover:bg-gray-100 text-gray-600 transition-all cursor-pointer"
+                  title={t("print") || "Print List"}
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
-        </CardHeader>
 
-        {/* Table Content */}
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50/80 border-b border-slate-200">
+          {/* Table Content */}
+          <div className="overflow-x-auto custom-scrollbar px-4">
+            <Table className="min-w-[900px]">
+              <TableHeader className="bg-gray-50/80 border-b border-gray-200">
                 <TableRow>
-                  <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Admission No</TableHead>
-                  <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Student Profile</TableHead>
-                  <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Date Of Birth</TableHead>
-                  <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Gender</TableHead>
-                  <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Category</TableHead>
-                  <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Mobile Number</TableHead>
-                  <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-right pr-6">CV Actions</TableHead>
+                  <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("admission_no") || "Admission No"}</TableHead>
+                  <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("student_profile") || "Student Profile"}</TableHead>
+                  <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("date_of_birth") || "Date Of Birth"}</TableHead>
+                  <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("gender") || "Gender"}</TableHead>
+                  <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("category") || "Category"}</TableHead>
+                  <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("mobile_number") || "Mobile Number"}</TableHead>
+                  <TableHead className="py-3 px-4 text-xs font-bold text-gray-700 text-right pr-6">{t("cv_actions") || "CV Actions"}</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-slate-100">
+              <TableBody className="divide-y divide-gray-100">
                 {searching ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-16">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-indigo-500" />
-                      <p className="text-xs font-medium text-slate-500">Loading student directory...</p>
+                      <p className="text-xs font-medium text-gray-500">{t("loading_student_directory") || "Loading student directory..."}</p>
                     </TableCell>
                   </TableRow>
                 ) : paginatedStudents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16 text-slate-400">
-                      <AlertCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                      <p className="text-xs font-bold text-slate-600">No students found</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Select a different class or section above.</p>
+                    <TableCell colSpan={7} className="text-center py-16 text-gray-400">
+                      <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                      <p className="text-xs font-bold text-gray-600">{t("no_students_found") || "No students found"}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{t("select_different_class_or_section") || "Select a different class or section above."}</p>
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -607,7 +703,7 @@ export default function DownloadCVPage() {
                     >
                       {/* Admission No */}
                       <TableCell className="py-3 px-4">
-                        <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                        <span className="font-mono text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200">
                           {item.admission_no}
                         </span>
                       </TableCell>
@@ -615,27 +711,27 @@ export default function DownloadCVPage() {
                       {/* Student Profile & Avatar */}
                       <TableCell className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8 border border-slate-200 shadow-xs">
+                          <Avatar className="h-8 w-8 border border-gray-200 shadow-xs">
                             <AvatarImage src={getImageUrl(item.avatar || item.student_photo || item.photo_url)} className="object-cover" />
                             <AvatarFallback className="text-xs font-bold bg-indigo-50 text-indigo-700">
                               {item.name.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="text-xs font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
+                            <p className="text-xs font-bold text-gray-800 leading-snug group-hover:text-indigo-600 transition-colors">
                               {item.name} {item.last_name || ""}
                             </p>
-                            <p className="text-[10px] text-slate-400">
-                              {item.school_class?.name ? `${item.school_class.name} (${item.section?.name || 'A'})` : 'Student'}
+                            <p className="text-[10px] text-gray-400">
+                              {item.school_class?.name ? `${translateClassName(item.school_class.name, language?.short_code)} (${translateSectionName(item.section?.name || 'A', language?.short_code)})` : t("student") || 'Student'}
                             </p>
                           </div>
                         </div>
                       </TableCell>
 
                       {/* Date of Birth */}
-                      <TableCell className="py-3 px-4 text-xs text-slate-600 font-medium">
+                      <TableCell className="py-3 px-4 text-xs text-gray-600 font-medium">
                         <span className="inline-flex items-center gap-1">
-                          <Calendar className="h-3 w-3 text-slate-400" />
+                          <Calendar className="h-3 w-3 text-gray-400" />
                           {formatDob(item.dob)}
                         </span>
                       </TableCell>
@@ -648,24 +744,24 @@ export default function DownloadCVPage() {
                             ? "bg-blue-50 text-blue-700 border-blue-200"
                             : item.gender?.toLowerCase() === "female"
                               ? "bg-rose-50 text-rose-700 border-rose-200"
-                              : "bg-slate-100 text-slate-700 border-slate-200"
+                              : "bg-gray-100 text-gray-700 border-gray-200"
                         )}>
-                          {item.gender || "—"}
+                          {translateGender(item.gender, language?.short_code)}
                         </span>
                       </TableCell>
 
                       {/* Category */}
-                      <TableCell className="py-3 px-4 text-xs text-slate-600 font-medium">
-                        <span className="bg-slate-50 border border-slate-200 px-2 py-0.5 rounded text-[10px]">
-                          {item.student_category?.category_name || item.category || "General"}
+                      <TableCell className="py-3 px-4 text-xs text-gray-600 font-medium">
+                        <span className="bg-gray-50 border border-gray-200 px-2 py-0.5 rounded text-[10px]">
+                          {translateStudentCategory(item.student_category?.category_name || item.category, language?.short_code) || item.student_category?.category_name || item.category || t("general") || "General"}
                         </span>
                       </TableCell>
 
                       {/* Mobile Phone */}
-                      <TableCell className="py-3 px-4 text-xs text-slate-600 font-medium">
+                      <TableCell className="py-3 px-4 text-xs text-gray-600 font-medium">
                         <span className="inline-flex items-center gap-1 font-mono">
                           <Phone className="h-3 w-3 text-indigo-500" />
-                          {item.phone || "—"}
+                          {item.phone ? toLocaleNumber(item.phone, language?.short_code) : "—"}
                         </span>
                       </TableCell>
 
@@ -677,11 +773,11 @@ export default function DownloadCVPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => handlePreviewCV(item)}
-                            className="h-7 px-2 text-xs border-slate-200 hover:bg-slate-100 text-slate-700 gap-1"
-                            title="Preview CV Portfolio"
+                            className="h-7 px-2.5 text-xs border-gray-200 hover:bg-gray-100 text-gray-700 gap-1 rounded-lg cursor-pointer"
+                            title={t("preview_cv_portfolio") || "Preview CV Portfolio"}
                           >
                             <Eye className="h-3.5 w-3.5 text-indigo-600" />
-                            <span className="hidden sm:inline">Preview</span>
+                            <span className="hidden sm:inline">{t("preview") || "Preview"}</span>
                           </Button>
 
                           {/* Download CV PDF */}
@@ -689,15 +785,15 @@ export default function DownloadCVPage() {
                             size="sm"
                             onClick={() => handleDownloadCV(item)}
                             disabled={downloadingId === item.id}
-                            className="h-7 px-2.5 text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs gap-1 border-0"
-                            title="Download CV as PDF"
+                            className="h-7 px-2.5 text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs gap-1 border-0 rounded-lg cursor-pointer"
+                            title={t("download_cv_as_pdf") || "Download CV as PDF"}
                           >
                             {downloadingId === item.id ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             ) : (
                               <Download className="h-3.5 w-3.5" />
                             )}
-                            <span className="hidden sm:inline">PDF</span>
+                            <span className="hidden sm:inline">{t("pdf") || "PDF"}</span>
                           </Button>
                         </div>
                       </TableCell>
@@ -707,13 +803,18 @@ export default function DownloadCVPage() {
               </TableBody>
             </Table>
           </div>
-        </CardContent>
+        </div>
 
-        {/* Footer / Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+        {/* Pinned Bottom Footer / Pagination */}
+        <div className="mt-auto flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500">
           <div>
-            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+            {t("showing_x_to_y_of_z", {
+              x: toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, language?.short_code),
+              y: toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), language?.short_code),
+              z: toLocaleNumber(totalEntries, language?.short_code),
+            }) || (
+              <>Showing {totalEntries > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries</>
+            )}
           </div>
 
           {totalEntries > 0 && (
@@ -721,7 +822,7 @@ export default function DownloadCVPage() {
               <button
                 disabled={safePage === 1}
                 onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                className="h-8 w-8 bg-white hover:bg-slate-100 text-slate-600 rounded-lg transition-all border border-slate-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                className="h-8 w-8 bg-white hover:bg-gray-100 text-gray-600 rounded-lg transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -734,42 +835,42 @@ export default function DownloadCVPage() {
                     "h-8 w-8 transition-all text-xs flex items-center justify-center cursor-pointer font-bold rounded-lg",
                     safePage === page
                       ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
-                      : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                      : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
                   )}
                 >
-                  {page}
+                  {toLocaleNumber(page, language?.short_code)}
                 </button>
               ))}
 
               <button
                 disabled={safePage === totalPages}
                 onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                className="h-8 w-8 bg-white hover:bg-slate-100 text-slate-600 rounded-lg transition-all border border-slate-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                className="h-8 w-8 bg-white hover:bg-gray-100 text-gray-600 rounded-lg transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           )}
         </div>
-      </Card>
+      </div>
 
       {/* ── CV Preview Modal ── */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-2xl rounded-2xl p-6 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-800">
               <FileUser className="h-5 w-5 text-indigo-600" />
-              Student Curriculum Vitae Preview
+              {t("student_curriculum_vitae_preview") || "Student Curriculum Vitae Preview"}
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Institutional resume preview before exporting to PDF
+            <DialogDescription className="text-xs text-gray-500">
+              {t("institutional_resume_preview_desc") || "Institutional resume preview before exporting to PDF"}
             </DialogDescription>
           </DialogHeader>
 
           {loadingPreview ? (
             <div className="py-16 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500 mb-2" />
-              <p className="text-xs text-slate-500">Compiling CV data...</p>
+              <p className="text-xs text-gray-500">{t("compiling_cv_data") || "Compiling CV data..."}</p>
             </div>
           ) : previewStudent ? (
             <div className="space-y-4 py-2">
@@ -782,52 +883,60 @@ export default function DownloadCVPage() {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">{previewStudent.full_name || previewStudent.name}</h3>
+                  <h3 className="text-base font-bold text-gray-900">{previewStudent.full_name || previewStudent.name}</h3>
                   <p className="text-xs text-indigo-700 font-semibold">
-                    {previewStudent.class_name} — {previewStudent.section_name} (Roll #{previewStudent.roll_no})
+                    {translateClassName(previewStudent.class_name || "", language?.short_code)} — {translateSectionName(previewStudent.section_name || "", language?.short_code)} ({t("roll_num", { roll: toLocaleNumber(previewStudent.roll_no || "", language?.short_code) }) || `Roll #${previewStudent.roll_no}`})
                   </p>
-                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                    Admission No: {previewStudent.admission_no}
+                  <p className="text-[11px] text-gray-500 font-mono mt-0.5">
+                    {t("admission_no") || "Admission No"}: {previewStudent.admission_no}
                   </p>
                 </div>
               </div>
 
               {/* Personal Details Grid */}
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</p>
-                  <p className="font-semibold text-slate-800">{previewStudent.dob || "—"}</p>
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">{t("date_of_birth") || "Date of Birth"}</p>
+                  <p className="font-semibold text-gray-800">{previewStudent.dob ? formatDob(previewStudent.dob) : "—"}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Gender & Category</p>
-                  <p className="font-semibold text-slate-800">{previewStudent.gender || "—"} / {previewStudent.category || "General"}</p>
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">{t("gender_and_category") || "Gender & Category"}</p>
+                  <p className="font-semibold text-gray-800">
+                    {translateGender(previewStudent.gender, language?.short_code) || "—"} / {translateStudentCategory(previewStudent.category, language?.short_code) || previewStudent.category || t("general") || "General"}
+                  </p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone & Email</p>
-                  <p className="font-semibold text-slate-800">{previewStudent.phone || "—"}</p>
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">{t("contact_phone_and_email") || "Contact Phone & Email"}</p>
+                  <p className="font-semibold text-gray-800">{previewStudent.phone ? toLocaleNumber(previewStudent.phone, language?.short_code) : "—"}</p>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Blood Group & Nationality</p>
-                  <p className="font-semibold text-slate-800">{previewStudent.blood_group || "B+"} / {previewStudent.nationality || "Bangladeshi"}</p>
+                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">{t("blood_group_and_nationality") || "Blood Group & Nationality"}</p>
+                  <p className="font-semibold text-gray-800">
+                    {previewStudent.blood_group || "B+"} / {
+                      previewStudent.nationality?.toLowerCase() === "bangladeshi" ? (t("bangladeshi") || "Bangladeshi") :
+                      previewStudent.nationality?.toLowerCase() === "bangladesh" ? (t("bangladesh") || "Bangladesh") :
+                      (previewStudent.nationality || t("bangladeshi") || "Bangladeshi")
+                    }
+                  </p>
                 </div>
               </div>
 
               {/* Guardian Info */}
-              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Parent / Guardian</p>
-                <p className="font-semibold text-slate-800">
-                  Father: {previewStudent.father_name || "—"} | Mother: {previewStudent.mother_name || "—"}
+              <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase">{t("parent_guardian_detail") || "Parent / Guardian"}</p>
+                <p className="font-semibold text-gray-800">
+                  {t("father") || "Father"}: {previewStudent.father_name || "—"} | {t("mother") || "Mother"}: {previewStudent.mother_name || "—"}
                 </p>
-                <p className="text-[11px] text-slate-500">
-                  Address: {previewStudent.current_address || previewStudent.address || "—"}
+                <p className="text-[11px] text-gray-500">
+                  {t("address") || "Address"}: {toLocaleNumber(previewStudent.current_address || previewStudent.address || "—", language?.short_code)}
                 </p>
               </div>
             </div>
           ) : null}
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setPreviewOpen(false)} className="text-xs">
-              Close Preview
+            <Button variant="outline" onClick={() => setPreviewOpen(false)} className="text-xs rounded-lg cursor-pointer">
+              {t("close_preview") || "Close Preview"}
             </Button>
             {previewStudent && (
               <Button
@@ -840,9 +949,9 @@ export default function DownloadCVPage() {
                     setPendingDownload(true);
                   }
                 }}
-                className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs gap-1"
+                className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs gap-1 rounded-lg cursor-pointer"
               >
-                <Download className="h-3.5 w-3.5" /> Download Full PDF
+                <Download className="h-3.5 w-3.5" /> {t("download_full_pdf") || "Download Full PDF"}
               </Button>
             )}
           </DialogFooter>

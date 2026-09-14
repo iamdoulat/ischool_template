@@ -1,11 +1,11 @@
-const CACHE_NAME = 'ischool-pwa-v5';
+const CACHE_NAME = 'ischool-pwa-v6';
 
 const urlsToCache = [
   '/',
   '/offline.html',
-  '/favicon.ico',
-  '/logo-app.png',
-  '/logo-admin.png'
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+  '/icons/icon.svg'
 ];
 
 self.addEventListener('install', (event) => {

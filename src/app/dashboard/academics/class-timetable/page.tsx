@@ -32,7 +32,15 @@ import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useSettings } from "@/components/providers/settings-provider";
-import { formatTime, cn } from "@/lib/utils";
+import {
+    formatTime,
+    cn,
+    translateClassName,
+    translateSectionName,
+    translateSubjectGroupName,
+    translateSubjectName,
+    toLocaleNumber
+} from "@/lib/utils";
 import { getImageUrl } from "@/lib/image-url";
 import {
     AlertDialog,
@@ -103,7 +111,7 @@ function TimetableSkeleton({ days }: { days: string[] }) {
 
 export default function ClassTimetablePage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const { settings } = useSettings();
     const tf = settings?.time_format === "12" ? "12" : "24" as const;
@@ -244,10 +252,15 @@ export default function ClassTimetablePage() {
     const selectedClassName = classes.find(c => String(c.id) === selectedClassId)?.name;
     const selectedSectionName = sections.find(s => String(s.id) === selectedSectionId)?.name;
 
+    const getDayLabel = (day: string) => {
+        const lower = day.toLowerCase();
+        return t(lower) || day;
+    };
+
     return (
         <div className="space-y-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen">
             {/* Header/Title Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden no-print">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <CalendarClock className="h-5 w-5" />
@@ -262,8 +275,8 @@ export default function ClassTimetablePage() {
                     </div>
                 </div>
                 <Link href="/dashboard/academics/class-timetable/add">
-                    <Button className="btn-gradient text-white px-5 h-9 text-xs gap-1.5 shadow-md rounded-full font-bold uppercase tracking-wider">
-                        <Plus className="h-4 w-4" /> {t("add_new") || "Add Timetable"}
+                    <Button className="btn-gradient text-white px-5 h-9 text-xs gap-1.5 shadow-md rounded-full font-bold uppercase tracking-wider cursor-pointer">
+                        <Plus className="h-4 w-4" /> {t("add_timetable") || t("add_new") || "Add Timetable"}
                     </Button>
                 </Link>
             </div>
@@ -279,13 +292,13 @@ export default function ClassTimetablePage() {
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
                                 {t("select_criteria")}
                             </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("choose_class_section_to_view_timetable")}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("choose_class_section_to_view_timetable") || "Choose class and section to view timetable"}</p>
                         </div>
                     </div>
                 </CardHeader>
 
                 <CardContent className="px-5 pb-5">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                         {/* Class */}
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
@@ -301,10 +314,16 @@ export default function ClassTimetablePage() {
                                 }}
                             >
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder={t("select")} />
+                                    <SelectValue placeholder={t("select")}>
+                                        {selectedClassId ? translateClassName(classes.find(c => String(c.id) === selectedClassId)?.name, language?.short_code) : undefined}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>
+                                            {translateClassName(c.name, language?.short_code)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -320,10 +339,16 @@ export default function ClassTimetablePage() {
                                 disabled={!selectedClassId}
                             >
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder={!selectedClassId ? t("select_class_first") : t("select")} />
+                                    <SelectValue placeholder={!selectedClassId ? t("select_class_first") : t("select")}>
+                                        {selectedSectionId ? translateSectionName(sections.find(s => String(s.id) === selectedSectionId)?.name, language?.short_code) : undefined}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                    {sections.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>
+                                            {translateSectionName(s.name, language?.short_code)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -339,28 +364,33 @@ export default function ClassTimetablePage() {
                                 disabled={!selectedClassId}
                             >
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder={t("select")} />
+                                    <SelectValue placeholder={t("select")}>
+                                        {selectedSubjectGroupId ? translateSubjectGroupName(subjectGroups.find(sg => String(sg.id) === selectedSubjectGroupId)?.name, language?.short_code) : undefined}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjectGroups
                                         .filter(sg => !selectedClassId || String(sg.school_class_id) === selectedClassId)
                                         .map(sg => (
-                                            <SelectItem key={sg.id} value={sg.id.toString()}>{sg.name}</SelectItem>
+                                             <SelectItem key={sg.id} value={sg.id.toString()}>
+                                                 {translateSubjectGroupName(sg.name, language?.short_code)}
+                                             </SelectItem>
                                         ))}
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
 
-                    <div className="flex justify-end mt-5 pt-3 border-t border-gray-100 dark:border-gray-800">
-                        <Button
-                            onClick={handleSearch}
-                            disabled={searching || loading}
-                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
-                        >
-                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                            {t("search")}
-                        </Button>
+                        {/* Search Button in same line */}
+                        <div>
+                            <Button
+                                onClick={handleSearch}
+                                disabled={searching || loading}
+                                className="w-full btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full cursor-pointer"
+                            >
+                                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -378,16 +408,18 @@ export default function ClassTimetablePage() {
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {selectedClassName && selectedSectionName
-                                    ? `${selectedClassName} • Section ${selectedSectionName} (${totalEntries} Periods Scheduled)`
-                                    : t("x_scheduled_entries", { count: totalEntries })}
+                                    ? `${translateClassName(selectedClassName, language?.short_code)} • ${t("section")} ${translateSectionName(selectedSectionName, language?.short_code)} (${toLocaleNumber(totalEntries, language?.short_code)} ${t("scheduled_periods") || "Scheduled Periods"})`
+                                    : totalEntries === 0
+                                        ? (t("zero_scheduled_entries") || t("x_scheduled_entries", { count: toLocaleNumber(0, language?.short_code) }))
+                                        : t("x_scheduled_entries", { count: toLocaleNumber(totalEntries, language?.short_code) })}
                             </p>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                         {totalEntries > 0 && (
-                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold px-2.5 py-1">
-                                {totalEntries} Scheduled Periods
+                            <Badge variant="outline" className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 text-xs font-bold px-2.5 py-1">
+                                {toLocaleNumber(totalEntries, language?.short_code)} {t("scheduled_periods") || "Scheduled Periods"}
                             </Badge>
                         )}
                         <Button
@@ -395,7 +427,7 @@ export default function ClassTimetablePage() {
                             size="icon"
                             className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded-lg shadow-sm p-0 border-0 no-print cursor-pointer"
                             onClick={handlePrint}
-                            title="Print Timetable"
+                            title={t("print_timetable") || t("print") || "Print Timetable"}
                         >
                             <Printer className="h-4 w-4" />
                         </Button>
@@ -410,23 +442,24 @@ export default function ClassTimetablePage() {
                             <div className="flex min-w-max gap-4 items-start">
                                 {timetableData.map((dayData) => {
                                     const entryCount = dayData.entries.length;
+                                    const localizedDay = getDayLabel(dayData.day);
                                     return (
                                         <div
                                             key={dayData.day}
                                             className="flex-1 min-w-[240px] max-w-[280px] flex flex-col space-y-3 bg-gray-50/40 dark:bg-gray-900/30 p-3 rounded-2xl border border-gray-200/80 dark:border-gray-800 shadow-2xs"
                                         >
                                             {/* Column Header */}
-                                            <div className="flex items-center justify-between px-2 py-1.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs">
+                                            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xs">
                                                 <span className="text-xs font-black text-gray-800 dark:text-gray-100 uppercase tracking-wider">
-                                                    {dayData.day}
+                                                    {localizedDay}
                                                 </span>
                                                 <span className={cn(
-                                                    "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight",
+                                                    "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight",
                                                     entryCount > 0
                                                         ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200"
                                                         : "bg-gray-100 text-gray-500 dark:bg-gray-700"
                                                 )}>
-                                                    {entryCount > 0 ? `${entryCount} Period${entryCount === 1 ? '' : 's'}` : "Off"}
+                                                    {entryCount > 0 ? `${toLocaleNumber(entryCount, language?.short_code)} ${entryCount === 1 ? (t("period") || "Period") : (t("periods") || t("period") || "Periods")}` : (t("period_off") || t("off") || "Off")}
                                                 </span>
                                             </div>
 
@@ -443,7 +476,7 @@ export default function ClassTimetablePage() {
                                                                 type="button"
                                                                 onClick={() => confirmDeleteEntry(entry.id)}
                                                                 className="absolute top-2.5 right-2.5 h-6 w-6 rounded-md bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-2xs"
-                                                                title="Delete Period"
+                                                                title={t("delete_period") || t("delete") || "Delete Period"}
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </button>
@@ -452,7 +485,7 @@ export default function ClassTimetablePage() {
                                                             <div className="flex items-center gap-1.5 mb-2.5">
                                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10.5px] border border-indigo-100 dark:border-indigo-900/60">
                                                                     <Clock className="h-3 w-3 text-indigo-500" />
-                                                                    #{idx + 1} • {formatTime(entry.start_time, tf)} - {formatTime(entry.end_time, tf)}
+                                                                    #{toLocaleNumber(idx + 1, language?.short_code)} • {toLocaleNumber(formatTime(entry.start_time, tf), language?.short_code)} - {toLocaleNumber(formatTime(entry.end_time, tf), language?.short_code)}
                                                                 </span>
                                                             </div>
 
@@ -462,7 +495,7 @@ export default function ClassTimetablePage() {
                                                                     <BookOpen className="h-3.5 w-3.5" />
                                                                 </div>
                                                                 <span className="font-bold text-gray-900 dark:text-gray-100 text-xs truncate">
-                                                                    {entry.subject?.name} {entry.subject?.code ? `(${entry.subject?.code})` : ""}
+                                                                    {translateSubjectName(entry.subject?.name, language?.short_code)} {entry.subject?.code ? `(${toLocaleNumber(entry.subject.code, language?.short_code)})` : ""}
                                                                 </span>
                                                             </div>
 
@@ -471,18 +504,18 @@ export default function ClassTimetablePage() {
                                                                 <div className="flex items-center justify-between text-gray-600 dark:text-gray-300">
                                                                     <div className="flex items-center gap-1.5 truncate">
                                                                         <User className="h-3 w-3 text-gray-400 shrink-0" />
-                                                                        <span className="truncate font-medium">{entry.staff?.name || "Teacher"}</span>
+                                                                        <span className="truncate font-medium">{entry.staff?.name || t("teacher") || "Teacher"}</span>
                                                                     </div>
                                                                     {entry.staff?.staff_id && (
                                                                         <span className="text-[9.5px] font-mono text-gray-400 font-semibold shrink-0">
-                                                                            {entry.staff.staff_id}
+                                                                            {toLocaleNumber(entry.staff.staff_id, language?.short_code)}
                                                                         </span>
                                                                     )}
                                                                 </div>
 
                                                                 <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 text-[10.5px]">
                                                                     <MapPin className="h-3 w-3 text-amber-500 shrink-0" />
-                                                                    <span>Room {entry.room || "N/A"}</span>
+                                                                    <span>{t("room") || "Room"} {toLocaleNumber(entry.room || "-", language?.short_code)}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -499,9 +532,10 @@ export default function ClassTimetablePage() {
                                                         <Link href="/dashboard/academics/class-timetable/add">
                                                             <button
                                                                 type="button"
-                                                                className="text-[10.5px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5 mt-1 cursor-pointer"
+                                                                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100/80 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 px-3 py-1 rounded-lg border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-1 mt-1 transition-all cursor-pointer shadow-2xs"
                                                             >
-                                                                <Plus className="h-3 w-3" /> Add Period
+                                                                <Plus className="h-3.5 w-3.5 text-indigo-600" />
+                                                                <span>{t("add_period") || "Add Period"}</span>
                                                             </button>
                                                         </Link>
                                                     </div>
@@ -521,7 +555,7 @@ export default function ClassTimetablePage() {
                 <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">
-                            {t("are_you_absolutely_sure") || "Delete Timetable Entry?"}
+                            {t("delete_timetable_entry") || t("are_you_absolutely_sure") || "Delete Timetable Entry?"}
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
                             {t("delete_entry_confirm_message") || "Are you sure you want to remove this period schedule? This action cannot be undone."}

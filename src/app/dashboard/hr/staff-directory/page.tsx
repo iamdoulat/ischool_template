@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,11 +57,16 @@ import {
     CheckCircle,
     Ban,
     QrCode,
-    Printer
+    ArrowRightLeft,
+    FilePlus,
+    Loader2
 } from "lucide-react";
+import { TransferDialog } from "@/components/multi-branch/transfer-dialog";
+import { StaffRequisitionDialog } from "@/components/hr/staff-requisition-dialog";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { toLocaleNumber } from "@/lib/utils";
 
 interface Staff {
     id: number;
@@ -120,8 +125,16 @@ function CardSkeleton({ count = 6 }: { count?: number }) {
 
 export default function StaffDirectoryPage() {
     const router = useRouter();
+    const pathname = usePathname() || "";
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
+    // Detect if current route is a sub-branch
+    const branchMatch = pathname.match(/^\/br\/([^\/]+)/);
+    const isSubBranch = (!!branchMatch && branchMatch[1] !== "main") || (typeof window !== "undefined" && !!localStorage.getItem("active_branch_id") && localStorage.getItem("active_branch_id") !== "1" && localStorage.getItem("active_branch_slug") !== "main");
+    const currentBranchSlug = branchMatch && branchMatch[1] !== "main" ? branchMatch[1] : null;
+
     const [view, setView] = useState("card");
     const [staffList, setStaffList] = useState<Staff[]>([]);
     const [roles, setRoles] = useState<Role[]>([]);
@@ -133,9 +146,36 @@ export default function StaffDirectoryPage() {
     const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
     const [statusDialogOpen, setStatusDialogOpen] = useState(false);
     const [staffToToggle, setStaffToToggle] = useState<Staff | null>(null);
+    const [transferStaff, setTransferStaff] = useState<Staff | null>(null);
+    const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+    const [requisitionDialogOpen, setRequisitionDialogOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
-    const fetchStaff = async (searchKeyword = "", roleFilter = "Select", statusFilter = "all") => {
+    const getLocalizedRoleName = (roleName?: string) => {
+        if (!roleName) return "";
+        const key = roleName.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        if (trans && trans !== key) return trans;
+        if (key === "super_admin" || key === "superadmin") return t("super_admin");
+        if (key === "admin") return t("admin");
+        if (key === "teacher") return t("teacher");
+        if (key === "accountant") return t("accountant");
+        if (key === "librarian") return t("librarian");
+        if (key === "receptionist") return t("receptionist");
+        if (key === "driver") return t("driver");
+        if (key === "branch_admin") return t("branch_admin");
+        return roleName;
+    };
+
+    const getLocalizedDepartmentName = (dept?: string) => {
+        if (!dept) return t("general");
+        const key = dept.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        if (trans && trans !== key) return trans;
+        return dept;
+    };
+
+    const fetchStaff = useCallback(async (searchKeyword = "", roleFilter = "Select", statusFilter = "all") => {
         setLoading(true);
         try {
             const params = new URLSearchParams();
@@ -144,21 +184,21 @@ export default function StaffDirectoryPage() {
             params.append("active", statusFilter);
 
             const response = await api.get(`/hr/staff-directory?${params.toString()}`);
-            if (response.data.status === "Success") {
-                setStaffList(response.data.data);
+            if (response.data.status === "Success" || response.data.data) {
+                setStaffList(response.data.data || []);
             }
         } catch (error) {
             console.error("Error fetching staff:", error);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const fetchRoles = async () => {
         try {
             const response = await api.get("/hr/staff-roles");
-            if (response.data.status === "Success") {
-                setRoles(response.data.data);
+            if (response.data.status === "Success" || response.data.data) {
+                setRoles(response.data.data || []);
             }
         } catch (error) {
             console.error("Error fetching roles:", error);
@@ -168,7 +208,7 @@ export default function StaffDirectoryPage() {
     const fetchCurrentUser = async () => {
         try {
             const response = await api.get("/profile");
-            if (response.data.status === "Success") {
+            if (response.data.status === "Success" || response.data.data) {
                 setCurrentUser(response.data.data);
             }
         } catch (error) {
@@ -181,9 +221,10 @@ export default function StaffDirectoryPage() {
             await Promise.all([fetchStaff(), fetchRoles(), fetchCurrentUser()]);
         };
         loadInitialData();
-    }, []);
+    }, [fetchStaff]);
 
-    const isAdmin = currentUser && (currentUser.role === "Admin" || currentUser.role === "Super Admin" || currentUser.role === "SUPER ADMIN");
+    const roleClean = (currentUser?.role || "").toLowerCase().replace(/[_\s]/g, "");
+    const isAdmin = currentUser && (roleClean.includes("admin") || roleClean.includes("superadmin"));
 
     const hasPerm = (permission: string) => {
         if (!currentUser) return false;
@@ -330,7 +371,7 @@ export default function StaffDirectoryPage() {
                         <div class="header-banner"></div>
                         ${avatarSrc ? `<img src="${avatarSrc}" class="avatar" alt="" />` : `<div class="avatar" style="display:flex;align-items:center;justify-content:center;font-weight:bold;color:#4f46e5;font-size:24px;">${person.name?.charAt(0)}</div>`}
                         <h2 class="name">${person.name}</h2>
-                        <p class="role">${person.role || "STAFF"}</p>
+                        <p class="role">${getLocalizedRoleName(person.role) || "STAFF"}</p>
                         <p class="details">Staff ID: ${person.staff_id || "N/A"} | Dept: ${person.department || "General"}</p>
                         <div class="qr-container">
                             <img src="${imgSrc}" class="qr-img" alt="QR Code" />
@@ -346,83 +387,119 @@ export default function StaffDirectoryPage() {
         win.document.close();
     };
 
-    // Premium gradient button style - Orange to Purple
-    const gradientBtn = "bg-gradient-to-r from-amber-500 to-purple-600 hover:from-amber-600 hover:to-purple-700 text-white shadow-lg shadow-purple-200/50 transition-all duration-300 border-none rounded-full";
-
     return (
-        <div className="p-2 space-y-2 bg-transparent min-h-screen font-sans">
-            <div className="flex justify-between items-center bg-transparent p-4 rounded-md border border-slate-200/60 shadow-none">
-                <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Users className="h-5 w-5" />
-                    </span>
-                    <h1 className="text-lg font-bold text-gray-800 uppercase tracking-widest">{t("staff_directory")}</h1>
+        <div className="w-full space-y-6 p-4 lg:p-6 font-sans bg-gray-50/10 min-h-screen">
+            {/* Master Header Banner */}
+            <div className="rounded-xl border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
+                            <Users className="h-6 w-6" />
+                        </span>
+                        <div>
+                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
+                                {t("staff_directory")}
+                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                                    {t("total_staff_count", { count: toLocaleNumber(staffList.length, shortCode) })}
+                                </span>
+                            </h1>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {t("filter_staff_by_role_or_keyword")}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                        {isSubBranch ? (
+                            <Button
+                                onClick={() => setRequisitionDialogOpen(true)}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-5 h-9 text-xs font-bold rounded-lg shadow-sm active:scale-95 flex items-center gap-1.5 border-0 cursor-pointer"
+                            >
+                                <FilePlus className="h-4 w-4" /> {t("requisition")}
+                            </Button>
+                        ) : (
+                            hasPerm("human-resource.staff.add") && (
+                                <Button
+                                    onClick={() => router.push('/dashboard/hr/staff-directory/create')}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-5 h-9 text-xs font-bold rounded-lg shadow-sm active:scale-95 flex items-center gap-1.5 border-0 cursor-pointer"
+                                >
+                                    <Plus className="h-4 w-4" /> {t("add_staff")}
+                                </Button>
+                            )
+                        )}
+                    </div>
                 </div>
-                {hasPerm("human-resource.staff.add") && (
-                    <Button
-                        onClick={() => router.push('/dashboard/hr/staff-directory/create')}
-                        className={`${gradientBtn} gap-2 h-10 px-6 text-sm font-semibold`}
-                    >
-                        <Plus className="h-4 w-4" /> {t("add_staff")}
-                    </Button>
-                )}
             </div>
 
             {/* Select Criteria Section */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Filter className="h-5 w-5" />
+            <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                        <Filter className="h-4 w-4" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_staff_by_role_or_keyword")}</p>
+                        <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">{t("select_criteria")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{t("filter_staff_by_role_or_keyword")}</p>
                     </div>
                 </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                    {t("role")} <span className="text-red-500">*</span>
-                                </Label>
-                                <Select value={selectedRole} onValueChange={setSelectedRole}>
-                                    <SelectTrigger className="h-11 border-gray-200 text-sm focus:ring-indigo-500 transition-all rounded-lg">
-                                        <SelectValue placeholder={t("select_role")} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Select">{t("select")}</SelectItem>
-                                        {roles.map((role) => (
-                                            <SelectItem key={role.name} value={role.name}>
-                                                {role.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex justify-end">
-                                <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
-                                    <Search className="h-4 w-4" /> {t("search")}
+                <CardContent className="p-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Role Filter */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-slate-700">
+                                {t("role")} <span className="text-rose-500">*</span>
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                    <Select value={selectedRole} onValueChange={setSelectedRole}>
+                                        <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg cursor-pointer">
+                                            <SelectValue placeholder={t("select_role")}>
+                                                {selectedRole === "Select" ? t("select") : getLocalizedRoleName(selectedRole)}
+                                            </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Select" className="cursor-pointer">{t("select")}</SelectItem>
+                                            {roles.map((role) => (
+                                                <SelectItem key={role.name} value={role.name} className="cursor-pointer">
+                                                    {getLocalizedRoleName(role.name)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button
+                                    onClick={handleSearch}
+                                    disabled={loading}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 px-5 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0 shrink-0"
+                                >
+                                    {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                                    {t("search")}
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                                    {t("search_by_keyword")}
-                                </Label>
-                                <Input
-                                    value={keyword}
-                                    onChange={(e) => setKeyword(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                    placeholder={t("search_by_staff_id_name_role")}
-                                    className="h-11 border-gray-200 text-sm focus-visible:ring-indigo-500 rounded-lg"
-                                />
-                            </div>
-                            <div className="flex justify-end">
-                                <Button onClick={handleSearch} className={`${gradientBtn} gap-2 h-10 px-8 text-sm font-semibold`}>
-                                    <Search className="h-4 w-4" /> {t("search")}
+                        {/* Keyword Search */}
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-slate-700">
+                                {t("search_by_keyword")}
+                            </Label>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                    <Input
+                                        value={keyword}
+                                        onChange={(e) => setKeyword(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                        placeholder={t("search_by_staff_id_name_role")}
+                                        className="h-9 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
+                                    />
+                                </div>
+                                <Button
+                                    onClick={handleSearch}
+                                    disabled={loading}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 px-5 text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0 shrink-0"
+                                >
+                                    {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                                    {t("search")}
                                 </Button>
                             </div>
                         </div>
@@ -431,35 +508,37 @@ export default function StaffDirectoryPage() {
             </Card>
 
             {/* Staff View Section */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Users className="h-5 w-5" />
-                    </span>
-                    <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("staff_directory")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{staffList.length} {staffList.length !== 1 ? t("staff_members") : t("staff_member")}</p>
+            <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                            <Users className="h-4 w-4" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-sm font-bold text-slate-800">{t("staff_directory")}</CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-0.5">{t("total_staff_count", { count: toLocaleNumber(staffList.length, shortCode) })}</p>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <Tabs defaultValue="card" className="w-full" onValueChange={setView}>
-                        <div className="px-6 border-b border-gray-100 bg-white flex justify-between items-center">
-                            <TabsList className="bg-transparent h-14 gap-8 p-0">
+                    <Tabs value={view} className="w-full" onValueChange={setView}>
+                        <div className="px-5 border-b border-slate-100 bg-white flex justify-between items-center">
+                            <TabsList className="bg-transparent h-12 gap-6 p-0">
                                 <TabsTrigger
                                     value="card"
-                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
+                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-12 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all cursor-pointer"
                                 >
-                                    <LayoutGrid className="h-4 w-4 mr-2" /> {t("card_view")}
+                                    <LayoutGrid className="h-4 w-4 mr-1.5" /> {t("card_view")}
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value="list"
-                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-14 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all"
+                                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 rounded-none h-12 text-xs font-bold text-gray-400 data-[state=active]:text-indigo-600 border-b-2 border-transparent px-2 transition-all cursor-pointer"
                                 >
-                                    <ListIcon className="h-4 w-4 mr-2" /> {t("list_view")}
+                                    <ListIcon className="h-4 w-4 mr-1.5" /> {t("list_view")}
                                 </TabsTrigger>
                             </TabsList>
 
-                            <div className="flex items-center">
+                            <div className="flex items-center py-2">
                                 <Select
                                     value={selectedStatus}
                                     onValueChange={(val) => {
@@ -467,72 +546,71 @@ export default function StaffDirectoryPage() {
                                         fetchStaff(keyword, selectedRole, val);
                                     }}
                                 >
-                                    <SelectTrigger className="h-9 w-[140px] border-gray-200 text-xs font-semibold text-gray-600 focus:ring-indigo-500 transition-all rounded-lg">
+                                    <SelectTrigger className="h-8 w-[140px] border-slate-200 text-xs font-semibold text-gray-600 focus:ring-indigo-500 rounded-lg cursor-pointer">
                                         <SelectValue placeholder={t("status")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">{t("all_staff")}</SelectItem>
-                                        <SelectItem value="true">{t("active_staff")}</SelectItem>
-                                        <SelectItem value="false">{t("disabled_staff_filter")}</SelectItem>
+                                        <SelectItem value="all" className="cursor-pointer">{t("all_staff")}</SelectItem>
+                                        <SelectItem value="true" className="cursor-pointer">{t("active_staff")}</SelectItem>
+                                        <SelectItem value="false" className="cursor-pointer">{t("disabled_staff_filter")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
 
-                        <TabsContent value="card" className="p-6 m-0">
+                        <TabsContent value="card" className="p-5 m-0">
                             {loading ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <CardSkeleton count={8} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                                    <CardSkeleton count={6} />
                                 </div>
                             ) : staffList.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                                     {staffList.map((person) => (
-                                        <div key={person.id} className={`bg-white border border-gray-100 rounded-lg p-4 hover:shadow-xl transition-all group relative overflow-hidden flex gap-4 ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : "hover:shadow-indigo-500/5"}`}>
-                                            <div className="relative h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
+                                        <div key={person.id} className={`bg-white border border-slate-200/80 rounded-xl p-4 hover:shadow-lg hover:border-indigo-200 transition-all group relative overflow-hidden flex gap-4 ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : ""}`}>
+                                            <div className="relative h-18 w-18 shrink-0 rounded-xl overflow-hidden bg-slate-50 border border-slate-200 shadow-2xs">
                                                 {person.avatar ? (
                                                     <img
                                                         src={person.avatar}
                                                         alt={person.name}
-                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                                         onError={(e) => {
-                                                            // Fallback if image fails to load
                                                             e.currentTarget.style.display = 'none';
                                                         }}
                                                     />
                                                 ) : (
-                                                    <div className="h-full w-full flex items-center justify-center text-indigo-200">
-                                                        <User className="h-10 w-10" />
+                                                    <div className="h-full w-full flex items-center justify-center text-indigo-300 bg-indigo-50/50">
+                                                        <User className="h-9 w-9" />
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="flex flex-col justify-between py-1 w-full">
+                                            <div className="flex flex-col justify-between py-0.5 w-full min-w-0 pr-7">
                                                 <div>
-                                                    <h3 className="text-sm font-bold text-gray-800 group-hover:text-indigo-600 transition-colors">
+                                                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-indigo-600 transition-colors truncate">
                                                         {person.name}
                                                     </h3>
-                                                    <div className="text-[11px] font-bold text-indigo-500/70 mt-0.5">
-                                                        {person.staff_id || t("n_a")}
+                                                    <div className="text-[10px] font-mono font-bold text-indigo-600 mt-0.5">
+                                                        {person.staff_id ? toLocaleNumber(person.staff_id, shortCode) : t("n_a")}
                                                     </div>
                                                 </div>
 
                                                 <div className="space-y-1 mt-2">
-                                                    <div className="flex items-center gap-2 text-[10px] font-medium text-gray-400">
-                                                        <Phone className="h-3 w-3 text-indigo-400/70" />
-                                                        <span>{person.phone || t("no_phone")}</span>
+                                                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                                                        <Phone className="h-3 w-3 text-indigo-400 shrink-0" />
+                                                        <span className="truncate">{person.phone ? toLocaleNumber(person.phone, shortCode) : t("no_phone")}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-[10px] font-medium text-gray-400">
-                                                        <MapPin className="h-3 w-3 text-indigo-400/70" />
-                                                        <span className="truncate">{person.department || t("general")} - {person.role}</span>
+                                                    <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                                                        <MapPin className="h-3 w-3 text-indigo-400 shrink-0" />
+                                                        <span className="truncate">{getLocalizedDepartmentName(person.department)} - {getLocalizedRoleName(person.role)}</span>
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-wrap gap-1 mt-3">
-                                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
-                                                        {person.role}
+                                                <div className="flex flex-wrap gap-1 mt-2.5">
+                                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[9px] font-bold rounded-md uppercase tracking-tight">
+                                                        {getLocalizedRoleName(person.role)}
                                                     </span>
                                                     {(person.active === false || person.active === 0) && (
-                                                        <span className="px-2 py-0.5 bg-red-100 text-red-600 text-[9px] font-bold rounded-md uppercase tracking-tight">
+                                                        <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 text-[9px] font-bold rounded-md uppercase tracking-tight">
                                                             {t("disabled")}
                                                         </span>
                                                     )}
@@ -542,54 +620,66 @@ export default function StaffDirectoryPage() {
                                             {(hasPerm("human-resource.staff.edit") || hasPerm("human-resource.staff.delete")) && (
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <button className="absolute top-3 right-2 p-1 text-gray-300 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50">
-                                                            <MoreVertical className="h-4 w-4" />
+                                                        <button className="absolute top-3 right-3 h-7 w-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-indigo-600 transition-colors rounded-full cursor-pointer shadow-2xs">
+                                                            <MoreVertical className="h-3.5 w-3.5" />
                                                         </button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-40">
+                                                    <DropdownMenuContent align="end" className="w-44 bg-white">
                                                         {hasPerm("human-resource.staff.edit") && (
                                                             <DropdownMenuItem
                                                                 onClick={() => { setStaffToToggle(person); setStatusDialogOpen(true); }}
-                                                                className={`cursor-pointer ${person.active === false || person.active === 0 ? "text-green-600 focus:text-green-600" : "text-amber-600 focus:text-amber-600"}`}
+                                                                className={`cursor-pointer text-xs font-semibold ${person.active === false || person.active === 0 ? "text-emerald-600 focus:text-emerald-600" : "text-amber-600 focus:text-amber-600"}`}
                                                             >
                                                                 {person.active === false || person.active === 0 ? (
-                                                                    <><CheckCircle className="h-4 w-4 mr-2" /> {t("enable_staff")}</>
+                                                                    <><CheckCircle className="h-3.5 w-3.5 mr-2" /> {t("enable_staff")}</>
                                                                 ) : (
-                                                                    <><Ban className="h-4 w-4 mr-2" /> {t("disable_staff")}</>
+                                                                    <><Ban className="h-3.5 w-3.5 mr-2" /> {t("disable_staff")}</>
                                                                 )}
                                                             </DropdownMenuItem>
                                                         )}
                                                         <DropdownMenuItem
                                                             onClick={() => handlePrintStaffBadge(person)}
-                                                            className="cursor-pointer text-indigo-600 focus:text-indigo-600"
+                                                            className="cursor-pointer text-xs font-semibold text-indigo-600 focus:text-indigo-600"
                                                         >
-                                                            <QrCode className="h-4 w-4 mr-2" />
-                                                            Print ID Badge / QR
+                                                            <QrCode className="h-3.5 w-3.5 mr-2" />
+                                                            {t("print_id_badge_qr")}
                                                         </DropdownMenuItem>
                                                         {hasPerm("human-resource.staff.edit") && (
                                                             <DropdownMenuItem
-                                                                onClick={() => handleEdit(person.staff_id || person.id)}
-                                                                className="cursor-pointer"
+                                                                onClick={() => {
+                                                                    setTransferStaff(person);
+                                                                    setTransferDialogOpen(true);
+                                                                }}
+                                                                className="cursor-pointer text-xs font-semibold text-amber-600 focus:text-amber-600"
                                                             >
-                                                                <Edit className="h-4 w-4 mr-2" />
+                                                                <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                                                                {t("transfer_campus_branch")}
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        {hasPerm("human-resource.staff.edit") && (
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleEdit(person.staff_id || person.id)}
+                                                                className="cursor-pointer text-xs font-semibold text-slate-700"
+                                                            >
+                                                                <Edit className="h-3.5 w-3.5 mr-2" />
                                                                 {t("edit")}
                                                             </DropdownMenuItem>
                                                         )}
                                                         {hasPerm("human-resource.staff.edit") && (
                                                             <DropdownMenuItem
                                                                 onClick={() => handleResetPassword(person.staff_id || person.id)}
-                                                                className="cursor-pointer"
+                                                                className="cursor-pointer text-xs font-semibold text-slate-700"
                                                             >
-                                                                <KeyRound className="h-4 w-4 mr-2" />
+                                                                <KeyRound className="h-3.5 w-3.5 mr-2" />
                                                                 {t("reset_password")}
                                                             </DropdownMenuItem>
                                                         )}
                                                         {hasPerm("human-resource.staff.delete") && (
                                                             <DropdownMenuItem
                                                                 onClick={() => handleDeleteClick(person)}
-                                                                className="cursor-pointer text-red-600 focus:text-red-600"
+                                                                className="cursor-pointer text-xs font-semibold text-rose-600 focus:text-rose-600"
                                                             >
-                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                <Trash2 className="h-3.5 w-3.5 mr-2" />
                                                                 {t("delete")}
                                                             </DropdownMenuItem>
                                                         )}
@@ -600,9 +690,9 @@ export default function StaffDirectoryPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-center py-20">
-                                    <User className="h-12 w-12 text-gray-200 mx-auto mb-4" />
-                                    <p className="text-sm text-gray-400 font-medium">{t("no_staff_found")}</p>
+                                <div className="text-center py-16">
+                                    <User className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-xs font-bold text-slate-600">{t("no_staff_found")}</p>
                                 </div>
                             )}
                         </TabsContent>
@@ -610,36 +700,38 @@ export default function StaffDirectoryPage() {
                         <TabsContent value="list" className="p-0 m-0">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
+                                    <thead className="bg-slate-50 border-b border-slate-200">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("staff_id")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("name")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("role")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("phone")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("department")}</th>
-                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">{t("designation")}</th>
-                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">{t("actions")}</th>
+                                            <th className="px-5 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">{t("staff_id")}</th>
+                                            <th className="px-5 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">{t("name")}</th>
+                                            <th className="px-5 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">{t("role")}</th>
+                                            <th className="px-5 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">{t("phone")}</th>
+                                            <th className="px-5 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">{t("department")}</th>
+                                            <th className="px-5 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">{t("designation")}</th>
+                                            <th className="px-5 py-3.5 text-right text-xs font-bold text-slate-700 uppercase tracking-wider pr-6">{t("actions")}</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-100">
+                                    <tbody className="bg-white divide-y divide-slate-100 text-xs">
                                         {loading ? (
                                             <TableSkeleton rows={5} cols={7} />
                                         ) : staffList.length === 0 ? (
                                             <tr>
-                                                <td colSpan={7} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</td>
+                                                <td colSpan={7} className="px-4 py-12 text-center text-xs font-bold text-slate-400">{t("no_staff_found")}</td>
                                             </tr>
                                         ) : (
                                             staffList.map((person) => (
-                                                <tr key={person.id} className={`hover:bg-gray-50 transition-colors group ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : ""}`}>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm font-bold text-purple-600">{person.staff_id || t("n_a")}</div>
+                                                <tr key={person.id} className={`hover:bg-indigo-50/20 transition-colors group ${person.active === false || person.active === 0 ? "opacity-60 grayscale hover:grayscale-0 hover:opacity-100" : ""}`}>
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200 inline-block">
+                                                            {person.staff_id ? toLocaleNumber(person.staff_id, shortCode) : t("n_a")}
+                                                        </div>
                                                         {(person.active === false || person.active === 0) && (
-                                                            <span className="text-[9px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase inline-block mt-1">{t("disabled")}</span>
+                                                            <span className="text-[9px] bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.5 rounded-full font-bold uppercase inline-block ml-1">{t("disabled")}</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden bg-gray-100 border border-gray-100">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="relative h-8 w-8 shrink-0 rounded-full overflow-hidden bg-slate-100 border border-slate-200">
                                                                 {person.avatar ? (
                                                                     <img
                                                                         src={person.avatar}
@@ -647,86 +739,98 @@ export default function StaffDirectoryPage() {
                                                                         className="w-full h-full object-cover"
                                                                     />
                                                                 ) : (
-                                                                    <div className="h-full w-full flex items-center justify-center text-purple-200">
-                                                                        <User className="h-6 w-6" />
+                                                                    <div className="h-full w-full flex items-center justify-center text-indigo-300">
+                                                                        <User className="h-4 w-4" />
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             <div>
-                                                                <div className="text-sm font-bold text-gray-800 group-hover:text-purple-600 transition-colors">{person.name}</div>
-                                                                <div className="text-xs text-gray-400">{person.email || ""}</div>
+                                                                <div className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{person.name}</div>
+                                                                <div className="text-[11px] text-slate-400">{person.email || ""}</div>
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-bold rounded-full uppercase">
-                                                            {person.role}
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold rounded-md uppercase">
+                                                            {getLocalizedRoleName(person.role)}
                                                         </span>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                            <Phone className="h-4 w-4 text-purple-400" />
-                                                            <span>{person.phone || t("n_a")}</span>
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                                                            <Phone className="h-3.5 w-3.5 text-indigo-400" />
+                                                            <span>{person.phone ? toLocaleNumber(person.phone, shortCode) : t("n_a")}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-600">{person.department || "—"}</div>
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="text-xs text-slate-600">{getLocalizedDepartmentName(person.department)}</div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="text-sm text-gray-600">{person.role}</div>
+                                                    <td className="px-5 py-3.5 whitespace-nowrap">
+                                                        <div className="text-xs text-slate-600">{getLocalizedRoleName(person.role)}</div>
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                    <td className="px-5 py-3.5 whitespace-nowrap text-right pr-6">
                                                         {(hasPerm("human-resource.staff.edit") || hasPerm("human-resource.staff.delete")) && (
                                                             <DropdownMenu>
                                                                 <DropdownMenuTrigger asChild>
-                                                                    <button className="p-2 text-gray-300 hover:text-purple-600 transition-colors rounded-full hover:bg-purple-50">
-                                                                        <MoreVertical className="h-4 w-4" />
+                                                                    <button className="h-7 w-7 inline-flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-indigo-600 transition-colors rounded-full cursor-pointer shadow-2xs">
+                                                                        <MoreVertical className="h-3.5 w-3.5" />
                                                                     </button>
                                                                 </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-40">
+                                                                <DropdownMenuContent align="end" className="w-44 bg-white">
                                                                     {hasPerm("human-resource.staff.edit") && (
                                                                         <DropdownMenuItem
                                                                             onClick={() => { setStaffToToggle(person); setStatusDialogOpen(true); }}
-                                                                            className={`cursor-pointer ${person.active === false || person.active === 0 ? "text-green-600 focus:text-green-600" : "text-amber-600 focus:text-amber-600"}`}
+                                                                            className={`cursor-pointer text-xs font-semibold ${person.active === false || person.active === 0 ? "text-emerald-600 focus:text-emerald-600" : "text-amber-600 focus:text-amber-600"}`}
                                                                         >
                                                                             {person.active === false || person.active === 0 ? (
-                                                                                <><CheckCircle className="h-4 w-4 mr-2" /> {t("enable_staff")}</>
+                                                                                <><CheckCircle className="h-3.5 w-3.5 mr-2" /> {t("enable_staff")}</>
                                                                             ) : (
-                                                                                <><Ban className="h-4 w-4 mr-2" /> {t("disable_staff")}</>
+                                                                                <><Ban className="h-3.5 w-3.5 mr-2" /> {t("disable_staff")}</>
                                                                             )}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     <DropdownMenuItem
                                                                         onClick={() => handlePrintStaffBadge(person)}
-                                                                        className="cursor-pointer text-indigo-600 focus:text-indigo-600"
+                                                                        className="cursor-pointer text-xs font-semibold text-indigo-600 focus:text-indigo-600"
                                                                     >
-                                                                        <QrCode className="h-4 w-4 mr-2" />
-                                                                        Print ID Badge / QR
+                                                                        <QrCode className="h-3.5 w-3.5 mr-2" />
+                                                                        {t("print_id_badge_qr")}
                                                                     </DropdownMenuItem>
                                                                     {hasPerm("human-resource.staff.edit") && (
                                                                         <DropdownMenuItem
-                                                                            onClick={() => handleEdit(person.staff_id || person.id)}
-                                                                            className="cursor-pointer"
+                                                                            onClick={() => {
+                                                                                setTransferStaff(person);
+                                                                                setTransferDialogOpen(true);
+                                                                            }}
+                                                                            className="cursor-pointer text-xs font-semibold text-amber-600 focus:text-amber-600"
                                                                         >
-                                                                            <Edit className="h-4 w-4 mr-2" />
+                                                                            <ArrowRightLeft className="h-3.5 w-3.5 mr-2" />
+                                                                            {t("transfer_campus_branch")}
+                                                                        </DropdownMenuItem>
+                                                                    )}
+                                                                    {hasPerm("human-resource.staff.edit") && (
+                                                                        <DropdownMenuItem
+                                                                            onClick={() => handleEdit(person.staff_id || person.id)}
+                                                                            className="cursor-pointer text-xs font-semibold text-slate-700"
+                                                                        >
+                                                                            <Edit className="h-3.5 w-3.5 mr-2" />
                                                                             {t("edit")}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     {hasPerm("human-resource.staff.edit") && (
                                                                         <DropdownMenuItem
                                                                             onClick={() => handleResetPassword(person.staff_id || person.id)}
-                                                                            className="cursor-pointer"
+                                                                            className="cursor-pointer text-xs font-semibold text-slate-700"
                                                                         >
-                                                                            <KeyRound className="h-4 w-4 mr-2" />
+                                                                            <KeyRound className="h-3.5 w-3.5 mr-2" />
                                                                             {t("reset_password")}
                                                                         </DropdownMenuItem>
                                                                     )}
                                                                     {hasPerm("human-resource.staff.delete") && (
                                                                         <DropdownMenuItem
                                                                             onClick={() => handleDeleteClick(person)}
-                                                                            className="cursor-pointer text-red-600 focus:text-red-600"
+                                                                            className="cursor-pointer text-xs font-semibold text-rose-600 focus:text-rose-600"
                                                                         >
-                                                                            <Trash2 className="h-4 w-4 mr-2" />
+                                                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
                                                                             {t("delete")}
                                                                         </DropdownMenuItem>
                                                                     )}
@@ -747,19 +851,22 @@ export default function StaffDirectoryPage() {
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="max-w-md rounded-2xl bg-white">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>{t("are_you_absolutely_sure")}</AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                            <Trash2 className="h-5 w-5 text-rose-600" />
+                            {t("are_you_absolutely_sure")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-slate-500">
                             {t("delete_warning_message")}{" "}
-                            <span className="font-bold text-gray-900">{staffToDelete?.name}</span> (ID: {staffToDelete?.staff_id}) from the database.
+                            <span className="font-bold text-slate-900">{staffToDelete?.name}</span> (ID: {staffToDelete?.staff_id ? toLocaleNumber(staffToDelete?.staff_id, shortCode) : ""}) {t("from_the_database")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setStaffToDelete(null)}>{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialogCancel onClick={() => setStaffToDelete(null)} className="text-xs font-semibold rounded-lg cursor-pointer">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDeleteConfirm}
-                            className="bg-red-600 hover:bg-red-700 text-white"
+                            className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                         >
                             {t("delete")}
                         </AlertDialogAction>
@@ -769,30 +876,46 @@ export default function StaffDirectoryPage() {
 
             {/* Status Toggle Confirmation Dialog */}
             <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="max-w-md rounded-2xl bg-white">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>
+                        <AlertDialogTitle className="text-base font-bold text-slate-900">
                             {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0)
                                 ? t("enable_staff_member_question")
                                 : t("disable_staff_member_question")}
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogDescription className="text-xs text-slate-500">
                             {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0)
-                                ? <>{t("enable_confirmation_prefix")} {staffToToggle.name}? {t("enable_confirmation_suffix")}</>
-                                : <>{t("disable_confirmation_prefix")} {staffToToggle?.name}? {t("disable_confirmation_suffix")}</>}
+                                ? <>{t("enable_confirmation_prefix")} <span className="font-bold text-slate-900">{staffToToggle.name}</span> {t("enable_confirmation_suffix")}</>
+                                : <>{t("disable_confirmation_prefix")} <span className="font-bold text-slate-900">{staffToToggle?.name}</span> {t("disable_confirmation_suffix")}</>}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setStaffToToggle(null)}>{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialogCancel onClick={() => setStaffToToggle(null)} className="text-xs font-semibold rounded-lg cursor-pointer">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleConfirmToggleStatus}
-                            className={staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? "bg-green-600 hover:bg-green-700 text-white" : "bg-amber-600 hover:bg-amber-700 text-white"}
+                            className={staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? "bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer" : "bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg cursor-pointer"}
                         >
-                            {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? t("enable") : t("disable")}
+                            {staffToToggle && (staffToToggle.active === false || staffToToggle.active === 0) ? t("enable_staff") : t("disable_staff")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <TransferDialog
+                open={transferDialogOpen}
+                onOpenChange={setTransferDialogOpen}
+                type="staff"
+                record={transferStaff}
+                onSuccess={() => {
+                    fetchStaff(keyword, selectedRole, selectedStatus);
+                }}
+            />
+
+            <StaffRequisitionDialog
+                open={requisitionDialogOpen}
+                onOpenChange={setRequisitionDialogOpen}
+                defaultBranchSlug={currentBranchSlug || undefined}
+            />
         </div>
     );
 }

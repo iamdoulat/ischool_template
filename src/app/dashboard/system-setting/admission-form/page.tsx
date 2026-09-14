@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Card,
     CardContent,
@@ -15,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
+import { cn, toLocaleNumber } from "@/lib/utils";
 
 const CKEditorWrapper = dynamic(() => import("@/components/ui/ckeditor"), { ssr: false });
 import {
@@ -27,6 +27,10 @@ import {
     CheckCircle2,
     FileCheck,
     Settings2,
+    Search,
+    CreditCard,
+    Building,
+    FileSignature
 } from "lucide-react";
 import {
     Table,
@@ -51,7 +55,7 @@ interface FieldItem {
     is_active: boolean;
 }
 
-interface TableRow {
+interface TableRowData {
     id: string;
     cells: string[];
 }
@@ -59,7 +63,7 @@ interface TableRow {
 interface FeeTable {
     title: string;
     headers: string[];
-    rows: TableRow[];
+    rows: TableRowData[];
     note: string;
 }
 
@@ -117,12 +121,12 @@ const DEFAULT_OFFICE_USE_TABLE_STRUCTURED = {
 };
 
 export default function AdmissionFormPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [savingSettings, setSavingSettings] = useState(false);
     const [savingFields, setSavingFields] = useState(false);
-    const [activeTab, setActiveTab] = useState("form-setting");
+    const [activeTab, setActiveTab] = useState<"form-setting" | "fields-setting">("form-setting");
 
     // Settings state
     const [settings, setSettings] = useState({
@@ -171,7 +175,6 @@ export default function AdmissionFormPage() {
                                 setFeePolicyTables(parsed);
                             }
                         } catch (e) {
-                            // If not JSON, keep default
                             setFeePolicyTables(DEFAULT_FEE_POLICY_TABLES);
                         }
                     }
@@ -184,7 +187,6 @@ export default function AdmissionFormPage() {
                                 setOfficeUseTable(parsed);
                             }
                         } catch (e) {
-                            // If not JSON, keep default
                             setOfficeUseTable(DEFAULT_OFFICE_USE_TABLE_STRUCTURED);
                         }
                     }
@@ -297,7 +299,7 @@ export default function AdmissionFormPage() {
             if (response.data.success) {
                 setDocuments(prev => [...prev, response.data.data]);
                 setNewDocName("");
-                toast({ title: t("saved"), description: "Document added successfully" });
+                toast({ title: t("saved"), description: t("document_added_successfully") || "Document added successfully" });
             }
         } catch (error: any) {
             toast({ variant: "destructive", title: t("error"), description: error?.response?.data?.message || t("failed_to_save") });
@@ -328,7 +330,7 @@ export default function AdmissionFormPage() {
             const response = await api.delete(`/system-setting/admission-form/documents/${doc.id}`);
             if (response.data.success) {
                 setDocuments(prev => prev.filter((_, i) => i !== index));
-                toast({ title: t("deleted"), description: "Document deleted successfully" });
+                toast({ title: t("deleted"), description: t("document_deleted_successfully") || "Document deleted successfully" });
             }
         } catch (error) {
             console.error("Delete document error:", error);
@@ -343,7 +345,7 @@ export default function AdmissionFormPage() {
                 fields: fields.map(f => ({ id: f.id, is_active: f.is_active })),
             });
             if (response.data.success) {
-                toast({ title: t("saved"), description: "Fields visibility updated successfully" });
+                toast({ title: t("saved"), description: t("fields_visibility_updated") || "Fields visibility updated successfully" });
             }
         } catch (error: any) {
             toast({ variant: "destructive", title: t("error"), description: error?.response?.data?.message || t("failed_to_save") });
@@ -357,256 +359,269 @@ export default function AdmissionFormPage() {
         setFields(prev => prev.map(f => f.id === id ? { ...f, is_active: !f.is_active } : f));
     };
 
-    const filteredFields = fields.filter(f =>
-        f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.field_name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Translation helpers
+    const getFieldDisplayName = (field: FieldItem) => {
+        if (!field) return "";
+        if (field.field_name) {
+            const byField = t(field.field_name);
+            if (byField && byField !== field.field_name) return byField;
+        }
+        const key = field.name.toLowerCase().replace(/[\s\/\-]+/g, "_");
+        const byKey = t(key);
+        if (byKey && byKey !== key) return byKey;
+        return field.name;
+    };
+
+    const getHeaderTranslation = (header: string) => {
+        const lower = header.toLowerCase().replace(/[\s\/\.\-]+/g, "_").trim();
+        if (lower === "particulars") return t("particulars") || header;
+        if (lower === "payable") return t("payable") || header;
+        if (lower === "amount") return t("amount") || header;
+        if (lower === "receipt_no") return t("receipt_no") || header;
+        if (lower === "mode_of_payment") return t("mode_of_payment") || header;
+        if (lower === "date_of_payment") return t("date_of_payment") || header;
+        if (lower === "remarks") return t("remarks") || header;
+        const translated = t(lower);
+        if (translated && translated !== lower) return translated;
+        return header;
+    };
+
+    const getTableTitleTranslation = (title: string) => {
+        if (title.includes("Academic Fee")) return t("academic_fee_schedule") || title;
+        if (title.includes("Transport Fee")) return t("transport_fee_schedule") || title;
+        return title;
+    };
+
+    const filteredFields = fields.filter(f => {
+        const transName = getFieldDisplayName(f);
+        return f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            f.field_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            transName.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
     return (
-        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <Card className="pt-0 overflow-hidden">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <FileText className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("admission_form") || "Admission Form"}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("configure_admission_form_settings_and_fields") || "Configure admission form settings and fields"}</p>
-                        </div>
+        <div className="p-4 md:p-6 space-y-6 bg-gray-50/30 min-h-screen font-sans">
+            {/* Standalone Edge-to-Edge Page Header Banner per AGENTS.md rule */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F3F4FE] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <FileText className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">{t("admission_form")}</h1>
+                        <p className="text-xs text-gray-500 mt-1">{t("configure_admission_form_settings_and_fields")}</p>
                     </div>
                 </div>
-                <CardContent className="p-0">
-                    <Tabs defaultValue="form-setting" className="flex-1 flex flex-col" onValueChange={setActiveTab}>
-                        <div className="px-4 border-b border-gray-100 bg-white">
-                            <TabsList className="bg-transparent h-10 p-0 space-x-6">
-                                <TabsTrigger
-                                    value="form-setting"
-                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-1 pb-2 h-full shadow-none bg-transparent text-[13px]"
-                                >
-                                    <FileCheck className="h-3.5 w-3.5 mr-1.5 inline" />
-                                    {t("admission_form_setting") || "Admission Form Setting"}
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="fields-setting"
-                                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 text-gray-500 font-medium px-1 pb-2 h-full shadow-none bg-transparent text-[13px]"
-                                >
-                                    <Settings2 className="h-3.5 w-3.5 mr-1.5 inline" />
-                                    {t("admission_form_fields_setting") || "Admission Form Fields Setting"}
-                                </TabsTrigger>
-                            </TabsList>
-                        </div>
 
-                        {loading ? (
-                            <FormSkeleton />
-                        ) : (
-                            <>
-                                {/* Tab 1: Admission Form Setting */}
-                                <TabsContent value="form-setting" className="flex-1 p-6 space-y-8 animate-in fade-in duration-300">
-                                    
-                                    {/* Pre-Documents Note Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center">
-                                                <FileText className="h-3.5 w-3.5 text-white" />
-                                            </div>
-                                            <h3 className="text-[13px] font-bold text-gray-800 uppercase tracking-wider">{t("pre_documents_note") || "Pre-Documents Note"}</h3>
-                                        </div>
-                                        <div className="bg-white rounded-lg border border-gray-200 p-4">
-                                            <p className="text-[11px] text-gray-500 mb-2">{t("add_note_before_documents_section") || "Add note or rules to be displayed before the Documents Submitted section."}</p>
-                                            <textarea
-                                                className="w-full min-h-[100px] text-[12px] border border-gray-200 rounded-md p-3 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
-                                                value={settings.pre_documents_note}
-                                                onChange={(e) => setSettings(prev => ({ ...prev, pre_documents_note: e.target.value }))}
-                                                placeholder={t("enter_pre_documents_note") || "Enter note or rules here..."}
-                                            />
-                                        </div>
+                <div className="flex items-center gap-2">
+                    {activeTab === "form-setting" ? (
+                        <Button
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-6 h-9 text-xs font-bold uppercase rounded-full shadow-md active:scale-95 transition-all"
+                            onClick={handleSaveSettings}
+                            disabled={savingSettings || loading}
+                        >
+                            {savingSettings ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Save className="h-3.5 w-3.5 mr-2" />}
+                            {t("save")}
+                        </Button>
+                    ) : (
+                        <Button
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-6 h-9 text-xs font-bold uppercase rounded-full shadow-md active:scale-95 transition-all"
+                            onClick={handleSaveFields}
+                            disabled={savingFields || loading}
+                        >
+                            {savingFields ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Save className="h-3.5 w-3.5 mr-2" />}
+                            {t("save")}
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* High-Contrast Segmented Navigation Tabs */}
+            <div className="flex items-center gap-1.5 p-1.5 bg-gray-100/90 dark:bg-gray-800/90 rounded-xl border border-gray-200 dark:border-gray-700 w-full sm:w-fit overflow-x-auto">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("form-setting")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap cursor-pointer",
+                        activeTab === "form-setting"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <FileCheck className="h-3.5 w-3.5" />
+                    <span>{t("admission_form_setting")}</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("fields-setting")}
+                    className={cn(
+                        "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all shadow-xs whitespace-nowrap cursor-pointer",
+                        activeTab === "fields-setting"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                            : "text-gray-700 dark:text-gray-200 hover:text-gray-900 hover:bg-white/80 dark:hover:bg-gray-700/80"
+                    )}
+                >
+                    <Settings2 className="h-3.5 w-3.5" />
+                    <span>{t("admission_form_fields_setting")}</span>
+                    <span className={cn(
+                        "ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold",
+                        activeTab === "fields-setting" ? "bg-white/30 text-white" : "bg-gray-200 text-gray-700"
+                    )}>
+                        {toLocaleNumber(fields.length, language?.short_code)}
+                    </span>
+                </button>
+            </div>
+
+            {loading ? (
+                <Card className="border-gray-200 shadow-sm bg-white">
+                    <FormSkeleton />
+                </Card>
+            ) : (
+                <>
+                    {/* Tab 1: Admission Form Setting */}
+                    {activeTab === "form-setting" && (
+                        <div className="space-y-6 animate-in fade-in-50 duration-200">
+                            {/* Pre-Documents Note Section */}
+                            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div className="px-5 py-3.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2.5">
+                                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-xs">
+                                        <FileText className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t("pre_documents_note")}</h3>
+                                        <p className="text-[11px] text-gray-500 mt-0.5">{t("add_note_before_documents_section")}</p>
+                                    </div>
+                                </div>
+                                <CardContent className="p-5">
+                                    <textarea
+                                        className="w-full min-h-[100px] text-xs border border-gray-200 rounded-lg p-3 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y leading-relaxed font-sans"
+                                        value={settings.pre_documents_note}
+                                        onChange={(e) => setSettings(prev => ({ ...prev, pre_documents_note: e.target.value }))}
+                                        placeholder={t("enter_pre_documents_note")}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            {/* Documents Submitted Section */}
+                            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div className="px-5 py-3.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2.5">
+                                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-xs">
+                                        <FileCheck className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t("documents_submitted")}</h3>
+                                        <p className="text-[11px] text-gray-500 mt-0.5">{t("add_documents_required_for_admission")}</p>
+                                    </div>
+                                </div>
+                                <CardContent className="p-5 space-y-4">
+                                    {/* Add new document */}
+                                    <div className="flex gap-2">
+                                        <Input
+                                            className="h-9 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-lg flex-1"
+                                            placeholder={t("enter_document_name")}
+                                            value={newDocName}
+                                            onChange={(e) => setNewDocName(e.target.value)}
+                                            onKeyDown={(e) => e.key === "Enter" && handleAddDocument()}
+                                        />
+                                        <Button
+                                            size="sm"
+                                            className="h-9 bg-[#6366f1] hover:bg-[#5558dd] text-white px-5 rounded-lg shadow-sm text-xs font-bold gap-1"
+                                            onClick={handleAddDocument}
+                                            disabled={addingDoc || !newDocName.trim()}
+                                        >
+                                            {addingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                                            {t("add") || "Add"}
+                                        </Button>
                                     </div>
 
-                                    {/* Documents Submitted Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center">
-                                                <FileText className="h-3.5 w-3.5 text-white" />
-                                            </div>
-                                            <h3 className="text-[13px] font-bold text-gray-800 uppercase tracking-wider">{t("documents_submitted") || "Documents Submitted"}</h3>
-                                        </div>
-                                        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-3">
-                                            <p className="text-[11px] text-gray-500">{t("add_documents_required_for_admission") || "Add documents required for admission form submission"}</p>
-                                            {/* Add new document */}
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    className="h-8 text-[12px] border-gray-200 focus:ring-indigo-500 shadow-none rounded flex-1"
-                                                    placeholder={t("enter_document_name") || "Enter document name..."}
-                                                    value={newDocName}
-                                                    onChange={(e) => setNewDocName(e.target.value)}
-                                                    onKeyDown={(e) => e.key === "Enter" && handleAddDocument()}
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    className="h-8 bg-[#6366f1] hover:bg-[#5558dd] text-white px-4 rounded shadow-sm text-[11px] font-bold"
-                                                    onClick={handleAddDocument}
-                                                    disabled={addingDoc || !newDocName.trim()}
-                                                >
-                                                    {addingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
-                                                    {t("add") || "Add"}
-                                                </Button>
-                                            </div>
-                                            {/* Documents list */}
-                                            {documents.length > 0 ? (
-                                                <div className="space-y-1.5">
-                                                    {documents.map((doc, index) => (
-                                                        <div key={doc.id || index} className="flex items-center justify-between bg-white rounded-md border border-gray-100 px-3 py-2 group hover:border-indigo-200 transition-colors">
-                                                            <div className="flex items-center gap-2.5">
-                                                                <GripVertical className="h-3.5 w-3.5 text-gray-300 cursor-grab" />
-                                                                <span className={`text-[12px] ${doc.is_active ? 'text-gray-700' : 'text-gray-400 line-through'}`}>
-                                                                    {doc.name}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Switch
-                                                                    checked={doc.is_active}
-                                                                    onCheckedChange={() => handleToggleDocument(doc, index)}
-                                                                    className="data-[state=checked]:bg-[#6366f1] scale-75"
-                                                                />
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    className="h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                    onClick={() => handleDeleteDocument(doc, index)}
-                                                                >
-                                                                    <Trash2 className="h-3 w-3" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <div className="text-center py-4 text-[11px] text-gray-400">
-                                                    {t("no_documents_added_yet") || "No documents added yet. Click + to add required documents."}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Fee Policy Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center">
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                                            </div>
-                                            <h3 className="text-[13px] font-bold text-gray-800 uppercase tracking-wider">{t("fee_policy") || "Fee Policy"}</h3>
-                                        </div>
-
-                                        <div className="space-y-6">
-                                            {feePolicyTables.map((table, tableIndex) => (
-                                                <div key={tableIndex} className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
-                                                    <h4 className="text-[12px] font-bold text-gray-700 mb-2">{table.title}</h4>
-
-                                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                                        <Table>
-                                                            <TableHeader>
-                                                                <TableRow className="bg-gray-50/80">
-                                                                    {table.headers.map((header, idx) => (
-                                                                        <TableHead key={idx} className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">
-                                                                            {header}
-                                                                        </TableHead>
-                                                                    ))}
-                                                                    <TableHead className="w-10"></TableHead>
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {table.rows.map((row, rowIndex) => (
-                                                                    <TableRow key={`${tableIndex}-${rowIndex}`} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                                                        {row.cells.map((cell, cellIndex) => (
-                                                                            <TableCell key={cellIndex} className="p-0">
-                                                                                <Input
-                                                                                    className="h-9 text-[11px] border-0 rounded-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                                                                                    value={cell}
-                                                                                    onChange={(e) => updateFeeTableCell(tableIndex, rowIndex, cellIndex, e.target.value)}
-                                                                                />
-                                                                            </TableCell>
-                                                                        ))}
-                                                                        <TableCell className="p-0 w-10">
-                                                                            <Button
-                                                                                variant="ghost"
-                                                                                size="icon"
-                                                                                className="h-9 w-9 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                                                                                onClick={() => removeFeeTableRow(tableIndex, rowIndex)}
-                                                                            >
-                                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                                            </Button>
-                                                                        </TableCell>
-                                                                    </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
+                                    {/* Documents list */}
+                                    {documents.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                            {documents.map((doc, index) => (
+                                                <div key={doc.id || index} className="flex items-center justify-between bg-gray-50/60 rounded-xl border border-gray-200/80 px-3.5 py-2.5 group hover:border-indigo-300 hover:bg-indigo-50/30 transition-all">
+                                                    <div className="flex items-center gap-2.5 min-w-0">
+                                                        <GripVertical className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                                        <span className={cn(
+                                                            "text-xs font-semibold truncate",
+                                                            doc.is_active ? "text-gray-800" : "text-gray-400 line-through"
+                                                        )}>
+                                                            {doc.name}
+                                                        </span>
                                                     </div>
-
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-7 text-[11px] font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                                                        onClick={() => addFeeTableRow(tableIndex)}
-                                                    >
-                                                        <Plus className="h-3 w-3 mr-1" />
-                                                        Add Row
-                                                    </Button>
-
-                                                    <div className="mt-3">
-                                                        <label className="text-[11px] font-semibold text-gray-600 mb-1.5 block">Note:</label>
-                                                        <textarea
-                                                            className="w-full min-h-[80px] text-[11px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
-                                                            value={table.note}
-                                                            onChange={(e) => updateFeeTableNote(tableIndex, e.target.value)}
-                                                            placeholder="Enter notes..."
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <Switch
+                                                            checked={doc.is_active}
+                                                            onCheckedChange={() => handleToggleDocument(doc, index)}
+                                                            className="data-[state=checked]:bg-[#6366f1] scale-75"
                                                         />
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                                            onClick={() => handleDeleteDocument(doc, index)}
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
-
-                                    {/* For Office Use Only Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center">
-                                                <Settings2 className="h-3.5 w-3.5 text-white" />
-                                            </div>
-                                            <h3 className="text-[13px] font-bold text-gray-800 uppercase tracking-wider">{t("for_office_use_only") || "For Office Use Only"}</h3>
+                                    ) : (
+                                        <div className="text-center py-6 text-xs text-gray-400 italic">
+                                            {t("no_documents_added_yet")}
                                         </div>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                                        <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-3">
-                                            <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            {/* Fee Policy Section */}
+                            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div className="px-5 py-3.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2.5">
+                                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-xs">
+                                        <CreditCard className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t("fee_policy")}</h3>
+                                    </div>
+                                </div>
+                                <CardContent className="p-5 space-y-6">
+                                    {feePolicyTables.map((table, tableIndex) => (
+                                        <div key={tableIndex} className="bg-gray-50/40 rounded-xl border border-gray-200 p-4 space-y-3">
+                                            <h4 className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                                                <CreditCard className="h-3.5 w-3.5 text-indigo-600" />
+                                                {getTableTitleTranslation(table.title)}
+                                            </h4>
+
+                                            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
                                                 <Table>
                                                     <TableHeader>
                                                         <TableRow className="bg-gray-50/80">
-                                                            {officeUseTable.headers.map((header, idx) => (
+                                                            {table.headers.map((header, idx) => (
                                                                 <TableHead key={idx} className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">
-                                                                    {header}
+                                                                    {getHeaderTranslation(header)}
                                                                 </TableHead>
                                                             ))}
                                                             <TableHead className="w-10"></TableHead>
                                                         </TableRow>
                                                     </TableHeader>
                                                     <TableBody>
-                                                        {officeUseTable.rows.map((row, rowIndex) => (
-                                                            <TableRow key={row.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
+                                                        {table.rows.map((row, rowIndex) => (
+                                                            <TableRow key={`${tableIndex}-${rowIndex}`} className="hover:bg-indigo-50/40 transition-colors">
                                                                 {row.cells.map((cell, cellIndex) => (
-                                                                    <TableCell key={cellIndex} className="p-0">
+                                                                    <TableCell key={cellIndex} className="p-1">
                                                                         <Input
-                                                                            className="h-9 text-[11px] border-0 rounded-none shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                                                                            className="h-8 text-xs border-gray-200 rounded focus:ring-1 focus:ring-indigo-500 bg-white"
                                                                             value={cell}
-                                                                            onChange={(e) => updateOfficeTableCell(rowIndex, cellIndex, e.target.value)}
+                                                                            onChange={(e) => updateFeeTableCell(tableIndex, rowIndex, cellIndex, e.target.value)}
                                                                         />
                                                                     </TableCell>
                                                                 ))}
-                                                                <TableCell className="p-0 w-10">
+                                                                <TableCell className="p-1 w-10 text-center">
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="icon"
-                                                                        className="h-9 w-9 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                                                                        onClick={() => removeOfficeTableRow(rowIndex)}
+                                                                        className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                                                        onClick={() => removeFeeTableRow(tableIndex, rowIndex)}
                                                                     >
                                                                         <Trash2 className="h-3.5 w-3.5" />
                                                                     </Button>
@@ -620,143 +635,236 @@ export default function AdmissionFormPage() {
                                             <Button
                                                 size="sm"
                                                 variant="outline"
-                                                className="h-7 text-[11px] font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                                                onClick={addOfficeTableRow}
+                                                className="h-7 text-xs font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                                onClick={() => addFeeTableRow(tableIndex)}
                                             >
                                                 <Plus className="h-3 w-3 mr-1" />
-                                                Add Row
+                                                {t("add_row")}
                                             </Button>
 
-                                            <div className="mt-3">
-                                                <label className="text-[11px] font-semibold text-gray-600 mb-1.5 block">Note:</label>
+                                            <div className="pt-2">
+                                                <label className="text-[11px] font-bold text-gray-600 mb-1 block">{t("note") || "Note"}:</label>
                                                 <textarea
-                                                    className="w-full min-h-[120px] text-[11px] border border-gray-200 rounded-md p-2.5 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-y"
-                                                    value={officeUseTable.note}
-                                                    onChange={(e) => updateOfficeTableNote(e.target.value)}
-                                                    placeholder="Enter declaration and signature text..."
+                                                    className="w-full min-h-[75px] text-xs border border-gray-200 rounded-lg p-2.5 focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed bg-white"
+                                                    value={table.note}
+                                                    onChange={(e) => updateFeeTableNote(tableIndex, e.target.value)}
+                                                    placeholder={t("enter_notes")}
                                                 />
                                             </div>
                                         </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+
+                            {/* For Office Use Only Section */}
+                            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div className="px-5 py-3.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2.5">
+                                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-xs">
+                                        <Building className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t("for_office_use_only")}</h3>
+                                    </div>
+                                </div>
+
+                                <CardContent className="p-5 space-y-4">
+                                    <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-gray-50/80">
+                                                    {officeUseTable.headers.map((header, idx) => (
+                                                        <TableHead key={idx} className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">
+                                                            {getHeaderTranslation(header)}
+                                                        </TableHead>
+                                                    ))}
+                                                    <TableHead className="w-10"></TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {officeUseTable.rows.map((row, rowIndex) => (
+                                                    <TableRow key={row.id} className="hover:bg-indigo-50/40 transition-colors">
+                                                        {row.cells.map((cell, cellIndex) => (
+                                                            <TableCell key={cellIndex} className="p-1">
+                                                                <Input
+                                                                    className="h-8 text-xs border-gray-200 rounded focus:ring-1 focus:ring-indigo-500 bg-white"
+                                                                    value={cell}
+                                                                    onChange={(e) => updateOfficeTableCell(rowIndex, cellIndex, e.target.value)}
+                                                                />
+                                                            </TableCell>
+                                                        ))}
+                                                        <TableCell className="p-1 w-10 text-center">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                                                                onClick={() => removeOfficeTableRow(rowIndex)}
+                                                            >
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
                                     </div>
 
-                                    {/* Terms & Conditions Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center">
-                                                <FileText className="h-3.5 w-3.5 text-white" />
-                                            </div>
-                                            <h3 className="text-[13px] font-bold text-gray-800 uppercase tracking-wider">{t("terms_and_conditions") || "Terms & Conditions"}</h3>
-                                        </div>
-                                        <CKEditorWrapper
-                                            value={settings.terms_conditions}
-                                            onChange={(val) => setSettings(prev => ({ ...prev, terms_conditions: val }))}
-                                            placeholder={t("enter_terms_and_conditions") || "Enter terms and conditions..."}
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs font-semibold text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                        onClick={addOfficeTableRow}
+                                    >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        {t("add_row")}
+                                    </Button>
+
+                                    <div className="pt-2">
+                                        <label className="text-[11px] font-bold text-gray-600 mb-1 block">{t("note") || "Note"}:</label>
+                                        <textarea
+                                            className="w-full min-h-[100px] text-xs border border-gray-200 rounded-lg p-2.5 focus:ring-1 focus:ring-indigo-500 resize-y leading-relaxed bg-white"
+                                            value={officeUseTable.note}
+                                            onChange={(e) => updateOfficeTableNote(e.target.value)}
+                                            placeholder={t("enter_declaration_signature")}
                                         />
                                     </div>
+                                </CardContent>
+                            </Card>
 
-                                    {/* Declaration Section */}
-                                    <div className="space-y-4">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="h-7 w-7 rounded-md bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center">
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-white" />
-                                            </div>
-                                            <h3 className="text-[13px] font-bold text-gray-800 uppercase tracking-wider">{t("declaration") || "Declaration"}</h3>
+                            {/* Terms & Conditions Section */}
+                            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div className="px-5 py-3.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2.5">
+                                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-xs">
+                                        <FileText className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t("terms_and_conditions")}</h3>
+                                    </div>
+                                </div>
+                                <CardContent className="p-5">
+                                    <CKEditorWrapper
+                                        value={settings.terms_conditions}
+                                        onChange={(val) => setSettings(prev => ({ ...prev, terms_conditions: val }))}
+                                        placeholder={t("enter_terms_and_conditions")}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            {/* Declaration Section */}
+                            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <div className="px-5 py-3.5 bg-gray-50/50 border-b border-gray-100 flex items-center gap-2.5">
+                                    <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] flex items-center justify-center text-white shadow-xs">
+                                        <FileSignature className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t("declaration")}</h3>
+                                    </div>
+                                </div>
+                                <CardContent className="p-5">
+                                    <CKEditorWrapper
+                                        value={settings.declaration}
+                                        onChange={(val) => setSettings(prev => ({ ...prev, declaration: val }))}
+                                        placeholder={t("enter_declaration")}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            {/* Save Button */}
+                            <div className="flex justify-end pt-2">
+                                <Button
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase rounded-full shadow-md active:scale-95"
+                                    onClick={handleSaveSettings}
+                                    disabled={savingSettings}
+                                >
+                                    {savingSettings ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Save className="h-3.5 w-3.5 mr-2" />}
+                                    {t("save")}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Tab 2: Admission Form Fields Setting */}
+                    {activeTab === "fields-setting" && (
+                        <div className="space-y-4 animate-in fade-in-50 duration-200">
+                            <Card className="border-gray-200 shadow-sm bg-white overflow-hidden">
+                                <CardContent className="p-5 space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                        <div>
+                                            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">{t("form_fields_visibility")}</h3>
+                                            <p className="text-[11px] text-gray-500 mt-0.5">{t("toggle_fields_on_off_in_admission_form")}</p>
                                         </div>
-                                        <CKEditorWrapper
-                                            value={settings.declaration}
-                                            onChange={(val) => setSettings(prev => ({ ...prev, declaration: val }))}
-                                            placeholder={t("enter_declaration") || "Enter declaration text..."}
-                                        />
+                                        <div className="relative w-full sm:w-64">
+                                            <Input
+                                                className="h-8 pl-9 text-xs border-gray-200 focus:ring-indigo-500 rounded-lg"
+                                                placeholder={t("search_fields")}
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
+                                            <Search className="h-3.5 w-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        </div>
+                                    </div>
+
+                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-gray-50/80">
+                                                    <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9 w-14">#</TableHead>
+                                                    <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">{t("field_name")}</TableHead>
+                                                    <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">{t("column_name")}</TableHead>
+                                                    <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9 text-center w-24">{t("status")}</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredFields.length > 0 ? (
+                                                    filteredFields.map((field, index) => (
+                                                        <TableRow key={field.id} className="hover:bg-indigo-50/40 transition-colors">
+                                                            <TableCell className="text-xs text-gray-500 font-bold">
+                                                                {toLocaleNumber(index + 1, language?.short_code)}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs font-semibold text-gray-800">
+                                                                {getFieldDisplayName(field)}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs text-gray-500 font-mono">
+                                                                {field.field_name}
+                                                            </TableCell>
+                                                            <TableCell className="text-center">
+                                                                <div className="flex justify-center">
+                                                                    <Switch
+                                                                        checked={field.is_active}
+                                                                        onCheckedChange={() => toggleField(field.id)}
+                                                                        className="data-[state=checked]:bg-[#6366f1] scale-75"
+                                                                    />
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                ) : (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} className="text-center py-8 text-xs text-gray-400 italic">
+                                                            {t("no_fields_found")}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
                                     </div>
 
                                     {/* Save Button */}
-                                    <div className="flex justify-end pt-4 border-t border-gray-100">
+                                    <div className="flex justify-end pt-2">
                                         <Button
-                                            className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-9 text-[11px] font-bold uppercase rounded shadow-md"
-                                            onClick={handleSaveSettings}
-                                            disabled={savingSettings}
+                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-9 text-xs font-bold uppercase rounded-full shadow-md active:scale-95"
+                                            onClick={handleSaveFields}
+                                            disabled={savingFields}
                                         >
-                                            {savingSettings ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Save className="h-3.5 w-3.5 mr-2" />}
-                                            {t("save") || "Save"}
+                                            {savingFields ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Save className="h-3.5 w-3.5 mr-2" />}
+                                            {t("save")}
                                         </Button>
                                     </div>
-                                </TabsContent>
-
-                                {/* Tab 2: Admission Form Fields Setting */}
-                                <TabsContent value="fields-setting" className="flex-1 animate-in fade-in duration-300">
-                                    <div className="p-6 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h3 className="text-[13px] font-bold text-gray-800 uppercase tracking-wider">{t("form_fields_visibility") || "Form Fields Visibility"}</h3>
-                                                <p className="text-[11px] text-gray-500 mt-1">{t("toggle_fields_on_off_in_admission_form") || "Toggle fields on/off in the admission form"}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Input
-                                                    className="h-8 text-[12px] border-gray-200 focus:ring-indigo-500 shadow-none rounded w-56"
-                                                    placeholder={t("search_fields") || "Search fields..."}
-                                                    value={searchTerm}
-                                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow className="bg-gray-50/80">
-                                                        <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">#</TableHead>
-                                                        <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">{t("field_name") || "Field Name"}</TableHead>
-                                                        <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9">{t("column_name") || "Column Name"}</TableHead>
-                                                        <TableHead className="text-[11px] font-bold text-gray-600 uppercase tracking-wider h-9 text-center">{t("status") || "Status"}</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {filteredFields.length > 0 ? (
-                                                        filteredFields.map((field, index) => (
-                                                            <TableRow key={field.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                                                <TableCell className="text-[11px] text-gray-500 w-10">{index + 1}</TableCell>
-                                                                <TableCell className="text-[12px] font-medium text-gray-700">{field.name}</TableCell>
-                                                                <TableCell className="text-[11px] text-gray-500 font-mono">{field.field_name}</TableCell>
-                                                                <TableCell className="text-center">
-                                                                    <div className="flex justify-center">
-                                                                        <Switch
-                                                                            checked={field.is_active}
-                                                                            onCheckedChange={() => toggleField(field.id)}
-                                                                            className="data-[state=checked]:bg-[#6366f1] scale-75"
-                                                                        />
-                                                                    </div>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ))
-                                                    ) : (
-                                                        <TableRow>
-                                                            <TableCell colSpan={4} className="text-center py-8 text-[12px] text-gray-400">
-                                                                {t("no_fields_found") || "No fields found"}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-
-                                        {/* Save Button */}
-                                        <div className="flex justify-end pt-4">
-                                            <Button
-                                                className="bg-[#6366f1] hover:bg-[#5558dd] text-white px-8 h-9 text-[11px] font-bold uppercase rounded shadow-md"
-                                                onClick={handleSaveFields}
-                                                disabled={savingFields}
-                                            >
-                                                {savingFields ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Save className="h-3.5 w-3.5 mr-2" />}
-                                                {t("save") || "Save"}
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </TabsContent>
-                            </>
-                        )}
-                    </Tabs>
-                </CardContent>
-            </Card>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     );
 }

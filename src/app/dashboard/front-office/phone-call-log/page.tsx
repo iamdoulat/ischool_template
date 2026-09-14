@@ -289,7 +289,7 @@ export default function PhoneCallLogPage() {
         if (logs.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Name", "Phone", "Date", "Next Follow Up", "Duration", "Type"]],
+            head: [[t("name"), t("phone"), t("date"), t("next_follow_up_date"), t("call_duration"), t("call_type")]],
             body: logs.map(l => [l.name || "-", l.phone, l.date, l.next_follow_up_date || "-", l.call_duration || "-", l.call_type]),
         });
         doc.save("phone_call_logs.pdf");
@@ -344,7 +344,7 @@ export default function PhoneCallLogPage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.name || ""}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Caller Name"
+                                        placeholder={t("enter_caller_name")}
                                     />
                                 </div>
 
@@ -356,7 +356,7 @@ export default function PhoneCallLogPage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.phone || ""}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        placeholder="Phone number"
+                                        placeholder={t("enter_phone_number")}
                                         required
                                     />
                                 </div>
@@ -368,7 +368,7 @@ export default function PhoneCallLogPage() {
                                     <DatePicker
                                         value={formData.date || ""}
                                         onChange={(val) => setFormData({ ...formData, date: val })}
-                                        placeholder="Select Date"
+                                        placeholder={t("select_date")}
                                         className="h-10 bg-gray-50/40 border-gray-200"
                                     />
                                 </div>
@@ -381,7 +381,7 @@ export default function PhoneCallLogPage() {
                                         className="min-h-[70px] rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-medium text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none"
                                         value={formData.description || ""}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        placeholder="Brief description"
+                                        placeholder={t("enter_brief_description")}
                                     />
                                 </div>
 
@@ -392,7 +392,7 @@ export default function PhoneCallLogPage() {
                                     <DatePicker
                                         value={formData.next_follow_up_date || ""}
                                         onChange={(val) => setFormData({ ...formData, next_follow_up_date: val })}
-                                        placeholder="Select Follow Up Date"
+                                        placeholder={t("select_follow_up_date")}
                                         className="h-10 bg-gray-50/40 border-gray-200"
                                     />
                                 </div>
@@ -405,7 +405,7 @@ export default function PhoneCallLogPage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.call_duration || ""}
                                         onChange={(e) => setFormData({ ...formData, call_duration: e.target.value })}
-                                        placeholder="e.g. 5 mins"
+                                        placeholder={t("call_duration_placeholder")}
                                     />
                                 </div>
 
@@ -417,7 +417,7 @@ export default function PhoneCallLogPage() {
                                         className="min-h-[70px] rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-medium text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none"
                                         value={formData.note || ""}
                                         onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                                        placeholder="Additional notes"
+                                        placeholder={t("additional_notes")}
                                     />
                                 </div>
 

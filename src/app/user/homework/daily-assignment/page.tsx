@@ -18,12 +18,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
     Search, ChevronLeft, ChevronRight, Copy, FileSpreadsheet,
-    FileDown, Printer, Eye, Loader2, BookOpen, X, Calendar, User,
+    FileDown, Printer, Eye, Loader2, BookOpen, Calendar, User,
     Paperclip, ClipboardList, Layers, Send, CheckCircle2, Star,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateClassName, translateSectionName, translateSubjectName } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -53,7 +53,6 @@ type DailyAssignment = {
 };
 
 const PAGE_SIZES = [10, 25, 50, 100];
-const fmt = (d: string) => (d ? formatDate(d) : "—");
 
 const getAttachmentUrl = (path: string) => {
     if (!path) return "";
@@ -64,15 +63,18 @@ const getAttachmentUrl = (path: string) => {
     return `${origin}${normalizedPath}`;
 };
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-    pending:   { label: "Pending",     className: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
-    submitted: { label: "Submitted",   className: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
-    evaluated: { label: "Evaluated",   className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
+const statusConfig: Record<string, { key: string; className: string }> = {
+    pending:   { key: "pending_status",   className: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+    submitted: { key: "submitted_status", className: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
+    evaluated: { key: "evaluated_status", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
 };
 
 export default function StudentDailyAssignmentPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const { toast } = useToast();
+
+    const fmt = (d: string) => (d ? toLocaleNumber(formatDate(d), langCode) : "—");
 
     const [items, setItems] = useState<DailyAssignment[]>([]);
     const [loading, setLoading] = useState(true);
@@ -102,7 +104,7 @@ export default function StudentDailyAssignmentPage() {
             setTotal(d?.total ?? 0);
             setPage(p);
         } catch {
-            toast({ variant: "destructive", title: t("error"), description: "Failed to load daily assignments" });
+            toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_daily_assignments") });
         } finally {
             setLoading(false);
         }
@@ -145,7 +147,7 @@ export default function StudentDailyAssignmentPage() {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             
-            toast({ title: t("success"), description: "Assignment submitted successfully!" });
+            toast({ title: t("success"), description: t("assignment_submitted_successfully") });
             
             // Update local item
             setItems(prev => prev.map(i => i.id === selected.id ? res.data.data : i));
@@ -153,7 +155,7 @@ export default function StudentDailyAssignmentPage() {
             setIsViewOpen(false);
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast({ variant: "destructive", title: t("error"), description: e.response?.data?.message || "Failed to submit assignment" });
+            toast({ variant: "destructive", title: t("error"), description: e.response?.data?.message || t("failed_to_submit_assignment") });
         } finally {
             setSubmitting(false);
         }
@@ -169,6 +171,7 @@ export default function StudentDailyAssignmentPage() {
             ["Status"]: h.status,
             ["Marks"]: h.marks_obtained != null ? h.marks_obtained : "—",
         }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items, t]);
 
     const copyToClipboard = useCallback(() => {
@@ -197,6 +200,7 @@ export default function StudentDailyAssignmentPage() {
             styles: { fontSize: 8 },
         });
         doc.save("daily_assignments.pdf");
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items]);
 
     const pageNumbers = Array.from({ length: lastPage }, (_, i) => i + 1)
@@ -208,12 +212,13 @@ export default function StudentDailyAssignmentPage() {
         }, []);
 
     const statusBadge = (status: string, marks?: number | null) => {
-        const s = statusConfig[status || "pending"];
+        const s = statusConfig[status || "pending"] || statusConfig.pending;
+        const label = t(s.key);
         return (
-            <Badge className={cn("border font-semibold text-[11px] gap-1", s?.className)}>
+            <Badge className={cn("border font-semibold text-[11px] gap-1", s.className)}>
                 {status === "evaluated" && <Star className="h-3 w-3 fill-emerald-500 text-emerald-500" />}
                 {status === "submitted" && <CheckCircle2 className="h-3 w-3" />}
-                {s?.label || status} {marks != null ? `(${marks})` : ""}
+                {label} {marks != null ? `(${toLocaleNumber(marks, langCode)})` : ""}
             </Badge>
         );
     };
@@ -228,12 +233,15 @@ export default function StudentDailyAssignmentPage() {
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <ClipboardList className="h-5 w-5" />
                         </span>
-                        <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none truncate">
-                                My Daily Assignments
+                        <div className="min-w-0 space-y-0.5">
+                            <h1 className="text-[16px] font-bold text-gray-800 dark:text-gray-100 leading-snug">
+                                {t("my_daily_assignments")}
                             </h1>
-                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                                {loading ? t("loading") : `${total} assignment${total === 1 ? "" : "s"}`}
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                {loading ? t("loading") : t("assignments_count", {
+                                    count: toLocaleNumber(total, langCode),
+                                    plural: total === 1 ? "" : "s",
+                                })}
                             </p>
                         </div>
                     </div>
@@ -253,22 +261,27 @@ export default function StudentDailyAssignmentPage() {
                         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-between sm:justify-end">
                             <Select value={limit.toString()} onValueChange={(v) => setLimit(Number(v))}>
                                 <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-[10px]">
-                                    <SelectValue />
+                                    <SelectValue>{toLocaleNumber(limit, langCode)}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {PAGE_SIZES.map((s) => (
-                                        <SelectItem key={s} value={s.toString()} className="text-xs">{s}</SelectItem>
+                                        <SelectItem key={s} value={s.toString()} className="text-xs">
+                                            {toLocaleNumber(s, langCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-[10px] overflow-hidden bg-white dark:bg-gray-800">
-                                <Button variant="ghost" size="icon" onClick={copyToClipboard} title="Copy" className="h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-700">
+                                <Button variant="ghost" size="icon" onClick={copyToClipboard} title={t("copy")} className="h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-700">
                                     <Copy className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={exportToExcel} title="Excel" className="h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-700">
+                                <Button variant="ghost" size="icon" onClick={exportToExcel} title={t("excel")} className="h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-700">
                                     <FileSpreadsheet className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 </Button>
-                                <Button variant="ghost" size="icon" onClick={exportToPDF} title="PDF" className="h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <Button variant="ghost" size="icon" onClick={exportToPDF} title={t("pdf")} className="h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700 border-r border-gray-200 dark:border-gray-700">
+                                    <FileDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => window.print()} title={t("print")} className="h-9 w-9 rounded-none hover:bg-gray-100 dark:hover:bg-gray-700">
                                     <Printer className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 </Button>
                             </div>
@@ -284,8 +297,8 @@ export default function StudentDailyAssignmentPage() {
                                     <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3">{t("subject")}</TableHead>
                                     <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3">{t("title")}</TableHead>
                                     <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3">{t("submission_date")}</TableHead>
-                                    <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3 text-center">Status</TableHead>
-                                    <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3 text-center">Marks</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3 text-center">{t("status")}</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3 text-center">{t("marks_label")}</TableHead>
                                     <TableHead className="text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 py-3 text-right">{t("action") || "Action"}</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -295,23 +308,23 @@ export default function StudentDailyAssignmentPage() {
                                         <td colSpan={7} className="py-20 text-center">
                                             <div className="flex flex-col items-center justify-center text-gray-400 gap-2">
                                                 <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-                                                <span className="text-xs">Loading assignments...</span>
+                                                <span className="text-xs">{t("loading")}</span>
                                             </div>
                                         </td>
                                     </tr>
                                 ) : items.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="py-20 text-center text-[12px] font-medium text-gray-400">
-                                            {searchTerm ? "No assignments found matching your search." : "No daily assignments found."}
+                                            {searchTerm ? t("no_assignments_matching_search") : t("no_daily_assignments_found")}
                                         </td>
                                     </tr>
                                 ) : (
                                     items.map((item) => (
                                         <TableRow key={item.id} className="text-[13px] border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors">
                                             <TableCell className="py-3.5 text-gray-700 dark:text-gray-300 font-medium">
-                                                {item.class?.name} ({item.section?.name})
+                                                {translateClassName(item.class?.name, langCode)}{item.section?.name ? ` (${translateSectionName(item.section.name, langCode)})` : ""}
                                             </TableCell>
-                                            <TableCell className="py-3.5 text-gray-800 dark:text-gray-200 font-semibold">{item.subject?.name}</TableCell>
+                                            <TableCell className="py-3.5 text-gray-800 dark:text-gray-200 font-semibold">{translateSubjectName(item.subject?.name, langCode)}</TableCell>
                                             <TableCell className="py-3.5 text-gray-800 dark:text-gray-200 font-medium max-w-[200px] truncate">{item.title}</TableCell>
                                             <TableCell className="py-3.5 text-gray-500 dark:text-gray-400">{fmt(item.submission_date)}</TableCell>
                                             <TableCell className="py-3.5 text-center">
@@ -319,7 +332,7 @@ export default function StudentDailyAssignmentPage() {
                                             </TableCell>
                                             <TableCell className="py-3.5 text-center">
                                                 {item.marks_obtained != null ? (
-                                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{item.marks_obtained}</span>
+                                                    <span className="font-bold text-emerald-600 dark:text-emerald-400">{toLocaleNumber(item.marks_obtained, langCode)}</span>
                                                 ) : "—"}
                                             </TableCell>
                                             <TableCell className="py-3.5 text-right">
@@ -328,7 +341,7 @@ export default function StudentDailyAssignmentPage() {
                                                     onClick={() => openView(item)}
                                                     className="h-7 bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900 text-[11px] font-bold rounded-lg px-3 shadow-xs"
                                                 >
-                                                    {item.status === 'evaluated' ? 'View Result' : 'View / Submit'}
+                                                    {item.status === 'evaluated' ? t("view_result") : t("view_submit")}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -343,12 +356,12 @@ export default function StudentDailyAssignmentPage() {
                         {loading ? (
                             <div className="flex items-center justify-center py-16 gap-2 text-gray-400">
                                 <Loader2 className="h-5 w-5 animate-spin text-indigo-600" />
-                                <span>Loading...</span>
+                                <span>{t("loading")}</span>
                             </div>
                         ) : items.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 gap-2 text-gray-400">
                                 <BookOpen className="h-8 w-8 opacity-30" />
-                                <span className="text-sm">No daily assignments found</span>
+                                <span className="text-sm">{t("no_daily_assignments_found")}</span>
                             </div>
                         ) : (
                             items.map((item) => (
@@ -366,7 +379,7 @@ export default function StudentDailyAssignmentPage() {
                                                 <p className="text-[13.5px] font-bold text-gray-800 dark:text-gray-100 truncate">{item.title}</p>
                                                 <p className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-1 mt-0.5">
                                                     <Layers className="h-3 w-3" />
-                                                    {item.subject?.name} · {item.class?.name} ({item.section?.name})
+                                                    {translateSubjectName(item.subject?.name, langCode)} · {translateClassName(item.class?.name, langCode)}{item.section?.name ? ` (${translateSectionName(item.section.name, langCode)})` : ""}
                                                 </p>
                                             </div>
                                         </div>
@@ -375,11 +388,11 @@ export default function StudentDailyAssignmentPage() {
                                     <div className="mt-3 grid grid-cols-2 gap-2 text-[11.5px] text-gray-500 dark:text-gray-400 bg-gray-50/80 dark:bg-gray-800/40 rounded-lg p-2.5 border border-gray-100 dark:border-gray-800">
                                         <span className="flex items-center gap-1.5">
                                             <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                                            Due: <span className="font-semibold text-gray-700 dark:text-gray-200">{fmt(item.submission_date)}</span>
+                                            {t("submission_date")}: <span className="font-semibold text-gray-700 dark:text-gray-200">{fmt(item.submission_date)}</span>
                                         </span>
                                         <span className="flex items-center gap-1.5">
                                             <Star className="h-3.5 w-3.5 text-gray-400" />
-                                            Marks: <span className="font-bold text-emerald-600 dark:text-emerald-400">{item.marks_obtained != null ? item.marks_obtained : "—"}</span>
+                                            {t("marks_label")}: <span className="font-bold text-emerald-600 dark:text-emerald-400">{item.marks_obtained != null ? toLocaleNumber(item.marks_obtained, langCode) : "—"}</span>
                                         </span>
                                     </div>
                                     <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
@@ -387,7 +400,7 @@ export default function StudentDailyAssignmentPage() {
                                             {item.attachment ? t("has_attachment") : t("tap_to_view_details")}
                                         </span>
                                         <span className="flex items-center gap-1 text-[11.5px] font-bold text-[#6366F1]">
-                                            <Eye className="h-3.5 w-3.5" /> {item.status === 'evaluated' ? 'View Result' : 'View / Submit'}
+                                            <Eye className="h-3.5 w-3.5" /> {item.status === 'evaluated' ? t("view_result") : t("view_submit")}
                                         </span>
                                     </div>
                                 </button>
@@ -398,7 +411,7 @@ export default function StudentDailyAssignmentPage() {
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3 print:hidden">
                         <div className="text-[12px] text-gray-500 dark:text-gray-400">
-                            Total {total} items
+                            {t("total_items_count", { count: toLocaleNumber(total, langCode) })}
                         </div>
                         <div className="flex items-center gap-1">
                             <Button variant="outline" size="icon" disabled={page === 1}
@@ -412,7 +425,7 @@ export default function StudentDailyAssignmentPage() {
                                         page === p ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white" : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50",
                                         p === "…" && "pointer-events-none bg-transparent border-0 shadow-none text-gray-400"
                                     )}>
-                                    {p}
+                                    {p === "…" ? "…" : toLocaleNumber(p as number, langCode)}
                                 </Button>
                             ))}
                             <Button variant="outline" size="icon" disabled={page === lastPage}
@@ -440,18 +453,18 @@ export default function StudentDailyAssignmentPage() {
                                 {/* Assignment Details */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
                                     <div>
-                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Subject</div>
-                                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">{selected.subject?.name}</div>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t("subject")}</div>
+                                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">{translateSubjectName(selected.subject?.name, langCode)}</div>
                                     </div>
                                     <div>
-                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Due Date</div>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t("submission_date")}</div>
                                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">{fmt(selected.submission_date)}</div>
                                     </div>
                                     {selected.attachment && (
                                         <div className="col-span-2 md:col-span-2 flex items-center justify-end">
                                             <a href={getAttachmentUrl(selected.attachment)} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 px-3 py-1.5 rounded-full hover:bg-indigo-100 transition-colors">
                                                 <Paperclip className="h-3.5 w-3.5" />
-                                                Download Assignment
+                                                {t("download_assignment")}
                                             </a>
                                         </div>
                                     )}
@@ -459,10 +472,10 @@ export default function StudentDailyAssignmentPage() {
 
                                 <div>
                                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                        <Layers className="h-3.5 w-3.5 text-indigo-500" /> Assignment Instructions
+                                        <Layers className="h-3.5 w-3.5 text-indigo-500" /> {t("assignment_instructions")}
                                     </div>
                                     <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-800/40 p-4 rounded-xl border border-gray-100 dark:border-gray-800 whitespace-pre-wrap">
-                                        {selected.description || "No description provided."}
+                                        {selected.description || t("no_description_provided")}
                                     </div>
                                 </div>
 
@@ -470,15 +483,15 @@ export default function StudentDailyAssignmentPage() {
                                 {selected.status === 'evaluated' && (
                                     <div className="bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
                                         <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2 mb-3">
-                                            <Star className="h-4 w-4 fill-emerald-500 text-emerald-500" /> Evaluation Result
+                                            <Star className="h-4 w-4 fill-emerald-500 text-emerald-500" /> {t("evaluation_result")}
                                         </h3>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <div className="text-[10px] uppercase font-bold text-emerald-600/80 dark:text-emerald-400 mb-1">Marks Obtained</div>
-                                                <div className="text-xl font-black text-emerald-700 dark:text-emerald-300">{selected.marks_obtained}</div>
+                                                <div className="text-[10px] uppercase font-bold text-emerald-600/80 dark:text-emerald-400 mb-1">{t("marks_obtained")}</div>
+                                                <div className="text-xl font-black text-emerald-700 dark:text-emerald-300">{selected.marks_obtained != null ? toLocaleNumber(selected.marks_obtained, langCode) : "—"}</div>
                                             </div>
                                             <div>
-                                                <div className="text-[10px] uppercase font-bold text-emerald-600/80 dark:text-emerald-400 mb-1">Evaluated On</div>
+                                                <div className="text-[10px] uppercase font-bold text-emerald-600/80 dark:text-emerald-400 mb-1">{t("evaluated_on_label")}</div>
                                                 <div className="text-xs font-medium text-emerald-800 dark:text-emerald-200">{fmt(selected.evaluation_date)}</div>
                                             </div>
                                         </div>
@@ -488,7 +501,7 @@ export default function StudentDailyAssignmentPage() {
                                 {/* Student Submission Area */}
                                 <div>
                                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                        <User className="h-3.5 w-3.5 text-sky-500" /> Your Submission
+                                        <User className="h-3.5 w-3.5 text-sky-500" /> {t("your_submission")}
                                     </div>
                                     
                                     {selected.status === 'evaluated' ? (
@@ -498,23 +511,23 @@ export default function StudentDailyAssignmentPage() {
                                             )}
                                             {selected.submission_file && (
                                                 <a href={getAttachmentUrl(selected.submission_file)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-                                                    <Paperclip className="h-3.5 w-3.5" /> View Submitted File
+                                                    <Paperclip className="h-3.5 w-3.5" /> {t("view_submitted_file")}
                                                 </a>
                                             )}
                                         </div>
                                     ) : (
                                         <form onSubmit={handleFormSubmit} className="space-y-4">
                                             <div className="space-y-1.5">
-                                                <Label className="text-xs text-gray-600 dark:text-gray-300">Answer Text</Label>
+                                                <Label className="text-xs text-gray-600 dark:text-gray-300">{t("answer_text")}</Label>
                                                 <Textarea 
                                                     value={studentAnswer}
                                                     onChange={e => setStudentAnswer(e.target.value)}
-                                                    placeholder="Type your answer here..."
+                                                    placeholder={t("type_answer_here")}
                                                     className="min-h-[120px] text-sm rounded-xl border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                                                 />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <Label className="text-xs text-gray-600 dark:text-gray-300">Attach File (Optional)</Label>
+                                                <Label className="text-xs text-gray-600 dark:text-gray-300">{t("attach_file_optional")}</Label>
                                                 <div className="flex items-center gap-3">
                                                     <Input 
                                                         type="file" 
@@ -523,7 +536,7 @@ export default function StudentDailyAssignmentPage() {
                                                     />
                                                     {selected.submission_file && !submissionFile && (
                                                         <a href={getAttachmentUrl(selected.submission_file)} target="_blank" rel="noreferrer" className="shrink-0 text-[10px] font-bold text-indigo-600 underline">
-                                                            Current File
+                                                            {t("current_file")}
                                                         </a>
                                                     )}
                                                 </div>
@@ -532,7 +545,7 @@ export default function StudentDailyAssignmentPage() {
                                             <div className="flex justify-end pt-2">
                                                 <Button type="submit" disabled={submitting} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 rounded-full shadow-md px-6">
                                                     {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                                                    Submit Assignment
+                                                    {t("submit_assignment")}
                                                 </Button>
                                             </div>
                                         </form>

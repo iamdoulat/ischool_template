@@ -31,7 +31,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -66,7 +66,8 @@ interface Rating {
 }
 
 export default function TeachersRatingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [ratings, setRatings] = useState<Rating[]>([]);
@@ -131,11 +132,11 @@ export default function TeachersRatingPage() {
                     key={s}
                     className={cn(
                         "h-3 w-3",
-                        s <= count ? "fill-orange-400 text-orange-400" : "text-gray-200"
+                        s <= count ? "fill-amber-400 text-amber-400" : "text-gray-200"
                     )}
                 />
             ))}
-            <span className="ml-1 text-[10px] text-gray-500 font-bold">{count}</span>
+            <span className="ml-1 text-[10px] text-gray-500 font-bold">{toLocaleNumber(count, shortCode)}</span>
         </div>
     );
 
@@ -174,13 +175,13 @@ export default function TeachersRatingPage() {
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Star className="h-5 w-5" />
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Star className="h-4 w-4" />
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("teachers_rating")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{filteredRatings.length} {t("ratings")}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(filteredRatings.length, shortCode)} {t("ratings")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-4">
@@ -190,7 +191,7 @@ export default function TeachersRatingPage() {
                                 placeholder={t("search") + "..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-full"
+                                className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
                             />
                         </div>
 
@@ -203,13 +204,17 @@ export default function TeachersRatingPage() {
                                         setCurrentPage(1);
                                     }}
                                 >
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
-                                        <SelectValue />
+                                    <SelectTrigger className="h-8 w-16 text-[11px] font-bold border-gray-200 bg-white rounded-lg focus:ring-indigo-500 cursor-pointer">
+                                        <SelectValue placeholder={toLocaleNumber(itemsPerPage, shortCode)}>
+                                            {toLocaleNumber(itemsPerPage, shortCode)}
+                                        </SelectValue>
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
+                                    <SelectContent className="rounded-lg border-gray-100">
+                                        {[10, 25, 50, 100].map(n => (
+                                            <SelectItem key={n} value={String(n)} className="cursor-pointer text-xs font-bold">
+                                                {toLocaleNumber(n, shortCode)}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -233,20 +238,20 @@ export default function TeachersRatingPage() {
                         </div>
                     </div>
 
-                    <div className="rounded border border-gray-50 overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-gray-100">
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("staff_id")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("staff_name")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("rating")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("comment")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("status")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("student_name")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
+                    <div className="rounded-lg border border-gray-200 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                        <Table className="min-w-[900px]">
+                            <TableHeader className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
+                                <TableRow className="hover:bg-transparent border-b border-gray-200">
+                                    <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("staff_id")}</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("staff_name")}</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("rating")}</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("comment")}</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("status")}</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("student_name")}</TableHead>
+                                    <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 text-right whitespace-nowrap">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
-                            <TableBody>
+                            <TableBody className="bg-white divide-y divide-gray-100">
                                 {loading ? (
                                     <TableSkeleton rows={5} cols={7} />
                                 ) : paginatedData.length === 0 ? (
@@ -255,27 +260,26 @@ export default function TeachersRatingPage() {
                                     </TableRow>
                                 ) : (
                                     paginatedData.map((item) => (
-                                        <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                            <TableCell className="py-3.5 text-gray-500">{item.staff_id}</TableCell>
-                                            <TableCell className="py-3.5 text-indigo-500 font-medium cursor-pointer hover:underline">{item.staff_name}</TableCell>
-                                            <TableCell className="py-3.5"><StarRating count={item.rating} /></TableCell>
-                                            <TableCell className="py-3.5 text-gray-500 italic max-w-[200px] truncate" title={item.comment}>{item.comment || "—"}</TableCell>
-                                            <TableCell className="py-3.5">
+                                        <TableRow key={item.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
+                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{toLocaleNumber(item.staff_id, shortCode)}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-indigo-600 font-medium whitespace-nowrap">{item.staff_name}</TableCell>
+                                            <TableCell className="py-3.5 px-4 whitespace-nowrap"><StarRating count={item.rating} /></TableCell>
+                                            <TableCell className="py-3.5 px-4 text-gray-500 italic max-w-[200px] truncate" title={item.comment}>{item.comment || "—"}</TableCell>
+                                            <TableCell className="py-3.5 px-4 whitespace-nowrap">
                                                 <span className={cn(
-                                                    "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
+                                                    "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm",
                                                     item.status === "Pending" ? "bg-orange-500 text-white" : "bg-green-600 text-white"
                                                 )}>
                                                     {item.status === "Pending" ? t("pending") : t("approved")}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="py-3.5 text-gray-500">{item.student_name || "—"}</TableCell>
-                                            <TableCell className="py-3.5 text-right">
+                                            <TableCell className="py-3.5 px-4 text-gray-500 whitespace-nowrap">{item.student_name || "—"}</TableCell>
+                                            <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     {item.status === "Pending" && (
                                                         <Button
                                                             onClick={() => handleApprove(item.id)}
-                                                            variant="gradient"
-                                                            className="h-7 px-3 text-[9px] font-bold uppercase rounded shadow-sm flex items-center gap-1"
+                                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-7 px-3 text-[10px] font-bold uppercase rounded-full shadow-sm flex items-center gap-1 cursor-pointer border-0"
                                                         >
                                                             <CheckCircle className="h-3 w-3" />
                                                             {t("approve")}
@@ -285,7 +289,7 @@ export default function TeachersRatingPage() {
                                                         onClick={() => handleDelete(item.id)}
                                                         size="icon"
                                                         variant="ghost"
-                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm"
+                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors shadow-sm cursor-pointer"
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
@@ -304,7 +308,7 @@ export default function TeachersRatingPage() {
                             size="icon"
                             disabled={currentPage === 1}
                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30"
+                            className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30 cursor-pointer"
                         >
                             <ChevronLeft className="h-4 w-4 text-white" />
                         </Button>
@@ -314,13 +318,13 @@ export default function TeachersRatingPage() {
                                 key={page}
                                 onClick={() => setCurrentPage(page)}
                                 className={cn(
-                                    "h-8 w-8 rounded-[10px] text-[10px] font-bold p-0 transition-all",
+                                    "h-8 w-8 rounded-[10px] text-[10px] font-bold p-0 transition-all cursor-pointer",
                                     currentPage === page
                                         ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md scale-105"
                                         : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
                                 )}
                             >
-                                {page}
+                                {toLocaleNumber(page, shortCode)}
                             </Button>
                         ))}
 
@@ -329,7 +333,7 @@ export default function TeachersRatingPage() {
                             size="icon"
                             disabled={currentPage === totalPages}
                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                            className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30"
+                            className="h-8 w-8 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 disabled:opacity-30 cursor-pointer"
                         >
                             <ChevronRight className="h-4 w-4 text-white" />
                         </Button>

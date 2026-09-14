@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
@@ -10,6 +10,7 @@ import { ExamResultSection } from "@/components/public/exam-result-section";
 import { AboutUsSection } from "@/components/public/about-section";
 import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface PageData {
   id: number;
@@ -18,27 +19,12 @@ interface PageData {
 }
 
 function RawHtmlRenderer({ html }: { html: string }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const scripts = containerRef.current.querySelectorAll("script");
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach((attr) => {
-        newScript.setAttribute(attr.name, attr.value);
-      });
-      newScript.textContent = oldScript.textContent;
-      oldScript.parentNode?.replaceChild(newScript, oldScript);
-    });
-  }, [html]);
+  const cleanHtml = sanitizeHtml(html);
 
   return (
     <div
-      ref={containerRef}
       className="raw-html-content w-full max-w-full overflow-x-auto"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: cleanHtml }}
     />
   );
 }

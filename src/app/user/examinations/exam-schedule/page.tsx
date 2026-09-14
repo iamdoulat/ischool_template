@@ -31,7 +31,15 @@ import {
     FileBox, Printer, Columns, Eye, Loader2,
     CalendarDays, Clock, MapPin, Target, ShieldCheck, CalendarClock, BookOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateSubjectName,
+    translateExamTitle,
+    translateExamTimeString,
+    translateDurationMinutes,
+    translateRoomNumber,
+} from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
@@ -55,8 +63,11 @@ interface Exam {
     schedules: ScheduleItem[];
 }
 
+const PAGE_SIZES = [10, 25, 50, 100];
+
 export default function UserExaminationsSchedulePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [exams, setExams] = useState<Exam[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -72,8 +83,7 @@ export default function UserExaminationsSchedulePage() {
         try {
             const response = await api.get("/user/exam-schedule");
             setExams(response.data?.data || []);
-        } catch (error) {
-            console.error("Error fetching exam schedule:", error);
+        } catch {
             toast.error(t("failed_to_load_exam_schedule"));
         } finally {
             setLoading(false);
@@ -102,6 +112,10 @@ export default function UserExaminationsSchedulePage() {
 
     const paginatedData = filteredData.slice(startIndex, startIndex + sizeNum);
 
+    const scheduledText = totalEntries === 1
+        ? (t("exam_scheduled", { count: toLocaleNumber(totalEntries, langCode) }) || `${toLocaleNumber(totalEntries, langCode)} exam scheduled`)
+        : (t("exams_scheduled", { count: toLocaleNumber(totalEntries, langCode) }) || `${toLocaleNumber(totalEntries, langCode)} exams scheduled`);
+
     return (
         <div className="p-4 lg:p-6 space-y-5 min-h-screen font-sans text-xs animate-in fade-in duration-500">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -114,7 +128,7 @@ export default function UserExaminationsSchedulePage() {
                     <div>
                         <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("exam_schedule")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {loading ? t("loading_schedule") : `${totalEntries} exam${totalEntries === 1 ? "" : "s"} scheduled`}
+                            {loading ? t("loading_schedule") : scheduledText}
                         </p>
                     </div>
                 </div>
@@ -138,23 +152,34 @@ export default function UserExaminationsSchedulePage() {
 
                         <div className="flex items-center justify-between md:justify-end gap-2">
                             <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
-                                    <SelectValue placeholder="50" />
+                                <SelectTrigger className="h-8 min-w-16 px-2 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
+                                    <SelectValue placeholder={toLocaleNumber(50, langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    {PAGE_SIZES.map((size) => (
+                                        <SelectItem key={size} value={String(size)}>
+                                            {toLocaleNumber(size, langCode)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
+                                {[
+                                    { icon: Copy, label: t("copy") },
+                                    { icon: FileSpreadsheet, label: t("excel") },
+                                    { icon: FileBox, label: t("pdf") },
+                                    { icon: Printer, label: t("print"), action: () => window.print() },
+                                    { icon: Columns, label: t("columns") },
+                                ].map(({ icon: Icon, label, action }, i) => (
                                     <Button
-                                        key={i}
+                                        key={label || i}
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
+                                        title={label}
+                                        onClick={action}
+                                        className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all text-gray-400 hover:text-gray-600"
                                     >
                                         <Icon className="h-3.5 w-3.5" />
                                     </Button>
@@ -168,7 +193,7 @@ export default function UserExaminationsSchedulePage() {
                         <Table className="min-w-[700px]">
                             <TableHeader className="bg-gray-50/80 border-b border-gray-100">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4 h-auto w-20">{t("s_no")}</TableHead>
+                                    <TableHead className="py-3 px-4 h-auto w-20">{t("s_no") || "S NO"}</TableHead>
                                     <TableHead className="py-3 px-4 h-auto w-1/3">{t("exam")} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
                                     <TableHead className="py-3 px-4 h-auto">{t("description")}</TableHead>
                                     <TableHead className="py-3 px-4 h-auto text-right">{t("action")}</TableHead>
@@ -196,11 +221,15 @@ export default function UserExaminationsSchedulePage() {
                                 ) : (
                                     paginatedData.map((item, idx) => (
                                         <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/30 transition-colors text-gray-600">
-                                            <TableCell className="py-3 px-4 text-gray-400 font-medium">{startIndex + idx + 1}</TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-400 font-medium">
+                                                {toLocaleNumber(startIndex + idx + 1, langCode)}
+                                            </TableCell>
                                             <TableCell className="py-3 px-4 font-semibold text-gray-800">
                                                 <span className="flex items-center gap-2">
-                                                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-indigo-50 text-indigo-500 text-[10px] font-bold shrink-0">{item.schedules?.length ?? 0}</span>
-                                                    {item.exam}
+                                                    <span className="inline-flex items-center justify-center h-6 w-6 rounded-md bg-indigo-50 text-indigo-500 text-[10px] font-bold shrink-0">
+                                                        {toLocaleNumber(item.schedules?.length ?? 0, langCode)}
+                                                    </span>
+                                                    {translateExamTitle(item.exam, langCode)}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-3 px-4">{item.description || "-"}</TableCell>
@@ -228,7 +257,7 @@ export default function UserExaminationsSchedulePage() {
                         ) : paginatedData.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                                 <CalendarClock className="h-12 w-12 opacity-30 mb-3" />
-                                <p className="font-bold uppercase text-[11px] tracking-widest">No exams scheduled</p>
+                                <p className="font-bold uppercase text-[11px] tracking-widest">{t("no_exams_scheduled")}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -236,11 +265,11 @@ export default function UserExaminationsSchedulePage() {
                                     <div key={item.id || idx} className="rounded-xl border border-gray-200 bg-white shadow-sm p-4 flex flex-col gap-2">
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
-                                                <h3 className="text-[13px] font-bold text-gray-800 leading-snug">{item.exam}</h3>
+                                                <h3 className="text-[13px] font-bold text-gray-800 leading-snug">{translateExamTitle(item.exam, langCode)}</h3>
                                                 {item.description && <p className="text-[11px] text-gray-500 mt-0.5">{item.description}</p>}
                                             </div>
                                             <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                                                <BookOpen className="h-3 w-3" />{item.schedules?.length ?? 0}
+                                                <BookOpen className="h-3 w-3" />{toLocaleNumber(item.schedules?.length ?? 0, langCode)}
                                             </span>
                                         </div>
                                         <Button
@@ -258,8 +287,8 @@ export default function UserExaminationsSchedulePage() {
                     {/* ── Pagination ── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
+                            {t("showing")} {totalEntries > 0 ? toLocaleNumber(startIndex + 1, langCode) : toLocaleNumber(0, langCode)} {t("to")}{" "}
+                            {toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode)} {t("of")} {toLocaleNumber(totalEntries, langCode)} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -269,7 +298,7 @@ export default function UserExaminationsSchedulePage() {
                                     onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                                     className="h-8 w-8 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none hover:shadow-sm transition-all active:scale-95"
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                                 </button>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                                     <button
@@ -282,7 +311,7 @@ export default function UserExaminationsSchedulePage() {
                                                 : "bg-white text-gray-500 border border-gray-200 hover:shadow-sm active:scale-95"
                                         )}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, langCode)}
                                     </button>
                                 ))}
                                 <button
@@ -290,7 +319,7 @@ export default function UserExaminationsSchedulePage() {
                                     onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
                                     className="h-8 w-8 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none hover:shadow-sm transition-all active:scale-95"
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                                 </button>
                             </div>
                         )}
@@ -303,13 +332,13 @@ export default function UserExaminationsSchedulePage() {
                 <DialogContent className="sm:max-w-[760px] w-[95vw] max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="text-gray-800 text-base font-bold flex items-center gap-2">
-                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shrink-0">
                                 <CalendarClock className="h-4 w-4" />
                             </span>
-                            {selectedExam?.exam}
+                            <span>{translateExamTitle(selectedExam?.exam, langCode)}</span>
                         </DialogTitle>
                         <DialogDescription className="text-gray-500 text-xs">
-                            {selectedExam?.description || t("exam_schedule_details")}
+                            {selectedExam?.description ? translateExamTitle(selectedExam.description, langCode) : t("exam_schedule_details")}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -329,56 +358,98 @@ export default function UserExaminationsSchedulePage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {selectedExam.schedules.map((s) => (
-                                            <TableRow key={s.id} className="text-[12px] border-b border-gray-50 hover:bg-indigo-50/30 transition-colors text-gray-600">
-                                                <TableCell className="py-2.5 px-3 font-semibold text-gray-800">
-                                                    {s.subject}
-                                                    {s.subject_code && <span className="text-[10px] text-gray-400 ml-1">({s.subject_code})</span>}
-                                                </TableCell>
-                                                <TableCell className="py-2.5 px-3">
-                                                    <span className="flex items-center gap-1.5"><CalendarDays className="h-3 w-3 text-indigo-400" />{s.date_from}</span>
-                                                </TableCell>
-                                                <TableCell className="py-2.5 px-3">
-                                                    <span className="flex items-center gap-1.5"><Clock className="h-3 w-3 text-indigo-400" />{s.start_time}</span>
-                                                </TableCell>
-                                                <TableCell className="py-2.5 px-3">
-                                                    <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-semibold text-[10px]">{s.duration} MIN</span>
-                                                </TableCell>
-                                                <TableCell className="py-2.5 px-3">
-                                                    <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-indigo-400" />{s.room_no || "TBA"}</span>
-                                                </TableCell>
-                                                <TableCell className="py-2.5 px-3 text-right">
-                                                    <div className="flex flex-col items-end gap-0.5">
-                                                        <span className="flex items-center gap-1 text-emerald-600 font-medium text-[10px]"><Target className="h-2.5 w-2.5" /> {t("max")}: {s.max_marks.toFixed(2)}</span>
-                                                        <span className="flex items-center gap-1 text-rose-500 font-medium text-[10px]"><ShieldCheck className="h-2.5 w-2.5" /> {t("min")}: {s.min_marks.toFixed(2)}</span>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                        {selectedExam.schedules.map((s) => {
+                                            const localizedSubj = translateSubjectName(
+                                                s.subject_code ? `${s.subject} (${s.subject_code})` : s.subject,
+                                                langCode
+                                            );
+                                            return (
+                                                <TableRow key={s.id} className="text-[12px] border-b border-gray-50 hover:bg-indigo-50/30 transition-colors text-gray-600">
+                                                    <TableCell className="py-2.5 px-3 font-semibold text-gray-800">
+                                                        {localizedSubj}
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-3">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <CalendarDays className="h-3 w-3 text-indigo-400" />
+                                                            {toLocaleNumber(s.date_from, langCode)}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-3">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <Clock className="h-3 w-3 text-indigo-400" />
+                                                            {translateExamTimeString(s.start_time, langCode)}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-3">
+                                                        <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-semibold text-[10px]">
+                                                            {translateDurationMinutes(s.duration, langCode)}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-3">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <MapPin className="h-3 w-3 text-indigo-400" />
+                                                            {s.room_no ? translateRoomNumber(s.room_no, langCode) : (t("room_tba") || "TBA")}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-2.5 px-3 text-right">
+                                                        <div className="flex flex-col items-end gap-0.5">
+                                                            <span className="flex items-center gap-1 text-emerald-600 font-medium text-[10px]">
+                                                                <Target className="h-2.5 w-2.5" /> {t("max")}: {toLocaleNumber(s.max_marks.toFixed(2), langCode)}
+                                                            </span>
+                                                            <span className="flex items-center gap-1 text-rose-500 font-medium text-[10px]">
+                                                                <ShieldCheck className="h-2.5 w-2.5" /> {t("min")}: {toLocaleNumber(s.min_marks.toFixed(2), langCode)}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>
 
                             {/* Mobile cards */}
                             <div className="sm:hidden space-y-2.5 mt-2">
-                                {selectedExam.schedules.map((s) => (
-                                    <div key={s.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-3.5">
-                                        <div className="flex items-center justify-between gap-2 mb-2">
-                                            <span className="text-[13px] font-bold text-gray-800">
-                                                {s.subject}
-                                                {s.subject_code && <span className="text-[10px] text-gray-400 ml-1">({s.subject_code})</span>}
-                                            </span>
-                                            <span className="shrink-0 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-semibold text-[10px]">{s.duration} MIN</span>
+                                {selectedExam.schedules.map((s) => {
+                                    const localizedSubj = translateSubjectName(
+                                        s.subject_code ? `${s.subject} (${s.subject_code})` : s.subject,
+                                        langCode
+                                    );
+                                    return (
+                                        <div key={s.id} className="rounded-xl border border-gray-200 bg-white shadow-sm p-3.5">
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <span className="text-[13px] font-bold text-gray-800">
+                                                    {localizedSubj}
+                                                </span>
+                                                <span className="shrink-0 bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-semibold text-[10px]">
+                                                    {translateDurationMinutes(s.duration, langCode)}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600">
+                                                <span className="flex items-center gap-1.5">
+                                                    <CalendarDays className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                                                    {toLocaleNumber(s.date_from, langCode)}
+                                                </span>
+                                                <span className="flex items-center gap-1.5">
+                                                    <Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                                                    {translateExamTimeString(s.start_time, langCode)}
+                                                </span>
+                                                <span className="flex items-center gap-1.5">
+                                                    <MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                                                    {s.room_no ? translateRoomNumber(s.room_no, langCode) : (t("room_tba") || "TBA")}
+                                                </span>
+                                                <span className="flex items-center gap-1.5 text-emerald-600">
+                                                    <Target className="h-3.5 w-3.5 shrink-0" />
+                                                    {t("max")} {toLocaleNumber(s.max_marks.toFixed(0), langCode)}
+                                                </span>
+                                                <span className="flex items-center gap-1.5 text-rose-500">
+                                                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                                                    {t("min")} {toLocaleNumber(s.min_marks.toFixed(0), langCode)}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600">
-                                            <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{s.date_from}</span>
-                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{s.start_time}</span>
-                                            <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{s.room_no || "TBA"}</span>
-                                            <span className="flex items-center gap-1.5 text-emerald-600"><Target className="h-3.5 w-3.5 shrink-0" />{t("max")} {s.max_marks.toFixed(0)}</span>
-                                            <span className="flex items-center gap-1.5 text-rose-500"><ShieldCheck className="h-3.5 w-3.5 shrink-0" />{t("min")} {s.min_marks.toFixed(0)}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </>
                     ) : (

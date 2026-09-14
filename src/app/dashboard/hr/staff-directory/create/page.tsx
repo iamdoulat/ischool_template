@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,10 +36,12 @@ export default function CreateStaffPage() {
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [roles, setRoles] = useState<Role[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
     const [designations, setDesignations] = useState<CommonData[]>([]);
     const [departments, setDepartments] = useState<CommonData[]>([]);
     
     const [formData, setFormData] = useState({
+        branch_id: "1",
         staff_id: "",
         role: "",
         designation: "",
@@ -102,9 +104,16 @@ export default function CreateStaffPage() {
         const loadInitialData = async () => {
             setPageLoading(true);
             const user = await fetchCurrentUser();
-            if (user && (user.permissions?.includes("human-resource.staff.add") || user.permissions?.includes("all"))) {
+            const roleClean = (user?.role || "").toLowerCase().replace(/[_\s]/g, "");
+            const isSuperAdminOrAdmin = roleClean.includes("admin") || roleClean.includes("superadmin");
+            const hasPermission = isSuperAdminOrAdmin ||
+                user?.permissions?.includes("human-resource.staff.add") ||
+                user?.permissions?.includes("all");
+
+            if (user && hasPermission) {
                 await Promise.all([
                     fetchRoles(),
+                    fetchBranches(),
                     fetchDesignations(),
                     fetchDepartments(),
                     fetchNextStaffId()
@@ -130,9 +139,40 @@ export default function CreateStaffPage() {
             }
         } catch (error) {
             console.error("Error fetching current user:", error);
-            router.push("/login");
         }
         return null;
+    };
+
+    const hasMultipleBranches = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        return list.length > 1;
+    }, [branches]);
+
+    const branchOptions = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        if (list.length === 0) {
+            return [{ label: "Main", value: "1" }];
+        }
+        return list.map((b: any) => ({
+            label: b.branch_name,
+            value: b.id.toString(),
+        }));
+    }, [branches]);
+
+    const fetchBranches = async () => {
+        try {
+            const res = await api.get("/multi-branch/branches?all=true");
+            const list = res.data?.data?.data || res.data?.data || res.data || [];
+            if (Array.isArray(list)) {
+                setBranches(list);
+                const mainB = list.find((b: any) => b.is_main || b.id === 1) || list[0];
+                if (mainB?.id) {
+                    setFormData(prev => ({ ...prev, branch_id: prev.branch_id || mainB.id.toString() }));
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load branches:", e);
+        }
     };
 
     const fetchRoles = async () => {
@@ -202,6 +242,9 @@ export default function CreateStaffPage() {
 
         if (!formData.staff_id.trim()) newErrors.staff_id = t("staff_id_required");
         if (!formData.role) newErrors.role = t("role_required");
+        if (formData.role?.toLowerCase() === "branch admin" && !formData.branch_id) {
+            newErrors.branch_id = "A Branch Admin must be assigned to a specific campus branch.";
+        }
         if (!formData.first_name.trim()) newErrors.first_name = t("first_name_required");
         if (!formData.email.trim()) {
             newErrors.email = t("email_required");
@@ -344,6 +387,29 @@ export default function CreateStaffPage() {
                                     </SelectContent>
                                 </Select>
                                 {errors.role && <p className="text-xs text-red-500">{errors.role}</p>}
+                            </div>
+
+                            {/* Campus Branch */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">
+                                    {t("branch") || "Campus Branch"}
+                                    {formData.role?.toLowerCase() === "branch admin" && (
+                                        <span className="text-red-500 ml-1">*</span>
+                                    )}
+                                </Label>
+                                <Select disabled={!hasMultipleBranches} value={formData.branch_id || (branches[0]?.id?.toString() ?? "1")} onValueChange={(value) => handleInputChange("branch_id", value)}>
+                                    <SelectTrigger className={`h-11 border-gray-200 ${errors.branch_id ? "border-red-500" : ""}`}>
+                                        <SelectValue placeholder="Select Campus Branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {branchOptions.map((b) => (
+                                            <SelectItem key={b.value} value={b.value}>
+                                                {b.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.branch_id && <p className="text-xs text-red-500">{errors.branch_id}</p>}
                             </div>
 
                             {/* Designation */}

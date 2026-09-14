@@ -15,9 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-    Search, Printer, UserCircle, Calendar, Filter, UserCheck, Download, Loader2
+    Search, Printer, Calendar, Filter, UserCheck, Download, Loader2
 } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -60,7 +60,8 @@ interface Student {
 }
 
 export default function PrintAdmitCardPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
@@ -92,6 +93,47 @@ export default function PrintAdmitCardPage() {
     // Student List
     const [students, setStudents] = useState<Student[]>([]);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        return translateClassName(name, shortCode);
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        return translateSectionName(name, shortCode);
+    };
+
+    const getLocalizedTemplateName = (name?: string) => {
+        if (!name) return "";
+        const match = name.match(/^Design\s+(\d+)$/i);
+        if (match) {
+            return `${t("design")} ${toLocaleNumber(match[1], shortCode)}`;
+        }
+        const key = name.toLowerCase().replace(/\s+/g, "_");
+        const trans = t(key);
+        return trans && trans !== key ? trans : name;
+    };
+
+    const getLocalizedExamGroupName = (name?: string) => {
+        if (!name) return "";
+        const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const trans = t(key);
+        return trans && trans !== key ? trans : name;
+    };
+
+    const getLocalizedExamName = (name?: string) => {
+        if (!name) return "";
+        return toLocaleNumber(name, shortCode);
+    };
+
+    const getLocalizedGender = (gender?: string) => {
+        if (!gender) return "---";
+        const g = gender.toLowerCase();
+        if (g === "male" || g === "পুরুষ") return t("male");
+        if (g === "female" || g === "মহিলা") return t("female");
+        return gender;
+    };
 
     useEffect(() => {
         fetchInitialData();
@@ -184,8 +226,9 @@ export default function PrintAdmitCardPage() {
             const data = res.data;
             setAdmitCardData(data);
             return data;
-        } catch (error: any) {
-            tt.error(error?.response?.data?.message || "Failed to fetch admit card data");
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            tt.error(err?.response?.data?.message || "failed_to_fetch_admit_card_data");
             return null;
         }
     };
@@ -348,14 +391,20 @@ export default function PrintAdmitCardPage() {
 
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
-            {/* Header Section */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                        <Printer className="h-6 w-6 text-indigo-500" />
-                        {t("print_admit_card")}
-                    </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{t("print_admit_card_subtitle")}</p>
+            {/* Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-xl shadow-xs">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
+                        <Printer className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">
+                            {t("print_admit_card")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("print_admit_card_subtitle")}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -381,7 +430,7 @@ export default function PrintAdmitCardPage() {
                                     <SelectValue placeholder={t("select_group")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                                    {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{getLocalizedExamGroupName(g.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -395,7 +444,7 @@ export default function PrintAdmitCardPage() {
                                     <SelectValue placeholder={t("select_exam")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
+                                    {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{getLocalizedExamName(e.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -409,7 +458,7 @@ export default function PrintAdmitCardPage() {
                                     <SelectValue placeholder={t("select_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.session || s.year || s.name}</SelectItem>)}
+                                    {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{toLocaleNumber(s.session || s.year || s.name || "", shortCode)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -423,7 +472,7 @@ export default function PrintAdmitCardPage() {
                                     <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{getLocalizedClassName(c.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -437,7 +486,7 @@ export default function PrintAdmitCardPage() {
                                     <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{getLocalizedSectionName(s.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -451,7 +500,7 @@ export default function PrintAdmitCardPage() {
                                     <SelectValue placeholder={t("select_template")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {templates.map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}
+                                    {templates.map(tmpl => <SelectItem key={tmpl.id} value={tmpl.id.toString()}>{getLocalizedTemplateName(tmpl.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -461,7 +510,7 @@ export default function PrintAdmitCardPage() {
                         <Button
                             onClick={handleSearch}
                             disabled={searching}
-                            className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-10 text-[11px] font-bold uppercase transition-all rounded-full shadow-lg shadow-orange-500/20 active:scale-95 flex items-center gap-2 cursor-pointer"
                         >
                             {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
                             {t("search_students")}
@@ -479,19 +528,19 @@ export default function PrintAdmitCardPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{selectedIds.length} {t("selected")} | {t("total_students")}: {students.length}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(selectedIds.length, shortCode)} {t("selected")} | {t("total_students")}: {toLocaleNumber(students.length, shortCode)}</p>
                         </div>
                     </div>
                     {selectedIds.length > 0 && (
                         <Button 
                             onClick={generatePdf}
                             disabled={printing}
-                            className="btn-gradient text-white h-10 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 flex gap-2"
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 px-6 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-md active:scale-95 flex items-center gap-2 cursor-pointer"
                         >
                             {printing ? (
-                                <><div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" /> {t("generating")} ({printProgress.current}/{printProgress.total})</>
+                                <><div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" /> {t("generating")} ({toLocaleNumber(printProgress.current, shortCode)}/{toLocaleNumber(printProgress.total, shortCode)})</>
                             ) : (
-                                <><Printer className="h-3.5 w-3.5" /> {t("generate_admit_cards")} ({selectedIds.length})</>
+                                <><Printer className="h-3.5 w-3.5" /> {t("generate_admit_cards")} ({toLocaleNumber(selectedIds.length, shortCode)})</>
                             )}
                         </Button>
                     )}
@@ -503,7 +552,7 @@ export default function PrintAdmitCardPage() {
                                 <TableRow className="hover:bg-transparent border-gray-50">
                                     <TableHead className="w-[60px] px-6 text-center">
                                         <Checkbox
-                                            className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 transition-all"
+                                            className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 transition-all cursor-pointer"
                                             checked={students.length > 0 && selectedIds.length === students.length}
                                             onCheckedChange={toggleSelectAll}
                                         />
@@ -530,12 +579,12 @@ export default function PrintAdmitCardPage() {
                                         <TableRow key={student.id} className="text-[12px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
                                             <TableCell className="text-center px-6 py-4">
                                                 <Checkbox
-                                                    className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                                                    className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 cursor-pointer"
                                                     checked={selectedIds.includes(student.id)}
                                                     onCheckedChange={() => toggleSelect(student.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="py-4 px-6 font-bold text-gray-700 bg-gray-50/30">{student.admission_no}</TableCell>
+                                            <TableCell className="py-4 px-6 font-bold text-gray-700 bg-gray-50/30">{toLocaleNumber(student.admission_no, shortCode)}</TableCell>
                                             <TableCell className="py-3 px-6">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className="h-8 w-8 rounded-full overflow-hidden bg-indigo-50 border border-indigo-100 shrink-0 flex items-center justify-center text-indigo-600 font-bold text-xs shadow-2xs">
@@ -559,11 +608,11 @@ export default function PrintAdmitCardPage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6 font-medium">{student.father_name || "---"}</TableCell>
                                             <TableCell className="py-4 px-6 text-[11px] font-bold">
-                                                <span className="flex items-center gap-2 text-gray-500"><Calendar className="h-3 w-3" /> {student.dob ? formatDate(student.dob) : "---"}</span>
+                                                <span className="flex items-center gap-2 text-gray-500"><Calendar className="h-3 w-3" /> {student.dob ? toLocaleNumber(formatDate(student.dob), shortCode) : "---"}</span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
-                                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${student.gender === 'Male' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                                                    {student.gender}
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${student.gender === 'Male' || student.gender === 'male' || student.gender === 'পুরুষ' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                                    {getLocalizedGender(student.gender)}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-right">
@@ -573,7 +622,7 @@ export default function PrintAdmitCardPage() {
                                                         variant="ghost"
                                                         onClick={() => handleSingleDownload(student.id)}
                                                         disabled={printing || (printingStudentId !== null)}
-                                                        className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50"
+                                                        className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50 cursor-pointer"
                                                         title={t("download_admit_card")}
                                                     >
                                                         {printingStudentId === student.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -583,7 +632,7 @@ export default function PrintAdmitCardPage() {
                                                         variant="ghost"
                                                         onClick={() => handleSinglePrint(student.id)}
                                                         disabled={printing || (printingStudentId !== null)}
-                                                        className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50"
+                                                        className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50 cursor-pointer"
                                                         title={t("print_admit_card")}
                                                     >
                                                         {printingStudentId === student.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}

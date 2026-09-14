@@ -28,7 +28,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, toLocaleNumber } from "@/lib/utils";
 import {
     MessageSquare, Users, User, GraduationCap, Cake, Send, Clock, Layout, Calendar, Search
 } from "lucide-react";
@@ -76,7 +76,8 @@ interface ClassItem {
 }
 
 export default function SendWaPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const ttRef = useRef(tt);
     ttRef.current = tt;
@@ -241,15 +242,6 @@ export default function SendWaPage() {
         });
     };
 
-    const toggleSendThrough = (method: string) => {
-        setFormData(prev => ({
-            ...prev,
-            send_through: prev.send_through.includes(method)
-                ? prev.send_through.filter(m => m !== method)
-                : [...prev.send_through, method]
-        }));
-    };
-
     const getRecipientsArray = (): string[] => {
         switch (activeTab) {
             case "Group":
@@ -319,20 +311,20 @@ export default function SendWaPage() {
     };
 
     const roles = [
-        { id: "Student", label: t("students") },
-        { id: "Parent", label: t("guardians") },
-        { id: "Admin", label: t("admin") },
-        { id: "Teacher", label: t("teacher") },
-        { id: "Accountant", label: t("accountant") },
-        { id: "Librarian", label: t("librarian") },
-        { id: "Receptionist", label: t("receptionist") },
+        { id: "Student", label: t("student") !== "student" ? t("student") : (t("students") !== "students" ? t("students") : "Students") },
+        { id: "Parent", label: t("parent") !== "parent" ? t("parent") : (t("guardians") !== "guardians" ? t("guardians") : "Guardians") },
+        { id: "Admin", label: t("admin") !== "admin" ? t("admin") : "Admin" },
+        { id: "Teacher", label: t("teacher") !== "teacher" ? t("teacher") : "Teacher" },
+        { id: "Accountant", label: t("accountant") !== "accountant" ? t("accountant") : "Accountant" },
+        { id: "Librarian", label: t("librarian") !== "librarian" ? t("librarian") : "Librarian" },
+        { id: "Receptionist", label: t("receptionist") !== "receptionist" ? t("receptionist") : "Receptionist" },
     ];
 
     const tabs = [
-        { id: "Group", label: t("group"), Icon: Users },
-        { id: "Individual", label: t("individual"), Icon: User },
-        { id: "Class", label: t("class"), Icon: GraduationCap },
-        { id: "Today's Birthday", label: t("birthday"), Icon: Cake }
+        { id: "Group", label: t("group") !== "group" ? t("group") : "Group", Icon: Users },
+        { id: "Individual", label: t("individual") !== "individual" ? t("individual") : "Individual", Icon: User },
+        { id: "Class", label: t("class") !== "class" ? t("class") : "Class", Icon: GraduationCap },
+        { id: "Today's Birthday", label: t("birthday") !== "birthday" ? t("birthday") : (t("todays_birthday") !== "todays_birthday" ? t("todays_birthday") : "Today's Birthday"), Icon: Cake }
     ];
 
     const filteredUsers = useMemo(() => {
@@ -350,12 +342,12 @@ export default function SendWaPage() {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-2">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-50 rounded-lg shadow-sm shadow-indigo-50/50">
-                        <MessageSquare className="h-5 w-5 text-indigo-500" />
+                    <div className="p-2.5 bg-emerald-50 rounded-lg shadow-sm shadow-emerald-50/50">
+                        <MessageSquare className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">{t("send_whatsapp")}</h1>
-                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">{t("send_whatsapp_subtitle")}</p>
+                        <h1 className="text-lg font-bold text-gray-800 tracking-tight uppercase">{t("send_whatsapp") || "Send WhatsApp"}</h1>
+                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5">{t("send_whatsapp_subtitle") || "Bulk & Individual WhatsApp Communications"}</p>
                     </div>
                 </div>
 
@@ -387,19 +379,19 @@ export default function SendWaPage() {
                                 <MessageSquare className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("compose_whatsapp")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("compose_whatsapp_description")}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("compose_whatsapp") || "Compose WhatsApp"}</CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("compose_whatsapp_description") || "Draft message or select template"}</p>
                             </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-                                <Send className="h-48 w-48 text-indigo-500 rotate-12" />
+                            <div className="absolute top-0 right-0 p-8 opacity-[0.02] pointer-events-none">
+                                <Send className="h-64 w-64 text-emerald-500 -rotate-12" />
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                        <Layout className="h-3 w-3" /> {t("wa_template")}
+                                        <Layout className="h-3 w-3" /> {t("whatsapp_template") || "WhatsApp Template"}
                                     </Label>
                                     <Select value={formData.wa_template_id} onValueChange={handleTemplateChange}>
                                         <SelectTrigger className="h-11 border-gray-100 bg-gray-50/30 text-sm focus:ring-indigo-500 rounded-lg shadow-none">
@@ -420,66 +412,29 @@ export default function SendWaPage() {
                                     <Input
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        placeholder={t("notice_title_placeholder")}
+                                        placeholder={t("message_title_placeholder") || "e.g. Attendance Alert"}
                                         className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none"
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-                                <div className="space-y-3">
-                                    <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                        {t("send_through")} <span className="text-red-500">*</span>
-                                    </Label>
-                                    <div className="flex items-center gap-6">
-                                        <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('whatsapp')}>
-                                            <Checkbox
-                                                id="whatsapp"
-                                                checked={formData.send_through.includes('whatsapp')}
-                                                onCheckedChange={() => toggleSendThrough('whatsapp')}
-                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
-                                            />
-                                            <Label htmlFor="whatsapp" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">{t("whatsapp_gateway")}</Label>
-                                        </div>
-                                        <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-full border border-gray-100 hover:bg-indigo-50 transition-colors cursor-pointer group" onClick={() => toggleSendThrough('mobile_app')}>
-                                            <Checkbox
-                                                id="mobile-app"
-                                                checked={formData.send_through.includes('mobile_app')}
-                                                onCheckedChange={() => toggleSendThrough('mobile_app')}
-                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-5 w-5 rounded-md"
-                                            />
-                                            <Label htmlFor="mobile-app" className="text-[11px] text-gray-600 font-bold uppercase tracking-tight cursor-pointer group-hover:text-indigo-600 transition-colors">{t("mobile_app")}</Label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                        {t("dlt_template_id")} <span className="text-[9px] lowercase font-medium text-gray-300 normal-case">(India Only)</span>
-                                    </Label>
-                                    <Input className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none placeholder:text-gray-200" placeholder="120716..." />
-                                </div>
-                            </div>
-
                             <div className="space-y-2">
-                                <div className="flex justify-between items-center">
+                                <div className="flex items-center justify-between">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                        {t("message_content")} <span className="text-red-500">*</span>
+                                        {t("message_body")} <span className="text-red-500">*</span>
                                     </Label>
-                                    <div className="flex items-center gap-2">
-                                        <VariablePicker onSelect={handleVariableSelect} />
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
-                                            {formData.message.length} {t("characters")}
-                                        </span>
-                                    </div>
+                                    <VariablePicker onSelect={handleVariableSelect} />
                                 </div>
                                 <Textarea
                                     ref={textareaRef}
-                                    className="w-full min-h-[200px] p-4 text-sm border-gray-100 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 resize-none transition-all shadow-none leading-relaxed"
-                                    placeholder={t("type_whatsapp_message_here")}
                                     value={formData.message}
                                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                                    placeholder={t("type_whatsapp_message_here") || "Type your WhatsApp message here..."}
+                                    className="min-h-[160px] border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none resize-none leading-relaxed"
                                 />
+                                <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                                    <span>{toLocaleNumber(formData.message.length, langCode)} {t("characters") || "characters"}</span>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -500,9 +455,9 @@ export default function SendWaPage() {
                         <CardContent className="p-6 min-h-[400px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold uppercase">
-                                    {activeTab === "Today's Birthday" ? t("birthday") : t(activeTab.toLowerCase())}
+                                    {activeTab === "Today's Birthday" ? (t("birthday") !== "birthday" ? t("birthday") : "Birthday") : (t(activeTab.toLowerCase()) !== activeTab.toLowerCase() ? t(activeTab.toLowerCase()) : t(activeTab))}
                                 </span>
-                                <span className="text-[10px] font-bold text-indigo-600">{getRecipientCount()} {t("selected")}</span>
+                                <span className="text-[10px] font-bold text-indigo-600">{toLocaleNumber(getRecipientCount(), langCode)} {t("selected")}</span>
                             </div>
 
                             <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -553,7 +508,7 @@ export default function SendWaPage() {
                                             <Input
                                                 value={userSearch}
                                                 onChange={(e) => setUserSearch(e.target.value)}
-                                                placeholder={t("search_by_name_or_phone")}
+                                                placeholder={t("search_by_name_or_phone") || "Search by name or phone..."}
                                                 className="h-9 pl-9 text-[11px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none"
                                             />
                                         </div>
@@ -579,7 +534,7 @@ export default function SendWaPage() {
                                                         />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone")}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone") || "No Phone"} {u.role ? `· ${t(u.role?.toLowerCase()) || u.role}` : ''}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -597,7 +552,7 @@ export default function SendWaPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {classes.map(c => (
-                                                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                                    <SelectItem key={c.id} value={String(c.id)}>{translateClassName(c.name, langCode)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -624,8 +579,8 @@ export default function SendWaPage() {
                                                                 className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
                                                             />
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="text-xs font-bold text-gray-700 truncate">{s.name} {s.last_name || ''} {s.roll_no && <span className="text-gray-400 font-normal"> (Roll: {s.roll_no})</span>}</p>
-                                                                <p className="text-[10px] text-gray-400 truncate">{s.phone || t("no_phone")}</p>
+                                                                <p className="text-xs font-bold text-gray-700 truncate">{s.name} {s.last_name || ''} {s.roll_no && <span className="text-gray-400 font-normal"> ({t("roll")}: {toLocaleNumber(s.roll_no, langCode)})</span>}</p>
+                                                                <p className="text-[10px] text-gray-400 truncate">{s.phone || t("no_phone") || "No Phone"}</p>
                                                             </div>
                                                         </div>
                                                     ))
@@ -645,7 +600,7 @@ export default function SendWaPage() {
                                             <SelectContent>
                                                 <SelectItem value="all">{t("all_classes")}</SelectItem>
                                                 {classes.map(c => (
-                                                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                                    <SelectItem key={c.id} value={String(c.id)}>{translateClassName(c.name, langCode)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -663,7 +618,7 @@ export default function SendWaPage() {
                                                         <Cake className="h-4 w-4 text-orange-500 shrink-0" />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone")} · {u.role}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone") || "No Phone"} · {t(u.role?.toLowerCase() || "") || u.role}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -675,8 +630,8 @@ export default function SendWaPage() {
 
                             <div className="mt-8 p-4 bg-indigo-50/30 rounded-lg border border-indigo-50/50">
                                 <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                                    <span>{t("targeting")}</span>
-                                    <span className="text-indigo-600">{getRecipientCount()} {t("recipients_count")}</span>
+                                    <span>{t("targeting") || "Targeting"}</span>
+                                    <span className="text-indigo-600">{toLocaleNumber(getRecipientCount(), langCode)} {t("recipients").toLowerCase()}</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -715,7 +670,7 @@ export default function SendWaPage() {
                         <Label htmlFor="schedule" className={cn(
                             "text-[10px] font-bold uppercase tracking-widest cursor-pointer transition-colors",
                             formData.send_type === 'schedule' ? "text-indigo-600" : "text-gray-400 group-hover:text-gray-600"
-                        )}>{t("schedule_dispatch")}</Label>
+                        )}>{t("schedule_broadcast")}</Label>
                     </div>
                 </RadioGroup>
 
@@ -736,7 +691,7 @@ export default function SendWaPage() {
                         disabled={submitting}
                         className="btn-gradient px-12 h-11 text-[11px] font-bold uppercase transition-all rounded-full shadow-2xl shadow-indigo-200 min-w-[200px]"
                     >
-                        {submitting ? t("processing") : formData.send_type === 'now' ? t("confirm_and_send") : t("schedule_message")}
+                        {submitting ? t("processing") : formData.send_type === 'now' ? t("confirm_and_send") : (t("schedule_whatsapp") || t("schedule_message") || "Schedule WhatsApp")}
                     </Button>
                 </div>
             </div>
@@ -744,9 +699,12 @@ export default function SendWaPage() {
             <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("confirm_whatsapp_dispatch")}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("confirm_whatsapp_dispatch") || "Confirm WhatsApp Dispatch"}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            {t("confirm_whatsapp_send_description", { count: getRecipientsArray().length })}
+                            {formData.send_type === 'now'
+                                ? (t("confirm_send_description", { count: toLocaleNumber(getRecipientsArray().length, langCode) }))
+                                : (t("confirm_schedule_description", { count: toLocaleNumber(getRecipientsArray().length, langCode) }))
+                            }
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
@@ -27,15 +26,10 @@ import {
     Copy,
     Filter,
     BookOpen,
-    Layers,
-    GraduationCap,
-    Route,
-    CheckSquare,
-    Square,
     Check,
     ArrowRight
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName, translateSubjectGroupName, translateSubjectName } from "@/lib/utils";
 
 interface Topic {
     id: string;
@@ -54,6 +48,7 @@ interface OptionItem {
     group_name?: string;
     session?: string;
     school_class_id?: string | number;
+    is_active?: boolean;
 }
 
 interface RawTopic {
@@ -92,7 +87,10 @@ function CardSkeleton({ count = 4 }: { count?: number }) {
 }
 
 export default function CopyOldLessonsPage() {
-    const { toast } = useToast();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+    const tt = useTranslateToast();
+
     const [classes, setClasses] = useState<OptionItem[]>([]);
     const [allSections, setAllSections] = useState<OptionItem[]>([]);
     const [subjects, setSubjects] = useState<OptionItem[]>([]);
@@ -156,7 +154,7 @@ export default function CopyOldLessonsPage() {
 
             const sessionList = extractData(sessionsRes);
             setSessions(sessionList);
-            const active = sessionList.find((s: any) => s.is_active);
+            const active = sessionList.find((s: OptionItem) => s.is_active);
             if (active) {
                 setFromCriteria(prev => ({ ...prev, session: active.session || "" }));
             } else if (sessionList.length > 0) {
@@ -275,7 +273,7 @@ export default function CopyOldLessonsPage() {
 
     const handleSearch = async () => {
         if (!fromCriteria.session || !fromCriteria.class_name || !fromCriteria.section || !fromCriteria.subject_group || !fromCriteria.subject) {
-            toast({ title: "Error", description: "Please select all 'From' criteria", variant: "destructive" });
+            tt.error("please_select_all_from_criteria");
             return;
         }
 
@@ -302,10 +300,10 @@ export default function CopyOldLessonsPage() {
             setSourceLessons(filtered);
             setSelectedTopicIds([]);
             if (filtered.length === 0) {
-                toast({ title: "Info", description: "No lessons found for selected criteria" });
+                tt.info("no_lessons_found_for_selected_criteria");
             }
         } catch {
-            toast({ title: "Error", description: "Failed to fetch source lessons", variant: "destructive" });
+            tt.error("failed_to_fetch_source_lessons");
         } finally {
             setLoading(false);
         }
@@ -339,12 +337,12 @@ export default function CopyOldLessonsPage() {
 
     const handleCopy = async () => {
         if (selectedTopicIds.length === 0) {
-            toast({ title: "Validation Error", description: "Please select at least one topic to copy", variant: "destructive" });
+            tt.error("please_select_at_least_one_topic_to_copy");
             return;
         }
 
         if (!toCriteria.class_name || !toCriteria.section || !toCriteria.subject_group || !toCriteria.subject) {
-            toast({ title: "Validation Error", description: "Please select all 'Target' criteria", variant: "destructive" });
+            tt.error("please_select_all_target_criteria");
             return;
         }
 
@@ -362,10 +360,10 @@ export default function CopyOldLessonsPage() {
                 topic_ids: selectedTopicIds
             });
 
-            toast({ title: "Success", description: "Lessons and topics copied successfully" });
+            tt.success("lessons_and_topics_copied_successfully");
             setSelectedTopicIds([]);
         } catch {
-            toast({ title: "Error", description: "Failed to copy lessons", variant: "destructive" });
+            tt.error("failed_to_copy_lessons");
         } finally {
             setCopying(false);
         }
@@ -380,8 +378,12 @@ export default function CopyOldLessonsPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Source Session Details</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose the source session, class &amp; subject to search old lessons</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                            {t("select_source_session_details") || "Select Source Session Details"}
+                        </CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("choose_source_session_class_subject_desc") || "Choose the source session, class & subject to search old lessons"}
+                        </p>
                     </div>
                 </CardHeader>
 
@@ -389,15 +391,17 @@ export default function CopyOldLessonsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Session <span className="text-red-500">*</span>
+                                {t("session")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.session} onValueChange={(val) => setFromCriteria({...fromCriteria, session: val})}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Session" />
+                                    <SelectValue placeholder={t("select_session") || "Select Session"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sessions.map(s => (
-                                        <SelectItem key={s.id} value={s.session || ""}>{s.session}</SelectItem>
+                                        <SelectItem key={s.id} value={s.session || ""}>
+                                            {toLocaleNumber(s.session || "", shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -405,15 +409,17 @@ export default function CopyOldLessonsPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.class_name} onValueChange={(val) => handleFromCriteriaChange('class_name', val)}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Class" />
+                                    <SelectValue placeholder={t("select_class") || "Select Class"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
+                                        <SelectItem key={c.id} value={c.name || ""}>
+                                            {translateClassName(c.name, shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -421,15 +427,17 @@ export default function CopyOldLessonsPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.section} onValueChange={(val) => handleFromCriteriaChange('section', val)} disabled={!fromCriteria.class_name}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Section" />
+                                    <SelectValue placeholder={t("select_section") || "Select Section"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {allSections.filter(s => String(s.school_class_id) === String(fromCriteria.class_id)).map(s => (
-                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.name || ""}>
+                                            {translateSectionName(s.name, shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -437,15 +445,17 @@ export default function CopyOldLessonsPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Subject Group <span className="text-red-500">*</span>
+                                {t("subject_group")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.subject_group} onValueChange={(val) => handleFromCriteriaChange('subject_group', val)} disabled={!fromCriteria.section}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Group" />
+                                    <SelectValue placeholder={t("select_group") || "Select Group"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {fromSubjectGroups.map(g => (
-                                        <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
+                                        <SelectItem key={g.id} value={g.name || g.group_name || ""}>
+                                            {translateSubjectGroupName(g.name || g.group_name, shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -453,19 +463,19 @@ export default function CopyOldLessonsPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Subject <span className="text-red-500">*</span>
+                                {t("subject")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={fromCriteria.subject} onValueChange={(val) => handleFromCriteriaChange('subject', val)} disabled={!fromCriteria.subject_group}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Subject" />
+                                    <SelectValue placeholder={t("select_subject") || "Select Subject"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {fromFilteredSubjects.length > 0
                                         ? fromFilteredSubjects.map(s => (
-                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>{translateSubjectName(s.name, shortCode)}</SelectItem>
                                         ))
                                         : subjects.map(s => (
-                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>{translateSubjectName(s.name, shortCode)}</SelectItem>
                                         ))
                                     }
                                 </SelectContent>
@@ -479,7 +489,7 @@ export default function CopyOldLessonsPage() {
                             disabled={loading}
                             className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
                         >
-                            {loading ? "Searching..." : <><Search className="h-4 w-4" /> Search</>}
+                            {loading ? t("searching") || "Searching..." : <><Search className="h-4 w-4" /> {t("search")}</>}
                         </Button>
                     </div>
                 </CardContent>
@@ -492,8 +502,12 @@ export default function CopyOldLessonsPage() {
                             <Copy className="h-5 w-5" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Available Lessons &amp; Topics</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">Loading source lessons…</p>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {t("available_lessons_and_topics") || "Available Lessons & Topics"}
+                            </CardTitle>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {t("loading_source_lessons") || "Loading source lessons…"}
+                            </p>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -510,21 +524,23 @@ export default function CopyOldLessonsPage() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-gray-400 font-bold uppercase">Source Lessons For:</span>
-                                    <span className="font-black text-sm text-indigo-700 dark:text-indigo-300">{fromCriteria.subject}</span>
+                                    <span className="text-xs text-gray-400 font-bold uppercase">
+                                        {t("source_lessons_for") || "Source Lessons For:"}
+                                    </span>
+                                    <span className="font-black text-sm text-indigo-700 dark:text-indigo-300">{translateSubjectName(fromCriteria.subject, shortCode)}</span>
                                 </div>
                                 <p className="text-[11px] text-gray-500 font-medium">
-                                    Session {fromCriteria.session} • {fromCriteria.class_name} • Section {fromCriteria.section} • {fromCriteria.subject_group}
+                                    {t("session_x", { session: toLocaleNumber(fromCriteria.session, shortCode) })} • {translateClassName(fromCriteria.class_name, shortCode)} • {translateSectionName(fromCriteria.section, shortCode)} • {translateSubjectGroupName(fromCriteria.subject_group, shortCode)}
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                             <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-bold px-3 py-1">
-                                {sourceLessons.length} Lessons Available
+                                {t("x_lessons_available", { count: toLocaleNumber(sourceLessons.length, shortCode) })}
                             </Badge>
                             <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-bold px-3 py-1">
-                                {selectedTopicIds.length} / {allTopicIds.length} Selected
+                                {t("x_of_y_selected", { selected: toLocaleNumber(selectedTopicIds.length, shortCode), total: toLocaleNumber(allTopicIds.length, shortCode) })}
                             </Badge>
                         </div>
                     </div>
@@ -539,9 +555,11 @@ export default function CopyOldLessonsPage() {
                                             <Copy className="h-5 w-5" />
                                         </span>
                                         <div>
-                                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Available Lessons &amp; Topics</CardTitle>
+                                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                                {t("available_lessons_and_topics") || "Available Lessons & Topics"}
+                                            </CardTitle>
                                             <p className="text-[11px] text-gray-500 mt-1">
-                                                {sourceLessons.length} lesson{sourceLessons.length === 1 ? '' : 's'} • {allTopicIds.length} total topics
+                                                {t("x_lessons_y_total_topics", { lessons: toLocaleNumber(sourceLessons.length, shortCode), topics: toLocaleNumber(allTopicIds.length, shortCode) })}
                                             </p>
                                         </div>
                                     </div>
@@ -555,7 +573,7 @@ export default function CopyOldLessonsPage() {
                                             onClick={handleSelectAllTopics}
                                             className="h-8 text-[10.5px] font-bold text-indigo-600 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100 rounded-lg"
                                         >
-                                            Select All
+                                            {t("select_all") || "Select All"}
                                         </Button>
                                         <Button
                                             type="button"
@@ -564,7 +582,7 @@ export default function CopyOldLessonsPage() {
                                             onClick={handleDeselectAllTopics}
                                             className="h-8 text-[10.5px] font-bold text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg px-2.5"
                                         >
-                                            Clear
+                                            {t("clear") || "Clear"}
                                         </Button>
                                     </div>
                                 </CardHeader>
@@ -598,21 +616,21 @@ export default function CopyOldLessonsPage() {
                                                                     : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
                                                             )}
                                                         >
-                                                            {allLessonSelected ? <Check className="h-4 w-4 stroke-[3]" /> : index + 1}
+                                                            {allLessonSelected ? <Check className="h-4 w-4 stroke-[3]" /> : toLocaleNumber(index + 1, shortCode)}
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                                                                    Step {index + 1}
+                                                                    {t("step_x", { step: toLocaleNumber(index + 1, shortCode) })}
                                                                 </span>
                                                                 {isFirst && (
                                                                     <span className="text-[8.5px] bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold border border-orange-200 dark:border-orange-800">
-                                                                        Initial
+                                                                        {t("initial") || "Initial"}
                                                                     </span>
                                                                 )}
                                                                 {isLast && sourceLessons.length > 1 && (
                                                                     <span className="text-[8.5px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-200 dark:border-emerald-800">
-                                                                        Final Step
+                                                                        {t("final_step") || "Final Step"}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -624,7 +642,7 @@ export default function CopyOldLessonsPage() {
 
                                                     <div className="flex items-center gap-2">
                                                         <Badge variant="outline" className="text-[10px] font-bold border-gray-200 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-                                                            {lesson.topics.filter(t => selectedTopicIds.includes(t.id)).length} / {lesson.topics.length} Selected
+                                                            {t("x_of_y_selected", { selected: toLocaleNumber(lesson.topics.filter(t => selectedTopicIds.includes(t.id)).length, shortCode), total: toLocaleNumber(lesson.topics.length, shortCode) })}
                                                         </Badge>
                                                         <Checkbox
                                                             checked={allLessonSelected ? true : someLessonSelected ? "indeterminate" : false}
@@ -638,7 +656,7 @@ export default function CopyOldLessonsPage() {
                                                 <div className="p-3 sm:p-4 space-y-2">
                                                     {lesson.topics.length === 0 ? (
                                                         <div className="py-2 text-center text-xs text-gray-400 italic">
-                                                            No topics under this lesson
+                                                            {t("no_topics_under_this_lesson") || "No topics under this lesson"}
                                                         </div>
                                                     ) : (
                                                         <div className="relative pl-4 space-y-2 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-[1.5px] before:border-l before:border-dashed before:border-indigo-200 dark:before:border-indigo-800">
@@ -664,7 +682,7 @@ export default function CopyOldLessonsPage() {
                                                                                 className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600 shadow-2xs"
                                                                             />
                                                                             <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">
-                                                                                <span className="text-gray-400 mr-1 text-[10px]">#{index + 1}.{tIdx + 1}</span>
+                                                                                <span className="text-gray-400 mr-1 text-[10px]">#{toLocaleNumber(index + 1, shortCode)}.{toLocaleNumber(tIdx + 1, shortCode)}</span>
                                                                                 {topic.name}
                                                                             </span>
                                                                         </div>
@@ -689,9 +707,11 @@ export default function CopyOldLessonsPage() {
                                         <ArrowRight className="h-5 w-5" />
                                     </span>
                                     <div>
-                                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Target Selection</CardTitle>
+                                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                            {t("target_selection") || "Target Selection"}
+                                        </CardTitle>
                                         <p className="text-[11px] text-gray-500 mt-1">
-                                            {selectedTopicIds.length} topic{selectedTopicIds.length === 1 ? '' : 's'} chosen to copy
+                                            {t("x_topics_chosen_to_copy", { count: toLocaleNumber(selectedTopicIds.length, shortCode) })}
                                         </p>
                                     </div>
                                 </CardHeader>
@@ -699,15 +719,15 @@ export default function CopyOldLessonsPage() {
                                 <CardContent className="px-5 pb-5 space-y-4">
                                     <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                            Target Class <span className="text-red-500">*</span>
+                                            {t("target_class") || "Target Class"} <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.class_name} onValueChange={(val) => handleToCriteriaChange('class_name', val)}>
                                             <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                                <SelectValue placeholder="Select Target Class" />
+                                                <SelectValue placeholder={t("select_target_class") || "Select Target Class"} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {classes.map(c => (
-                                                    <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
+                                                    <SelectItem key={c.id} value={c.name || ""}>{translateClassName(c.name, shortCode)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -715,15 +735,17 @@ export default function CopyOldLessonsPage() {
 
                                     <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                            Target Section <span className="text-red-500">*</span>
+                                            {t("target_section") || "Target Section"} <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.section} onValueChange={(val) => handleToCriteriaChange('section', val)} disabled={!toCriteria.class_name}>
                                             <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                                <SelectValue placeholder="Select Target Section" />
+                                                <SelectValue placeholder={t("select_target_section") || "Select Target Section"} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {allSections.filter(s => String(s.school_class_id) === String(toCriteria.class_id)).map(s => (
-                                                    <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                                    <SelectItem key={s.id} value={s.name || ""}>
+                                                        {translateSectionName(s.name, shortCode)}
+                                                    </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -731,15 +753,15 @@ export default function CopyOldLessonsPage() {
 
                                     <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                            Target Subject Group <span className="text-red-500">*</span>
+                                            {t("target_subject_group") || "Target Subject Group"} <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.subject_group} onValueChange={(val) => handleToCriteriaChange('subject_group', val)} disabled={!toCriteria.section}>
                                             <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                                <SelectValue placeholder="Select Subject Group" />
+                                                <SelectValue placeholder={t("select_target_subject_group") || "Select Subject Group"} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {toSubjectGroups.map(g => (
-                                                    <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
+                                                    <SelectItem key={g.id} value={g.name || g.group_name || ""}>{translateSubjectGroupName(g.name || g.group_name, shortCode)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -747,19 +769,19 @@ export default function CopyOldLessonsPage() {
 
                                     <div className="space-y-1.5">
                                         <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                            Target Subject <span className="text-red-500">*</span>
+                                            {t("target_subject") || "Target Subject"} <span className="text-red-500">*</span>
                                         </Label>
                                         <Select value={toCriteria.subject} onValueChange={(val) => handleToCriteriaChange('subject', val)} disabled={!toCriteria.subject_group}>
                                             <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                                <SelectValue placeholder="Select Target Subject" />
+                                                <SelectValue placeholder={t("select_target_subject") || "Select Target Subject"} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {toFilteredSubjects.length > 0
                                                     ? toFilteredSubjects.map(s => (
-                                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                                        <SelectItem key={s.id} value={s.name || ""}>{translateSubjectName(s.name, shortCode)}</SelectItem>
                                                     ))
                                                     : subjects.map(s => (
-                                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                                        <SelectItem key={s.id} value={s.name || ""}>{translateSubjectName(s.name, shortCode)}</SelectItem>
                                                     ))
                                                 }
                                             </SelectContent>
@@ -772,7 +794,7 @@ export default function CopyOldLessonsPage() {
                                             disabled={copying || selectedTopicIds.length === 0}
                                             className="btn-gradient w-full text-white h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex items-center justify-center gap-2"
                                         >
-                                            {copying ? "Copying..." : <><Copy className="h-4 w-4" /> Copy Selected ({selectedTopicIds.length})</>}
+                                            {copying ? t("copying") || "Copying..." : <><Copy className="h-4 w-4" /> {t("copy_selected_x", { count: toLocaleNumber(selectedTopicIds.length, shortCode) })}</>}
                                         </Button>
                                     </div>
                                 </CardContent>
@@ -785,8 +807,12 @@ export default function CopyOldLessonsPage() {
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl mb-4 text-indigo-500">
                         <Search className="h-8 w-8" />
                     </div>
-                    <h3 className="text-gray-600 dark:text-gray-300 text-sm font-bold">Select source criteria</h3>
-                    <p className="text-gray-400 text-xs mt-1">Session, Class, Section, Subject Group, and Subject required to search old lessons</p>
+                    <h3 className="text-gray-600 dark:text-gray-300 text-sm font-bold">
+                        {t("select_source_criteria") || "Select source criteria"}
+                    </h3>
+                    <p className="text-gray-400 text-xs mt-1">
+                        {t("select_source_criteria_desc") || "Session, Class, Section, Subject Group, and Subject required to search old lessons"}
+                    </p>
                 </div>
             )}
         </div>

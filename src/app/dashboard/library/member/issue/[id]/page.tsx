@@ -7,7 +7,7 @@ import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatDate } from "@/lib/utils";
+import { formatDate, translateClassName, toLocaleNumber, cn } from "@/lib/utils";
 import {
     Table,
     TableBody,
@@ -37,7 +37,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import QRCode from "qrcode";
 import { getImageUrl } from "@/lib/image-url";
 
@@ -144,7 +143,7 @@ function drawCode39Barcode(canvas: HTMLCanvasElement, text: string) {
 
 export default function MemberIssuePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const qrCanvasRef = useRef<HTMLCanvasElement>(null);
     const barcodeCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -220,23 +219,30 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                     to: res.data.to,
                 });
             })
-            .catch(() => {})
+            .catch(() => tt.error("failed_to_fetch_issued_books"))
             .finally(() => setBooksLoading(false));
     }, [id, currentPage, limit]);
 
     useEffect(() => {
-        if (!qrCanvasRef.current || !member) return;
-        QRCode.toCanvas(qrCanvasRef.current, member.member_id, {
-            width: 100,
-            margin: 1,
-            color: { dark: "#6366f1", light: "#ffffff" },
-        }).catch(() => {});
-    }, [member]);
+        if (!member) return;
+        const code = member.library_card_no || member.member_id || id;
 
-    useEffect(() => {
-        if (!barcodeCanvasRef.current || !member) return;
-        drawCode39Barcode(barcodeCanvasRef.current, member.member_id);
-    }, [member]);
+        if (barcodeCanvasRef.current) {
+            drawCode39Barcode(barcodeCanvasRef.current, code);
+        }
+
+        if (qrCanvasRef.current) {
+            const qrData = JSON.stringify({
+                member_id: member.member_id,
+                card_no: member.library_card_no,
+                name: member.user?.name,
+                type: member.member_type,
+            });
+            QRCode.toCanvas(qrCanvasRef.current, qrData, { width: 100, margin: 1 }, (err) => {
+                if (err) console.error("QR Code generation error:", err);
+            });
+        }
+    }, [member, id]);
 
     const handleIssueBook = async () => {
         if (!selectedBook || !dueDate) {
@@ -314,11 +320,11 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") || "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") || "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") || "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") || "Print" },
+        { Icon: Columns, onClick: () => {}, title: t("columns") || "Columns" },
     ];
 
     const today = new Date().toISOString().split("T")[0];
@@ -340,17 +346,17 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                             <h2 className="text-sm font-bold text-gray-800">{member?.user?.name || t("loading")}</h2>
                         </div>
 
-                        <div className="p-0">
+                        <div className="divide-y divide-gray-50">
                             {[
                                 { label: t("member_id"), value: member?.member_id || id },
-                                { label: t("library_card_no"), value: member?.library_card_no || "-" },
+                                { label: t("library_card_no"), value: member?.library_card_no ? toLocaleNumber(member.library_card_no, language?.short_code) : "-" },
                                 { label: member?.member_type === "student" ? t("admission_no") : t("staff_id"), value: member?.user?.admission_no || member?.user?.staff_id || "-" },
-                                { label: t("gender"), value: member?.user?.gender || "-" },
-                                { label: t("member_type"), value: member?.member_type ? (member.member_type.charAt(0).toUpperCase() + member.member_type.slice(1)) : "-" },
+                                { label: t("gender"), value: member?.user?.gender ? (t(member.user.gender.toLowerCase()) || member.user.gender) : "-" },
+                                { label: t("member_type"), value: member?.member_type ? (t(member.member_type.toLowerCase()) || member.member_type) : "-" },
                                 { label: t("mobile_number"), value: member?.user?.phone || "-", color: "text-indigo-400" },
-                                { label: t("class_section"), value: member?.member_type === "staff" ? "None" : ((member?.user?.schoolClass || member?.user?.school_class) ? `${(member?.user?.schoolClass || member?.user?.school_class)?.name} (${member.user.section?.name || ""})` : "-"), color: "text-indigo-400" },
+                                { label: t("class_section"), value: member?.member_type === "staff" ? (t("none") || "None") : ((member?.user?.schoolClass || member?.user?.school_class) ? `${translateClassName((member?.user?.schoolClass || member?.user?.school_class)?.name, language?.short_code)} (${member.user.section?.name || ""})` : "-"), color: "text-indigo-400" },
                             ].map((item, i) => (
-                                <div key={i} className="flex justify-between items-center py-2.5 px-4 border-b border-gray-50 last:border-0">
+                                <div key={i} className="flex justify-between items-center py-2.5 px-4">
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{item.label}</span>
                                     <span className={cn("text-[11px] font-medium text-gray-700", item.color)}>{item.value}</span>
                                 </div>
@@ -403,7 +409,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                         <SelectContent>
                                             {books.map((book) => (
                                                 <SelectItem key={book.id} value={String(book.id)}>
-                                                    {book.title} ({book.book_number}) - Avail: {book.available}
+                                                    {book.title} ({book.book_number}) - {t("available") || "Avail"}: {toLocaleNumber(book.available, language?.short_code)}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -460,12 +466,14 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                 <div className="flex items-center gap-1.5 mr-2">
                                     <Select value={limit} onValueChange={(v) => { setLimit(v); setCurrentPage(1); }}>
                                         <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2">
-                                            <SelectValue />
+                                            <SelectValue placeholder={toLocaleNumber(10, language?.short_code)}>
+                                                {toLocaleNumber(limit, language?.short_code)}
+                                            </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                            <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                            <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
@@ -565,7 +573,11 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                         {pagination && (
                             <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                                 <div>
-                                    {t("showing_x_to_y_of_z", { from: pagination.from || 0, to: pagination.to || 0, total: pagination.total || 0 })}
+                                    {t("showing_x_to_y_of_z", {
+                                        from: toLocaleNumber(pagination.from || 0, language?.short_code),
+                                        to: toLocaleNumber(pagination.to || 0, language?.short_code),
+                                        total: toLocaleNumber(pagination.total || 0, language?.short_code)
+                                    })}
                                 </div>
                                 <div className="flex gap-1 items-center">
                                     <Button
@@ -586,7 +598,7 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                                 currentPage === i + 1 ? "btn-gradient text-white" : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
                                             )}
                                         >
-                                            {i + 1}
+                                            {toLocaleNumber(i + 1, language?.short_code)}
                                         </Button>
                                     ))}
                                     <Button

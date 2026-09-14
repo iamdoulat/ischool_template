@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName } from "@/lib/utils";
 import {
     Loader2,
     FileBadge,
@@ -51,7 +51,7 @@ function SkeletonCard() {
 }
 
 export default function UserCertificatesPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { toast } = useToast();
     const { settings: globalSettings } = useSettings();
     const [data, setData] = useState<ApiResponse | null>(null);
@@ -179,7 +179,7 @@ export default function UserCertificatesPage() {
                                 {([
                                     [t("name"), s.name],
                                     [t("admission_no"), s.admission_no],
-                                    [t("class"), `${s.class || ""}${s.section ? ` (${s.section})` : ""}`],
+                                    [t("class"), `${s.class ? translateClassName(s.class, language?.short_code) : ""}${s.section ? ` (${translateSectionName(s.section, language?.short_code)})` : ""}`],
                                     [t("father_name"), s.father_name],
                                     [t("roll_no"), s.roll_no],
                                     [t("category"), s.category],
@@ -262,7 +262,7 @@ export default function UserCertificatesPage() {
                                         </p>
                                     ) : (
                                         <p className="text-[11px] text-gray-400 italic">
-                                            Standard School Official Certificate
+                                            {t("standard_school_official_certificate")}
                                         </p>
                                     )}
                                 </div>
@@ -299,7 +299,7 @@ export default function UserCertificatesPage() {
                                     ) : (
                                         <Download className="h-3.5 w-3.5" />
                                     )}
-                                    <span>PDF</span>
+                                    <span>{t("pdf") || "PDF"}</span>
                                 </Button>
                             </div>
                         </div>

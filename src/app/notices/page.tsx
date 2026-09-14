@@ -1,11 +1,32 @@
-"use client";
-
+import type { Metadata } from "next";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
-import { NoticeBoardSection } from "@/components/public/notice-board-section";
+import { NoticeBoardSection, type Notice } from "@/components/public/notice-board-section";
 import { Bell } from "lucide-react";
+import { serverFetch } from "@/lib/server-api";
 
-export default function NoticesPage() {
+export const metadata: Metadata = {
+    title: "Official Notices & Circulars — iSchool",
+    description: "Stay up to date with official school news, circulars, academic schedules, exam timetables, and administrative announcements.",
+    alternates: {
+        canonical: "/notices",
+    },
+    openGraph: {
+        title: "Official Notices & Circulars — iSchool",
+        description: "Official school bulletins, announcements, exam schedules, and circulars.",
+        url: "/notices",
+    },
+};
+
+export default async function NoticesPage() {
+    // Flow 1: Server Component fetches data server-to-server from Laravel
+    // Keeps backend API hidden from the browser console & pre-renders for SEO
+    const { data } = await serverFetch<Notice[]>("/communicate/notices", {
+        revalidate: 60, // Next.js ISR revalidation cache
+    });
+
+    const initialNotices: Notice[] = Array.isArray(data) ? data : [];
+
     return (
         <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 font-sans">
             <PublicHeader />
@@ -27,9 +48,9 @@ export default function NoticesPage() {
                     </div>
                 </div>
 
-                {/* Main Notices Section */}
+                {/* Main Notices Section: receives pre-fetched initialNotices as props */}
                 <div className="container mx-auto px-4 sm:px-6 md:px-12 py-12 sm:py-16 max-w-6xl">
-                    <NoticeBoardSection />
+                    <NoticeBoardSection initialNotices={initialNotices} />
                 </div>
             </main>
 

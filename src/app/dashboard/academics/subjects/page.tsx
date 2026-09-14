@@ -31,10 +31,8 @@ import {
     Sparkles,
     Hash,
     CheckCircle2,
-    Layers,
     Tag
 } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import {
@@ -51,7 +49,7 @@ import api from "@/lib/api";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateSubjectName } from "@/lib/utils";
 
 interface Subject {
     id: number;
@@ -61,18 +59,18 @@ interface Subject {
 }
 
 const SUBJECT_PRESETS = [
-    { name: "Bangla", code: "101", type: "theory" },
-    { name: "English", code: "107", type: "theory" },
-    { name: "Mathematics", code: "109", type: "theory" },
-    { name: "Science", code: "127", type: "theory" },
-    { name: "Social Science", code: "150", type: "theory" },
-    { name: "Physics", code: "136", type: "practical" },
-    { name: "Chemistry", code: "137", type: "practical" },
-    { name: "Biology", code: "138", type: "practical" },
-    { name: "ICT", code: "154", type: "practical" },
-    { name: "Religion", code: "111", type: "theory" },
-    { name: "Higher Math", code: "126", type: "practical" },
-    { name: "Accounting", code: "146", type: "theory" },
+    { name: "Bangla", key: "bangla", code: "101", type: "theory" },
+    { name: "English", key: "english", code: "107", type: "theory" },
+    { name: "Mathematics", key: "mathematics", code: "109", type: "theory" },
+    { name: "Science", key: "science", code: "127", type: "theory" },
+    { name: "Social Science", key: "social_science", code: "150", type: "theory" },
+    { name: "Physics", key: "physics", code: "136", type: "practical" },
+    { name: "Chemistry", key: "chemistry", code: "137", type: "practical" },
+    { name: "Biology", key: "biology", code: "138", type: "practical" },
+    { name: "ICT", key: "ict", code: "154", type: "practical" },
+    { name: "Religion", key: "religion", code: "111", type: "theory" },
+    { name: "Higher Math", key: "higher_math", code: "126", type: "practical" },
+    { name: "Accounting", key: "accounting", code: "146", type: "theory" },
 ];
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -107,8 +105,8 @@ export default function SubjectsPage() {
     // Delete dialog state
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [idToDelete, setIdToDelete] = useState<number | null>(null);
-    const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
 
     // Pagination state
@@ -219,7 +217,8 @@ export default function SubjectsPage() {
     };
 
     const handlePresetSelect = (preset: typeof SUBJECT_PRESETS[0]) => {
-        setSubjectName(preset.name);
+        const translatedName = t(preset.key);
+        setSubjectName(translatedName && translatedName !== preset.key ? translatedName : preset.name);
         if (!subjectCode || editingId === null) {
             setSubjectCode(preset.code);
         }
@@ -236,10 +235,10 @@ export default function SubjectsPage() {
     const exportToExcel = () => {
         const data = subjects.map((s, idx) => ({
             "#": idx + 1,
-            [t("subject")]: s.name,
+            [t("subject")]: translateSubjectName(s.name, shortCode),
             [t("subject_code")]: s.code || '-',
             [t("subject_type")]: s.type.toUpperCase(),
-            "Status": "Active"
+            [t("status")]: t("active")
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
@@ -249,15 +248,15 @@ export default function SubjectsPage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Subject List", 14, 15);
+        doc.text(t("subject_list") || "Subject List", 14, 15);
         autoTable(doc, {
-            head: [["#", t("subject"), t("subject_code"), t("subject_type"), "Status"]],
+            head: [["#", t("subject"), t("subject_code"), t("subject_type"), t("status")]],
             body: subjects.map((s, idx) => [
                 idx + 1,
-                s.name,
+                translateSubjectName(s.name, shortCode),
                 s.code || '-',
                 s.type.toUpperCase(),
-                "Active"
+                t("active")
             ]),
             startY: 20
         });
@@ -298,7 +297,7 @@ export default function SubjectsPage() {
                                 className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
                                 value={subjectName}
                                 onChange={(e) => setSubjectName(e.target.value)}
-                                placeholder="e.g. Mathematics, Physics, English..."
+                                placeholder={t("subject_name_placeholder") || "e.g. Mathematics, Physics, English..."}
                                 required
                             />
                         </div>
@@ -306,24 +305,28 @@ export default function SubjectsPage() {
                         {/* Quick Subject Presets */}
                         <div className="space-y-1.5 pt-1">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                                <Sparkles className="h-3 w-3 text-amber-500" /> Quick Subject Presets
+                                <Sparkles className="h-3 w-3 text-amber-500" /> {t("quick_subject_presets") || "Quick Subject Presets"}
                             </Label>
                             <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto pr-1">
-                                {SUBJECT_PRESETS.map((preset) => (
-                                    <button
-                                        key={preset.name}
-                                        type="button"
-                                        onClick={() => handlePresetSelect(preset)}
-                                        className={cn(
-                                            "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
-                                            subjectName === preset.name
-                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                                : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
-                                        )}
-                                    >
-                                        {preset.name}
-                                    </button>
-                                ))}
+                                {SUBJECT_PRESETS.map((preset) => {
+                                    const presetLabel = t(preset.key) !== preset.key ? t(preset.key) : preset.name;
+                                    const isSelected = subjectName === preset.name || subjectName === presetLabel;
+                                    return (
+                                        <button
+                                            key={preset.name}
+                                            type="button"
+                                            onClick={() => handlePresetSelect(preset)}
+                                            className={cn(
+                                                "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
+                                                isSelected
+                                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                                                    : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
+                                            )}
+                                        >
+                                            {presetLabel}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -344,7 +347,7 @@ export default function SubjectsPage() {
                                     )}
                                 >
                                     <BookOpen className="h-4 w-4" />
-                                    Theory
+                                    {t("theory") || "Theory"}
                                 </button>
                                 <button
                                     type="button"
@@ -357,7 +360,7 @@ export default function SubjectsPage() {
                                     )}
                                 >
                                     <FlaskConical className="h-4 w-4" />
-                                    Practical
+                                    {t("practical") || "Practical"}
                                 </button>
                             </div>
                         </div>
@@ -374,7 +377,7 @@ export default function SubjectsPage() {
                                     className="pl-9 h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
                                     value={subjectCode}
                                     onChange={(e) => setSubjectCode(e.target.value)}
-                                    placeholder="e.g. 101, 210, PHY-01..."
+                                    placeholder={t("subject_code_placeholder") || "e.g. 101, 210, PHY-01..."}
                                 />
                             </div>
                         </div>
@@ -413,7 +416,7 @@ export default function SubjectsPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("subject_list")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: toLocaleNumber(total, shortCode) })}</p>
                             </div>
                         </div>
 
@@ -423,10 +426,10 @@ export default function SubjectsPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, shortCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, shortCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, shortCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -456,7 +459,7 @@ export default function SubjectsPage() {
                             <div className="relative w-full md:w-72">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search subjects..."
+                                    placeholder={t("search_subjects") || "Search subjects..."}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
@@ -466,7 +469,7 @@ export default function SubjectsPage() {
                             {subjects.length > 0 && (
                                 <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
                                     <BookOpen className="h-3 w-3 mr-1" />
-                                    {total} Academic Subjects
+                                    {t("x_academic_subjects", { count: toLocaleNumber(total, shortCode) })}
                                 </Badge>
                             )}
                         </div>
@@ -480,7 +483,7 @@ export default function SubjectsPage() {
                                         <TableHead className="py-3 px-4 min-w-[200px]">{t("subject")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[160px]">{t("subject_code")}</TableHead>
                                         <TableHead className="py-3 px-4 w-[160px]">{t("subject_type")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[120px]">Status</TableHead>
+                                        <TableHead className="py-3 px-4 w-[120px]">{t("status")}</TableHead>
                                         <TableHead className="py-3 px-4 text-right w-[100px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -503,7 +506,7 @@ export default function SubjectsPage() {
                                                 >
                                                     {/* Serial Number */}
                                                     <TableCell className="py-3.5 px-4 font-bold text-gray-400 text-xs">
-                                                        {(currentPage - 1) * itemsPerPage + idx + 1}
+                                                        {toLocaleNumber((currentPage - 1) * itemsPerPage + idx + 1, shortCode)}
                                                     </TableCell>
 
                                                     {/* Subject Name with Monogram Avatar */}
@@ -519,10 +522,10 @@ export default function SubjectsPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                                                                    {sub.name}
+                                                                    {translateSubjectName(sub.name, shortCode)}
                                                                 </p>
                                                                 <p className="text-[11px] text-gray-400 font-medium">
-                                                                    {isPractical ? "Lab & Practical Module" : "Standard Theory Curriculum"}
+                                                                    {isPractical ? (t("lab_practical_module") || "Lab & Practical Module") : (t("standard_theory_curriculum") || "Standard Theory Curriculum")}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -531,9 +534,9 @@ export default function SubjectsPage() {
                                                     {/* Subject Code */}
                                                     <TableCell className="py-3.5 px-4">
                                                         {sub.code ? (
-                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-mono text-xs font-bold border border-gray-200 dark:border-gray-700">
+                                                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-mono text-xs font-bold border border-gray-200 dark:border-gray-700">
                                                                 <Tag className="h-3 w-3 text-gray-400" />
-                                                                {sub.code}
+                                                                {toLocaleNumber(sub.code, shortCode)}
                                                             </span>
                                                         ) : (
                                                             <span className="text-gray-400 text-xs italic">—</span>
@@ -553,12 +556,12 @@ export default function SubjectsPage() {
                                                             {isPractical ? (
                                                                 <>
                                                                     <FlaskConical className="h-3.5 w-3.5 text-emerald-500" />
-                                                                    Practical
+                                                                    {t("practical") || "Practical"}
                                                                 </>
                                                             ) : (
                                                                 <>
                                                                     <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
-                                                                    Theory
+                                                                    {t("theory") || "Theory"}
                                                                 </>
                                                             )}
                                                         </span>
@@ -568,7 +571,7 @@ export default function SubjectsPage() {
                                                     <TableCell className="py-3.5 px-4">
                                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
                                                             <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                            Active
+                                                            {t("active") || "Active"}
                                                         </span>
                                                     </TableCell>
 
@@ -580,7 +583,7 @@ export default function SubjectsPage() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
-                                                                title="Edit Subject"
+                                                                title={t("edit_subject") || "Edit Subject"}
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
@@ -589,7 +592,7 @@ export default function SubjectsPage() {
                                                                 size="icon"
                                                                 variant="ghost"
                                                                 className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
-                                                                title="Delete Subject"
+                                                                title={t("delete_subject") || "Delete Subject"}
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -606,7 +609,7 @@ export default function SubjectsPage() {
                         {/* Pagination */}
                         {total > 0 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
-                                <div>{t("showing_x_to_y_of_z", { from, to, total })}</div>
+                                <div>{t("showing_x_to_y_of_z", { from: toLocaleNumber(from, shortCode), to: toLocaleNumber(to, shortCode), total: toLocaleNumber(total, shortCode) })}</div>
                                 <div className="flex gap-1.5">
                                     <Button
                                         size="sm"
@@ -628,7 +631,7 @@ export default function SubjectsPage() {
                                             )}
                                             onClick={() => fetchSubjects(page)}
                                         >
-                                            {page}
+                                            {toLocaleNumber(page, shortCode)}
                                         </Button>
                                     ))}
                                     <Button

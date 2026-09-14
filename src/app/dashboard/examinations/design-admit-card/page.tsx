@@ -13,11 +13,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Pencil, Trash2, Eye, Upload, Image as ImageIcon, Search,
-    Copy, FileSpreadsheet, FileText, Printer, Columns,
+    Copy, FileSpreadsheet, FileText, Printer,
     ChevronLeft, ChevronRight, Settings2, Contact,
     FileSignature, IdCard, Loader2
 } from "lucide-react";
 import { getImageUrl } from "@/lib/image-url";
+import { toLocaleNumber } from "@/lib/utils";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -84,7 +87,8 @@ interface AdmitCard extends TemplateFormData {
 }
 
 export default function DesignAdmitCardPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<AdmitCard[]>([]);
@@ -299,6 +303,55 @@ export default function DesignAdmitCardPage() {
         };
     };
 
+    const handleCopy = () => {
+        if (templates.length === 0) return;
+        const headers = [t("id"), t("template_name"), t("status")];
+        const rows = templates.map(item => [
+            `#${toLocaleNumber(item.id, shortCode)}`,
+            item.name,
+            item.is_active ? t("active") : t("inactive")
+        ]);
+        const text = [headers.join("\t"), ...rows.map(r => r.join("\t"))].join("\n");
+        navigator.clipboard.writeText(text);
+        tt.success("data_copied_to_clipboard");
+    };
+
+    const handleExportCSV = () => {
+        if (templates.length === 0) return;
+        const headers = [t("id"), t("template_name"), t("status")];
+        const rows = templates.map(item => [
+            `"#${toLocaleNumber(item.id, shortCode)}"`,
+            `"${item.name.replace(/"/g, '""')}"`,
+            `"${item.is_active ? t("active") : t("inactive")}"`
+        ]);
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Admit_Card_Templates_${new Date().toISOString().split("T")[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        tt.success("csv_downloaded_successfully");
+    };
+
+    const handleExportPDF = () => {
+        if (templates.length === 0) return;
+        const doc = new jsPDF();
+        doc.text(t("admit_card_templates"), 14, 15);
+        autoTable(doc, {
+            head: [[t("id"), t("template_name"), t("status")]],
+            body: templates.map(item => [
+                `#${toLocaleNumber(item.id, shortCode)}`,
+                item.name,
+                item.is_active ? t("active") : t("inactive")
+            ]),
+            startY: 20
+        });
+        doc.save(`Admit_Card_Templates_${new Date().toISOString().split("T")[0]}.pdf`);
+        tt.success("pdf_downloaded_successfully");
+    };
+
     const resetForm = () => {
         setEditMode(false);
         setSelectedId(null);
@@ -351,7 +404,7 @@ export default function DesignAdmitCardPage() {
                             </div>
                         </CardHeader>
 
-                        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                     {t("template_name")} <span className="text-red-500">*</span>
@@ -359,7 +412,7 @@ export default function DesignAdmitCardPage() {
                                 <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    placeholder="e.g. CBSE Admit Card"
+                                    placeholder={t("eg_admit_card_template")}
                                     className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
@@ -382,16 +435,58 @@ export default function DesignAdmitCardPage() {
                                 />
                             </div>
 
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_name")}</Label>
+                                <Input
+                                    value={formData.exam_name}
+                                    onChange={(e) => setFormData({...formData, exam_name: e.target.value})}
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("school_name")}</Label>
+                                <Input
+                                    value={formData.school_name}
+                                    onChange={(e) => setFormData({...formData, school_name: e.target.value})}
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_center")}</Label>
+                                <Input
+                                    value={formData.exam_center}
+                                    onChange={(e) => setFormData({...formData, exam_center: e.target.value})}
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("footer_text")}</Label>
+                                <Input
+                                    value={formData.footer_text}
+                                    onChange={(e) => setFormData({...formData, footer_text: e.target.value})}
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                />
+                            </div>
+
                             {/* Toggles Section */}
                             <div className="pt-4 border-t border-dashed border-gray-100 space-y-4">
                                 <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4">{t("display_fields")}</h3>
                                 {[
                                     { key: "show_name", label: t("student_name") },
                                     { key: "show_father_name", label: t("father_name") },
+                                    { key: "show_mother_name", label: t("mother_name") },
                                     { key: "show_dob", label: t("date_of_birth") },
+                                    { key: "show_admission_no", label: t("admission_no") },
                                     { key: "show_roll_no", label: t("roll_number") },
                                     { key: "show_address", label: t("address") },
-                                    { key: "show_photo", label: t("student_photo") }
+                                    { key: "show_gender", label: t("gender") },
+                                    { key: "show_photo", label: t("student_photo") },
+                                    { key: "show_class", label: t("class") },
+                                    { key: "show_section", label: t("section") },
+                                    { key: "show_exam_number", label: t("exam_roll_number") },
                                 ].map((item) => (
                                     <div key={item.key} className="flex items-center justify-between group">
                                         <Label className="text-[11px] font-bold text-gray-600 cursor-pointer group-hover:text-indigo-600 transition-colors">{item.label}</Label>
@@ -466,14 +561,14 @@ export default function DesignAdmitCardPage() {
 
                         <div className="p-6 border-t border-gray-50 bg-gray-50/30 rounded-b-2xl flex gap-2 justify-end">
                             {editMode && (
-                                <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
+                                <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5 cursor-pointer">
                                     {t("cancel")}
                                 </Button>
                             )}
                             <Button
                                 onClick={handleSave}
                                 disabled={submitting}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95 cursor-pointer"
                             >
                                 {submitting ? t("saving") : editMode ? t("update_design") : t("save_design")}
                             </Button>
@@ -491,36 +586,33 @@ export default function DesignAdmitCardPage() {
                                 </span>
                                 <div>
                                     <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("admit_card_templates")}</CardTitle>
-                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} {t("templates_configured")}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(totalEntries, shortCode)} {t("templates_configured")}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg bg-white">
-                                        <SelectValue placeholder="50" />
+                                    <SelectTrigger className="w-[75px] h-8 text-xs border-gray-200 rounded-lg bg-white">
+                                        <SelectValue placeholder={toLocaleNumber("50", shortCode)} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="20">20</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                        <SelectItem value="500">500</SelectItem>
+                                        <SelectItem value="20">{toLocaleNumber("20", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
+                                        <SelectItem value="500">{toLocaleNumber("500", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center gap-1 text-gray-400">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={handleCopy} title="Copy" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <Copy className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={handleExportCSV} title="CSV" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <FileSpreadsheet className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={handleExportPDF} title="PDF" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <FileText className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <Printer className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                        <Columns className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -543,7 +635,7 @@ export default function DesignAdmitCardPage() {
                                 <Table>
                                     <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
-                                            <TableHead className="py-4 px-6">{t("certificate_name")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("template_name")}</TableHead>
                                             <TableHead className="py-4 px-6">{t("status")}</TableHead>
                                             <TableHead className="py-4 px-6">{t("assets")}</TableHead>
                                             <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
@@ -564,7 +656,7 @@ export default function DesignAdmitCardPage() {
                                                     <TableCell className="py-4 px-6">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.name}</span>
-                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("id")}: #{item.id}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("id")}: #{toLocaleNumber(item.id, shortCode)}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6">
@@ -590,10 +682,10 @@ export default function DesignAdmitCardPage() {
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <Button size="icon" variant="ghost" onClick={() => setPreviewTemplate(item)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                            <Button size="icon" variant="ghost" onClick={() => setPreviewTemplate(item)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md cursor-pointer">
                                                                 <Eye className="h-4 w-4" />
                                                             </Button>
-                                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md cursor-pointer">
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>
                                                             <Button 
@@ -601,7 +693,7 @@ export default function DesignAdmitCardPage() {
                                                                 variant="ghost" 
                                                                 onClick={() => setDeleteId(item.id)} 
                                                                 disabled={Boolean(item.name && (item.name.toLowerCase().includes('design 1') || item.name.toLowerCase().includes('design 2')))}
-                                                                className={`h-8 w-8 rounded-lg shadow-md ${item.name && (item.name.toLowerCase().includes('design 1') || item.name.toLowerCase().includes('design 2')) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                                                                className={`h-8 w-8 rounded-lg shadow-md cursor-pointer ${item.name && (item.name.toLowerCase().includes('design 1') || item.name.toLowerCase().includes('design 2')) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
                                                             >
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -616,22 +708,22 @@ export default function DesignAdmitCardPage() {
 
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                                 <div>
-                                    {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
+                                    {t("showing_x_to_y_of_z", { from: toLocaleNumber(((currentPage - 1) * itemsPerPage) + (templates.length > 0 ? 1 : 0), shortCode), to: toLocaleNumber(Math.min(currentPage * itemsPerPage, totalEntries), shortCode), total: toLocaleNumber(totalEntries, shortCode) })}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
                                         disabled={currentPage === 1}
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
                                     <Button variant="default" size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
-                                        {currentPage}
+                                        {toLocaleNumber(currentPage, shortCode)}
                                     </Button>
                                     <Button
                                         onClick={() => setCurrentPage(p => p + 1)}
-                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
                                         disabled={templates.length < itemsPerPage}
                                     >
                                         <ChevronRight className="h-4 w-4" />
@@ -653,8 +745,8 @@ export default function DesignAdmitCardPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200 cursor-pointer">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md cursor-pointer">
                             {t("yes_delete_design")}
                         </AlertDialogAction>
                     </AlertDialogFooter>

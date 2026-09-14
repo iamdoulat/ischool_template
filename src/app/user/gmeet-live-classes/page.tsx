@@ -25,10 +25,14 @@ import {
     CalendarClock, Clock, GraduationCap, User,
     CheckCircle2, XCircle, MonitorPlay,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, formatTime, translateRoleName } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 interface LiveClass {
     id: number;
@@ -43,7 +47,11 @@ interface LiveClass {
 }
 
 export default function UserGmeetLiveClassesPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const { settings } = useSettings();
+    const tf = settings?.time_format === "12" ? "12" : ("24" as const);
+
     const [classes, setClasses] = useState<LiveClass[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -65,17 +73,16 @@ export default function UserGmeetLiveClassesPage() {
             setTotalEntries(res.total || dataArr.length);
             setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
             setCurrentPage(res.current_page || page);
-        } catch (error) {
-            console.error("Error fetching live classes:", error);
+        } catch {
             toast.error(t("failed_to_load_live_classes"));
         } finally {
             setLoading(false);
         }
-    }, [itemsPerPage, searchTerm]);
+    }, [itemsPerPage, searchTerm, t]);
 
     useEffect(() => {
         fetchData(1);
-    }, [itemsPerPage]);
+    }, [fetchData]);
 
     const handleSearch = () => {
         setCurrentPage(1);
@@ -96,17 +103,102 @@ export default function UserGmeetLiveClassesPage() {
     };
 
     const StatusBadge = ({ status }: { status: string }) => {
-        const s = (status || "Awaited").toLowerCase();
+        const s = (status || "awaited").toLowerCase();
         const Icon = s === "finished" ? CheckCircle2 : s === "cancelled" ? XCircle : Clock;
+        const statusLabel = t(s) !== s ? t(s) : status || t("awaited");
         return (
             <span className={cn(
                 "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold",
                 getStatusStyle(status)
             )}>
                 <Icon className="h-3 w-3" />
-                {status || "Awaited"}
+                {statusLabel}
             </span>
         );
+    };
+
+    // ── Host string localizer (translates "Role: Code") ──────────────────────────
+    const formatHost = (hostStr: string) => {
+        if (!hostStr) return "—";
+        return hostStr.replace(/\(([^:]+)\s*:\s*([^)]+)\)/g, (match, role, code) => {
+            const trRole = translateRoleName(role.trim(), langCode);
+            const trCode = toLocaleNumber(code.trim(), langCode);
+            return `(${trRole}: ${trCode})`;
+        });
+    };
+
+    // ── Date time localized display ─────────────────────────────────────────────
+    const formatDisplayDateTime = (dtStr: string) => {
+        if (!dtStr) return "—";
+        try {
+            const d = new Date(dtStr);
+            if (isNaN(d.getTime())) return toLocaleNumber(dtStr, langCode);
+            const pad = (n: number) => n.toString().padStart(2, "0");
+            const dd = toLocaleNumber(pad(d.getDate()), langCode);
+            const mm = toLocaleNumber(pad(d.getMonth() + 1), langCode);
+            const yyyy = toLocaleNumber(d.getFullYear().toString(), langCode);
+            const timeStr = toLocaleNumber(formatTime(d, tf), langCode);
+            return `${dd}/${mm}/${yyyy} ${timeStr}`;
+        } catch {
+            return toLocaleNumber(dtStr, langCode);
+        }
+    };
+
+    // ── Export helpers ──────────────────────────────────────────────────────────
+    const exportData = classes.map(item => ({
+        [t("class_title")]: item.title || "—",
+        [t("description")]: item.description || "—",
+        [t("date_time")]: formatDisplayDateTime(item.dateTime),
+        [t("duration_min")]: item.duration,
+        [t("class")]: item.className || "—",
+        [t("host")]: formatHost(item.host),
+        [t("status")]: t((item.status || "awaited").toLowerCase()),
+    }));
+
+    const handleCopy = () => {
+        if (classes.length === 0) {
+            toast.info(t("no_live_classes_available"));
+            return;
+        }
+        const text = classes.map(i => `${i.title}\t${i.dateTime}\t${i.duration}\t${i.className}\t${i.host}\t${i.description || ""}\t${i.status}`).join("\n");
+        navigator.clipboard.writeText(text);
+        toast.success(t("copied_to_clipboard") || t("copy"));
+    };
+
+    const handleExportExcel = () => {
+        if (classes.length === 0) {
+            toast.info(t("no_live_classes_available"));
+            return;
+        }
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, t("google_meet_live_classes") || "GMeetClasses");
+        XLSX.writeFile(wb, "gmeet_live_classes.xlsx");
+        toast.success(t("export_excel") || "Excel");
+    };
+
+    const handleExportPDF = () => {
+        if (classes.length === 0) {
+            toast.info(t("no_live_classes_available"));
+            return;
+        }
+        const doc = new jsPDF("landscape");
+        doc.text(t("google_meet_live_classes"), 14, 15);
+        autoTable(doc, {
+            head: [[t("class_title"), t("date_time"), t("duration_min"), t("class"), t("host"), t("description"), t("status")]],
+            body: classes.map(i => [
+                i.title || "—",
+                formatDisplayDateTime(i.dateTime),
+                toLocaleNumber(i.duration, langCode),
+                i.className || "—",
+                formatHost(i.host),
+                i.description || "—",
+                t((i.status || "awaited").toLowerCase())
+            ]),
+            startY: 20,
+        });
+        doc.save("gmeet_live_classes.pdf");
+        toast.success(t("export_pdf") || "PDF");
     };
 
     // ── Join button (always visible — Google Meet links are always shareable) ──
@@ -134,7 +226,7 @@ export default function UserGmeetLiveClassesPage() {
                             {t("google_meet_live_classes")}
                         </h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {totalEntries} class{totalEntries === 1 ? "" : "es"} scheduled
+                            {t("classes_scheduled", { count: toLocaleNumber(totalEntries, langCode) })}
                         </p>
                     </div>
                 </div>
@@ -155,28 +247,70 @@ export default function UserGmeetLiveClassesPage() {
                         </div>
 
                         <div className="flex items-center justify-between md:justify-end gap-2">
-                            <Select value={itemsPerPage} onValueChange={(val) => setItemsPerPage(val)}>
+                            <Select
+                                value={itemsPerPage}
+                                onValueChange={(val) => {
+                                    setItemsPerPage(val);
+                                    setCurrentPage(1);
+                                }}
+                            >
                                 <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber("50", langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber("10", langCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber("25", langCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber("50", langCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber("100", langCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
-                                {[Copy, FileSpreadsheet, FileBox, Printer, Columns].map((Icon, i) => (
-                                    <Button
-                                        key={i}
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
-                                    >
-                                        <Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                ))}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleCopy}
+                                    title={t("copy")}
+                                    className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
+                                >
+                                    <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleExportExcel}
+                                    title={t("export_excel")}
+                                    className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
+                                >
+                                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleExportPDF}
+                                    title={t("export_pdf")}
+                                    className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
+                                >
+                                    <FileBox className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => window.print()}
+                                    title={t("print")}
+                                    className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
+                                >
+                                    <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    title={t("columns")}
+                                    className="h-8 w-8 hover:bg-white hover:shadow-sm rounded-md border border-transparent hover:border-gray-200 transition-all"
+                                >
+                                    <Columns className="h-3.5 w-3.5" />
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -238,10 +372,18 @@ export default function UserGmeetLiveClassesPage() {
                                             <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
                                                 {item.title}
                                             </TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">{item.dateTime}</TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">{item.duration}</TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">{item.className}</TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">{item.host}</TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">
+                                                {formatDisplayDateTime(item.dateTime)}
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">
+                                                {toLocaleNumber(item.duration, langCode)}
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">
+                                                {item.className}
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">
+                                                {formatHost(item.host)}
+                                            </TableCell>
                                             <TableCell className="py-3 px-4 text-gray-500 max-w-[200px] truncate" title={item.description}>
                                                 {item.description || "-"}
                                             </TableCell>
@@ -262,7 +404,7 @@ export default function UserGmeetLiveClassesPage() {
                     <div className="lg:hidden">
                         {loading ? (
                             <div className="flex items-center justify-center gap-2 text-gray-400 py-12">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Loading live classes...
+                                <Loader2 className="h-4 w-4 animate-spin" /> {t("loading_live_classes")}
                             </div>
                         ) : classes.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
@@ -290,11 +432,11 @@ export default function UserGmeetLiveClassesPage() {
                                         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600">
                                             <span className="flex items-center gap-1.5">
                                                 <CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-                                                {item.dateTime}
+                                                {formatDisplayDateTime(item.dateTime)}
                                             </span>
                                             <span className="flex items-center gap-1.5">
                                                 <Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-                                                {item.duration} min
+                                                {toLocaleNumber(item.duration, langCode)} {t("minutes_short")}
                                             </span>
                                             <span className="flex items-center gap-1.5">
                                                 <GraduationCap className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
@@ -302,7 +444,7 @@ export default function UserGmeetLiveClassesPage() {
                                             </span>
                                             <span className="flex items-center gap-1.5">
                                                 <User className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-                                                {item.host}
+                                                {formatHost(item.host)}
                                             </span>
                                         </div>
 
@@ -330,8 +472,9 @@ export default function UserGmeetLiveClassesPage() {
                     {/* ── Pagination ──────────────────────────────────────────── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
+                            {t("showing")} {toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, langCode)} {t("to")}{" "}
+                            {toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode)} {t("of")}{" "}
+                            {toLocaleNumber(totalEntries, langCode)} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -355,7 +498,7 @@ export default function UserGmeetLiveClassesPage() {
                                                 : "bg-white text-gray-500 border border-gray-200 hover:shadow-sm active:scale-95"
                                         )}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, langCode)}
                                     </button>
                                 ))}
 

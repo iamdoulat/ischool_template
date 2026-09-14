@@ -5,6 +5,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useLanguage } from "@/components/providers/language-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -37,8 +38,22 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards, downloadIdCardPdf } from "@/lib/certificate";
+import {
+    type IdCardTemplate,
+    type IdCardPerson,
+    renderIdCardHtml,
+    printIdCards,
+    downloadIdCardPdf,
+} from "@/lib/certificate";
 import { getImageUrl } from "@/lib/image-url";
+import {
+    toLocaleNumber,
+    formatDate,
+    translateRoleName,
+    translateDesignation,
+    translateDepartment,
+    translateCertificateTemplateName,
+} from "@/lib/utils";
 
 interface ApiStaff {
     id: number;
@@ -47,24 +62,27 @@ interface ApiStaff {
     user?: { id?: number; qr_code?: string };
     staff_id?: string;
     name?: string;
+    father_name?: string;
+    mother_name?: string;
+    dob?: string;
+    gender?: string;
     role?: string;
     designation?: string;
     department?: string;
-    father_name?: string;
-    mother_name?: string;
+    phone?: string;
+    emergency_contact?: string;
+    email?: string;
     date_of_joining?: string;
     joining_date?: string;
-    phone?: string;
-    dob?: string;
     current_address?: string;
     avatar?: string;
 }
 
-interface Role { name: string; }
+interface Role { id: number; name: string; }
 
 const TABLE_COLS = 12;
 
-function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
+function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: number }) {
     return (
         <>
             {Array.from({ length: rows }).map((_, i) => (
@@ -80,21 +98,21 @@ function SkeletonRows({ rows = 5, cols = TABLE_COLS }: { rows?: number; cols?: n
     );
 }
 
-function toPerson(s: ApiStaff, qrMap: Record<string, string> = {}): IdCardPerson {
+function toPerson(s: ApiStaff, qrMap: Record<string, string> = {}, langCode = "en"): IdCardPerson {
     const avatarRaw = s.avatar || (s as any).image || (s as any).photo || null;
     const resolvedQr = s.qr_code || s.user?.qr_code || (s.staff_id ? qrMap[String(s.staff_id)] : null) || (s.id ? qrMap[String(s.id)] : null) || s.staff_id || null;
     return {
         name: s.name || "",
-        staff_id: s.staff_id || "",
-        designation: s.designation || "",
-        department: s.department || "",
+        staff_id: s.staff_id ? toLocaleNumber(s.staff_id, langCode) : "",
+        designation: translateDesignation(s.designation, langCode),
+        department: translateDepartment(s.department, langCode),
         father_name: s.father_name || "",
         mother_name: s.mother_name || "",
         joining_date: s.date_of_joining || s.joining_date
-            ? new Date(s.date_of_joining || s.joining_date || "").toLocaleDateString("en-US")
+            ? toLocaleNumber(formatDate(s.date_of_joining || s.joining_date || ""), langCode)
             : "",
-        dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
-        phone: s.phone || "",
+        dob: s.dob ? toLocaleNumber(formatDate(s.dob), langCode) : "",
+        phone: s.phone ? toLocaleNumber(s.phone, langCode) : "",
         address: s.current_address || "",
         photo: avatarRaw ? getImageUrl(avatarRaw) : null,
         qr_code: resolvedQr,
@@ -103,8 +121,10 @@ function toPerson(s: ApiStaff, qrMap: Record<string, string> = {}): IdCardPerson
 
 export default function GenerateStaffIDCardPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
+    const langCode = language?.short_code || "en";
+
     const [roles, setRoles] = useState<Role[]>([]);
     const [templates, setTemplates] = useState<IdCardTemplate[]>([]);
 
@@ -179,6 +199,9 @@ export default function GenerateStaffIDCardPage() {
     const toggleAll = () => setSelected(allChecked ? [] : filtered.map((s) => s.id));
     const toggleOne = (id: number) => setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
 
+    const selectedRoleObj = roles.find((r) => r.name === selectedRole);
+    const selectedTemplate = templates.find((tp) => String(tp.id) === templateId);
+
     const handleGenerate = () => {
         const template = templates.find((tp) => String(tp.id) === templateId);
         if (!template) return;
@@ -187,31 +210,31 @@ export default function GenerateStaffIDCardPage() {
             toast({ title: t("no_staff_selected"), description: t("select_at_least_one_staff"), variant: "destructive" });
             return;
         }
-        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s, qrMap), "staff")).join(""));
+        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s, qrMap, langCode), "staff")).join(""));
     };
 
     const handlePrintSingle = (s: ApiStaff) => {
         const template = templates.find((tp) => String(tp.id) === templateId);
         if (!template) {
-            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            toast({ title: t("error"), description: t("select_id_card_template"), variant: "destructive" });
             return;
         }
-        const html = renderIdCardHtml(template, toPerson(s, qrMap), "staff");
+        const html = renderIdCardHtml(template, toPerson(s, qrMap, langCode), "staff");
         printIdCards(html);
     };
 
     const handleDownloadSingle = async (s: ApiStaff) => {
         const template = templates.find((tp) => String(tp.id) === templateId);
         if (!template) {
-            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            toast({ title: t("error"), description: t("select_id_card_template"), variant: "destructive" });
             return;
         }
         setDownloadingId(s.id);
         try {
-            const html = renderIdCardHtml(template, toPerson(s, qrMap), "staff");
+            const html = renderIdCardHtml(template, toPerson(s, qrMap, langCode), "staff");
             const safeName = (s.name || `staff_${s.id}`).replace(/[^a-zA-Z0-9-_]/g, "_");
             await downloadIdCardPdf(html, `Staff_ID_Card_${safeName}.pdf`);
-            toast({ title: t("success"), description: t("id_card_downloaded") || "ID card downloaded successfully" });
+            toast({ title: t("success"), description: t("id_card_downloaded") });
         } catch (err) {
             console.error("Failed to download staff ID card:", err);
             tt.error("failed_to_download_id_card");
@@ -221,12 +244,25 @@ export default function GenerateStaffIDCardPage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(filtered.map((s) => `${s.staff_id}\t${s.name}`).join("\n"));
+        navigator.clipboard.writeText(filtered.map((s) => `${toLocaleNumber(s.staff_id, langCode)}\t${s.name}`).join("\n"));
         tt.success("data_copied_to_clipboard");
     };
     const handleExportCSV = () => {
-        const rows = [[t("staff_id"), t("name"), t("role"), t("designation"), t("department"), t("father_name"), t("mother_name"), t("joining_date"), t("phone"), t("dob")],
-            ...filtered.map((s) => [s.staff_id || "", s.name || "", s.role || "", s.designation || "", s.department || "", s.father_name || "", s.mother_name || "", s.date_of_joining || "", s.phone || "", s.dob || ""])];
+        const rows = [
+            [t("staff_id"), t("name"), t("role"), t("designation"), t("department"), t("father_name"), t("mother_name"), t("joining_date"), t("phone"), t("dob")],
+            ...filtered.map((s) => [
+                s.staff_id ? toLocaleNumber(s.staff_id, langCode) : "",
+                s.name || "",
+                s.role ? translateRoleName(s.role, langCode) : "",
+                translateDesignation(s.designation, langCode) || "",
+                translateDepartment(s.department, langCode) || "",
+                s.father_name || "",
+                s.mother_name || "",
+                s.date_of_joining || s.joining_date ? toLocaleNumber(formatDate(s.date_of_joining || s.joining_date || ""), langCode) : "",
+                s.phone ? toLocaleNumber(s.phone, langCode) : "",
+                s.dob ? toLocaleNumber(formatDate(s.dob), langCode) : "",
+            ]),
+        ];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -235,11 +271,11 @@ export default function GenerateStaffIDCardPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -262,16 +298,16 @@ export default function GenerateStaffIDCardPage() {
                             <Select value={selectedRole} onValueChange={setSelectedRole}>
                                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_role")} /></SelectTrigger>
                                 <SelectContent>
-                                    {roles.map((r) => <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>)}
+                                    {roles.map((r) => <SelectItem key={r.name} value={r.name}>{translateRoleName(r.name, langCode)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("id_card_template")} <span className="text-red-500">*</span></Label>
                             <Select value={templateId} onValueChange={setTemplateId}>
-                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_template")} /></SelectTrigger>
+                                <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_id_card_template") || t("select_template") || "Select Template"} /></SelectTrigger>
                                 <SelectContent>
-                                    {templates.map((tp) => <SelectItem key={tp.id} value={String(tp.id)}>{tp.title}</SelectItem>)}
+                                    {templates.map((tp) => <SelectItem key={tp.id} value={String(tp.id)}>{translateCertificateTemplateName(tp.title, langCode)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -293,11 +329,16 @@ export default function GenerateStaffIDCardPage() {
                         </span>
                         <div className="min-w-0">
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("staff_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{selected.length} of {filtered.length} Selected</p>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {t("selected_of_total", {
+                                    selected: toLocaleNumber(selected.length, langCode),
+                                    total: toLocaleNumber(filtered.length, langCode),
+                                })}
+                            </p>
                         </div>
                     </div>
                     <Button onClick={handleGenerate} disabled={selected.length === 0} className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all disabled:opacity-40">
-                        <UserSquare2 className="h-4 w-4" /> {t("generate")}
+                        <UserSquare2 className="h-4 w-4" /> {t("generate")} ({toLocaleNumber(selected.length, langCode)})
                     </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -318,7 +359,7 @@ export default function GenerateStaffIDCardPage() {
                                     {[t("staff_id"), t("staff_name"), t("role"), t("designation"), t("department"), t("father_name"), t("mother_name"), t("joining_date"), t("phone"), t("dob")].map((h) => (
                                         <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     ))}
-                                    <TableHead className="text-right font-semibold text-gray-600">{t("action") || "Action"}</TableHead>
+                                    <TableHead className="text-right font-semibold text-gray-600">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -331,23 +372,23 @@ export default function GenerateStaffIDCardPage() {
                                 ) : filtered.map((s) => (
                                     <TableRow key={s.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3"><Checkbox checked={selected.includes(s.id)} onCheckedChange={() => toggleOne(s.id)} className="h-3.5 w-3.5" /></TableCell>
-                                        <TableCell className="py-3 text-gray-700 font-medium">{s.staff_id || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-700 font-medium">{s.staff_id ? toLocaleNumber(s.staff_id, langCode) : "-"}</TableCell>
                                         <TableCell className="py-3 text-[#6366f1] font-medium">{s.name || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.role || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.designation || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.department || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.role ? translateRoleName(s.role, langCode) : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{translateDesignation(s.designation, langCode) || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{translateDepartment(s.department, langCode) || "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.father_name || "-"}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.mother_name || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.date_of_joining ? new Date(s.date_of_joining).toLocaleDateString("en-US") : "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.date_of_joining || s.joining_date ? toLocaleNumber(formatDate(s.date_of_joining || s.joining_date || ""), langCode) : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.phone ? toLocaleNumber(s.phone, langCode) : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.dob ? toLocaleNumber(formatDate(s.dob), langCode) : "-"}</TableCell>
                                         <TableCell className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <Button
                                                     size="icon"
                                                     onClick={() => handlePrintSingle(s)}
                                                     disabled={downloadingId === s.id}
-                                                    title={t("print") || "Print ID Card"}
+                                                    title={t("print_id_card")}
                                                     className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                 >
                                                     <Printer className="h-3.5 w-3.5" />
@@ -356,7 +397,7 @@ export default function GenerateStaffIDCardPage() {
                                                     size="icon"
                                                     onClick={() => handleDownloadSingle(s)}
                                                     disabled={downloadingId === s.id}
-                                                    title={t("download_pdf") || "Download PDF"}
+                                                    title={t("download_pdf")}
                                                     className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                 >
                                                     {downloadingId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
@@ -371,8 +412,8 @@ export default function GenerateStaffIDCardPage() {
                     <div className="text-xs text-gray-500 font-medium pt-2">
                         {searched && (
                             filtered.length !== staff.length && staff.length > 0
-                                ? `Showing ${filtered.length} of ${staff.length} staff`
-                                : t("showing_x_staff", { count: filtered.length }) || `Showing ${filtered.length} staff`
+                                ? t("showing_x_of_y_staff", { count: toLocaleNumber(filtered.length, langCode), total: toLocaleNumber(staff.length, langCode) })
+                                : t("showing_x_staff", { count: toLocaleNumber(filtered.length, langCode) })
                         )}
                     </div>
                 </CardContent>

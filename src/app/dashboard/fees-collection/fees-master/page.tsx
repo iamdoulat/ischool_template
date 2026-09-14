@@ -7,18 +7,23 @@ import {
     FileText,
     FileCode,
     Printer,
-
     Pencil,
     Trash2,
     ChevronDown,
     LayoutGrid,
-    X
+    X,
+    Plus,
+    Calendar,
+    Layers,
+    DollarSign,
+    SlidersHorizontal,
+    Copy
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, translateFeeItemName, toLocaleNumber } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
@@ -44,9 +49,11 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
             {Array.from({ length: rows }).map((_, i) => (
                 <tr key={i} className="border-b border-muted/30">
                     {Array.from({ length: cols }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
-                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
-                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        <td key={j} className="px-4 py-3.5">
+                            <div
+                                className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }}
+                            />
                         </td>
                     ))}
                 </tr>
@@ -89,7 +96,7 @@ interface GroupedFeeMaster {
 }
 
 export default function FeesMasterPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const [feeMasters, setFeeMasters] = useState<FeeMaster[]>([]);
     const [feeGroups, setFeeGroups] = useState<FeeGroup[]>([]);
@@ -118,6 +125,9 @@ export default function FeesMasterPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
+    // Pagination states
+    const [pageSize, setPageSize] = useState(50);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -127,11 +137,11 @@ export default function FeesMasterPage() {
                 api.get("/fees-types"),
                 api.get("/system-setting/sessions")
             ]);
-            setFeeMasters(mastersRes.data.data);
-            setFeeGroups(groupsRes.data.data);
-            setFeeTypes(typesRes.data.data);
+            setFeeMasters(mastersRes.data.data || []);
+            setFeeGroups(groupsRes.data.data || []);
+            setFeeTypes(typesRes.data.data || []);
             const sessions = sessionsRes.data.data || [];
-            sessions.sort((a: any, b: any) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
+            sessions.sort((a: { is_active?: boolean }, b: { is_active?: boolean }) => (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0));
             if (sessions.length > 0) setSessionName(sessions[0].session);
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -139,7 +149,7 @@ export default function FeesMasterPage() {
         } finally {
             setLoading(false);
         }
-    }, [searchQuery]);
+    }, [searchQuery, tt]);
 
     useEffect(() => {
         fetchData();
@@ -233,15 +243,28 @@ export default function FeesMasterPage() {
             fine_per_day: !!master.fine_per_day,
             fine_tiers: master.fine_tiers || [],
         });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
+
+    // Filtered masters by search query
+    const filteredMasters = useMemo(() => {
+        const q = searchQuery.toLowerCase().trim();
+        if (!q) return feeMasters;
+        return feeMasters.filter(m =>
+            (m.fee_group?.name || '').toLowerCase().includes(q) ||
+            (m.fee_type?.name || '').toLowerCase().includes(q) ||
+            (m.fee_type?.code || '').toLowerCase().includes(q) ||
+            (m.fine_type || '').toLowerCase().includes(q)
+        );
+    }, [feeMasters, searchQuery]);
 
     // Grouping logic for the table
     const groupedData = useMemo(() => {
         const groups: { [key: number]: GroupedFeeMaster } = {};
 
-        feeMasters.forEach(master => {
+        filteredMasters.forEach(master => {
             const groupId = master.fee_group_id;
-            const groupName = master.fee_group?.name || "Unknown Group";
+            const groupName = master.fee_group?.name || t("general_payment");
 
             if (!groups[groupId]) {
                 groups[groupId] = {
@@ -254,11 +277,11 @@ export default function FeesMasterPage() {
         });
 
         return Object.values(groups);
-    }, [feeMasters]);
+    }, [filteredMasters, t]);
 
     const handleCopy = () => {
-        const text = feeMasters.map(m =>
-            `${m.fee_group?.name}\t${m.fee_type?.name}\t${m.amount}\t${m.fine_type}\t${m.due_date}`
+        const text = filteredMasters.map(m =>
+            `${m.fee_group?.name || ''}\t${m.fee_type?.name || ''}\t${m.fee_type?.code || ''}\t${m.amount}\t${m.fine_type}\t${m.due_date}`
         ).join("\n");
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
@@ -267,490 +290,604 @@ export default function FeesMasterPage() {
     const handlePrint = () => { window.print(); };
 
     const handleExportExcel = () => {
-        const data = feeMasters.map(m => ({
-            "Fees Group": m.fee_group?.name,
-            "Fees Type": m.fee_type?.name,
-            "Amount": m.amount,
-            "Fine Type": m.fine_type,
-            "Due Date": m.due_date,
-            "Fine Detail": m.fine_type === 'percentage' ? `${m.fine_percentage}%` : (m.fine_amount || "0.00")
+        const data = filteredMasters.map(m => ({
+            [t("fees_group")]: m.fee_group?.name || '',
+            [t("fees_type")]: m.fee_type?.name || '',
+            [t("fees_code")]: m.fee_type?.code || '',
+            [`${t("amount")} (${symbol})`]: m.amount || '0',
+            [t("fine_type")]: m.fine_type || '',
+            [t("due_date")]: m.due_date || '',
+            [t("per_day")]: m.fine_per_day ? t("yes") : t("no"),
+            [t("fine_detail")]: m.fine_type === 'percentage' ? `${m.fine_percentage}%` : (m.fine_amount || "0.00")
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Fees Master");
-        XLSX.writeFile(workbook, "fees_master.xlsx");
+        XLSX.writeFile(workbook, `fees_master_${sessionName}.xlsx`);
         tt.success("exported_to_excel");
     };
 
     const handleExportCSV = () => {
-        const data = feeMasters.map(m => ({
-            "Fees Group": m.fee_group?.name,
-            "Fees Type": m.fee_type?.name,
-            "Amount": m.amount,
-            "Fine Type": m.fine_type,
-            "Due Date": m.due_date,
-            "Fine Detail": m.fine_type === 'percentage' ? `${m.fine_percentage}%` : (m.fine_amount || "0.00")
+        const data = filteredMasters.map(m => ({
+            [t("fees_group")]: m.fee_group?.name || '',
+            [t("fees_type")]: m.fee_type?.name || '',
+            [t("fees_code")]: m.fee_type?.code || '',
+            [`${t("amount")} (${symbol})`]: m.amount || '0',
+            [t("fine_type")]: m.fine_type || '',
+            [t("due_date")]: m.due_date || '',
+            [t("per_day")]: m.fine_per_day ? t("yes") : t("no"),
+            [t("fine_detail")]: m.fine_type === 'percentage' ? `${m.fine_percentage}%` : (m.fine_amount || "0.00")
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const csv = XLSX.utils.sheet_to_csv(worksheet);
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "fees_master.csv";
+        link.download = `fees_master_${sessionName}.csv`;
         link.click();
         tt.success("exported_to_csv");
     };
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        doc.text("Fees Master Report", 14, 15);
-        const tableColumn = ["Fees Group", "Fees Type", "Amount", "Fine Type", "Due Date"];
-        const tableRows = feeMasters.map(m => [
+        doc.text(`${t("fees_master")} (${sessionName})`, 14, 15);
+        const tableColumn = [t("fees_group"), t("fees_type"), t("fees_code"), `${t("amount")} (${symbol})`, t("fine_type"), t("due_date")];
+        const tableRows = filteredMasters.map(m => [
             m.fee_group?.name ?? "",
             m.fee_type?.name ?? "",
-            m.amount ?? "",
+            m.fee_type?.code ?? "",
+            m.amount ? `${symbol}${m.amount}` : "",
             m.fine_type ?? "",
             m.due_date ?? ""
         ]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
-        doc.save("fees_master.pdf");
+        doc.save(`fees_master_${sessionName}.pdf`);
         tt.success("exported_to_pdf");
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-700 pb-20">
-            {/* Left: Add Fees Master Form */}
-            <div className="lg:col-span-1 space-y-6">
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
-                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <FileSpreadsheet className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {isEdit ? "Edit Fees Master" : "Add Fees Master"} : {sessionName}
-                            </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{isEdit ? "Update fee record" : "Create a new fee record"}</p>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-6 space-y-5">
-                        <form onSubmit={handleSave} className="space-y-4">
-                            {/* Fees Group */}
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Fees Group <span className="text-destructive font-black">*</span>
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        required
-                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
-                                        value={formData.fee_group_id || ""}
-                                        onChange={(e) => setFormData({ ...formData, fee_group_id: Number(e.target.value) })}
-                                    >
-                                        <option value="">Select</option>
-                                        {feeGroups.map(group => (
-                                            <option key={group.id} value={group.id}>{group.name}</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                </div>
+        <div className="p-3 sm:p-5 pt-1 sm:pt-2 space-y-4 max-w-[1600px] mx-auto animate-in fade-in duration-300 pb-20">
+            {/* Main Responsive Grid Layout (1/3 Form + 2/3 List) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                {/* Left: Add / Edit Fees Master Form */}
+                <div className="lg:col-span-1">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card overflow-hidden pt-0 sticky top-4">
+                        <CardHeader className="flex flex-row items-center gap-3 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                {isEdit ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                            </span>
+                            <div>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {isEdit ? t("edit_fees_master") : t("add_fees_master")} : <span className="text-primary font-bold">{toLocaleNumber(sessionName, language?.short_code)}</span>
+                                </CardTitle>
+                                <p className="text-xs text-slate-500 font-medium mt-1">
+                                    {isEdit ? t("update_fee_record") : t("create_new_fee_record")}
+                                </p>
                             </div>
+                        </CardHeader>
 
-                            {/* Fees Type */}
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Fees Type <span className="text-destructive font-black">*</span>
-                                </label>
-                                <div className="relative">
-                                    <select
-                                        required
-                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all"
-                                        value={formData.fee_type_id || ""}
-                                        onChange={(e) => setFormData({ ...formData, fee_type_id: Number(e.target.value) })}
-                                    >
-                                        <option value="">Select</option>
-                                        {feeTypes.map(type => (
-                                            <option key={type.id} value={type.id}>{type.name} ({type.code})</option>
-                                        ))}
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                                </div>
-                            </div>
-
-                            {/* Due Date */}
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Due Date
-                                </label>
-                                <DatePicker
-                                    value={formData.due_date || ""}
-                                    onChange={(val) => setFormData({ ...formData, due_date: val })}
-                                />
-                            </div>
-
-                            {/* Amount */}
-                            <div className="space-y-2 group">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                    Amount ({symbol}) <span className="text-destructive font-black">*</span>
-                                </label>
-                                <Input
-                                    placeholder={`0.00 (${symbol})`}
-                                    required
-                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
-                                    value={formData.amount || ""}
-                                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                />
-                            </div>
-
-                            {/* Fine Type */}
-                            <div className="space-y-3">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1">
-                                    Fine Type
-                                </label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {[
-                                        { id: "none", label: "None" },
-                                        { id: "percentage", label: "Percentage" },
-                                        { id: "fix", label: "Fix Amount" },
-                                        { id: "cumulative", label: "Cumulative" }
-                                    ].map((type) => (
-                                        <label key={type.id} className={cn(
-                                            "flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-primary/5 transition-all group",
-                                            formData.fine_type === type.id ? "bg-primary/10 border-primary" : "bg-muted/20 border-muted/50"
-                                        )}>
-                                            <input
-                                                type="radio"
-                                                name="fineType"
-                                                value={type.id}
-                                                className="w-4 h-4 text-primary bg-muted border-muted focus:ring-primary/20"
-                                                checked={formData.fine_type === type.id}
-                                                onChange={(e) => setFormData({ ...formData, fine_type: e.target.value })}
-                                            />
-                                            <span className={cn(
-                                                "text-xs font-bold transition-colors",
-                                                formData.fine_type === type.id ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                                            )}>{type.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Fine Details (Per Day and Tiers) */}
-                            {formData.fine_type !== 'none' && (
-                                <div className="space-y-4 pt-2 border-t border-muted/30">
-                                    <div className="flex items-center justify-between px-1">
-                                        <div className="space-y-0.5">
-                                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                                                Per Day
-                                            </label>
-                                            <p className="text-[10px] text-muted-foreground/60">Apply fine for each day late</p>
-                                        </div>
-                                        <Switch
-                                            checked={formData.fine_per_day}
-                                            onCheckedChange={(checked) => setFormData({ ...formData, fine_per_day: checked })}
-                                        />
+                        <CardContent className="p-5 sm:p-6 space-y-4">
+                            <form onSubmit={handleSave} className="space-y-4">
+                                {/* Fees Group */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <Layers className="h-3.5 w-3.5 text-indigo-600" />
+                                        {t("fees_group")} <span className="text-destructive">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            required
+                                            className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-xs sm:text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
+                                            value={formData.fee_group_id || ""}
+                                            onChange={(e) => setFormData({ ...formData, fee_group_id: Number(e.target.value) })}
+                                        >
+                                            <option value="">{t("select_fees_group")}</option>
+                                            {feeGroups.map(group => (
+                                                <option key={group.id} value={group.id}>{translateFeeItemName(group.name, language?.short_code)}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                     </div>
+                                </div>
 
-                                    {formData.fine_type === 'cumulative' ? (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between px-1">
-                                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                                                    Fine Tiers
+                                {/* Fees Type */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                                        {t("fees_type")} <span className="text-destructive">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            required
+                                            className="flex h-10 w-full rounded-xl border border-border/80 bg-background px-3 py-2 text-xs sm:text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 font-medium"
+                                            value={formData.fee_type_id || ""}
+                                            onChange={(e) => setFormData({ ...formData, fee_type_id: Number(e.target.value) })}
+                                        >
+                                            <option value="">{t("select_fees_type")}</option>
+                                            {feeTypes.map(type => (
+                                                <option key={type.id} value={type.id}>{translateFeeItemName(type.name, language?.short_code)} ({type.code})</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                {/* Due Date */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <Calendar className="h-3.5 w-3.5 text-indigo-600" />
+                                        {t("due_date")}
+                                    </label>
+                                    <DatePicker
+                                        value={formData.due_date || ""}
+                                        onChange={(val) => setFormData({ ...formData, due_date: val })}
+                                    />
+                                </div>
+
+                                {/* Amount */}
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <DollarSign className="h-3.5 w-3.5 text-indigo-600" />
+                                        {t("amount")} ({symbol}) <span className="text-destructive">*</span>
+                                    </label>
+                                    <Input
+                                        placeholder={`0.00 (${symbol})`}
+                                        required
+                                        className="h-10 rounded-xl bg-background border-border/80 focus-visible:ring-primary/20 font-semibold text-sm"
+                                        value={formData.amount || ""}
+                                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                    />
+                                </div>
+
+                                {/* Fine Type */}
+                                <div className="space-y-2 pt-1 border-t border-border/60">
+                                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                        <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-600" />
+                                        {t("fine_type")}
+                                    </label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { id: "none", label: t("fine_none") },
+                                            { id: "percentage", label: t("fine_percentage") },
+                                            { id: "fix", label: t("fine_fix_amount") },
+                                            { id: "cumulative", label: t("fine_cumulative") }
+                                        ].map((type) => (
+                                            <label
+                                                key={type.id}
+                                                className={cn(
+                                                    "flex items-center gap-2 p-2.5 rounded-xl border cursor-pointer transition-all text-xs font-bold",
+                                                    formData.fine_type === type.id
+                                                        ? "bg-indigo-50/80 border-indigo-300 text-indigo-900 dark:bg-indigo-950/40 dark:border-indigo-800 dark:text-indigo-300 shadow-2xs"
+                                                        : "bg-background border-border/70 text-slate-600 hover:bg-muted/40"
+                                                )}
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="fineType"
+                                                    value={type.id}
+                                                    className="w-3.5 h-3.5 text-indigo-600 focus:ring-indigo-500"
+                                                    checked={formData.fine_type === type.id}
+                                                    onChange={(e) => setFormData({ ...formData, fine_type: e.target.value })}
+                                                />
+                                                <span className="truncate">{type.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Fine Details (Per Day and Tiers) */}
+                                {formData.fine_type !== 'none' && (
+                                    <div className="space-y-3.5 p-3.5 rounded-xl bg-muted/30 border border-border/70">
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-0.5">
+                                                <label className="text-xs font-bold text-foreground">
+                                                    {t("per_day")}
                                                 </label>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    onClick={addFineTier}
-                                                    className="h-7 px-3 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-[10px] font-bold"
-                                                >
-                                                    Add Fine
-                                                </Button>
+                                                <p className="text-[11px] text-muted-foreground">{t("apply_fine_for_each_day_late")}</p>
                                             </div>
+                                            <Switch
+                                                checked={formData.fine_per_day}
+                                                onCheckedChange={(checked) => setFormData({ ...formData, fine_per_day: checked })}
+                                            />
+                                        </div>
 
-                                            <div className="rounded-lg border border-muted/50 overflow-hidden bg-muted/5">
-                                                <table className="w-full text-[10px]">
-                                                    <thead className="bg-muted/30">
-                                                        <tr>
-                                                            <th className="px-3 py-2 text-left font-bold text-muted-foreground uppercase tracking-tighter">Total Overdue</th>
-                                                            <th className="px-3 py-2 text-left font-bold text-muted-foreground uppercase tracking-tighter">Fine Amount</th>
-                                                            <th className="px-3 py-2 text-center w-10">Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-muted/50">
-                                                        {(formData.fine_tiers || []).length === 0 ? (
+                                        {formData.fine_type === 'cumulative' ? (
+                                            <div className="space-y-2.5">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="text-xs font-bold text-foreground">
+                                                        {t("fine_tiers")}
+                                                    </label>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        onClick={addFineTier}
+                                                        className="h-7 px-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-bold cursor-pointer"
+                                                    >
+                                                        <Plus className="h-3 w-3 mr-1" /> {t("add_fine_tier")}
+                                                    </Button>
+                                                </div>
+
+                                                <div className="rounded-xl border border-border/70 overflow-hidden bg-background">
+                                                    <table className="w-full text-xs">
+                                                        <thead className="bg-muted/40 border-b border-border/70">
                                                             <tr>
-                                                                <td colSpan={3} className="px-3 py-4 text-center text-muted-foreground italic bg-card/30">
-                                                                    No tiers added.
-                                                                </td>
+                                                                <th className="px-2.5 py-2 text-left font-bold text-muted-foreground">{t("total_overdue")}</th>
+                                                                <th className="px-2.5 py-2 text-left font-bold text-muted-foreground">{t("fine_amount")}</th>
+                                                                <th className="px-2 py-2 text-center w-8"></th>
                                                             </tr>
-                                                        ) : (
-                                                            (formData.fine_tiers || []).map((tier, idx) => (
-                                                                <tr key={idx} className="bg-card/50">
-                                                                    <td className="p-1">
-                                                                        <Input
-                                                                            value={tier.total_overdue}
-                                                                            onChange={(e) => updateFineTier(idx, 'total_overdue', e.target.value)}
-                                                                            className="h-8 rounded-md bg-transparent border-muted/30 focus-visible:bg-white transition-all text-[11px]"
-                                                                            placeholder="Days"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-1">
-                                                                        <Input
-                                                                            value={tier.fine_amount}
-                                                                            onChange={(e) => updateFineTier(idx, 'fine_amount', e.target.value)}
-                                                                            className="h-8 rounded-md bg-transparent border-muted/30 focus-visible:bg-white transition-all text-[11px]"
-                                                                            placeholder={`${symbol} 0.00`}
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-1 text-center">
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => removeFineTier(idx)}
-                                                                            className="p-1.5 text-destructive/60 hover:text-destructive hover:bg-destructive/10 rounded-md transition-all active:scale-90"
-                                                                        >
-                                                                            <X className="h-3 w-3" />
-                                                                        </button>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border/50">
+                                                            {(formData.fine_tiers || []).length === 0 ? (
+                                                                <tr>
+                                                                    <td colSpan={3} className="px-3 py-3 text-center text-muted-foreground italic">
+                                                                        {t("no_fine_tiers_added")}
                                                                     </td>
                                                                 </tr>
-                                                            ))
-                                                        )}
-                                                    </tbody>
-                                                </table>
+                                                            ) : (
+                                                                (formData.fine_tiers || []).map((tier, idx) => (
+                                                                    <tr key={idx}>
+                                                                        <td className="p-1.5">
+                                                                            <Input
+                                                                                value={tier.total_overdue}
+                                                                                onChange={(e) => updateFineTier(idx, 'total_overdue', e.target.value)}
+                                                                                className="h-8 rounded-lg bg-muted/30 border-border/60 text-xs"
+                                                                                placeholder={t("days")}
+                                                                            />
+                                                                        </td>
+                                                                        <td className="p-1.5">
+                                                                            <Input
+                                                                                value={tier.fine_amount}
+                                                                                onChange={(e) => updateFineTier(idx, 'fine_amount', e.target.value)}
+                                                                                className="h-8 rounded-lg bg-muted/30 border-border/60 text-xs"
+                                                                                placeholder={`${symbol} 0.00`}
+                                                                            />
+                                                                        </td>
+                                                                        <td className="p-1.5 text-center">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => removeFineTier(idx)}
+                                                                                className="p-1 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-md transition-all cursor-pointer"
+                                                                            >
+                                                                                <X className="h-3.5 w-3.5" />
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-2 group">
-                                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                                    Percentage (%)
-                                                </label>
-                                                <Input
-                                                    placeholder="0"
-                                                    disabled={formData.fine_type !== 'percentage'}
-                                                    className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card"
-                                                    value={formData.fine_percentage || ""}
-                                                    onChange={(e) => setFormData({ ...formData, fine_percentage: e.target.value })}
-                                                />
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-[11px] font-bold text-muted-foreground">
+                                                        {t("percentage_symbol")}
+                                                    </label>
+                                                    <Input
+                                                        placeholder="0"
+                                                        disabled={formData.fine_type !== 'percentage'}
+                                                        className="h-9 rounded-xl bg-background border-border/80 text-xs font-semibold"
+                                                        value={formData.fine_percentage || ""}
+                                                        onChange={(e) => setFormData({ ...formData, fine_percentage: e.target.value })}
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-[11px] font-bold text-muted-foreground">
+                                                        {t("fix_amount_with_currency", { symbol })}
+                                                    </label>
+                                                    <Input
+                                                        placeholder="0.00"
+                                                        disabled={formData.fine_type === 'none' || formData.fine_type === 'percentage'}
+                                                        className="h-9 rounded-xl bg-background border-border/80 text-xs font-semibold"
+                                                        value={formData.fine_amount || ""}
+                                                        onChange={(e) => setFormData({ ...formData, fine_amount: e.target.value })}
+                                                    />
+                                                </div>
                                             </div>
-                                            <div className="space-y-2 group">
-                                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                                    Fix Amount ({symbol})
-                                                </label>
-                                                <Input
-                                                    placeholder="0.00"
-                                                    disabled={formData.fine_type === 'none' || formData.fine_type === 'percentage'}
-                                                    className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card"
-                                                    value={formData.fine_amount || ""}
-                                                    onChange={(e) => setFormData({ ...formData, fine_amount: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="pt-2 flex items-center justify-end gap-2">
+                                    {isEdit && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={resetForm}
+                                            className="h-10 px-4 rounded-xl font-bold text-xs cursor-pointer"
+                                        >
+                                            {t("cancel")}
+                                        </Button>
+                                    )}
+                                    <Button
+                                        type="submit"
+                                        className="h-10 px-6 rounded-xl font-bold text-xs bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20 active:scale-95 transition-all cursor-pointer border-none"
+                                    >
+                                        {isEdit ? t("update_fees_master") : t("save_fees_master")}
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right: Fees Master List */}
+                <div className="lg:col-span-2">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card overflow-hidden pt-0">
+                        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <FileSpreadsheet className="h-4 w-4" />
+                                </span>
+                                <div>
+                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                        {t("fees_master_list")} : <span className="text-primary font-bold">{toLocaleNumber(sessionName, language?.short_code)}</span>
+                                    </CardTitle>
+                                    <p className="text-xs text-slate-500 font-medium mt-1">
+                                        {t("x_results_found", { count: toLocaleNumber(filteredMasters.length, language?.short_code) })}
+                                    </p>
+                                </div>
+                            </div>
+                        </CardHeader>
+
+                        <div className="p-4 sm:p-6 space-y-4">
+                            {/* Toolbar: Search, Rows, Export */}
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="relative w-full max-w-sm">
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder={t("search_by_group_or_code")}
+                                        className="pl-10 pr-9 h-10 rounded-xl bg-background border-border/80 focus-visible:ring-primary/20 text-xs sm:text-sm"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery("")}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
                                     )}
                                 </div>
-                            )}
 
-                            <div className="pt-4 flex justify-end gap-2">
-                                {isEdit && (
-                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
-                                        Cancel
-                                    </Button>
-                                )}
-                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25">
-                                    {isEdit ? "Update Master" : "Save Fees Master"}
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
-            </div>
+                                <div className="flex items-center gap-2 self-end md:self-auto">
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                        <span>{t("show")}:</span>
+                                        <select
+                                            value={pageSize}
+                                            onChange={(e) => setPageSize(Number(e.target.value))}
+                                            className="h-9 px-2.5 rounded-lg border border-border/80 bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+                                        >
+                                            <option value="25">{toLocaleNumber(25, language?.short_code)}</option>
+                                            <option value="50">{toLocaleNumber(50, language?.short_code)}</option>
+                                            <option value="100">{toLocaleNumber(100, language?.short_code)}</option>
+                                        </select>
+                                    </div>
 
-            {/* Right: Fees Master List */}
-            <div className="lg:col-span-2">
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <FileSpreadsheet className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Fees Master List : {sessionName}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{feeMasters.length} total entr{feeMasters.length === 1 ? 'y' : 'ies'}</p>
-                        </div>
-                    </CardHeader>
+                                    <div className="h-6 w-px bg-border/60 mx-1" />
 
-                    <div className="p-6 space-y-6">
-                        {/* Toolbar */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="relative w-full max-w-sm group">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                <Input
-                                    placeholder="Search by group or code..."
-                                    className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <select className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer">
-                                    <option>50</option>
-                                    <option>100</option>
-                                    <option>All</option>
-                                </select>
-                                <div className="h-8 w-px bg-muted/50 mx-2" />
-                                <div className="flex gap-1">
-                                    <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title="Excel" />
-                                    <IconButton icon={FileText} onClick={handleExportCSV} title="CSV" />
-                                    <IconButton icon={FileCode} onClick={handleExportPDF} title="PDF" />
-                                    <IconButton icon={Printer} onClick={handlePrint} title="Print" />
+                                    <div className="flex items-center gap-1">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handleCopy}
+                                            className="h-9 w-9 text-muted-foreground hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg border-border/80 cursor-pointer"
+                                            title={t("copy")}
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handleExportExcel}
+                                            className="h-9 w-9 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 rounded-lg border-border/80 cursor-pointer"
+                                            title={t("excel")}
+                                        >
+                                            <FileSpreadsheet className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handleExportCSV}
+                                            className="h-9 w-9 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded-lg border-border/80 cursor-pointer"
+                                            title={t("csv")}
+                                        >
+                                            <FileText className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handleExportPDF}
+                                            className="h-9 w-9 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg border-border/80 cursor-pointer"
+                                            title={t("pdf")}
+                                        >
+                                            <FileCode className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={handlePrint}
+                                            className="h-9 w-9 text-muted-foreground hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded-lg border-border/80 cursor-pointer"
+                                            title={t("print")}
+                                        >
+                                            <Printer className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Table */}
-                        <div className="rounded-lg border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-muted/30">
-                                            {[
-                                                "Fees Group", "Fees Code", `Amount (${symbol})`, "Fine Type",
-                                                "Due Date", "Per Day", `Fine Amount (${symbol})`, "Action"
-                                            ].map((header) => (
-                                                <th key={header} className="px-4 py-4 text-[10px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 border-b border-muted/50 whitespace-nowrap text-center">
-                                                    {header}
+                            {/* Table */}
+                            <div className="rounded-xl border border-border/70 overflow-hidden bg-background shadow-2xs">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-muted/40 border-b border-border/70">
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider text-center w-36">
+                                                    {t("fees_group")}
                                                 </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-muted/50">
-                                        {loading ? (
-                                            <TableSkeleton rows={5} cols={8} />
-                                        ) : groupedData.length === 0 ? (
-                                            <tr><td colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">No data found</td></tr>
-                                        ) : (
-                                            groupedData.map((group, gIdx) => (
-                                                group.items.map((item, iIdx) => (
-                                                    <tr key={item.id} className="hover:bg-muted/20 transition-colors group/row">
-                                                        {iIdx === 0 && (
-                                                            <td rowSpan={group.items.length} className="px-4 py-6 text-sm font-black text-foreground border-r border-muted/50 w-32 bg-muted/5">
-                                                                <div className="flex flex-col items-center gap-2">
-                                                                    <div className="p-2 bg-primary/10 rounded-full">
-                                                                        <LayoutGrid className="h-3 w-3 text-primary" />
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider">
+                                                    {t("fees_code")}
+                                                </th>
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider text-right">
+                                                    {t("amount")} ({symbol})
+                                                </th>
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider text-center">
+                                                    {t("fine_type")}
+                                                </th>
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider text-center">
+                                                    {t("due_date")}
+                                                </th>
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider text-center">
+                                                    {t("per_day")}
+                                                </th>
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider text-center">
+                                                    {t("fine_amount")}
+                                                </th>
+                                                <th className="px-4 py-3.5 text-xs font-bold text-foreground uppercase tracking-wider text-center w-24">
+                                                    {t("action")}
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/50 text-xs">
+                                            {loading ? (
+                                                <TableSkeleton rows={5} cols={8} />
+                                            ) : groupedData.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground font-semibold">
+                                                        {t("no_data_found")}
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                groupedData.map((group) => (
+                                                    group.items.map((item, iIdx) => (
+                                                        <tr key={item.id} className="hover:bg-muted/20 transition-colors">
+                                                            {iIdx === 0 && (
+                                                                <td
+                                                                    rowSpan={group.items.length}
+                                                                    className="px-4 py-4 text-xs font-bold text-foreground border-r border-border/60 bg-muted/10 align-middle text-center"
+                                                                >
+                                                                    <div className="flex flex-col items-center gap-1.5">
+                                                                        <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                                                                            <LayoutGrid className="h-4 w-4" />
+                                                                        </div>
+                                                                        <span className="font-bold text-xs">{translateFeeItemName(group.group, language?.short_code)}</span>
                                                                     </div>
-                                                                    <span className="text-center leading-tight tracking-tight uppercase text-[10px]">{group.group}</span>
+                                                                </td>
+                                                            )}
+                                                            <td className="px-4 py-3.5 font-bold text-foreground">
+                                                                <div className="space-y-0.5">
+                                                                    <span className="text-xs block font-bold text-foreground">{translateFeeItemName(item.fee_type?.name, language?.short_code) || 'N/A'}</span>
+                                                                    <span className="text-[10px] font-mono text-muted-foreground block bg-muted/60 px-1.5 py-0.2 rounded w-fit">{item.fee_type?.code || 'N/A'}</span>
                                                                 </div>
                                                             </td>
-                                                        )}
-                                                        <td className="px-4 py-4 text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                                                            {item.fee_type?.code}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-sm font-black text-foreground text-center">{formatCurrency(parseFloat(item.amount))}</td>
-                                                        <td className="px-4 py-4 text-center">
-                                                            <span className={cn(
-                                                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter shadow-sm",
-                                                                item.fine_type === "none" ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
-                                                            )}>
-                                                                {item.fine_type}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-4 text-center text-xs text-muted-foreground font-bold tracking-tight">{formatDate(item.due_date)}</td>
-                                                        <td className="px-4 py-4 text-center">
-                                                            <span className={cn(
-                                                                "text-[10px] font-black uppercase tracking-widest",
-                                                                item.fine_per_day ? "text-emerald-500" : "text-destructive/50"
-                                                            )}>
-                                                                {item.fine_per_day ? "Yes" : "No"}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-4 text-[10px] font-bold text-muted-foreground leading-relaxed w-48 italic text-center">
-                                                            {item.fine_type === 'percentage' ? `Fine: ${item.fine_percentage}%` :
-                                                                item.fine_type === 'fix' ? `Fine: ${item.fine_amount}` :
-                                                                    item.fine_type === 'cumulative' ? (
-                                                                        <div className="flex flex-col gap-0.5">
-                                                                            {(item.fine_tiers || []).map((t, idx) => (
-                                                                                <span key={idx} className="block whitespace-nowrap">
-                                                                                    {t.total_overdue} days: {formatCurrency(parseFloat(t.fine_amount || '0'))}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                    ) : "None"}
-                                                        </td>
-                                                        <td className="px-4 py-4">
-                                                            <div className="flex items-center justify-center gap-1.5 transition-transform">
-
-                                                                <Button
-                                                                    size="icon"
-                                                                    onClick={() => startEdit(item)}
-                                                                    className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90"
-                                                                >
-                                                                    <Pencil className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                                <Button
-                                                                    size="icon"
-                                                                    onClick={() => { setDeleteId(item.id); setIsDeleteDialogOpen(true); }}
-                                                                    className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90"
-                                                                >
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                </Button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
+                                                            <td className="px-4 py-3.5 text-right font-black text-sm text-foreground">
+                                                                {toLocaleNumber(formatCurrency(parseFloat(item.amount || '0')), language?.short_code)}
+                                                            </td>
+                                                            <td className="px-4 py-3.5 text-center">
+                                                                <span className={cn(
+                                                                    "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                                                    item.fine_type === "none"
+                                                                        ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                                                        : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                                                )}>
+                                                                    {item.fine_type === 'none' ? t("fine_none") : item.fine_type === 'percentage' ? t("fine_percentage") : item.fine_type === 'fix' ? t("fine_fix_amount") : t("fine_cumulative")}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3.5 text-center text-muted-foreground font-semibold">
+                                                                {item.due_date ? toLocaleNumber(formatDate(item.due_date), language?.short_code) : 'N/A'}
+                                                            </td>
+                                                            <td className="px-4 py-3.5 text-center">
+                                                                <span className={cn(
+                                                                    "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                                                                    item.fine_per_day
+                                                                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                                                        : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                                                                )}>
+                                                                    {item.fine_per_day ? t("yes") : t("no")}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3.5 text-center text-muted-foreground font-semibold">
+                                                                {item.fine_type === 'percentage' ? (
+                                                                    <span className="font-bold text-foreground">{toLocaleNumber(item.fine_percentage || '0', language?.short_code)}%</span>
+                                                                ) : item.fine_type === 'fix' ? (
+                                                                    <span className="font-bold text-foreground">{toLocaleNumber(formatCurrency(parseFloat(item.fine_amount || '0')), language?.short_code)}</span>
+                                                                ) : item.fine_type === 'cumulative' ? (
+                                                                    <div className="flex flex-col gap-0.5">
+                                                                        {(item.fine_tiers || []).map((tItem, idx) => (
+                                                                            <span key={idx} className="text-[10px] whitespace-nowrap block">
+                                                                                {toLocaleNumber(tItem.total_overdue, language?.short_code)} {t("days")}: {toLocaleNumber(formatCurrency(parseFloat(tItem.fine_amount || '0')), language?.short_code)}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span>-</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3.5 text-center">
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    <Button
+                                                                        size="icon"
+                                                                        onClick={() => startEdit(item)}
+                                                                        className="h-8 w-8 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-white shadow-xs shadow-amber-500/20 active:scale-95 transition-all cursor-pointer border-none"
+                                                                        title={t("edit")}
+                                                                    >
+                                                                        <Pencil className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="icon"
+                                                                        onClick={() => { setDeleteId(item.id); setIsDeleteDialogOpen(true); }}
+                                                                        className="h-8 w-8 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 hover:opacity-95 text-white shadow-xs shadow-rose-500/20 active:scale-95 transition-all cursor-pointer border-none"
+                                                                        title={t("delete")}
+                                                                    >
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))
                                                 ))
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Pagination */}
-                        <div className="flex items-center justify-between pt-4">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                Showing {feeMasters.length > 0 ? 1 : 0} to {feeMasters.length} of {feeMasters.length} entries
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
-                                    <ChevronDown className="h-4 w-4 rotate-90" />
-                                </Button>
-                                <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">1</Button>
-                                <Button variant="outline" size="icon" className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all">
-                                    <ChevronDown className="h-4 w-4 -rotate-90" />
-                                </Button>
+                            {/* Pagination Summary */}
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                                <p className="text-xs text-muted-foreground font-medium">
+                                    {t("showing_x_to_y_of_z", {
+                                        from: toLocaleNumber(filteredMasters.length > 0 ? 1 : 0, language?.short_code),
+                                        to: toLocaleNumber(filteredMasters.length, language?.short_code),
+                                        total: toLocaleNumber(filteredMasters.length, language?.short_code)
+                                    })}
+                                </p>
                             </div>
                         </div>
-                    </div>
-                </Card>
+                    </Card>
+                </div>
             </div>
 
             {/* Delete Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the fees master entry.
+                            {t("delete_confirmation_desc")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">Delete</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>
+                            {t("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 font-bold">
+                            {t("delete")}
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </div>
-    );
-}
-
-// Helper component for icon buttons
-function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            title={title}
-            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95"
-        >
-            <Icon className="h-4 w-4" />
-        </button>
     );
 }

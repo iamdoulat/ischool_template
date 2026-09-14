@@ -1,6 +1,9 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface OverviewItem {
     label: string;
@@ -29,6 +32,9 @@ const colorMaps = {
 };
 
 export function OverviewCard({ title, items, color }: OverviewCardProps) {
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
     return (
         <Card className={cn(
             "group hover:shadow-2xl transition-all duration-300 ease-in-out border-none text-white cursor-pointer hover:-translate-y-2 hover:scale-[1.01] h-full",
@@ -38,19 +44,29 @@ export function OverviewCard({ title, items, color }: OverviewCardProps) {
                 <CardTitle className="text-xs md:text-base font-bold text-white/80 uppercase tracking-widest leading-tight">{title}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 pt-2 px-4 md:px-5 pb-3">
-                {items.map((item, index) => (
-                    <div key={index} className="space-y-2">
-                        <div className="flex justify-between items-center text-[0.65rem] md:text-xs font-bold text-white/70 uppercase tracking-tighter">
-                            <span>{item.value} {item.label}</span>
-                            <span>{item.percentage}%</span>
+                {items.map((item, index) => {
+                    const rawLabel = String(item.label || "");
+                    const labelKey = rawLabel.toLowerCase().trim().replace(/[^a-z0-9]+/g, "_");
+                    const translatedLabel = t(labelKey);
+                    const displayLabel = translatedLabel !== labelKey ? translatedLabel : rawLabel;
+                    const displayVal = typeof item.value === "number" || typeof item.value === "string"
+                        ? toLocaleNumber(item.value, shortCode)
+                        : item.value;
+
+                    return (
+                        <div key={index} className="space-y-2">
+                            <div className="flex justify-between items-center text-[0.65rem] md:text-xs font-bold text-white/70 uppercase tracking-tighter">
+                                <span>{displayVal} {displayLabel}</span>
+                                <span>{toLocaleNumber(item.percentage, shortCode)}%</span>
+                            </div>
+                            <Progress
+                                value={item.percentage}
+                                className="h-2 rounded-full bg-white/20"
+                                indicatorClassName="bg-white shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-500 group-hover:bg-white/90"
+                            />
                         </div>
-                        <Progress
-                            value={item.percentage}
-                            className="h-2 rounded-full bg-white/20"
-                            indicatorClassName="bg-white shadow-[0_0_8px_rgba(255,255,255,0.4)] transition-all duration-500 group-hover:bg-white/90"
-                        />
-                    </div>
-                ))}
+                    );
+                })}
             </CardContent>
         </Card>
     );

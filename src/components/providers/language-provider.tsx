@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import api from "@/lib/api";
+import { tokenManager } from "@/lib/token-manager";
 import { i18nFallbacks } from "@/lib/i18n-fallbacks";
 import { i18nFallbacksBn } from "@/lib/i18n-fallbacks-bn";
 import { i18nFallbacksAr } from "@/lib/i18n-fallbacks-ar";
@@ -21,6 +22,7 @@ type UserRecord = Record<string, unknown> | null;
 
 interface LanguageContextType {
     selectedLanguage: Language | null;
+    language: Language | null;
     setSelectedLanguage: (lang: Language) => void;
     setUserContext: (user: UserRecord) => void;
     t: (key: string, params?: Record<string, string | number>) => string;
@@ -29,6 +31,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType>({
     selectedLanguage: null,
+    language: null,
     setSelectedLanguage: () => { },
     setUserContext: () => { },
     t: (key: string) => key,
@@ -165,27 +168,30 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
     useEffect(() => {
         // Initial auto-detection of user from profile ONCE on mount
-        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-        if (token) {
-            api.get("/profile", { skipGlobalErrorHandler: true })
-                .then((res) => {
-                    if (res.data?.success && res.data.data) {
-                        setCurrentUser(res.data.data);
-                        loadLanguageForUser(res.data.data);
-                    } else {
+        const loadInitialUser = async () => {
+            const token = typeof window !== 'undefined' ? (tokenManager.getToken() || await tokenManager.syncSession()) : null;
+            if (token) {
+                api.get("/profile", { skipGlobalErrorHandler: true })
+                    .then((res) => {
+                        if (res.data?.success && res.data.data) {
+                            setCurrentUser(res.data.data);
+                            loadLanguageForUser(res.data.data);
+                        } else {
+                            setCurrentUser(null);
+                            loadLanguageForUser(null);
+                        }
+                    })
+                    .catch(() => {
                         setCurrentUser(null);
                         loadLanguageForUser(null);
-                    }
-                })
-                .catch(() => {
-                    setCurrentUser(null);
-                    loadLanguageForUser(null);
-                });
-        } else {
-            setCurrentUser(null);
-            loadLanguageForUser(null);
-        }
-    }, []);
+                    });
+            } else {
+                setCurrentUser(null);
+                loadLanguageForUser(null);
+            }
+        };
+        loadInitialUser();
+    }, [loadLanguageForUser]);
 
     const setSelectedLanguage = (lang: Language) => {
         applyLanguage(lang);
@@ -199,20 +205,6 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
     const t = (key: string, params?: Record<string, string | number>): string => {
         if (!key || typeof key !== "string") return key || "";
-
-        // Hardcoded overrides — special display names that differ from key convention
-        const overrides: Record<string, string> = {
-            send_wa: "Send WA",
-            wa_template: "WA Template",
-            whatsapp_messaging: "WhatsApp Gateway",
-            sms_setting: "SMS Gateway",
-            email_setting: "Email Gateway",
-            email_sms_log: "Email / SMS / WA Logs",
-            schedule_email_sms_log: "Schedule Email / SMS / WA Logs",
-            issue_return: "Issue Books",
-        };
-
-        if (overrides[key]) return overrides[key];
 
         const langCode = selectedLanguage?.short_code;
         const normKey = key.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -252,6 +244,22 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             }
         }
 
+        // Hardcoded overrides — special English display names
+        const overrides: Record<string, string> = {
+            send_wa: "Send WA",
+            wa_template: "WA Template",
+            whatsapp_messaging: "WhatsApp Messaging",
+            sms_setting: "SMS Gateway",
+            email_setting: "Email Gateway",
+            email_sms_log: "Email / SMS / WA Logs",
+            schedule_email_sms_log: "Schedule Email / SMS / WA Logs",
+            issue_return: "Issue Books",
+        };
+
+        if (result === undefined && overrides[key]) {
+            result = overrides[key];
+        }
+
         // 3. Built-in English fallbacks
         if (result === undefined) {
             result = getFromDict(i18nFallbacks);
@@ -264,7 +272,34 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
 
         // Interpolation: replace {paramName} placeholders
         if (params) {
-            for (const [k, v] of Object.entries(params)) {
+            const normalizedParams: Record<string, string | number> = { ...params };
+            // Bridge pagination parameter conventions (from/to/total <-> x/y/z <-> start/end/total)
+            if (normalizedParams.from !== undefined) {
+                if (normalizedParams.x === undefined) normalizedParams.x = normalizedParams.from;
+                if (normalizedParams.start === undefined) normalizedParams.start = normalizedParams.from;
+            }
+            if (normalizedParams.to !== undefined) {
+                if (normalizedParams.y === undefined) normalizedParams.y = normalizedParams.to;
+                if (normalizedParams.end === undefined) normalizedParams.end = normalizedParams.to;
+            }
+            if (normalizedParams.total !== undefined) {
+                if (normalizedParams.z === undefined) normalizedParams.z = normalizedParams.total;
+                if (normalizedParams.count === undefined) normalizedParams.count = normalizedParams.total;
+            }
+            if (normalizedParams.x !== undefined) {
+                if (normalizedParams.from === undefined) normalizedParams.from = normalizedParams.x;
+                if (normalizedParams.start === undefined) normalizedParams.start = normalizedParams.x;
+            }
+            if (normalizedParams.y !== undefined) {
+                if (normalizedParams.to === undefined) normalizedParams.to = normalizedParams.y;
+                if (normalizedParams.end === undefined) normalizedParams.end = normalizedParams.y;
+            }
+            if (normalizedParams.z !== undefined) {
+                if (normalizedParams.total === undefined) normalizedParams.total = normalizedParams.z;
+                if (normalizedParams.count === undefined) normalizedParams.count = normalizedParams.z;
+            }
+
+            for (const [k, v] of Object.entries(normalizedParams)) {
                 result = result.replace(new RegExp(`\\{${k}\\}`, "g"), String(v));
             }
         }
@@ -275,6 +310,7 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     return (
         <LanguageContext.Provider value={{
             selectedLanguage,
+            language: selectedLanguage,
             setSelectedLanguage,
             setUserContext,
             t,

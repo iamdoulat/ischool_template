@@ -22,7 +22,6 @@ import {
 import { Input } from "@/components/ui/input";
 import {
     Search,
-    History,
     Copy,
     FileSpreadsheet,
     FileBox,
@@ -32,23 +31,19 @@ import {
     ChevronRight,
     Trash2,
     Shield,
-    Monitor,
     RefreshCw,
     Activity,
     Users,
     KeyRound,
     Lock,
     Eye,
-    Globe,
     Clock,
     CheckCircle2,
     AlertCircle,
-    Info,
-    Laptop,
-    Smartphone,
-    Terminal
+    Monitor,
+    Terminal,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -67,12 +62,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useLanguage } from "@/components/providers/language-provider";
 
 function TableSkeleton({ cols }: { cols: number }) {
     return (
@@ -102,6 +97,7 @@ interface AuditLog {
 }
 
 export default function AuditTrailReportPage() {
+    const { t, language } = useLanguage();
     const [searchTerm, setSearchTerm] = useState("");
     const [actionFilter, setActionFilter] = useState("all");
     const [reportList, setReportList] = useState<AuditLog[]>([]);
@@ -124,10 +120,10 @@ export default function AuditTrailReportPage() {
         try {
             const response = await api.get("/reports/audit-trail");
             setReportList(response.data.data || []);
-            if (showToast) toast.success("Audit trail logs synchronized");
+            if (showToast) toast.success(t("report_loaded_successfully") || "Audit trail logs synchronized");
         } catch (error) {
             console.error("Failed to fetch audit trail logs", error);
-            toast.error("Failed to load audit trail logs");
+            toast.error(t("failed_to_load_report") || "Failed to load audit trail logs");
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -138,54 +134,51 @@ export default function AuditTrailReportPage() {
         fetchAuditTrail();
     }, []);
 
-    // Clear Audit Trail Action
+    // Clear entire audit trail logs
     const handleClearAudit = async () => {
         setClearing(true);
         try {
             await api.post("/reports/audit-trail/clear");
             setReportList([]);
-            toast.success("Audit trail cleared successfully");
+            toast.success(t("report_loaded_successfully") || "Audit trail logs cleared successfully");
         } catch (error) {
-            console.error("Failed to clear audit trail logs", error);
-            toast.error("Failed to clear audit trail logs");
+            console.error("Failed to clear audit trail", error);
+            toast.error(t("failed_to_load_report") || "Failed to clear audit trail");
         } finally {
             setClearing(false);
             setIsClearDialogOpen(false);
         }
     };
 
-    // Filtered Report logic
-    const filteredReport = useMemo(() => {
-        return reportList.filter((item) => {
-            // Action filter
-            if (actionFilter !== "all") {
-                const act = (item.action || "").toLowerCase();
-                if (actionFilter === "login" && !act.includes("login")) return false;
-                if (actionFilter === "create" && !act.includes("create")) return false;
-                if (actionFilter === "update" && !act.includes("update") && !act.includes("allocate")) return false;
-                if (actionFilter === "security" && !act.includes("backup") && !act.includes("security") && !act.includes("clear")) return false;
-            }
-
-            // Search filter
-            if (!searchTerm) return true;
-            const lower = searchTerm.toLowerCase();
-            return (
-                (item.message || "").toLowerCase().includes(lower) ||
-                (item.users || "").toLowerCase().includes(lower) ||
-                (item.ip_address || "").toLowerCase().includes(lower) ||
-                (item.action || "").toLowerCase().includes(lower) ||
-                (item.platform || "").toLowerCase().includes(lower) ||
-                (item.agent || "").toLowerCase().includes(lower) ||
-                (item.date_time || "").toLowerCase().includes(lower)
-            );
-        });
-    }, [reportList, searchTerm, actionFilter]);
-
-    // Unique operators count
+    // Metrics derivations
     const uniqueOperators = useMemo(() => {
-        const set = new Set(reportList.map(r => r.users));
+        const set = new Set(reportList.map(r => r.users).filter(Boolean));
         return set.size;
     }, [reportList]);
+
+    // Filtering logic
+    const filteredReport = useMemo(() => {
+        return reportList.filter((item) => {
+            const matchesSearch = !searchTerm || (
+                (item.action || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.message || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.users || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.ip_address || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.platform || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.date_time || "").toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            if (!matchesSearch) return false;
+
+            if (actionFilter === "all") return true;
+            if (actionFilter === "login") return (item.action || "").toLowerCase().includes("login");
+            if (actionFilter === "create") return (item.action || "").toLowerCase().includes("create") || (item.action || "").toLowerCase().includes("add");
+            if (actionFilter === "update") return (item.action || "").toLowerCase().includes("update") || (item.action || "").toLowerCase().includes("edit");
+            if (actionFilter === "security") return (item.action || "").toLowerCase().includes("backup") || (item.action || "").toLowerCase().includes("delete") || (item.action || "").toLowerCase().includes("clear");
+
+            return true;
+        });
+    }, [reportList, searchTerm, actionFilter]);
 
     // Pagination calculations
     const sizeNum = parseInt(itemsPerPage, 10) || 50;
@@ -197,18 +190,18 @@ export default function AuditTrailReportPage() {
 
     // Export helpers
     const exportToCopy = () => {
-        if (filteredReport.length === 0) { toast.error("No data to copy"); return; }
+        if (filteredReport.length === 0) { toast.error(t("no_data_available_in_table") || "No data to copy"); return; }
         const text = [
             "Action\tMessage\tUsers\tIP Address\tPlatform\tAgent\tDate Time",
-            ...filteredReport.map((r: any) => `${r.action}\t${r.message}\t${r.users}\t${r.ip_address}\t${r.platform}\t${r.agent}\t${r.date_time}`)
+            ...filteredReport.map((r) => `${r.action}\t${r.message}\t${r.users}\t${r.ip_address}\t${r.platform}\t${r.agent}\t${r.date_time}`)
         ].join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Audit trail copied to clipboard");
+        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
     };
 
     const exportToExcel = (isCsv = false) => {
-        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
-        const mapped = filteredReport.map((r: any) => ({
+        if (filteredReport.length === 0) { toast.error(t("no_data_available_in_table") || "No data to export"); return; }
+        const mapped = filteredReport.map((r) => ({
             "Action": r.action,
             "Message": r.message,
             "Users": r.users,
@@ -220,18 +213,18 @@ export default function AuditTrailReportPage() {
         const ws = XLSX.utils.json_to_sheet(mapped);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Audit Trail");
-        if (isCsv) { XLSX.writeFile(wb, "audit_trail_report.csv", { bookType: "csv" }); toast.success("CSV downloaded"); }
-        else { XLSX.writeFile(wb, "audit_trail_report.xlsx"); toast.success("Excel file downloaded"); }
+        if (isCsv) { XLSX.writeFile(wb, "audit_trail_report.csv", { bookType: "csv" }); toast.success(t("csv_downloaded") || "CSV downloaded"); }
+        else { XLSX.writeFile(wb, "audit_trail_report.xlsx"); toast.success(t("excel_downloaded") || "Excel file downloaded"); }
     };
 
     const exportToPDF = () => {
-        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        if (filteredReport.length === 0) { toast.error(t("no_data_available_in_table") || "No data to export"); return; }
         const doc = new jsPDF("landscape");
         const head = [["Action", "Message", "Users", "IP Address", "Platform", "Date Time"]];
-        const body = filteredReport.map((r: any) => [r.action, r.message, r.users, r.ip_address, r.platform, r.date_time]);
+        const body = filteredReport.map((r) => [r.action, r.message, r.users, r.ip_address, r.platform, r.date_time]);
         autoTable(doc, { head, body, theme: "grid" });
         doc.save("audit_trail_report.pdf");
-        toast.success("PDF downloaded");
+        toast.success(t("pdf_downloaded") || "PDF downloaded");
     };
 
     const getActionBadge = (action: string) => {
@@ -252,24 +245,24 @@ export default function AuditTrailReportPage() {
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
-            {/* Master Page Header */}
-            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
+        <div className="space-y-4 pb-12">
+            {/* Master Page Header Banner */}
+            <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
-                            <Shield className="h-6 w-6" />
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Shield className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                System Audit Trail & Security Logs
+                            <h1 className="text-base font-bold tracking-tight text-gray-800 leading-none flex items-center gap-2 flex-wrap">
+                                {t("system_audit_trail_security_logs") || "System Audit Trail & Security Logs"}
                                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Active Monitor
+                                    {t("active_monitor") || "Active Monitor"}
                                 </span>
                             </h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                Comprehensive real-time ledger recording administrative changes, authentication events, and critical operations.
+                                {t("system_audit_trail_description") || "Comprehensive real-time ledger recording administrative changes, authentication events, and critical operations."}
                             </p>
                         </div>
                     </div>
@@ -279,299 +272,254 @@ export default function AuditTrailReportPage() {
                             variant="outline"
                             onClick={() => fetchAuditTrail(true)}
                             disabled={refreshing || loading}
-                            className="h-8.5 px-3.5 text-xs font-semibold rounded-lg border-slate-200 bg-white hover:bg-slate-50 text-slate-700 gap-1.5"
+                            className="h-8 px-3 text-xs font-semibold rounded-lg border-gray-200 bg-white hover:bg-gray-50 text-gray-700 gap-1.5 cursor-pointer shadow-xs"
                         >
                             <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin text-indigo-600")} />
-                            <span>Refresh</span>
+                            <span>{t("refresh") || "Refresh"}</span>
                         </Button>
                         <Button
                             onClick={() => setIsClearDialogOpen(true)}
                             disabled={reportList.length === 0}
-                            className="h-8.5 px-3.5 text-xs font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs gap-1.5 cursor-pointer disabled:opacity-50"
+                            className="h-8 px-3 text-xs font-bold rounded-lg bg-gradient-to-r from-rose-500 to-red-600 hover:opacity-90 text-white shadow-xs gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
                         >
                             <Trash2 className="h-3.5 w-3.5" />
-                            <span>Clear Logs</span>
+                            <span>{t("clear_logs") || "Clear Logs"}</span>
                         </Button>
                     </div>
                 </div>
             </div>
 
             {/* Metrics Overview Ribbon */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="border border-gray-100 shadow-sm rounded-lg bg-white p-4">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                        <div className="h-9 w-9 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
                             <Activity className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Events</p>
-                            <p className="text-lg font-extrabold text-slate-800">{reportList.length}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("total_events") || "Total Events"}</p>
+                            <p className="text-base font-extrabold text-gray-800">{toLocaleNumber(reportList.length, language?.short_code)}</p>
                         </div>
                     </div>
-                </Card>
+                </div>
 
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+                <div className="border border-gray-100 shadow-sm rounded-lg bg-white p-4">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                        <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
                             <Users className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Active Operators</p>
-                            <p className="text-lg font-extrabold text-slate-800">{uniqueOperators}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("active_operators") || "Active Operators"}</p>
+                            <p className="text-base font-extrabold text-gray-800">{toLocaleNumber(uniqueOperators, language?.short_code)}</p>
                         </div>
                     </div>
-                </Card>
+                </div>
 
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+                <div className="border border-gray-100 shadow-sm rounded-lg bg-white p-4">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
+                        <div className="h-9 w-9 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600">
                             <KeyRound className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Auth Sessions</p>
-                            <p className="text-lg font-extrabold text-slate-800">
-                                {reportList.filter(r => (r.action || "").toLowerCase().includes("login")).length}
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("auth_sessions") || "Auth Sessions"}</p>
+                            <p className="text-base font-extrabold text-gray-800">
+                                {toLocaleNumber(reportList.filter(r => (r.action || "").toLowerCase().includes("login")).length, language?.short_code)}
                             </p>
                         </div>
                     </div>
-                </Card>
+                </div>
 
-                <Card className="border-[0.5px] border-gray-200 shadow-xs rounded-2xl bg-white p-4">
+                <div className="border border-gray-100 shadow-sm rounded-lg bg-white p-4">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
+                        <div className="h-9 w-9 rounded-lg bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600">
                             <Lock className="h-5 w-5" />
                         </div>
                         <div>
-                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Ledger Integrity</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{t("ledger_integrity") || "Ledger Integrity"}</p>
                             <p className="text-xs font-bold text-emerald-600 flex items-center gap-1 mt-0.5">
-                                <CheckCircle2 className="h-3.5 w-3.5" /> 100% Tamper-Proof
+                                <CheckCircle2 className="h-3.5 w-3.5" /> {t("tamper_proof") || "100% Tamper-Proof"}
                             </p>
                         </div>
                     </div>
-                </Card>
+                </div>
             </div>
 
-            {/* Audit Trail Table Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
-                {/* Header & Filter Toolbar */}
-                <CardHeader className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
-                            <History className="h-4 w-4" />
-                        </span>
-                        <CardTitle className="text-sm font-bold text-slate-800">
-                            Audit Trail Activity Ledger ({filteredReport.length})
-                        </CardTitle>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {/* Action Filter */}
-                        <Select value={actionFilter} onValueChange={(val) => { setActionFilter(val); setCurrentPage(1); }}>
-                            <SelectTrigger className="h-8 w-32 text-xs bg-white border-slate-200">
-                                <SelectValue placeholder="All Actions" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Actions</SelectItem>
-                                <SelectItem value="login">Logins Only</SelectItem>
-                                <SelectItem value="create">Creations</SelectItem>
-                                <SelectItem value="update">Updates</SelectItem>
-                                <SelectItem value="security">Security/Backup</SelectItem>
-                            </SelectContent>
-                        </Select>
-
+            {/* Audit Trail Table Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px] flex flex-col justify-between">
+                <div className="space-y-4 flex-1 flex flex-col">
+                    {/* Actions Toolbar */}
+                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-3">
+                    <div className="flex items-center gap-3 w-full md:w-auto flex-1">
                         {/* Search Input */}
-                        <div className="relative w-full sm:w-56">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <div className="relative w-full md:w-64">
                             <Input
-                                placeholder="Search logs, IPs, users..."
+                                placeholder={t("search") || "Search..."}
                                 value={searchTerm}
                                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                                className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
+                                className="pl-3 h-8 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded shadow-none"
                             />
                         </div>
 
-                        {/* Per page */}
-                        <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                            <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200">
-                                <SelectValue placeholder="50" />
+                        {/* Action Filter */}
+                        <Select value={actionFilter} onValueChange={(val) => { setActionFilter(val); setCurrentPage(1); }}>
+                            <SelectTrigger className="h-8 w-32 text-[11px] border-gray-200 bg-transparent shadow-none rounded">
+                                <SelectValue placeholder={t("all") || "All Actions"} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="10">10</SelectItem>
-                                <SelectItem value="25">25</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
+                                <SelectItem value="all">{t("all") || "All Actions"}</SelectItem>
+                                <SelectItem value="login">Logins</SelectItem>
+                                <SelectItem value="create">Creations</SelectItem>
+                                <SelectItem value="update">Updates</SelectItem>
+                                <SelectItem value="security">Security</SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
 
-                        {/* Multi-format export toolbar */}
-                        <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
-                            <button
-                                type="button"
-                                onClick={exportToCopy}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Copy Table"
-                            >
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 mr-2">
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{t("show") || "Show"}</span>
+                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-7 w-14 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex items-center gap-1 text-gray-400">
+                            <Button variant="ghost" size="icon" title={t("copy") || "Copy"} onClick={exportToCopy} className="h-7 w-7 hover:bg-gray-100 hover:text-indigo-600 rounded">
                                 <Copy className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => exportToExcel(false)}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Export Excel"
-                            >
+                            </Button>
+                            <Button variant="ghost" size="icon" title={t("excel") || "Excel"} onClick={() => exportToExcel(false)} className="h-7 w-7 hover:bg-gray-100 hover:text-emerald-600 rounded">
                                 <FileSpreadsheet className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => exportToExcel(true)}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Export CSV"
-                            >
+                            </Button>
+                            <Button variant="ghost" size="icon" title={t("csv") || "CSV"} onClick={() => exportToExcel(true)} className="h-7 w-7 hover:bg-gray-100 hover:text-amber-600 rounded">
                                 <FileBox className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={exportToPDF}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Export PDF"
-                            >
+                            </Button>
+                            <Button variant="ghost" size="icon" title={t("pdf") || "PDF"} onClick={exportToPDF} className="h-7 w-7 hover:bg-gray-100 hover:text-rose-600 rounded">
                                 <FileText className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => window.print()}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all"
-                                title="Print Ledger"
-                            >
+                            </Button>
+                            <Button variant="ghost" size="icon" title={t("print") || "Print"} onClick={() => window.print()} className="h-7 w-7 hover:bg-gray-100 hover:text-gray-900 rounded">
                                 <Printer className="h-3.5 w-3.5" />
-                            </button>
+                            </Button>
                         </div>
                     </div>
-                </CardHeader>
+                </div>
 
                 {/* Table Content */}
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-slate-50/80 border-b border-slate-200">
-                                <TableRow>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 w-[120px]">Action</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[280px]">Message / Description</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[180px]">User & Role</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[130px]">IP Address</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[120px]">Platform</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[160px]">Timestamp</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-right pr-6 w-[80px]">Inspect</TableHead>
+                <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
+                    <Table className="min-w-[1200px]">
+                        <TableHeader className="bg-transparent border-b border-gray-100">
+                            <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                <TableHead className="py-3 px-4 w-[120px]">{t("action") || "Action"}</TableHead>
+                                <TableHead className="py-3 px-4 min-w-[280px]">{t("message") || "Message"}</TableHead>
+                                <TableHead className="py-3 px-4 min-w-[180px]">{t("users") || "Users"}</TableHead>
+                                <TableHead className="py-3 px-4 min-w-[130px]">{t("ip_address") || "IP Address"}</TableHead>
+                                <TableHead className="py-3 px-4 min-w-[120px]">{t("platform") || "Platform"}</TableHead>
+                                <TableHead className="py-3 px-4 min-w-[160px]">{t("date_time") || "Date Time"}</TableHead>
+                                <TableHead className="py-3 px-4 text-right pr-6 w-[80px]">{t("view") || "Inspect"}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableSkeleton cols={7} />
+                            ) : reportList.length === 0 ? (
+                                <TableRow className="hover:bg-transparent h-64">
+                                    <TableCell colSpan={7} className="text-center py-12">
+                                        <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
+                                            <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest whitespace-nowrap">
+                                                {t("no_data_available_in_table") || "No data available in table"}
+                                            </p>
+                                        </div>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody className="divide-y divide-slate-100">
-                                {loading ? (
-                                    <TableSkeleton cols={7} />
-                                ) : reportList.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-20 text-slate-400">
-                                            <Shield className="h-10 w-10 mx-auto mb-2 text-slate-300" />
-                                            <p className="text-xs font-bold text-slate-600">No audit trail records found</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5">System operations will be logged here automatically.</p>
+                            ) : paginatedReportList.length === 0 ? (
+                                <TableRow className="hover:bg-transparent">
+                                    <TableCell colSpan={7} className="text-center py-12 text-gray-400 font-semibold uppercase text-[10px] tracking-wider">
+                                        {t("no_items_match_the_search") || "No items match the search."}
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                paginatedReportList.map((item, idx) => (
+                                    <TableRow
+                                        key={item.id || idx}
+                                        className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap"
+                                    >
+                                        <TableCell className="py-3 px-4">
+                                            <span className={cn(
+                                                "px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap",
+                                                getActionBadge(item.action)
+                                            )}>
+                                                {item.action}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 font-semibold text-gray-800">
+                                            {item.message}
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6 border border-gray-200">
+                                                    <AvatarFallback className="text-[9px] font-bold bg-indigo-50 text-indigo-700">
+                                                        {item.users?.charAt(0) || "U"}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-xs font-medium text-gray-700 truncate max-w-[180px]">
+                                                    {item.users}
+                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 font-mono text-gray-600">
+                                            <span className="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-[11px]">
+                                                {item.ip_address}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-gray-600">
+                                            <span className="inline-flex items-center gap-1">
+                                                <Monitor className="h-3.5 w-3.5 text-gray-400" />
+                                                {item.platform}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-indigo-600 font-medium">
+                                            <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+                                                <Clock className="h-3.5 w-3.5 text-gray-400" />
+                                                {item.date_time}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="py-3 px-4 text-right pr-6">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedLog(item);
+                                                    setInspectOpen(true);
+                                                }}
+                                                className="h-7 w-7 p-0 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 ml-auto"
+                                                title={t("view") || "Inspect"}
+                                            >
+                                                <Eye className="h-3.5 w-3.5" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
-                                ) : paginatedReportList.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-16 text-slate-400">
-                                            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                                            <p className="text-xs font-bold text-slate-600">No logs match your filters</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5">Try adjusting your search keywords or action filter.</p>
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    paginatedReportList.map((item, idx) => (
-                                        <TableRow
-                                            key={item.id || idx}
-                                            className="hover:bg-indigo-50/30 transition-colors group"
-                                        >
-                                            {/* Action Badge */}
-                                            <TableCell className="py-3 px-4">
-                                                <span className={cn(
-                                                    "px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap",
-                                                    getActionBadge(item.action)
-                                                )}>
-                                                    {item.action}
-                                                </span>
-                                            </TableCell>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
 
-                                            {/* Message */}
-                                            <TableCell className="py-3 px-4">
-                                                <p className="text-xs font-semibold text-slate-800 group-hover:text-indigo-600 transition-colors line-clamp-1" title={item.message}>
-                                                    {item.message}
-                                                </p>
-                                            </TableCell>
-
-                                            {/* User & Role */}
-                                            <TableCell className="py-3 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar className="h-6 w-6 border border-slate-200 shadow-2xs">
-                                                        <AvatarFallback className="text-[9px] font-bold bg-indigo-50 text-indigo-700">
-                                                            {item.users?.charAt(0) || "U"}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="text-xs font-medium text-slate-700 truncate max-w-[180px]">
-                                                        {item.users}
-                                                    </span>
-                                                </div>
-                                            </TableCell>
-
-                                            {/* IP Address */}
-                                            <TableCell className="py-3 px-4 text-xs font-mono text-slate-600">
-                                                <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px]">
-                                                    {item.ip_address}
-                                                </span>
-                                            </TableCell>
-
-                                            {/* Platform */}
-                                            <TableCell className="py-3 px-4 text-xs text-slate-600">
-                                                <span className="inline-flex items-center gap-1">
-                                                    <Monitor className="h-3 w-3 text-slate-400" />
-                                                    {item.platform}
-                                                </span>
-                                            </TableCell>
-
-                                            {/* Timestamp */}
-                                            <TableCell className="py-3 px-4 text-xs font-semibold text-indigo-600">
-                                                <span className="inline-flex items-center gap-1 font-mono text-[11px]">
-                                                    <Clock className="h-3 w-3 text-slate-400" />
-                                                    {item.date_time}
-                                                </span>
-                                            </TableCell>
-
-                                            {/* Inspect Action */}
-                                            <TableCell className="py-3 px-4 text-right pr-6">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedLog(item);
-                                                        setInspectOpen(true);
-                                                    }}
-                                                    className="h-7 w-7 p-0 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 ml-auto"
-                                                    title="Inspect Event Payload"
-                                                >
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-
-                {/* Footer / Pagination */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+                {/* Footer Pagination */}
+                <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-500 font-medium pt-4 border-t border-gray-100 mt-auto gap-3">
                     <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
-                        {searchTerm && ` (filtered from ${reportList.length} total)`}
+                        {t("showing_x_to_y_of_z", {
+                            x: toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, language?.short_code),
+                            y: toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), language?.short_code),
+                            z: toLocaleNumber(totalEntries, language?.short_code),
+                        }) || `Showing ${totalEntries > 0 ? startIndex + 1 : 0} to ${Math.min(startIndex + sizeNum, totalEntries)} of ${totalEntries} entries`}
+                        {searchTerm && ` (${t("filtered_from") || "filtered from"} ${toLocaleNumber(reportList.length, language?.short_code)} ${t("total_entries") || "total entries"})`}
                     </div>
 
                     {totalEntries > 0 && (
@@ -579,7 +527,7 @@ export default function AuditTrailReportPage() {
                             <button
                                 disabled={safePage === 1}
                                 onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                className="h-8 w-8 bg-white hover:bg-slate-100 text-slate-600 rounded-lg transition-all border border-slate-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 bg-white hover:bg-gray-50 text-gray-400 rounded-lg hover:shadow-xs active:scale-95 transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
@@ -592,48 +540,48 @@ export default function AuditTrailReportPage() {
                                         "h-8 w-8 transition-all text-xs flex items-center justify-center cursor-pointer font-bold rounded-lg",
                                         safePage === page
                                             ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
-                                            : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                                            : "bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 border border-gray-200"
                                     )}
                                 >
-                                    {page}
+                                    {toLocaleNumber(page, language?.short_code)}
                                 </button>
                             ))}
 
                             <button
                                 disabled={safePage === totalPages}
                                 onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                className="h-8 w-8 bg-white hover:bg-slate-100 text-slate-600 rounded-lg transition-all border border-slate-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 bg-white hover:bg-gray-50 text-gray-400 rounded-lg hover:shadow-xs active:scale-95 transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </button>
                         </div>
                     )}
                 </div>
-            </Card>
+            </div>
 
             {/* Event Payload Inspector Modal */}
             <Dialog open={inspectOpen} onOpenChange={setInspectOpen}>
-                <DialogContent className="max-w-xl rounded-2xl p-6">
+                <DialogContent className="max-w-xl rounded-2xl p-6 bg-white">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-800">
                             <Terminal className="h-5 w-5 text-indigo-600" />
-                            Audit Event Detailed Payload
+                            {t("view") || "Inspect"} Event #{selectedLog?.id}
                         </DialogTitle>
-                        <DialogDescription className="text-xs text-slate-500">
-                            Security fingerprint and runtime context for Event #{selectedLog?.id}
+                        <DialogDescription className="text-xs text-gray-500">
+                            Security fingerprint and runtime context
                         </DialogDescription>
                     </DialogHeader>
 
                     {selectedLog && (
                         <div className="space-y-3.5 py-2 text-xs">
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase">Event Message</p>
-                                <p className="font-semibold text-slate-900 leading-relaxed">{selectedLog.message}</p>
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase">{t("message") || "Message"}</p>
+                                <p className="font-semibold text-gray-900 leading-relaxed">{selectedLog.message}</p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Action Type</p>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{t("action") || "Action"}</p>
                                     <span className={cn(
                                         "px-2 py-0.5 rounded-full text-[10px] font-bold border inline-block",
                                         getActionBadge(selectedLog.action)
@@ -641,33 +589,33 @@ export default function AuditTrailReportPage() {
                                         {selectedLog.action}
                                     </span>
                                 </div>
-                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Timestamp</p>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{t("date_time") || "Timestamp"}</p>
                                     <p className="font-mono font-bold text-indigo-600">{selectedLog.date_time}</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
-                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Operator</p>
-                                    <p className="font-semibold text-slate-800">{selectedLog.users}</p>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{t("users") || "Operator"}</p>
+                                    <p className="font-semibold text-gray-800">{selectedLog.users}</p>
                                 </div>
-                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Client IP Address</p>
-                                    <p className="font-mono font-bold text-slate-800">{selectedLog.ip_address}</p>
+                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">{t("ip_address") || "IP Address"}</p>
+                                    <p className="font-mono font-bold text-gray-800">{selectedLog.ip_address}</p>
                                 </div>
                             </div>
 
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                                <p className="text-[10px] font-bold text-slate-400 uppercase">User Agent / Platform</p>
-                                <p className="font-mono text-[11px] text-slate-600 break-all">{selectedLog.agent}</p>
+                            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 space-y-1">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase">{t("user_agent") || "User Agent"}</p>
+                                <p className="font-mono text-[11px] text-gray-600 break-all">{selectedLog.agent}</p>
                             </div>
                         </div>
                     )}
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setInspectOpen(false)} className="text-xs">
-                            Close Inspector
+                            {t("close") || "Close"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -677,21 +625,21 @@ export default function AuditTrailReportPage() {
             <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
                 <AlertDialogContent className="rounded-2xl bg-white max-w-md">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-rose-500" /> Clear Entire Audit Trail?
+                        <AlertDialogTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-rose-500" /> {t("are_you_sure") || "Are you sure?"}
                         </AlertDialogTitle>
-                        <AlertDialogDescription className="text-xs text-slate-500">
-                            This action cannot be undone. This will permanently truncate all security event logs from the system ledger.
+                        <AlertDialogDescription className="text-xs text-gray-500">
+                            {t("action_cannot_be_undone") || "This action cannot be undone. This will permanently truncate all security event logs from the system ledger."}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-2 sm:gap-0">
-                        <AlertDialogCancel className="text-xs font-semibold rounded-lg">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="text-xs font-semibold rounded-lg cursor-pointer">{t("cancel") || "Cancel"}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleClearAudit}
                             disabled={clearing}
-                            className="bg-rose-600 hover:bg-rose-700 rounded-lg text-xs font-bold text-white shadow-xs"
+                            className="bg-rose-600 hover:bg-rose-700 rounded-lg text-xs font-bold text-white shadow-xs cursor-pointer"
                         >
-                            {clearing ? "Clearing..." : "Yes, Truncate Logs"}
+                            {clearing ? (t("clearing") || "Clearing...") : (t("clear_all") || "Clear All")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

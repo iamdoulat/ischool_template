@@ -604,37 +604,37 @@ export default function OnlineAdmissionPage() {
                                             <div className="flex items-center justify-between">
                                                 <label className="text-[13px] font-bold text-gray-800 flex items-center gap-2">
                                                     <HelpCircle className="h-4 w-4 text-indigo-600" />
-                                                    Help Center Modal Fields Settings
+                                                    {t("help_center_modal_fields_settings")}
                                                 </label>
-                                                <span className="text-[11px] text-gray-400">Configure questions, answers & support info (accordions)</span>
+                                                <span className="text-[11px] text-gray-400">{t("configure_questions_answers_support_info")}</span>
                                             </div>
                                             
                                             <Accordion type="single" collapsible defaultValue="item-1" className="w-full space-y-2.5">
                                                 {/* Accordion 1: Modal Header Subtitle */}
                                                 <AccordionItem value="item-1" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">1. Header Description / Subtitle</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">1. {t("header_description_subtitle")}</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-2">
-                                                        <label className="text-[11px] font-semibold text-gray-600">Modal Header Subtitle</label>
+                                                        <label className="text-[11px] font-semibold text-gray-600">{t("modal_header_subtitle")}</label>
                                                         <Input 
                                                             value={helpCenterConfig.subtitle}
                                                             onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, subtitle: e.target.value }))}
                                                             className="h-9 text-[12px]"
-                                                            placeholder="Enter modal description..."
+                                                            placeholder={t("enter_modal_description")}
                                                         />
-                                                        <p className="text-[10px] text-gray-400">Note: You can use {"{school_name}"} as a placeholder.</p>
+                                                        <p className="text-[10px] text-gray-400">{t("note_you_can_use_school_name_placeholder")}</p>
                                                     </AccordionContent>
                                                 </AccordionItem>
 
                                                 {/* Accordion 2: Section 1 (Admission Process) */}
                                                 <AccordionItem value="item-2" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">2. Column 1: Admission Process FAQs ({helpCenterConfig.section1_items?.length || 0} Items)</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">2. {t("column1_admission_process_faqs")} ({helpCenterConfig.section1_items?.length || 0} Items)</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-4">
                                                         <div className="space-y-1.5">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Section Title</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("section_title")}</label>
                                                             <Input 
                                                                 value={helpCenterConfig.section1_title}
                                                                 onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, section1_title: e.target.value }))}
@@ -646,7 +646,7 @@ export default function OnlineAdmissionPage() {
                                                             {helpCenterConfig.section1_items?.map((item, idx) => (
                                                                 <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2 relative">
                                                                     <div className="flex justify-between items-center">
-                                                                        <span className="text-[11px] font-bold text-gray-600">Question #{idx + 1}</span>
+                                                                        <span className="text-[11px] font-bold text-gray-600">{t("question_number")}{idx + 1}</span>
                                                                         <Button 
                                                                             type="button" 
                                                                             variant="ghost" 
@@ -668,7 +668,7 @@ export default function OnlineAdmissionPage() {
                                                                             setHelpCenterConfig(prev => ({ ...prev, section1_items: newItems }));
                                                                         }}
                                                                         className="h-8 text-[11px] bg-white font-medium"
-                                                                        placeholder="Enter Question Title..."
+                                                                        placeholder={t("enter_question_title")}
                                                                     />
                                                                     <Textarea 
                                                                         value={item.answer}
@@ -678,7 +678,7 @@ export default function OnlineAdmissionPage() {
                                                                             setHelpCenterConfig(prev => ({ ...prev, section1_items: newItems }));
                                                                         }}
                                                                         className="min-h-[60px] text-[11px] bg-white p-2 resize-y"
-                                                                        placeholder="Enter Answer Description..."
+                                                                        placeholder={t("enter_answer_description")}
                                                                     />
                                                                 </div>
                                                             ))}
@@ -695,7 +695,7 @@ export default function OnlineAdmissionPage() {
                                                                     }));
                                                                 }}
                                                             >
-                                                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Question to Column 1
+                                                                <Plus className="h-3.5 w-3.5 mr-1" /> {t("add_question_to_column1")}
                                                             </Button>
                                                         </div>
                                                     </AccordionContent>
@@ -704,11 +704,11 @@ export default function OnlineAdmissionPage() {
                                                 {/* Accordion 3: Section 2 (Technical Support) */}
                                                 <AccordionItem value="item-3" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">3. Column 2: Technical Support FAQs ({helpCenterConfig.section2_items?.length || 0} Items)</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">3. {t("column2_technical_support_faqs")} ({helpCenterConfig.section2_items?.length || 0} Items)</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-4">
                                                         <div className="space-y-1.5">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Section Title</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("section_title")}</label>
                                                             <Input 
                                                                 value={helpCenterConfig.section2_title}
                                                                 onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, section2_title: e.target.value }))}
@@ -720,7 +720,7 @@ export default function OnlineAdmissionPage() {
                                                             {helpCenterConfig.section2_items?.map((item, idx) => (
                                                                 <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2 relative">
                                                                     <div className="flex justify-between items-center">
-                                                                        <span className="text-[11px] font-bold text-gray-600">Question #{idx + 1}</span>
+                                                                        <span className="text-[11px] font-bold text-gray-600">{t("question_number")}{idx + 1}</span>
                                                                         <Button 
                                                                             type="button" 
                                                                             variant="ghost" 
@@ -742,7 +742,7 @@ export default function OnlineAdmissionPage() {
                                                                             setHelpCenterConfig(prev => ({ ...prev, section2_items: newItems }));
                                                                         }}
                                                                         className="h-8 text-[11px] bg-white font-medium"
-                                                                        placeholder="Enter Question Title..."
+                                                                        placeholder={t("enter_question_title")}
                                                                     />
                                                                     <Textarea 
                                                                         value={item.answer}
@@ -752,7 +752,7 @@ export default function OnlineAdmissionPage() {
                                                                             setHelpCenterConfig(prev => ({ ...prev, section2_items: newItems }));
                                                                         }}
                                                                         className="min-h-[60px] text-[11px] bg-white p-2 resize-y"
-                                                                        placeholder="Enter Answer Description..."
+                                                                        placeholder={t("enter_answer_description")}
                                                                     />
                                                                 </div>
                                                             ))}
@@ -769,7 +769,7 @@ export default function OnlineAdmissionPage() {
                                                                     }));
                                                                 }}
                                                             >
-                                                                <Plus className="h-3.5 w-3.5 mr-1" /> Add Question to Column 2
+                                                                <Plus className="h-3.5 w-3.5 mr-1" /> {t("add_question_to_column2")}
                                                             </Button>
                                                         </div>
                                                     </AccordionContent>
@@ -778,11 +778,11 @@ export default function OnlineAdmissionPage() {
                                                 {/* Accordion 4: Bottom Banner & Contact Details */}
                                                 <AccordionItem value="item-4" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">4. Bottom Banner & Support Details</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">4. {t("bottom_banner_support_details")}</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-3">
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Banner Section Title</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("banner_section_title")}</label>
                                                             <Input 
                                                                 value={helpCenterConfig.footer_title}
                                                                 onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_title: e.target.value }))}
@@ -791,7 +791,7 @@ export default function OnlineAdmissionPage() {
                                                             />
                                                         </div>                                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-gray-600">Support Phone</label>
+                                                                <label className="text-[11px] font-semibold text-gray-600">{t("support_phone")}</label>
                                                                 <Input 
                                                                     value={helpCenterConfig.footer_phone}
                                                                     onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_phone: e.target.value }))}
@@ -800,7 +800,7 @@ export default function OnlineAdmissionPage() {
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-green-700">Support WhatsApp</label>
+                                                                <label className="text-[11px] font-semibold text-green-700">{t("support_whatsapp")}</label>
                                                                 <Input 
                                                                     value={helpCenterConfig.footer_whatsapp || ""}
                                                                     onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_whatsapp: e.target.value }))}
@@ -809,7 +809,7 @@ export default function OnlineAdmissionPage() {
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-gray-600">Support Email</label>
+                                                                <label className="text-[11px] font-semibold text-gray-600">{t("support_email")}</label>
                                                                 <Input 
                                                                     value={helpCenterConfig.footer_email}
                                                                     onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_email: e.target.value }))}
@@ -818,7 +818,7 @@ export default function OnlineAdmissionPage() {
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-gray-600">Support Hours</label>
+                                                                <label className="text-[11px] font-semibold text-gray-600">{t("support_hours")}</label>
                                                                 <Input 
                                                                     value={helpCenterConfig.footer_hours}
                                                                     onChange={(e) => setHelpCenterConfig(prev => ({ ...prev, footer_hours: e.target.value }))}
@@ -837,38 +837,38 @@ export default function OnlineAdmissionPage() {
                                             <div className="flex items-center justify-between">
                                                 <label className="text-[13px] font-bold text-gray-800 flex items-center gap-2">
                                                     <CreditCard className="h-4 w-4 text-green-600" />
-                                                    Fee Structure Modal Fields Settings
+                                                    {t("fee_structure_modal_fields_settings")}
                                                 </label>
-                                                <span className="text-[11px] text-gray-400">Configure fee cards, badges & payment details (accordions)</span>
+                                                <span className="text-[11px] text-gray-400">{t("configure_fee_cards_badges_payment_details")}</span>
                                             </div>
                                             
                                             <Accordion type="single" collapsible defaultValue="fee-item-1" className="w-full space-y-2.5">
                                                 {/* Accordion 1: Modal Header Subtitle */}
                                                 <AccordionItem value="fee-item-1" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">1. Header Description / Subtitle</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">1. {t("header_description_subtitle")}</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-2">
-                                                        <label className="text-[11px] font-semibold text-gray-600">Modal Header Subtitle</label>
+                                                        <label className="text-[11px] font-semibold text-gray-600">{t("modal_header_subtitle")}</label>
                                                         <Input 
                                                             value={feeStructureConfig.subtitle}
                                                             onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, subtitle: e.target.value }))}
                                                             className="h-9 text-[12px]"
-                                                            placeholder="Enter modal description..."
+                                                            placeholder={t("enter_modal_description")}
                                                         />
-                                                        <p className="text-[10px] text-gray-400">Note: You can use {"{school_name}"} as a placeholder.</p>
+                                                        <p className="text-[10px] text-gray-400">{t("note_you_can_use_school_name_placeholder")}</p>
                                                     </AccordionContent>
                                                 </AccordionItem>
 
                                                 {/* Accordion 2: Card 1 - Application Fee */}
                                                 <AccordionItem value="fee-item-2" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">2. Card 1: Online Application Fee Card</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">2. {t("card1_online_application_fee_card")}</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-gray-600">Card Title</label>
+                                                                <label className="text-[11px] font-semibold text-gray-600">{t("card_title")}</label>
                                                                 <Input 
                                                                     value={feeStructureConfig.card1_title}
                                                                     onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_title: e.target.value }))}
@@ -876,7 +876,7 @@ export default function OnlineAdmissionPage() {
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-gray-600">Amount Display Override</label>
+                                                                <label className="text-[11px] font-semibold text-gray-600">{t("amount_display_override")}</label>
                                                                 <Input 
                                                                     value={feeStructureConfig.card1_amount_override}
                                                                     onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_amount_override: e.target.value }))}
@@ -886,7 +886,7 @@ export default function OnlineAdmissionPage() {
                                                             </div>
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Card Description</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("card_description")}</label>
                                                             <Textarea 
                                                                 value={feeStructureConfig.card1_description}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_description: e.target.value }))}
@@ -894,7 +894,7 @@ export default function OnlineAdmissionPage() {
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Feature Badge / Text</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("feature_badge_text")}</label>
                                                             <Input 
                                                                 value={feeStructureConfig.card1_badge}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card1_badge: e.target.value }))}
@@ -907,12 +907,12 @@ export default function OnlineAdmissionPage() {
                                                 {/* Accordion 3: Card 2 - Tuition & Additional Fees */}
                                                 <AccordionItem value="fee-item-3" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">3. Card 2: Tuition & Additional Fees Card</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">3. {t("card2_tuition_additional_fees_card")}</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-3">
                                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-gray-600">Card Title</label>
+                                                                <label className="text-[11px] font-semibold text-gray-600">{t("card_title")}</label>
                                                                 <Input 
                                                                     value={feeStructureConfig.card2_title}
                                                                     onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_title: e.target.value }))}
@@ -920,7 +920,7 @@ export default function OnlineAdmissionPage() {
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[11px] font-semibold text-gray-600">Tag / Badge Label</label>
+                                                                <label className="text-[11px] font-semibold text-gray-600">{t("tag_badge_label")}</label>
                                                                 <Input 
                                                                     value={feeStructureConfig.card2_tag}
                                                                     onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_tag: e.target.value }))}
@@ -930,7 +930,7 @@ export default function OnlineAdmissionPage() {
                                                             </div>
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Card Description</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("card_description")}</label>
                                                             <Textarea 
                                                                 value={feeStructureConfig.card2_description}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_description: e.target.value }))}
@@ -938,7 +938,7 @@ export default function OnlineAdmissionPage() {
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Feature Badge / Text</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("feature_badge_text")}</label>
                                                             <Input 
                                                                 value={feeStructureConfig.card2_badge}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, card2_badge: e.target.value }))}
@@ -951,11 +951,11 @@ export default function OnlineAdmissionPage() {
                                                 {/* Accordion 4: Payment & Support Banner */}
                                                 <AccordionItem value="fee-item-4" className="border border-gray-200 rounded-xl px-4 bg-white shadow-xs">
                                                     <AccordionTrigger className="hover:no-underline py-3">
-                                                        <span className="font-bold text-[12px] text-gray-700">4. Bottom Banner: Payment & Support Info</span>
+                                                        <span className="font-bold text-[12px] text-gray-700">4. {t("bottom_banner_payment_support_info")}</span>
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-1 pb-4 space-y-3">
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Banner Title</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("banner_title")}</label>
                                                             <Input 
                                                                 value={feeStructureConfig.footer_title}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_title: e.target.value }))}
@@ -963,7 +963,7 @@ export default function OnlineAdmissionPage() {
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Payment Methods Text</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("payment_methods_text")}</label>
                                                             <Input 
                                                                 value={feeStructureConfig.footer_payment_methods}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_payment_methods: e.target.value }))}
@@ -971,7 +971,7 @@ export default function OnlineAdmissionPage() {
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Contact Support Text</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("contact_support_text")}</label>
                                                             <Input 
                                                                 value={feeStructureConfig.footer_support}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_support: e.target.value }))}
@@ -980,7 +980,7 @@ export default function OnlineAdmissionPage() {
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <label className="text-[11px] font-semibold text-gray-600">Due Dates Info Text</label>
+                                                            <label className="text-[11px] font-semibold text-gray-600">{t("due_dates_info_text")}</label>
                                                             <Input 
                                                                 value={feeStructureConfig.footer_due_dates}
                                                                 onChange={(e) => setFeeStructureConfig(prev => ({ ...prev, footer_due_dates: e.target.value }))}

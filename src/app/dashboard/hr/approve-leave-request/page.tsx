@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -87,7 +87,8 @@ interface Meta {
 }
 
 export default function ApproveLeaveRequestPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [keyword, setKeyword] = useState("");
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
@@ -202,26 +203,40 @@ export default function ApproveLeaveRequestPage() {
     const handlePrint = () => window.print();
 
     return (
-        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <div className="flex justify-between items-center">
-                <h1 className="text-xl font-medium text-gray-800">{t("approve_leave_request")}</h1>
-                <Button
-                    onClick={() => window.history.back()}
-                    variant="outline"
-                    className="gap-2 h-9 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-white shadow-sm flex items-center"
-                >
-                    <History className="h-4 w-4" /> {t("back")}
-                </Button>
-            </div>
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* ── Page Header Card with Gradient Colors ──────────────────────── */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] overflow-hidden py-0 gap-0">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0 px-4 py-2.5 bg-transparent border-0">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <CalendarCheck className="h-4.5 w-4.5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-sm font-bold tracking-tight text-slate-800 leading-none">
+                                {t("approve_leave_request")}
+                            </CardTitle>
+                            <p className="text-[10.5px] text-gray-500 mt-0.5">
+                                {shortCode === "bn" ? "স্টাফদের ছুটির আবেদন পর্যালোচনা ও অনুমোদন করুন" : "Review and approve staff leave applications"}
+                            </p>
+                        </div>
+                    </div>
+                    <Button
+                        onClick={() => window.history.back()}
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white gap-2 h-8 px-5 text-[10.5px] font-bold uppercase rounded-full shadow-md active:scale-95 transition-all cursor-pointer border-0"
+                    >
+                        <History className="h-3.5 w-3.5" /> {t("back")}
+                    </Button>
+                </CardHeader>
+            </Card>
 
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <CalendarCheck className="h-5 w-5" />
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CalendarCheck className="h-4 w-4" />
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("approve_leave_request")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{(meta?.total ?? requests.length)} {t("requests")}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(meta?.total ?? requests.length, shortCode)} {t("requests")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -237,8 +252,7 @@ export default function ApproveLeaveRequestPage() {
                             <Button
                                 onClick={handleSearch}
                                 disabled={loading}
-                                variant="gradient"
-                                className="gap-2 h-8 px-6 text-[11px] font-bold uppercase rounded-full shadow-sm flex items-center"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] gap-2 h-8 px-6 text-[11px] font-bold uppercase rounded-full shadow-sm flex items-center text-white"
                             >
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                                 {t("search")}
@@ -248,12 +262,16 @@ export default function ApproveLeaveRequestPage() {
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-2">
                                 <Select value={String(perPage)} onValueChange={v => { setPerPage(Number(v)); setPage(1); }}>
-                                    <SelectTrigger className="h-7 w-14 text-[10px] border-none bg-gray-50 hover:bg-gray-100 transition-colors shadow-none rounded-full">
-                                        <SelectValue />
+                                    <SelectTrigger className="h-8 w-16 text-[11px] font-bold border-gray-200 bg-white rounded-lg focus:ring-indigo-500 cursor-pointer">
+                                        <SelectValue placeholder={toLocaleNumber(perPage, shortCode)}>
+                                            {toLocaleNumber(perPage, shortCode)}
+                                        </SelectValue>
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="rounded-lg border-gray-100">
                                         {[10, 25, 50, 100].map(n => (
-                                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                            <SelectItem key={n} value={String(n)} className="cursor-pointer text-xs font-bold">
+                                                {toLocaleNumber(n, shortCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -268,9 +286,6 @@ export default function ApproveLeaveRequestPage() {
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={handlePrint}>
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
@@ -278,31 +293,31 @@ export default function ApproveLeaveRequestPage() {
                         </div>
                     </div>
 
-                    <div className="rounded border border-gray-50 overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-gray-100">
+                    <div className="rounded-lg border border-gray-200 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                        <Table className="min-w-[900px]">
+                            <TableHeader className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
+                                <TableRow className="hover:bg-transparent border-b border-gray-200">
                                     {["staff", "leave_type", "half_day", "leave_date", "days", "apply_date", "status", "action"].map(h => (
-                                        <TableHead key={h} className={`text-[10px] font-bold uppercase text-gray-600 py-3 ${h === "action" ? "text-right" : ""}`}>{t(h)}</TableHead>
+                                        <TableHead key={h} className={`text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap ${h === "action" ? "text-right" : ""}`}>{t(h)}</TableHead>
                                     ))}
                                 </TableRow>
                             </TableHeader>
-                            <TableBody>
+                            <TableBody className="bg-white divide-y divide-gray-100">
                                 {loading ? (
                                     <TableSkeleton rows={5} cols={8} />
                                 ) : requests.length === 0 ? (
                                     <TableRow><TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_data_found")}</TableCell></TableRow>
                                 ) : requests.map((req) => (
-                                    <TableRow key={req.id} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/20 transition-colors">
-                                        <TableCell className="py-3.5 text-gray-700 font-medium">{req.staff}</TableCell>
-                                        <TableCell className="py-3.5 text-gray-500">{req.leaveType}</TableCell>
-                                        <TableCell className="py-3.5 text-gray-500">{req.halfDay}</TableCell>
-                                        <TableCell className="py-3.5 text-gray-500">{req.leaveDate}</TableCell>
-                                        <TableCell className="py-3.5 text-gray-500">{req.days}</TableCell>
-                                        <TableCell className="py-3.5 text-gray-500">{req.applyDate}</TableCell>
-                                        <TableCell className="py-3.5">
+                                    <TableRow key={req.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
+                                        <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{req.staff}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveType}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.halfDay}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveDate}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{toLocaleNumber(req.days, shortCode)}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.applyDate}</TableCell>
+                                        <TableCell className="py-3.5 px-4 whitespace-nowrap">
                                             <span className={cn(
-                                                "text-[9px] font-bold px-1.5 py-0.5 rounded uppercase",
+                                                "text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-tighter shadow-sm",
                                                 req.status === "Pending" && "bg-orange-500 text-white",
                                                 req.status === "Approved" && "bg-green-600 text-white",
                                                 req.status === "Disapproved" && "bg-red-600 text-white"
@@ -310,7 +325,7 @@ export default function ApproveLeaveRequestPage() {
                                                 {req.status === "Pending" ? t("pending") : req.status === "Approved" ? t("approved") : t("disapproved")}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="py-3.5 text-right">
+                                        <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <Button
                                                     size="icon"
@@ -355,7 +370,7 @@ export default function ApproveLeaveRequestPage() {
                                         : "bg-white border border-gray-200 text-gray-600 hover:text-indigo-600"
                                 )}
                             >
-                                {i + 1}
+                                {toLocaleNumber(i + 1, shortCode)}
                             </Button>
                         ))}
 

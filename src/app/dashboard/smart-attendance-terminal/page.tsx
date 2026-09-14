@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +13,13 @@ import {
   ScanFace, ScanLine, Smartphone, Loader2, CheckCircle2, AlertCircle,
   Clock, UserCheck, QrCode, SmartphoneNfc, RefreshCw, Camera, Wifi, WifiOff,
   Maximize2, Minimize2, Sparkles, Activity, ShieldCheck, Search,
-  ArrowRight, Users, Check, Volume2, VolumeX, Flame, Zap, CheckCircle
+  ArrowRight, Users, Check, Volume2, VolumeX, Flame, Zap, CheckCircle, Settings
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
-import { useTranslation } from "@/hooks/use-translation";
-import { cn } from "@/lib/utils";
+import { useLanguage } from "@/components/providers/language-provider";
+import { useSettings } from "@/components/providers/settings-provider";
+import { cn, toLocaleNumber } from "@/lib/utils";
 
 interface User {
   id: number;
@@ -100,8 +102,9 @@ function buildCameraProxyUrl(settings: QrSettings): string | null {
 }
 
 export default function SmartAttendanceTerminalPage() {
-  const { t } = useTranslation();
+  const { t, language } = useLanguage();
   const getImageUrl = useImageUrl();
+  const { settings: globalSettings } = useSettings();
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -112,16 +115,73 @@ export default function SmartAttendanceTerminalPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>("");
 
-  // Live Clock
+  // Live Clock synced with School Timezone
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
-      setCurrentTimeStr(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+      const tz = globalSettings?.timezone;
+      try {
+        const options: Intl.DateTimeFormatOptions = {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+          ...(tz ? { timeZone: tz } : {})
+        };
+        setCurrentTimeStr(new Intl.DateTimeFormat([], options).format(now));
+      } catch {
+        setCurrentTimeStr(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+      }
     };
     updateClock();
     const timer = setInterval(updateClock, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [globalSettings?.timezone]);
+
+  // Formatter for attendance log punch timestamp
+  const formatAttendanceTime = useCallback((timeStr?: string) => {
+    if (!timeStr) return "—";
+
+    // Full ISO UTC timestamp e.g. "2026-08-27T12:25:59.000000Z"
+    if (timeStr.includes("T")) {
+      const dateObj = new Date(timeStr);
+      if (!isNaN(dateObj.getTime())) {
+        const day = String(dateObj.getDate()).padStart(2, "0");
+        const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+        const year = dateObj.getFullYear();
+        const tz = globalSettings?.timezone;
+        try {
+          const time = new Intl.DateTimeFormat([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true,
+            ...(tz ? { timeZone: tz } : {})
+          }).format(dateObj);
+          return `${toLocaleNumber(`${day}/${month}/${year}`, language?.short_code)} ${toLocaleNumber(time, language?.short_code)}`;
+        } catch {
+          const time = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+          return `${toLocaleNumber(`${day}/${month}/${year}`, language?.short_code)} ${toLocaleNumber(time, language?.short_code)}`;
+        }
+      }
+    }
+
+    if (timeStr.includes("AM") || timeStr.includes("PM")) return toLocaleNumber(timeStr, language?.short_code);
+
+    // HH:mm:ss string e.g. "18:25:59"
+    const parts = timeStr.split(":");
+    if (parts.length >= 2) {
+      let hours = parseInt(parts[0], 10);
+      const minutes = parts[1];
+      const seconds = parts[2] ? parts[2].slice(0, 2) : "00";
+      const ampm = hours >= 12 ? "PM" : "AM";
+      hours = hours % 12 || 12;
+      const padHours = hours.toString().padStart(2, '0');
+      return toLocaleNumber(`${padHours}:${minutes}:${seconds} ${ampm}`, language?.short_code);
+    }
+
+    return toLocaleNumber(timeStr, language?.short_code);
+  }, [globalSettings?.timezone, language?.short_code]);
 
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -137,7 +197,11 @@ export default function SmartAttendanceTerminalPage() {
     }
   };
 
-  const [settings, setSettings] = useState<SmartSettings | null>(null);
+  const [settings, setSettings] = useState<SmartSettings>({
+    is_face_enabled: true,
+    is_qr_enabled: true,
+    is_nfc_enabled: true,
+  });
   const [qrSettings, setQrSettings] = useState<QrSettings | null>(null);
   const [cameraSource, setCameraSource] = useState<CameraSource>(null);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
@@ -187,14 +251,18 @@ export default function SmartAttendanceTerminalPage() {
     const init = async () => {
       try {
         const [smartRes, qrRes, usersRes] = await Promise.all([
-          api.get('/smart-attendance/settings'),
+          api.get('/smart-attendance/settings').catch(() => null),
           api.get('/attendance/qr-settings').catch(() => null),
-          api.get('/smart-attendance/users'),
+          api.get('/smart-attendance/users').catch(() => null),
         ]);
 
-        const sData = smartRes.data?.data?.data || smartRes.data?.data;
+        const sData = smartRes?.data?.data?.data || smartRes?.data?.data;
         if (sData) {
-          setSettings(sData);
+          setSettings({
+            is_face_enabled: sData.is_face_enabled !== false,
+            is_qr_enabled: sData.is_qr_enabled !== false,
+            is_nfc_enabled: sData.is_nfc_enabled !== false,
+          });
           if (sData.is_qr_enabled) setActiveMode('qr');
           else if (sData.is_face_enabled) setActiveMode('face');
           else if (sData.is_nfc_enabled) setActiveMode('nfc');
@@ -340,6 +408,10 @@ export default function SmartAttendanceTerminalPage() {
       stopWebcam();
       setCameraSource(null);
     }
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    }
   }, [activeMode, cameraUrl]);
 
   // 4. Attendance Recording
@@ -404,19 +476,25 @@ export default function SmartAttendanceTerminalPage() {
         if (canvasRef.current) faceapi.matchDimensions(canvasRef.current, displaySize);
 
         const detection = await faceapi.detectSingleFace(source, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-        if (detection && canvasRef.current) {
-          const resized = faceapi.resizeResults(detection, displaySize);
+        if (canvasRef.current) {
           const ctx = canvasRef.current.getContext('2d');
           ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-          faceapi.draw.drawDetections(canvasRef.current, resized);
+          if (detection) {
+            const resized = faceapi.resizeResults(detection, displaySize);
+            faceapi.draw.drawDetections(canvasRef.current, resized);
 
-          const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
-          const match = faceMatcher.findBestMatch(detection.descriptor);
-          if (match.label !== 'unknown' && match.distance < 0.55) {
-            markAttendance(parseInt(match.label), 'face');
+            const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
+            const match = faceMatcher.findBestMatch(detection.descriptor);
+            if (match.label !== 'unknown' && match.distance < 0.55) {
+              markAttendance(parseInt(match.label), 'face');
+            }
           }
         }
       } else if (activeMode === 'qr') {
+        if (canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d');
+          ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        }
         let imageData: ImageData | null = null;
         const tmpCanvas = document.createElement('canvas');
         if (cameraSource === 'ip' && cameraImgRef.current) {
@@ -564,7 +642,7 @@ export default function SmartAttendanceTerminalPage() {
 
   if (!settings) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto px-4 py-6">
+      <div className="w-full space-y-4 px-4 py-6 font-sans">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm animate-pulse">
           <div className="h-6 w-60 rounded bg-gray-200" />
           <div className="h-3 w-40 rounded bg-gray-100 mt-2" />
@@ -577,34 +655,45 @@ export default function SmartAttendanceTerminalPage() {
   }
 
   return (
-    <div className="min-h-[85vh] space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
+    <div className="w-full space-y-4 font-sans pb-12 text-xs">
       {/* Top Banner with Gradient & Live Clock */}
-      <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
+      <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
-              <Sparkles className="h-6 w-6" />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+              <Sparkles className="h-5 w-5" />
             </span>
             <div>
-              <h1 className="text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                Smart Attendance Terminal
+              <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
+                {t("smart_attendance_terminal") || "Smart Attendance Terminal"}
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                  Live AI Kiosk
+                  {t("live_ai_kiosk") || "Live AI Kiosk"}
                 </span>
               </h1>
               <p className="text-[11px] text-gray-500 mt-1">
-                Integrated Face Vision, Fast QR Scanner, NFC Radar, and Device Attendance Terminal
+                {t("smart_terminal_description") || "Integrated Face Vision, Fast QR Scanner, NFC Radar, and Device Attendance Terminal"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-end sm:self-center">
+          <div className="flex items-center gap-2.5 self-end sm:self-center">
+            <Link href="/dashboard/qr-code-attendance/setting">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 text-xs bg-white/80 hover:bg-white text-slate-700 border-slate-200 shadow-xs gap-1.5"
+              >
+                <Settings className="h-3.5 w-3.5 text-indigo-600" />
+                <span>{t("terminal_settings") || "Terminal Settings"}</span>
+              </Button>
+            </Link>
+
             {/* Live Clock Badge */}
-            <div className="bg-white/90 border border-indigo-100 px-3.5 py-1.5 rounded-xl shadow-sm text-right flex items-center gap-2">
-              <Clock className="w-4 h-4 text-indigo-600 animate-pulse" />
+            <div className="bg-white/90 border border-indigo-100 px-3.5 py-1.5 rounded-lg shadow-sm text-right flex items-center gap-2">
+              <Clock className="w-3.5 h-3.5 text-indigo-600 animate-pulse" />
               <div>
-                <p className="text-xs font-bold text-slate-800 tracking-wider font-mono">{currentTimeStr}</p>
-                <p className="text-[9px] text-slate-400 font-medium">Automatic Check-In System</p>
+                <p className="text-xs font-bold text-slate-800 tracking-wider font-mono">{toLocaleNumber(currentTimeStr, language?.short_code)}</p>
+                <p className="text-[9px] text-slate-400 font-medium">{t("automatic_checkin_system") || "Automatic Check-In System"}</p>
               </div>
             </div>
 
@@ -613,12 +702,12 @@ export default function SmartAttendanceTerminalPage() {
               type="button"
               onClick={() => setSoundEnabled(!soundEnabled)}
               className={cn(
-                "p-2 rounded-xl border transition-all shadow-sm",
+                "p-2 rounded-lg border transition-all shadow-sm",
                 soundEnabled ? "bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-50" : "bg-slate-100 text-slate-400 border-slate-200"
               )}
-              title={soundEnabled ? "Mute audio cues" : "Unmute audio cues"}
+              title={soundEnabled ? (t("mute_audio_cues") || "Mute audio cues") : (t("unmute_audio_cues") || "Unmute audio cues")}
             >
-              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+              {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
             </button>
           </div>
         </div>
@@ -628,8 +717,8 @@ export default function SmartAttendanceTerminalPage() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         <div className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today Punches</p>
-            <h3 className="text-xl font-black text-slate-800 mt-0.5">{metrics.todayTotal}</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("today_punches") || "Today Punches"}</p>
+            <h3 className="text-xl font-black text-slate-800 mt-0.5">{toLocaleNumber(metrics.todayTotal, language?.short_code)}</h3>
           </div>
           <span className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
             <Activity className="w-5 h-5" />
@@ -638,8 +727,8 @@ export default function SmartAttendanceTerminalPage() {
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Present / In</p>
-            <h3 className="text-xl font-black text-emerald-600 mt-0.5">{metrics.inCount}</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("present_in") || "Present / In"}</p>
+            <h3 className="text-xl font-black text-emerald-600 mt-0.5">{toLocaleNumber(metrics.inCount, language?.short_code)}</h3>
           </div>
           <span className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
             <CheckCircle className="w-5 h-5" />
@@ -648,8 +737,8 @@ export default function SmartAttendanceTerminalPage() {
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Exits / Out</p>
-            <h3 className="text-xl font-black text-amber-600 mt-0.5">{metrics.outCount}</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("exits_out") || "Exits / Out"}</p>
+            <h3 className="text-xl font-black text-amber-600 mt-0.5">{toLocaleNumber(metrics.outCount, language?.short_code)}</h3>
           </div>
           <span className="p-2.5 rounded-xl bg-amber-50 text-amber-600">
             <Flame className="w-5 h-5" />
@@ -658,8 +747,8 @@ export default function SmartAttendanceTerminalPage() {
 
         <div className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AI Face / QR Match</p>
-            <h3 className="text-xl font-black text-blue-600 mt-0.5">{metrics.faceCount + metrics.qrCount}</h3>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("ai_face_qr_match") || "AI Face / QR Match"}</p>
+            <h3 className="text-xl font-black text-blue-600 mt-0.5">{toLocaleNumber(metrics.faceCount + metrics.qrCount, language?.short_code)}</h3>
           </div>
           <span className="p-2.5 rounded-xl bg-blue-50 text-blue-600">
             <ShieldCheck className="w-5 h-5" />
@@ -672,18 +761,18 @@ export default function SmartAttendanceTerminalPage() {
         {/* Left 8 Cols: Camera / Scanner Terminal View */}
         <div className="lg:col-span-8 space-y-4">
           {/* Mode Selector Tabs */}
-          <div className="flex gap-2 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200 shadow-sm w-full">
+          <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 shadow-xs w-full overflow-x-auto no-scrollbar">
             {settings.is_qr_enabled && (
               <button
                 onClick={() => setActiveMode('qr')}
                 className={cn(
-                  "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2",
+                  "flex-1 min-w-[125px] sm:min-w-0 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 sm:shrink",
                   activeMode === 'qr'
                     ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
                 )}
               >
-                <ScanLine className="h-4 w-4" /> QR Code Scanner
+                <ScanLine className="h-4 w-4 shrink-0" /> <span className="truncate">{t("qr_code_scanner") || "QR Code Scanner"}</span>
               </button>
             )}
 
@@ -691,13 +780,13 @@ export default function SmartAttendanceTerminalPage() {
               <button
                 onClick={() => setActiveMode('face')}
                 className={cn(
-                  "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2",
+                  "flex-1 min-w-[125px] sm:min-w-0 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 sm:shrink",
                   activeMode === 'face'
                     ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
                 )}
               >
-                <ScanFace className="h-4 w-4" /> AI Face Vision
+                <ScanFace className="h-4 w-4 shrink-0" /> <span className="truncate">{t("ai_face_vision") || "AI Face Vision"}</span>
               </button>
             )}
 
@@ -705,33 +794,39 @@ export default function SmartAttendanceTerminalPage() {
               <button
                 onClick={() => setActiveMode('nfc')}
                 className={cn(
-                  "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2",
+                  "flex-1 min-w-[125px] sm:min-w-0 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 sm:shrink",
                   activeMode === 'nfc'
                     ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
                 )}
               >
-                <SmartphoneNfc className="h-4 w-4" /> NFC / RFID Tap
+                <SmartphoneNfc className="h-4 w-4 shrink-0" /> <span className="truncate">{t("nfc_rfid_tap") || "NFC / RFID Tap"}</span>
               </button>
             )}
 
             <button
               onClick={() => setActiveMode('manual')}
               className={cn(
-                "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2",
+                "flex-1 min-w-[125px] sm:min-w-0 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 sm:shrink",
                 activeMode === 'manual'
                   ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md"
-                  : "text-slate-600 hover:text-slate-900"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
               )}
             >
-              <Search className="h-4 w-4" /> Manual Check-In
+              <Search className="h-4 w-4 shrink-0" /> <span className="truncate">{t("manual_check_in") || "Manual Check-In"}</span>
             </button>
           </div>
 
           {/* Terminal Viewport Container */}
           <Card className="w-full overflow-hidden shadow-xl border border-slate-200/80 rounded-2xl bg-black">
             <CardContent className="p-0">
-              <div ref={fullscreenRef} className="relative aspect-video bg-slate-950 flex items-center justify-center overflow-hidden min-h-[380px]">
+              <div
+                ref={fullscreenRef}
+                className={cn(
+                  "relative w-full max-w-full bg-slate-950 flex items-center justify-center overflow-hidden transition-all",
+                  isFullscreen ? "h-screen w-screen" : "h-[360px] sm:h-[420px] md:h-[460px] lg:h-[480px]"
+                )}
+              >
                 {/* Instant Verification Overlay Card */}
                 {matchedUser && (
                   <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center text-white p-6 animate-in fade-in zoom-in duration-300">
@@ -751,12 +846,12 @@ export default function SmartAttendanceTerminalPage() {
                       "px-3 py-0.5 rounded-full text-xs font-black uppercase tracking-wider mb-1",
                       matchStatus === 'Out' ? "bg-amber-500/20 text-amber-300 border border-amber-500/30" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                     )}>
-                      {matchStatus === 'Out' ? 'Exit Recorded 🟡' : 'Entry Recorded 🟢'}
+                      {matchStatus === 'Out' ? (t("exit_recorded") || 'Exit Recorded 🟡') : (t("entry_recorded") || 'Entry Recorded 🟢')}
                     </span>
 
                     <h2 className="text-2xl font-black tracking-tight text-white">{matchedUser.name}</h2>
                     <p className="text-xs text-slate-300 mt-0.5 font-medium">
-                      {matchedUser.role} • {matchedUser.role === 'Student' ? `Roll/Admission: ${matchedUser.admission_no || 'N/A'}` : `ID: ${matchedUser.staff_id || 'N/A'}`}
+                      {matchedUser.role} • {matchedUser.role === 'Student' ? (t("roll_admission_short", { no: toLocaleNumber(matchedUser.admission_no || 'N/A', language?.short_code) }) || `Roll/Admission: ${matchedUser.admission_no || 'N/A'}`) : (t("id_label_short", { no: toLocaleNumber(matchedUser.staff_id || 'N/A', language?.short_code) }) || `ID: ${matchedUser.staff_id || 'N/A'}`)}
                     </p>
                     <p className="text-sm font-bold text-emerald-400 mt-3 animate-pulse">{matchMessage}</p>
                   </div>
@@ -767,26 +862,26 @@ export default function SmartAttendanceTerminalPage() {
                   {cameraSource === 'ip' ? (
                     <button
                       onClick={() => { setCameraError(false); setReconnectAttempt(0); setIpCamTick(n => n + 1); }}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-black/60 text-white/80 hover:bg-black/90 hover:text-white transition-all backdrop-blur-sm"
-                      title={t("refresh_camera")}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl bg-black/60 text-white/80 hover:bg-black/90 hover:text-white transition-all backdrop-blur-sm shadow border border-white/10"
+                      title={t("refresh_camera") || "Refresh Camera"}
                     >
                       <RefreshCw className="h-4 w-4" />
                     </button>
                   ) : isWebcamPlaying && (
                     <button
                       onClick={toggleFacingMode}
-                      className="px-3 py-1.5 rounded-xl bg-black/60 text-white/90 text-xs font-bold flex items-center gap-1.5 hover:bg-black/90 transition-all backdrop-blur-sm shadow border border-white/10"
-                      title="Switch between front and back camera"
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-black/60 text-white/90 text-xs font-bold flex items-center gap-1.5 hover:bg-black/90 transition-all backdrop-blur-sm shadow border border-white/10"
+                      title={facingMode === 'user' ? (t("back_cam") || "Back Cam 📷") : (t("front_cam") || "Front Cam 🤳")}
                     >
-                      <RefreshCw className="h-3 w-3" />
-                      <span>{facingMode === 'user' ? 'Front Cam 🤳' : 'Back Cam 📷'}</span>
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span className="hidden xs:inline sm:inline">{facingMode === 'user' ? (t("front_cam") || 'Front Cam 🤳') : (t("back_cam") || 'Back Cam 📷')}</span>
                     </button>
                   )}
 
                   <button
                     onClick={toggleFullscreen}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-black/60 text-white/80 hover:bg-black/90 hover:text-white transition-all backdrop-blur-sm"
-                    title={isFullscreen ? t("exit_fullscreen") : t("fullscreen")}
+                    className="w-8 h-8 flex items-center justify-center rounded-xl bg-black/60 text-white/80 hover:bg-black/90 hover:text-white transition-all backdrop-blur-sm shadow border border-white/10"
+                    title={isFullscreen ? (t("exit_fullscreen") || "Exit Fullscreen") : (t("fullscreen") || "Fullscreen")}
                   >
                     {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                   </button>
@@ -801,15 +896,15 @@ export default function SmartAttendanceTerminalPage() {
                           ref={cameraImgRef}
                           crossOrigin="anonymous"
                           src={`${cameraUrl}&_t=${ipCamTick}`}
-                          className="w-full h-full object-cover"
+                          className="absolute inset-0 w-full h-full object-cover"
                           alt="IP Camera"
                           onLoad={handleIpCamLoad}
                           onError={() => setCameraError(true)}
                         />
-                        <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none" />
+                        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
                         <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full border border-white/10">
                           {cameraError ? <WifiOff className="h-3 w-3 text-rose-400" /> : <Wifi className="h-3 w-3 text-emerald-400" />}
-                          {cameraError ? t("reconnecting") : "IP Camera Stream"}
+                          {cameraError ? (t("reconnecting") || "Reconnecting...") : (t("ip_camera_stream") || "IP Camera Stream")}
                         </div>
                       </>
                     ) : (
@@ -819,25 +914,25 @@ export default function SmartAttendanceTerminalPage() {
                           autoPlay
                           muted
                           playsInline
-                          className={cn("w-full h-full object-cover", facingMode === 'user' && "scale-x-[-1]")}
+                          className={cn("absolute inset-0 w-full h-full object-cover", facingMode === 'user' && "scale-x-[-1]")}
                         />
                         <canvas
                           ref={canvasRef}
-                          className={cn("absolute top-0 left-0 w-full h-full object-cover pointer-events-none", facingMode === 'user' && "scale-x-[-1]")}
+                          className={cn("absolute inset-0 w-full h-full object-cover pointer-events-none", facingMode === 'user' && "scale-x-[-1]")}
                         />
                         {!isWebcamPlaying && !matchedUser && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60 bg-slate-950 p-6 text-center space-y-3">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-white/60 bg-slate-950 p-6 text-center space-y-3 z-30">
                             <Camera className="h-10 w-10 opacity-50 text-indigo-400" />
                             <div>
-                              <p className="text-base font-bold text-white">Camera Feed Standby</p>
-                              <p className="text-xs text-slate-400 mt-1">Allow camera access or click below to turn on the camera</p>
+                              <p className="text-base font-bold text-white">{t("camera_feed_standby") || "Camera Feed Standby"}</p>
+                              <p className="text-xs text-slate-400 mt-1">{t("allow_camera_or_click_turn_on") || "Allow camera access or click below to turn on the camera"}</p>
                             </div>
                             <Button
                               size="sm"
                               onClick={() => startWebcam(3, facingMode)}
                               className="h-8 text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white gap-1.5 shadow"
                             >
-                              <Camera className="w-3.5 h-3.5" /> Turn On Camera
+                              <Camera className="w-3.5 h-3.5" /> {t("turn_on_camera") || "Turn On Camera"}
                             </Button>
                           </div>
                         )}
@@ -846,23 +941,43 @@ export default function SmartAttendanceTerminalPage() {
 
                     {/* QR Bracket Matrix Overlay with glowing laser */}
                     {activeMode === 'qr' && !cameraError && (
-                      <div className="absolute inset-0 border-[50px] border-black/35 pointer-events-none flex items-center justify-center">
-                        <div className="w-56 h-56 border-2 border-indigo-400/80 rounded-2xl relative overflow-hidden shadow-2xl">
-                          <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-indigo-400" />
-                          <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-indigo-400" />
-                          <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-indigo-400" />
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-indigo-400" />
-                          <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#10b981] animate-pulse"
-                            style={{ top: '50%', animation: 'bounce 2s ease-in-out infinite' }}
+                      <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
+                        <div className="relative w-48 h-48 sm:w-60 sm:h-60 max-w-[70vw] max-h-[70vw] rounded-2xl border-2 border-indigo-400/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.48)] overflow-hidden transition-all">
+                          {/* Corner Reticles */}
+                          <div className="absolute top-0 left-0 w-5 h-5 border-t-4 border-l-4 border-amber-400 rounded-tl-lg" />
+                          <div className="absolute top-0 right-0 w-5 h-5 border-t-4 border-r-4 border-amber-400 rounded-tr-lg" />
+                          <div className="absolute bottom-0 left-0 w-5 h-5 border-b-4 border-l-4 border-amber-400 rounded-bl-lg" />
+                          <div className="absolute bottom-0 right-0 w-5 h-5 border-b-4 border-r-4 border-amber-400 rounded-br-lg" />
+                          {/* Sweeping Laser Line */}
+                          <div
+                            className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#10b981]"
+                            style={{ animation: 'scannerLaser 2.2s ease-in-out infinite' }}
                           />
                         </div>
+                        <p className="mt-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-medium text-white/90 text-center shadow-sm max-w-xs">
+                          {t("align_qr_within_frame") || "Align student or staff QR code within the frame"}
+                        </p>
                       </div>
                     )}
 
                     {/* Face Recognition Oval Alignment Overlay */}
-                    {activeMode === 'face' && isModelsLoaded && !cameraError && (
-                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        <div className="w-48 h-64 border-2 border-dashed border-blue-400/70 rounded-[80px] shadow-2xl" />
+                    {activeMode === 'face' && !cameraError && (
+                      <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
+                        <div className="relative w-44 h-56 sm:w-52 sm:h-64 max-w-[65vw] max-h-[55vh] border-2 border-dashed border-indigo-400/80 rounded-[90px] shadow-[0_0_0_9999px_rgba(0,0,0,0.45)] flex items-center justify-center overflow-hidden transition-all">
+                          {/* Face Scan Sweeping Laser */}
+                          <div
+                            className="absolute inset-x-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee]"
+                            style={{ animation: 'scannerLaser 2.4s ease-in-out infinite' }}
+                          />
+                          {!isModelsLoaded && (
+                            <div className="p-2 rounded-lg bg-black/70 backdrop-blur-xs text-[10px] text-amber-300 font-medium text-center">
+                              {t("loading_face_models") || "Loading AI Vision Models..."}
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-3 px-3 py-1 rounded-full bg-black/60 backdrop-blur-sm text-[11px] font-medium text-white/90 text-center shadow-sm max-w-xs">
+                          {t("align_face_within_frame") || "Center face inside the oval guide"}
+                        </p>
                       </div>
                     )}
                   </>
@@ -875,9 +990,9 @@ export default function SmartAttendanceTerminalPage() {
                       <div className="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
                       <SmartphoneNfc className="h-16 w-16 text-purple-400 animate-pulse" />
                     </div>
-                    <h3 className="text-xl font-black mb-1">NFC / Smart RFID Radar Active</h3>
+                    <h3 className="text-xl font-black mb-1">{t("nfc_smart_radar_active") || "NFC / Smart RFID Radar Active"}</h3>
                     <p className="text-slate-400 text-center max-w-sm text-xs">
-                      Hold institutional student or staff NFC ID card near reader
+                      {t("hold_nfc_card_near_reader") || "Hold institutional student or staff NFC ID card near reader"}
                     </p>
                   </div>
                 )}
@@ -887,14 +1002,14 @@ export default function SmartAttendanceTerminalPage() {
                   <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white p-6 overflow-y-auto">
                     <div className="max-w-md w-full space-y-4">
                       <div className="text-center space-y-1">
-                        <h3 className="text-base font-bold">Manual Fast Check-In</h3>
-                        <p className="text-xs text-slate-400">Search by student or staff name, roll number, or ID</p>
+                        <h3 className="text-base font-bold">{t("manual_fast_check_in") || "Manual Fast Check-In"}</h3>
+                        <p className="text-xs text-slate-400">{t("search_student_staff_roll_id") || "Search by student or staff name, roll number, or ID"}</p>
                       </div>
 
                       <div className="relative">
                         <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
                         <Input
-                          placeholder="Type student name or ID..."
+                          placeholder={t("type_student_name_or_id_placeholder") || "Type student name or ID..."}
                           value={manualSearch}
                           onChange={e => setManualSearch(e.target.value)}
                           className="pl-9 h-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-indigo-500"
@@ -914,7 +1029,7 @@ export default function SmartAttendanceTerminalPage() {
                               </Avatar>
                               <div>
                                 <p className="text-xs font-bold text-white">{user.name}</p>
-                                <p className="text-[10px] text-slate-400">{user.role} • {user.role === 'Student' ? `Roll: ${user.admission_no || 'N/A'}` : `ID: ${user.staff_id || 'N/A'}`}</p>
+                                <p className="text-[10px] text-slate-400">{user.role} • {user.role === 'Student' ? (t("roll_admission_short", { no: toLocaleNumber(user.admission_no || 'N/A', language?.short_code) }) || `Roll: ${user.admission_no || 'N/A'}`) : (t("id_label_short", { no: toLocaleNumber(user.staff_id || 'N/A', language?.short_code) }) || `ID: ${user.staff_id || 'N/A'}`)}</p>
                               </div>
                             </div>
                             <Button
@@ -923,7 +1038,7 @@ export default function SmartAttendanceTerminalPage() {
                               disabled={isProcessing}
                               className="h-7 text-[10px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-2.5"
                             >
-                              Check-In
+                              {t("check_in_btn") || "Check-In"}
                             </Button>
                           </div>
                         ))}
@@ -938,14 +1053,14 @@ export default function SmartAttendanceTerminalPage() {
                 <div className="flex items-center gap-2 font-medium">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>
-                    {activeMode === 'face' && "Face Recognition Active (0.55 match threshold)"}
-                    {activeMode === 'qr' && "High-speed QR Code Detection Running"}
-                    {activeMode === 'nfc' && "Web NFC / USB RFID Bridge Connected"}
-                    {activeMode === 'manual' && "Manual Search Directory Active"}
+                    {activeMode === 'face' && (t("face_recognition_active_status") || "Face Recognition Active (0.55 match threshold)")}
+                    {activeMode === 'qr' && (t("qr_code_detection_running") || "High-speed QR Code Detection Running")}
+                    {activeMode === 'nfc' && (t("nfc_bridge_connected") || "Web NFC / USB RFID Bridge Connected")}
+                    {activeMode === 'manual' && (t("manual_search_directory_active") || "Manual Search Directory Active")}
                   </span>
                 </div>
                 <span className="font-mono text-[10px] text-slate-500">
-                  {cameraSource === 'ip' ? 'IP Camera' : `Device Camera (${facingMode === 'user' ? 'Front' : 'Rear'})`}
+                  {cameraSource === 'ip' ? (t("ip_camera_stream") || 'IP Camera') : `${facingMode === 'user' ? (t("device_camera_front") || 'Device Camera (Front)') : (t("device_camera_rear") || 'Device Camera (Rear)')}`}
                 </span>
               </div>
             </CardContent>
@@ -958,10 +1073,10 @@ export default function SmartAttendanceTerminalPage() {
             <CardHeader className="p-4 border-b border-slate-100 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
                 <Clock className="h-4 w-4 text-indigo-600" />
-                Live Attendance Feed
+                {t("live_attendance_feed") || "Live Attendance Feed"}
               </CardTitle>
               <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                {filteredRecords.length} Punches
+                {t("punches_count", { count: toLocaleNumber(filteredRecords.length, language?.short_code) }) || `${filteredRecords.length} Punches`}
               </span>
             </CardHeader>
 
@@ -969,7 +1084,7 @@ export default function SmartAttendanceTerminalPage() {
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
                 <Input
-                  placeholder="Filter today's logs..."
+                  placeholder={t("filter_todays_logs_placeholder") || "Filter today's logs..."}
                   value={recordSearch}
                   onChange={e => setRecordSearch(e.target.value)}
                   className="pl-8 h-8 text-xs bg-white border-slate-200"
@@ -981,8 +1096,8 @@ export default function SmartAttendanceTerminalPage() {
               {filteredRecords.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-400 text-center px-4">
                   <UserCheck className="h-10 w-10 mb-2 opacity-30 text-indigo-400" />
-                  <p className="text-xs font-bold text-slate-600">No Check-Ins Found</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Scanned punches will appear here in real-time.</p>
+                  <p className="text-xs font-bold text-slate-600">{t("no_checkins_found") || "No Check-Ins Found"}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{t("scanned_punches_realtime_hint") || "Scanned punches will appear here in real-time."}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 max-h-[460px] overflow-y-auto">
@@ -998,18 +1113,18 @@ export default function SmartAttendanceTerminalPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-xs font-bold text-slate-800 truncate">{r.user?.name || "Unknown"}</p>
-                          <span className="text-[10px] font-mono text-slate-400">{r.attendance_time}</span>
+                          <span className="text-[10px] font-mono text-slate-500 font-semibold">{formatAttendanceTime(r.attendance_time)}</span>
                         </div>
 
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
-                            {r.user?.role || "Student"}
+                            {r.user?.role || t("student") || "Student"}
                           </span>
                           <span className={cn(
                             "px-1.5 py-0.2 rounded text-[9px] font-bold",
                             r.status === 'Out' ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
                           )}>
-                            {r.status === 'Out' ? 'Exit (Out)' : 'Entry (In)'}
+                            {r.status === 'Out' ? (t("exit_out_badge") || 'Exit (Out)') : (t("entry_in_badge") || 'Entry (In)')}
                           </span>
                           <span className="text-[9px] text-slate-400">
                             • {r.method === 'face' ? '👤 Face' : r.method === 'qr' ? '📱 QR' : r.method === 'nfc' ? '💳 NFC' : '⚡ Auto'}

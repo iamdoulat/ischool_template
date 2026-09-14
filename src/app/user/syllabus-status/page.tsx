@@ -13,15 +13,17 @@ import {
     Circle,
     GraduationCap,
     Route,
-    Milestone,
-    Sparkles,
-    Check
+    Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateSubjectName,
+} from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 
 type Topic = {
@@ -45,8 +47,25 @@ type SubjectSyllabus = {
     lessons: Lesson[];
 };
 
+function formatLocalizedDate(dateStr: string, langCode: string) {
+    if (!dateStr) return "";
+    const mdy = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdy) {
+        const [, mm, dd, yyyy] = mdy;
+        const pad = (v: string) => v.padStart(2, "0");
+        return `${toLocaleNumber(pad(dd), langCode)}/${toLocaleNumber(pad(mm), langCode)}/${toLocaleNumber(yyyy, langCode)}`;
+    }
+    const ymd = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) {
+        const [, yyyy, mm, dd] = ymd;
+        const pad = (v: string) => v.padStart(2, "0");
+        return `${toLocaleNumber(pad(dd), langCode)}/${toLocaleNumber(pad(mm), langCode)}/${toLocaleNumber(yyyy, langCode)}`;
+    }
+    return toLocaleNumber(dateStr, langCode);
+}
+
 /* ── Animated donut ── */
-function DonutChart({ percentage, color }: { percentage: number; color: string }) {
+function DonutChart({ percentage, color, langCode }: { percentage: number; color: string; langCode: string }) {
     const [animated, setAnimated] = useState(0);
     const radius = 42;
     const stroke = 14;
@@ -73,7 +92,9 @@ function DonutChart({ percentage, color }: { percentage: number; color: string }
                     style={{ transition: "stroke-dashoffset 1s ease-out" }}
                 />
             </svg>
-            <span className="absolute text-[15px] font-bold text-gray-800">{animated}%</span>
+            <span className="absolute text-[15px] font-bold text-gray-800 dark:text-gray-100">
+                {toLocaleNumber(animated, langCode)}%
+            </span>
         </div>
     );
 }
@@ -110,19 +131,20 @@ function HierarchicalLessonNode({
     index,
     total,
     color,
-    subjectIdx
+    langCode,
 }: {
     lesson: Lesson;
     index: number;
     total: number;
     color: string;
-    subjectIdx: number;
+    langCode: string;
 }) {
     const { t } = useTranslation();
     const [open, setOpen] = useState(true);
     const isFirst = index === 0;
     const isLast = index === total - 1;
     const isCompleted = lesson.completion === 100;
+    const localizedIndex = toLocaleNumber(index + 1, langCode);
 
     return (
         <div className="relative flex items-start gap-3 group/step">
@@ -137,7 +159,7 @@ function HierarchicalLessonNode({
                         : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
                 )}
             >
-                {isCompleted ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : index + 1}
+                {isCompleted ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : localizedIndex}
             </div>
 
             {/* Step Card */}
@@ -150,25 +172,25 @@ function HierarchicalLessonNode({
                     <div className="space-y-1 min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                                <span>Lesson {index + 1}</span>
+                                <span>{t("lesson_label")} {localizedIndex}</span>
                                 {isFirst && (
                                     <span className="text-[8.5px] bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold border border-orange-200 dark:border-orange-800">
-                                        Initial
+                                        {t("initial_step")}
                                     </span>
                                 )}
                                 {isLast && total > 1 && (
                                     <span className="text-[8.5px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-200 dark:border-emerald-800">
-                                        Final Step
+                                        {t("final_step")}
                                     </span>
                                 )}
                             </span>
                             {lesson.topics.length > 0 && (
                                 <Badge variant="outline" className="bg-gray-50 text-gray-500 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-[9.5px] font-bold py-0 px-2 h-4.5">
-                                    {lesson.topics.length} Topic{lesson.topics.length === 1 ? "" : "s"}
+                                    {toLocaleNumber(lesson.topics.length, langCode)} {lesson.topics.length === 1 ? t("topic_singular") : t("topic_plural")}
                                 </Badge>
                             )}
                         </div>
-                        <h4 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+                        <h4 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 leading-snug">
                             {lesson.title}
                         </h4>
                     </div>
@@ -178,8 +200,8 @@ function HierarchicalLessonNode({
                         <div className="w-24 sm:w-28">
                             <ProgressBar value={lesson.completion} color={color} />
                         </div>
-                        <span className="text-xs font-black text-gray-700 dark:text-gray-300 w-10 text-right">
-                            {lesson.completion}%
+                        <span className="text-xs font-black text-gray-700 dark:text-gray-300 w-12 text-right">
+                            {toLocaleNumber(lesson.completion, langCode)}%
                         </span>
                         <div className="h-6 w-6 rounded-md bg-gray-50 dark:bg-gray-700/50 flex items-center justify-center text-gray-400">
                             {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
@@ -191,7 +213,7 @@ function HierarchicalLessonNode({
                 {open && (
                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-2 animate-in fade-in duration-200">
                         {lesson.topics.length === 0 ? (
-                            <p className="text-[11px] text-gray-400 italic pl-3">No topics listed under this lesson</p>
+                            <p className="text-[11px] text-gray-400 italic pl-3">{t("no_topics_under_lesson")}</p>
                         ) : (
                             <div className="relative pl-4 space-y-2 before:absolute before:left-1.5 before:top-2 before:bottom-2 before:w-[1.5px] before:border-l before:border-dashed before:border-indigo-200 dark:before:border-indigo-800">
                                 {lesson.topics.map((topic, tIdx) => (
@@ -208,7 +230,7 @@ function HierarchicalLessonNode({
                                                 <Circle className="h-3.5 w-3.5 text-gray-300 shrink-0" />
                                             )}
                                             <span className="font-semibold text-gray-700 dark:text-gray-300 truncate">
-                                                <span className="text-gray-400 mr-1 text-[10px]">#{index + 1}.{tIdx + 1}</span>
+                                                <span className="text-gray-400 mr-1 text-[10px]">#{localizedIndex}.{toLocaleNumber(tIdx + 1, langCode)}</span>
                                                 {topic.title}
                                             </span>
                                         </div>
@@ -223,7 +245,7 @@ function HierarchicalLessonNode({
                                             )}
                                         >
                                             {topic.is_completed
-                                                ? `${t("complete")}${topic.completion_date ? ` (${topic.completion_date})` : ""}`
+                                                ? `${t("complete")}${topic.completion_date ? ` (${formatLocalizedDate(topic.completion_date, langCode)})` : ""}`
                                                 : t("incomplete")}
                                         </span>
                                     </div>
@@ -239,7 +261,8 @@ function HierarchicalLessonNode({
 
 /* ── Main page ── */
 export default function UserSyllabusStatusPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [data, setData] = useState<SubjectSyllabus[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
@@ -260,13 +283,13 @@ export default function UserSyllabusStatusPage() {
             }
         };
         fetch();
-    }, [toast]);
+    }, [toast, t]);
 
     const copyToClipboard = () => {
         const text = data.map((s) =>
-            `${s.subject}: ${s.completion}% (${s.completed_topics}/${s.total_topics})\n` +
+            `${translateSubjectName(s.subject, langCode)}: ${toLocaleNumber(s.completion, langCode)}% (${toLocaleNumber(s.completed_topics, langCode)}/${toLocaleNumber(s.total_topics, langCode)})\n` +
             s.lessons.map((l) =>
-                `  ${l.title}: ${l.completion}%\n` +
+                `  ${l.title}: ${toLocaleNumber(l.completion, langCode)}%\n` +
                 l.topics.map((tp) => `    ${tp.title}: ${tp.is_completed ? t("complete") : t("incomplete")}`).join("\n")
             ).join("\n")
         ).join("\n\n");
@@ -278,23 +301,38 @@ export default function UserSyllabusStatusPage() {
     const completedTopics = data.reduce((a, s) => a + s.completed_topics, 0);
     const overall = totalTopics ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
+    const localizedOverall = toLocaleNumber(overall, langCode);
+    const localizedCompletedTopics = toLocaleNumber(completedTopics, langCode);
+    const localizedTotalTopics = toLocaleNumber(totalTopics, langCode);
+    const localizedSubjectCount = toLocaleNumber(data.length, langCode);
+
+    const subjectLabel = data.length === 1 ? t("subject_singular") : t("subject_plural");
+
     return (
         <div className="p-4 lg:p-6 animate-in fade-in duration-500">
             <Card className="shadow-sm border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden p-0 gap-0">
                 {/* ── Header ── */}
-                <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <GraduationCap className="h-5 w-5" />
                         </span>
-                        <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none truncate">{t("syllabus_status")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">
+                        <div className="min-w-0 space-y-1">
+                            <h1 className="text-[16px] font-bold text-gray-800 dark:text-gray-100 leading-snug">
+                                {t("syllabus_status")}
+                            </h1>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
                                 {loading
                                     ? t("loading_syllabus")
                                     : data.length === 0
                                         ? t("no_syllabus_available")
-                                        : `${overall}% ${t("overall")} · ${completedTopics}/${totalTopics} ${t("topics_across")} ${data.length} ${t("subject")}${data.length === 1 ? "" : "s"}`}
+                                        : t("syllabus_overview_stats", {
+                                            overall: localizedOverall,
+                                            completed: localizedCompletedTopics,
+                                            total: localizedTotalTopics,
+                                            count: localizedSubjectCount,
+                                            subject_label: subjectLabel,
+                                        })}
                             </p>
                         </div>
                     </div>
@@ -305,14 +343,14 @@ export default function UserSyllabusStatusPage() {
                                 size="icon"
                                 onClick={copyToClipboard}
                                 title={t("copy")}
-                                className="h-9 w-9 rounded-[10px] hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 text-gray-500 transition-all print:hidden"
+                                className="h-9 w-9 rounded-[10px] hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 text-gray-500 transition-all print:hidden cursor-pointer"
                             >
                                 <Copy className="h-4 w-4" />
                             </Button>
                             <Button
                                 onClick={() => window.print()}
                                 title={t("print")}
-                                className="h-9 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
+                                className="h-9 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden cursor-pointer"
                             >
                                 <Printer className="h-4 w-4" />
                                 <span className="hidden sm:inline">{t("print")}</span>
@@ -340,20 +378,29 @@ export default function UserSyllabusStatusPage() {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                                     {data.map((s, idx) => {
                                         const color = getColor(idx);
+                                        const translatedSubject = translateSubjectName(s.subject, langCode);
+                                        const localizedCompletion = toLocaleNumber(s.completion, langCode);
+                                        const localizedCompleted = toLocaleNumber(s.completed_topics, langCode);
+                                        const localizedTotal = toLocaleNumber(s.total_topics, langCode);
+
                                         return (
                                             <div
                                                 key={s.subject}
                                                 className="group flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/90 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
                                             >
-                                                <p className="text-[12px] font-bold text-gray-700 dark:text-gray-200 text-center leading-tight line-clamp-2 min-h-[30px] flex items-center" title={s.subject}>{s.subject}</p>
-                                                <DonutChart percentage={s.completion} color={color} />
+                                                <p className="text-[12px] font-bold text-gray-700 dark:text-gray-200 text-center leading-tight line-clamp-2 min-h-[30px] flex items-center" title={translatedSubject}>
+                                                    {translatedSubject}
+                                                </p>
+                                                <DonutChart percentage={s.completion} color={color} langCode={langCode} />
                                                 <div
                                                     className="text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow-sm"
                                                     style={{ backgroundColor: color }}
                                                 >
-                                                    {s.completion}% {t("complete")}
+                                                    {localizedCompletion}% {t("complete")}
                                                 </div>
-                                                <p className="text-[11px] text-gray-400">{s.completed_topics}/{s.total_topics} {t("topics")}</p>
+                                                <p className="text-[11px] text-gray-400">
+                                                    {localizedCompleted}/{localizedTotal} {t("topics")}
+                                                </p>
                                             </div>
                                         );
                                     })}
@@ -365,16 +412,20 @@ export default function UserSyllabusStatusPage() {
                                 <div className="px-5 py-3.5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/60 flex items-center justify-between">
                                     <div className="flex items-center gap-2 font-bold text-[13px] text-gray-800 dark:text-gray-200">
                                         <Route className="h-4 w-4 text-indigo-500" />
-                                        <span>Curriculum Roadmap & Step-by-Step Hierarchy</span>
+                                        <span>{t("curriculum_roadmap_hierarchy")}</span>
                                     </div>
                                     <span className="text-[11px] text-gray-400 font-medium">
-                                        {data.length} Subject{data.length === 1 ? "" : "s"}
+                                        {localizedSubjectCount} {subjectLabel}
                                     </span>
                                 </div>
 
                                 <div className="p-4 sm:p-6 space-y-6">
                                     {data.map((subject, idx) => {
                                         const color = getColor(idx);
+                                        const translatedSubject = translateSubjectName(subject.subject, langCode);
+                                        const localizedCompletion = toLocaleNumber(subject.completion, langCode);
+                                        const localizedLessonCount = toLocaleNumber(subject.lessons?.length || 0, langCode);
+
                                         return (
                                             <div
                                                 key={subject.subject}
@@ -384,15 +435,15 @@ export default function UserSyllabusStatusPage() {
                                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-3.5 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800">
                                                     <div className="flex items-center gap-2.5 font-black text-sm text-gray-800 dark:text-gray-100">
                                                         <span className="w-3 h-3 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: color }} />
-                                                        <span>{subject.subject}</span>
+                                                        <span>{translatedSubject}</span>
                                                         <Badge variant="outline" className="ml-1 text-[10px] font-bold border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-300">
-                                                            {subject.lessons?.length || 0} Lessons
+                                                            {localizedLessonCount} {t("lessons")}
                                                         </Badge>
                                                     </div>
                                                     <div className="flex items-center gap-3 w-full sm:w-auto sm:min-w-[200px]">
                                                         <ProgressBar value={subject.completion} color={color} />
                                                         <span className="text-xs font-black text-gray-700 dark:text-gray-300 w-16 text-right shrink-0">
-                                                            {subject.completion}% {t("done")}
+                                                            {localizedCompletion}% {t("done")}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -412,7 +463,7 @@ export default function UserSyllabusStatusPage() {
                                                                     index={lIdx}
                                                                     total={subject.lessons.length}
                                                                     color={color}
-                                                                    subjectIdx={idx}
+                                                                    langCode={langCode}
                                                                 />
                                                             ))}
                                                         </div>
@@ -430,3 +481,4 @@ export default function UserSyllabusStatusPage() {
         </div>
     );
 }
+

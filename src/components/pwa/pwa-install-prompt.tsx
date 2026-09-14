@@ -73,18 +73,27 @@ export function PWAInstallPrompt() {
     const userAgent = window.navigator.userAgent.toLowerCase();
     const iosDevice = /iphone|ipad|ipod/.test(userAgent);
 
+    let timer: NodeJS.Timeout | null = null;
     if (iosDevice) {
-      const timer = setTimeout(() => {
+      timer = setTimeout(() => {
         setIsIOS(true);
         setShowPrompt(true);
       }, 2000);
-      return () => clearTimeout(timer);
+    } else if (window.deferredPWAInstallPrompt) {
+      timer = setTimeout(() => {
+        if (window.deferredPWAInstallPrompt) {
+          setDeferredPrompt(window.deferredPWAInstallPrompt);
+          setShowPrompt(true);
+        }
+      }, 500);
     }
 
     // Standard Android / Desktop PWA event listener
     const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      // Do not preventDefault() so the native browser address bar install icon appears
+      const promptEvent = e as BeforeInstallPromptEvent;
+      window.deferredPWAInstallPrompt = promptEvent;
+      setDeferredPrompt(promptEvent);
       setShowPrompt(true);
     };
 
@@ -94,12 +103,14 @@ export function PWAInstallPrompt() {
       setIsStandalone(true);
       setShowPrompt(false);
       setDeferredPrompt(null);
+      window.deferredPWAInstallPrompt = null;
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
+      if (timer) clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
@@ -137,49 +148,53 @@ export function PWAInstallPrompt() {
     <>
       {/* Floating PWA Install Banner (Portal-Scoped) */}
       <div className="fixed bottom-20 md:bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-[99990] animate-in slide-in-from-bottom-5 duration-300">
-        <div className="bg-card/95 backdrop-blur-xl border border-primary/20 shadow-2xl rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#FF9800] via-[#818cf8] to-[#6366F1]" />
-          
-          <div className="w-12 h-12 rounded-xl bg-muted/60 border border-muted/80 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
-            {!imgError && appLogo ? (
-              <img
-                src={appLogo}
-                alt={appName}
-                className="w-10 h-10 object-contain rounded-lg"
-                onError={() => setImgError(true)}
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-primary text-white flex items-center justify-center font-black text-base shadow-inner">
-                {appName[0]?.toUpperCase() || <Smartphone className="w-5 h-5" />}
-              </div>
-            )}
-          </div>
-
-          <div className="flex-1 min-w-0 pr-6">
-            <h4 className="text-xs font-bold text-foreground truncate">
-              Install {appName} App
-            </h4>
-            <p className="text-[11px] text-muted-foreground line-clamp-1">
-              {isIOS ? "Add to your iPhone Home Screen" : "Fast, offline & full screen app experience"}
-            </p>
-          </div>
-
-          <Button
-            size="sm"
-            onClick={handleInstallClick}
-            className="h-8 text-xs font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded-lg px-3 shadow-md shrink-0 gap-1.5"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Install
-          </Button>
-
+        <div className="relative">
+          {/* Close button at the corner for prominent visibility */}
           <button
             onClick={handleDismiss}
-            className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground p-1 rounded-md transition-colors"
+            className="absolute -top-2.5 -right-2.5 z-30 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-border/80 shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:scale-110 active:scale-95 transition-all focus:outline-none"
             title="Close"
+            aria-label="Close"
           >
             <X className="w-3.5 h-3.5" />
           </button>
+
+          <div className="bg-card/95 backdrop-blur-xl border border-primary/20 shadow-2xl rounded-2xl p-4 flex items-center gap-3.5 relative overflow-hidden group">
+            <div className="absolute top-0 start-0 w-1.5 h-full bg-gradient-to-b from-[#FF9800] via-[#818cf8] to-[#6366F1]" />
+            
+            <div className="w-12 h-12 rounded-xl bg-muted/60 border border-muted/80 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+              {!imgError && appLogo ? (
+                <img
+                  src={appLogo}
+                  alt={appName}
+                  className="w-10 h-10 object-contain rounded-lg"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-primary text-white flex items-center justify-center font-black text-base shadow-inner">
+                  {appName[0]?.toUpperCase() || <Smartphone className="w-5 h-5" />}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-foreground truncate">
+                Install {appName} App
+              </h4>
+              <p className="text-[11px] text-muted-foreground line-clamp-1">
+                {isIOS ? "Add to your iPhone Home Screen" : "Fast, offline & full screen app experience"}
+              </p>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={handleInstallClick}
+              className="h-8 text-xs font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white rounded-lg px-3 shadow-md shrink-0 gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Install
+            </Button>
+          </div>
         </div>
       </div>
 

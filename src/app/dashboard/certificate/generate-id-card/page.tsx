@@ -5,6 +5,7 @@ import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useLanguage } from "@/components/providers/language-provider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,8 +43,23 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { type IdCardTemplate, type IdCardPerson, renderIdCardHtml, printIdCards, downloadIdCardPdf } from "@/lib/certificate";
+import {
+    type IdCardTemplate,
+    type IdCardPerson,
+    renderIdCardHtml,
+    printIdCards,
+    downloadIdCardPdf,
+} from "@/lib/certificate";
 import { getImageUrl } from "@/lib/image-url";
+import {
+    toLocaleNumber,
+    formatDate,
+    translateClassName,
+    translateSectionName,
+    translateCertificateTemplateName,
+    translateGender,
+    translateStudentCategory,
+} from "@/lib/utils";
 
 interface ClassOption { id: number; name: string; }
 interface SectionOption { id: number; name: string; }
@@ -148,10 +164,13 @@ function getStudentClassWithSection(
     classList: ClassOption[] = [],
     sectionList: SectionOption[] = [],
     fallbackClassId = "",
-    fallbackSectionId = ""
+    fallbackSectionId = "",
+    langCode = "en"
 ): string {
-    const clsName = getStudentClassName(s, classList, fallbackClassId);
-    const secName = getStudentSectionName(s, sectionList, fallbackSectionId);
+    const rawCls = getStudentClassName(s, classList, fallbackClassId);
+    const rawSec = getStudentSectionName(s, sectionList, fallbackSectionId);
+    const clsName = rawCls ? translateClassName(rawCls, langCode) : "";
+    const secName = rawSec ? translateSectionName(rawSec, langCode) : "";
 
     if (clsName && secName) return `${clsName} (${secName})`;
     if (clsName) return clsName;
@@ -165,25 +184,28 @@ function toPerson(
     classList: ClassOption[] = [],
     sectionList: SectionOption[] = [],
     fallbackClassId = "",
-    fallbackSectionId = ""
+    fallbackSectionId = "",
+    langCode = "en"
 ): IdCardPerson {
     const avatarRaw = s.avatar || (s as any).image || (s as any).photo || (s as any).student_photo || null;
     const resolvedQr = s.qr_code || s.user?.qr_code || (s.admission_no ? qrMap[String(s.admission_no)] : null) || (s.id ? qrMap[String(s.id)] : null) || s.admission_no || null;
-    const className = getStudentClassName(s, classList, fallbackClassId);
-    const sectionName = getStudentSectionName(s, sectionList, fallbackSectionId);
+    const rawClass = getStudentClassName(s, classList, fallbackClassId);
+    const rawSection = getStudentSectionName(s, sectionList, fallbackSectionId);
+    const className = rawClass ? translateClassName(rawClass, langCode) : "";
+    const sectionName = rawSection ? translateSectionName(rawSection, langCode) : "";
     return {
         name: studentName(s),
-        admission_no: s.admission_no || "",
-        roll_no: s.roll_no || "",
+        admission_no: s.admission_no ? toLocaleNumber(s.admission_no, langCode) : "",
+        roll_no: s.roll_no ? toLocaleNumber(s.roll_no, langCode) : "",
         class: className,
         section: sectionName,
         father_name: s.father_name || "",
         mother_name: s.mother_name || "",
-        dob: s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "",
+        dob: s.dob ? toLocaleNumber(formatDate(s.dob), langCode) : "",
         blood_group: s.blood_group || "",
         house: s.house || "",
-        session: (s as any).session?.session || (s as any).academic_session?.session || (s as any).academicSession?.session || (s as any).session_name || (s as any).session || "2024-25",
-        phone: s.phone || "",
+        session: toLocaleNumber((s as any).session?.session || (s as any).academic_session?.session || (s as any).academicSession?.session || (s as any).session_name || (s as any).session || "2024-25", langCode),
+        phone: s.phone ? toLocaleNumber(s.phone, langCode) : "",
         address: s.current_address || "",
         photo: avatarRaw ? getImageUrl(avatarRaw) : null,
         qr_code: resolvedQr,
@@ -192,8 +214,10 @@ function toPerson(
 
 export default function GenerateIDCardPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
+    const langCode = language?.short_code || "en";
+
     const [classes, setClasses] = useState<ClassOption[]>([]);
     const [sections, setSections] = useState<SectionOption[]>([]);
     const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -255,10 +279,10 @@ export default function GenerateIDCardPage() {
         setActivating(true);
         try {
             await api.post(`/certificate/student-id-cards/${id}/activate`);
-            setTemplates((prev) => prev.map((t) => ({ ...t, is_active: String(t.id) === id })));
+            setTemplates((prev) => prev.map((tp) => ({ ...tp, is_active: String(tp.id) === id })));
             toast({
-                title: t("success") || "Success",
-                description: "Template activated as the official student ID card style.",
+                title: t("success"),
+                description: t("template_activated_successfully"),
             });
         } catch {
             tt.error("failed_to_activate_template");
@@ -313,6 +337,8 @@ export default function GenerateIDCardPage() {
     const toggleOne = (id: number) => setSelected((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
 
     const selectedTemplate = templates.find((tp) => String(tp.id) === templateId);
+    const selectedClass = classes.find((c) => String(c.id) === classId);
+    const selectedSection = sections.find((s) => String(s.id) === sectionId);
 
     const handleGenerate = () => {
         const template = templates.find((tp) => String(tp.id) === templateId);
@@ -326,57 +352,57 @@ export default function GenerateIDCardPage() {
             return;
         }
         setAssignedIds((prev) => Array.from(new Set([...prev, ...selected])));
-        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s, qrMap, classes, sections, classId, sectionId), "student")).join(""));
+        printIdCards(chosen.map((s) => renderIdCardHtml(template, toPerson(s, qrMap, classes, sections, classId, sectionId, langCode), "student")).join(""));
         toast({
-            title: t("success") || "Success",
-            description: `ID Card generated & assigned for ${chosen.length} student(s).`,
+            title: t("success"),
+            description: t("id_card_generated_assigned_count", { count: toLocaleNumber(chosen.length, langCode) }),
         });
     };
 
     const handleUnassignBulk = () => {
         if (selected.length === 0) {
-            toast({ title: t("no_students_selected"), description: "Please select at least one student to unassign", variant: "destructive" });
+            toast({ title: t("no_students_selected"), description: t("select_at_least_one_student"), variant: "destructive" });
             return;
         }
         setAssignedIds((prev) => prev.filter((id) => !selected.includes(id)));
         toast({
-            title: t("success") || "Success",
-            description: `ID Card unassigned for ${selected.length} student(s).`,
+            title: t("success"),
+            description: t("id_card_unassigned_count", { count: toLocaleNumber(selected.length, langCode) }),
         });
     };
 
     const handleUnassignSingle = (s: ApiStudent) => {
         setAssignedIds((prev) => prev.filter((id) => id !== s.id));
         toast({
-            title: t("success") || "Success",
-            description: `ID Card unassigned for ${studentName(s)}.`,
+            title: t("success"),
+            description: t("id_card_unassigned_for_name", { name: studentName(s) }),
         });
     };
 
     const handlePrintSingle = (s: ApiStudent) => {
         const template = templates.find((tp) => String(tp.id) === templateId);
         if (!template) {
-            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            toast({ title: t("error"), description: t("select_id_card_template"), variant: "destructive" });
             return;
         }
         setAssignedIds((prev) => Array.from(new Set([...prev, s.id])));
-        const html = renderIdCardHtml(template, toPerson(s, qrMap, classes, sections, classId, sectionId), "student");
+        const html = renderIdCardHtml(template, toPerson(s, qrMap, classes, sections, classId, sectionId, langCode), "student");
         printIdCards(html);
     };
 
     const handleDownloadSingle = async (s: ApiStudent) => {
         const template = templates.find((tp) => String(tp.id) === templateId);
         if (!template) {
-            toast({ title: t("error"), description: t("select_id_card_template") || "Please select an ID card template first", variant: "destructive" });
+            toast({ title: t("error"), description: t("select_id_card_template"), variant: "destructive" });
             return;
         }
         setDownloadingId(s.id);
         try {
             setAssignedIds((prev) => Array.from(new Set([...prev, s.id])));
-            const html = renderIdCardHtml(template, toPerson(s, qrMap, classes, sections, classId, sectionId), "student");
+            const html = renderIdCardHtml(template, toPerson(s, qrMap, classes, sections, classId, sectionId, langCode), "student");
             const safeName = (s.name || s.first_name || `student_${s.id}`).replace(/[^a-zA-Z0-9-_]/g, "_");
             await downloadIdCardPdf(html, `Student_ID_Card_${safeName}.pdf`);
-            toast({ title: t("success"), description: t("id_card_downloaded") || "ID card downloaded successfully" });
+            toast({ title: t("success"), description: t("id_card_downloaded") });
         } catch (err) {
             console.error("Failed to download ID card:", err);
             tt.error("failed_to_download_id_card");
@@ -386,12 +412,24 @@ export default function GenerateIDCardPage() {
     };
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(filtered.map((s) => `${s.admission_no}\t${studentName(s)}\t${getCategoryName(s, categories)}`).join("\n"));
+        navigator.clipboard.writeText(filtered.map((s) => `${toLocaleNumber(s.admission_no, langCode)}\t${studentName(s)}\t${getCategoryName(s, categories)}`).join("\n"));
         tt.success("data_copied_to_clipboard");
     };
     const handleExportCSV = () => {
-        const rows = [[t("admission_no"), t("name"), t("class"), t("father_name"), t("dob"), t("gender"), t("category"), t("mobile"), "ID Card Status"],
-            ...filtered.map((s) => [s.admission_no || "", studentName(s), getStudentClassWithSection(s, classes, sections, classId, sectionId), s.father_name || "", s.dob || "", s.gender || "", getCategoryName(s, categories), s.phone || "", assignedIds.includes(s.id) ? "Generated" : "Unassigned"])];
+        const rows = [
+            [t("admission_no"), t("name"), t("class"), t("father_name"), t("dob"), t("gender"), t("category"), t("mobile_number"), t("id_card_status")],
+            ...filtered.map((s) => [
+                s.admission_no ? toLocaleNumber(s.admission_no, langCode) : "",
+                studentName(s),
+                getStudentClassWithSection(s, classes, sections, classId, sectionId, langCode),
+                s.father_name || "",
+                s.dob ? toLocaleNumber(formatDate(s.dob), langCode) : "",
+                s.gender ? translateGender(s.gender, langCode) : "",
+                translateStudentCategory(getCategoryName(s, categories), langCode),
+                s.phone ? toLocaleNumber(s.phone, langCode) : "",
+                assignedIds.includes(s.id) ? t("generated") : t("unassigned"),
+            ]),
+        ];
         const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
@@ -400,11 +438,11 @@ export default function GenerateIDCardPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
+        { Icon: Columns, onClick: () => {}, title: t("columns") },
     ];
 
     return (
@@ -416,8 +454,8 @@ export default function GenerateIDCardPage() {
                         <CreditCard className="h-5 w-5" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("generate_student_id_card")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("generate_id_card_description")}</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("generate_student_id_cards")}</CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("generate_student_id_cards_description")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -427,7 +465,7 @@ export default function GenerateIDCardPage() {
                             <Select value={classId} onValueChange={setClassId}>
                                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_class")} /></SelectTrigger>
                                 <SelectContent>
-                                    {classes.map((c) => (<SelectItem key={c.id} value={String(c.id)} className="text-xs">{c.name}</SelectItem>))}
+                                    {classes.map((c) => (<SelectItem key={c.id} value={String(c.id)} className="text-xs">{translateClassName(c.name, langCode)}</SelectItem>))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -436,7 +474,7 @@ export default function GenerateIDCardPage() {
                             <Select value={sectionId} onValueChange={setSectionId} disabled={!classId}>
                                 <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={t("select_section")} /></SelectTrigger>
                                 <SelectContent>
-                                    {sections.map((s) => (<SelectItem key={s.id} value={String(s.id)} className="text-xs">{s.name}</SelectItem>))}
+                                    {sections.map((s) => (<SelectItem key={s.id} value={String(s.id)} className="text-xs">{translateSectionName(s.name, langCode)}</SelectItem>))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -445,8 +483,8 @@ export default function GenerateIDCardPage() {
                                 <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t("id_card_template")} <span className="text-red-500">*</span></Label>
                                 {selectedTemplate && (
                                     selectedTemplate.is_active ? (
-                                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold tracking-wider px-2 py-0.5 gap-1 shadow-xs">
-                                            <CheckCircle2 className="h-3 w-3" /> ACTIVE STYLE
+                                        <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white text-[9px] font-bold tracking-wider px-2 py-0.5 gap-1 shadow-xs uppercase">
+                                            <CheckCircle2 className="h-3 w-3" /> {t("active_style")}
                                         </Badge>
                                     ) : (
                                         <Button
@@ -458,7 +496,7 @@ export default function GenerateIDCardPage() {
                                             className="h-5 px-1.5 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-bold"
                                         >
                                             {activating ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                                            Set as Active Style
+                                            {t("set_as_active_style")}
                                         </Button>
                                     )
                                 )}
@@ -469,9 +507,9 @@ export default function GenerateIDCardPage() {
                                     {templates.map((tp) => (
                                         <SelectItem key={tp.id} value={String(tp.id)} className="text-xs">
                                             <div className="flex items-center justify-between w-full gap-4">
-                                                <span>{tp.title}</span>
+                                                <span>{translateCertificateTemplateName(tp.title, langCode)}</span>
                                                 {tp.is_active && (
-                                                    <Badge className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0">ACTIVE STYLE</Badge>
+                                                    <Badge className="bg-emerald-600 text-white text-[9px] font-bold px-1.5 py-0 uppercase">{t("active_style")}</Badge>
                                                 )}
                                             </div>
                                         </SelectItem>
@@ -514,7 +552,7 @@ export default function GenerateIDCardPage() {
                             className="h-8 px-3 text-xs font-semibold border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 shadow-xs transition-all disabled:opacity-50 gap-1.5"
                         >
                             <UserX className="h-3.5 w-3.5" />
-                            Unassign ({selected.length})
+                            {t("unassign")} ({toLocaleNumber(selected.length, langCode)})
                         </Button>
                         <Button
                             onClick={handleGenerate}
@@ -522,7 +560,7 @@ export default function GenerateIDCardPage() {
                             className="h-8 px-3.5 text-xs font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#4f46e5] text-white shadow-sm transition-all disabled:opacity-50 gap-1.5"
                         >
                             <Printer className="h-3.5 w-3.5" />
-                            {t("generate")} ({selected.length})
+                            {t("generate")} ({toLocaleNumber(selected.length, langCode)})
                         </Button>
                     </div>
                 </CardHeader>
@@ -559,10 +597,10 @@ export default function GenerateIDCardPage() {
                             <TableHeader className="bg-gray-50 text-xs uppercase">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
                                     <TableHead className="w-10"><Checkbox checked={allChecked} onCheckedChange={toggleAll} className="h-3.5 w-3.5" /></TableHead>
-                                    {[t("admission_no"), t("student_name"), t("class"), t("father_name"), t("dob"), t("gender"), t("category"), t("mobile_number"), "ID Card Status"].map((h) => (
+                                    {[t("admission_no"), t("student_name"), t("class"), t("father_name"), t("dob"), t("gender"), t("category"), t("mobile_number"), t("id_card_status")].map((h) => (
                                         <TableHead key={h} className="font-semibold text-gray-600"><div className="flex items-center gap-1">{h} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     ))}
-                                    <TableHead className="text-right font-semibold text-gray-600">{t("action") || "Action"}</TableHead>
+                                    <TableHead className="text-right font-semibold text-gray-600">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -575,22 +613,22 @@ export default function GenerateIDCardPage() {
                                 ) : filtered.map((s) => (
                                     <TableRow key={s.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
                                         <TableCell className="py-3"><Checkbox checked={selected.includes(s.id)} onCheckedChange={() => toggleOne(s.id)} className="h-3.5 w-3.5" /></TableCell>
-                                        <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-700 font-medium">{s.admission_no ? toLocaleNumber(s.admission_no, langCode) : "-"}</TableCell>
                                         <TableCell className="py-3 text-[#6366f1] font-medium">{studentName(s)}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{getStudentClassWithSection(s, classes, sections, classId, sectionId)}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{getStudentClassWithSection(s, classes, sections, classId, sectionId, langCode)}</TableCell>
                                         <TableCell className="py-3 text-gray-500">{s.father_name || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.dob ? new Date(s.dob).toLocaleDateString("en-US") : "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.gender || "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{getCategoryName(s, categories)}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{s.phone || "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.dob ? toLocaleNumber(formatDate(s.dob), langCode) : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.gender ? translateGender(s.gender, langCode) : "-"}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{translateStudentCategory(getCategoryName(s, categories), langCode)}</TableCell>
+                                        <TableCell className="py-3 text-gray-500">{s.phone ? toLocaleNumber(s.phone, langCode) : "-"}</TableCell>
                                         <TableCell className="py-3">
                                             {assignedIds.includes(s.id) ? (
                                                 <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold gap-1 shadow-2xs">
-                                                    <CheckCircle2 className="h-3 w-3" /> Generated
+                                                    <CheckCircle2 className="h-3 w-3" /> {t("generated")}
                                                 </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-200 text-[10px] font-bold gap-1">
-                                                    <UserX className="h-3 w-3" /> Unassigned
+                                                    <UserX className="h-3 w-3" /> {t("unassigned")}
                                                 </Badge>
                                             )}
                                         </TableCell>
@@ -600,7 +638,7 @@ export default function GenerateIDCardPage() {
                                                     size="icon"
                                                     onClick={() => handlePrintSingle(s)}
                                                     disabled={downloadingId === s.id}
-                                                    title={t("print") || "Print ID Card"}
+                                                    title={t("print_id_card")}
                                                     className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                 >
                                                     <Printer className="h-3.5 w-3.5" />
@@ -609,7 +647,7 @@ export default function GenerateIDCardPage() {
                                                     size="icon"
                                                     onClick={() => handleDownloadSingle(s)}
                                                     disabled={downloadingId === s.id}
-                                                    title={t("download_pdf") || "Download PDF"}
+                                                    title={t("download_pdf")}
                                                     className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white rounded p-0 shadow-sm active:scale-95 transition-all"
                                                 >
                                                     {downloadingId === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
@@ -619,7 +657,7 @@ export default function GenerateIDCardPage() {
                                                         size="icon"
                                                         variant="outline"
                                                         onClick={() => handleUnassignSingle(s)}
-                                                        title="Unassign ID Card"
+                                                        title={t("unassign_id_card")}
                                                         className="h-7 w-7 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 rounded p-0 shadow-xs active:scale-95 transition-all"
                                                     >
                                                         <UserX className="h-3.5 w-3.5" />
@@ -635,8 +673,8 @@ export default function GenerateIDCardPage() {
                     <div className="text-xs text-gray-500 font-medium pt-2">
                         {searched && (
                             filtered.length !== students.length && students.length > 0
-                                ? `Showing ${filtered.length} of ${students.length} ${students.length === 1 ? "student" : "students"}`
-                                : t("showing_x_students", { count: filtered.length }) || `Showing ${filtered.length} students`
+                                ? t("showing_x_of_y_students", { count: toLocaleNumber(filtered.length, langCode), total: toLocaleNumber(students.length, langCode) })
+                                : t("showing_x_students", { count: toLocaleNumber(filtered.length, langCode) })
                         )}
                     </div>
                 </CardContent>

@@ -24,6 +24,7 @@ import {
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
+import { submitContactAction } from "@/app/actions/contact";
 
 export function ContactFormSection() {
     const { settings } = useSettings();
@@ -257,20 +258,20 @@ export function ContactForm() {
 
         setSaving(true);
         try {
-            const res = await api.post("front-cms/contact-form/submit", form);
-            if (res.data?.status === "Success" || res.data?.success || res.status === 200) {
+            // Flow 2: Call Next.js Server Action (server-side POST to backend)
+            const result = await submitContactAction(form);
+            if (result.success) {
                 setStatus("success");
-                setMessage(res.data?.message || "Your message has been sent successfully.");
+                setMessage(result.message);
                 setForm({ name: "", email: "", mobile: "", details: "" });
                 generateCaptcha();
             } else {
-                throw new Error(res.data?.message || "Failed to send message.");
+                throw new Error(result.message);
             }
         } catch (error: unknown) {
             setStatus("error");
-            const err = error as { response?: { data?: { message?: string } }; message?: string };
+            const err = error as { message?: string };
             setMessage(
-                err.response?.data?.message ||
                 err.message ||
                 "Failed to send message. Please ensure SMTP email settings are configured."
             );

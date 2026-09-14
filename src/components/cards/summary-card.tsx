@@ -1,6 +1,9 @@
+"use client";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface SummaryCardProps {
     title: string;
@@ -23,6 +26,9 @@ const colorMaps = {
 };
 
 export function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProps) {
+    const { language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
     return (
         <Card className={cn(
             "group hover:shadow-2xl transition-all duration-300 ease-in-out border-none text-white cursor-pointer hover:-translate-y-2 hover:scale-[1.02]",
@@ -34,7 +40,9 @@ export function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProp
                 </div>
                 <div>
                     <p className="text-[0.65rem] md:text-xs font-extrabold text-white/90 uppercase tracking-widest leading-none mb-1">{title}</p>
-                    <h4 className="text-xl md:text-2xl font-black tracking-tight">{value}</h4>
+                    <h4 className="text-xl md:text-2xl font-black tracking-tight">
+                        {toLocaleNumber(value, shortCode)}
+                    </h4>
 
                 </div>
             </CardContent>

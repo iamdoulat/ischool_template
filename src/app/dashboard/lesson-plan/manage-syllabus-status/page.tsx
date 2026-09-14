@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,18 +24,11 @@ import {
     Copy,
     Filter,
     ListChecks,
-    CheckCircle2,
-    Circle,
     Calendar,
-    Route,
     BookOpen,
-    Layers,
-    GraduationCap,
-    Sparkles,
-    Check,
-    Clock
+    Check
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateClassName, translateSectionName, translateSubjectGroupName, translateSubjectName } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -87,7 +81,10 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 }
 
 export default function ManageSyllabusStatusPage() {
-    const { toast } = useToast();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+    const tt = useTranslateToast();
+
     const [classes, setClasses] = useState<OptionItem[]>([]);
     const [sections, setSections] = useState<OptionItem[]>([]);
     const [subjectGroups, setSubjectGroups] = useState<OptionItem[]>([]);
@@ -164,7 +161,7 @@ export default function ManageSyllabusStatusPage() {
 
     const handleSearch = async () => {
         if (!criteria.class_name || !criteria.section || !criteria.subject_group || !criteria.subject) {
-            toast({ title: "Error", description: "Please select all criteria", variant: "destructive" });
+            tt.error("please_fill_required_fields");
             return;
         }
 
@@ -174,19 +171,19 @@ export default function ManageSyllabusStatusPage() {
             const allTopics: RawTopic[] = response.data || [];
 
             // Filter based on criteria
-            const filtered = allTopics.filter(t =>
-                t.className === criteria.class_name &&
-                t.section === criteria.section &&
-                t.subjectGroup === criteria.subject_group &&
-                t.subject === criteria.subject
-            ).map(t => ({
-                id: t.id,
-                className: t.className,
-                section: t.section,
-                subjectGroup: t.subjectGroup,
-                subject: t.subject,
-                lesson: t.lesson,
-                topics: (t.topics || []).map((topic) => ({
+            const filtered = allTopics.filter(tItem =>
+                tItem.className === criteria.class_name &&
+                tItem.section === criteria.section &&
+                tItem.subjectGroup === criteria.subject_group &&
+                tItem.subject === criteria.subject
+            ).map(tItem => ({
+                id: tItem.id,
+                className: tItem.className,
+                section: tItem.section,
+                subjectGroup: tItem.subjectGroup,
+                subject: tItem.subject,
+                lesson: tItem.lesson,
+                topics: (tItem.topics || []).map((topic) => ({
                     id: topic.id,
                     name: topic.name,
                     completionDate: topic.completion_date,
@@ -196,10 +193,10 @@ export default function ManageSyllabusStatusPage() {
 
             setSyllabusData(filtered);
             if (filtered.length === 0) {
-                toast({ title: "Info", description: "No syllabus data found for selected criteria" });
+                tt.info("no_syllabus_data_found_for_selected_criteria");
             }
         } catch {
-            toast({ title: "Error", description: "Failed to fetch syllabus data", variant: "destructive" });
+            tt.error("failed_to_fetch_syllabus_data");
         } finally {
             setLoading(false);
         }
@@ -228,16 +225,16 @@ export default function ManageSyllabusStatusPage() {
                 }))
             );
 
-            toast({ title: "Success", description: newStatus ? "Topic marked as Completed" : "Topic marked as Incomplete" });
+            tt.success(newStatus ? "topic_marked_as_completed" : "topic_marked_as_incomplete");
         } catch {
-            toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+            tt.error("failed_to_update_status");
         } finally {
             setUpdatingId(null);
         }
     };
 
     const totalTopics = syllabusData.reduce((acc, l) => acc + (l.topics?.length || 0), 0);
-    const completedTopics = syllabusData.reduce((acc, l) => acc + (l.topics?.filter(t => t.isCompleted).length || 0), 0);
+    const completedTopics = syllabusData.reduce((acc, l) => acc + (l.topics?.filter(tItem => tItem.isCompleted).length || 0), 0);
     const progressPercent = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
     const handleAction = (action: string) => {
@@ -245,19 +242,19 @@ export default function ManageSyllabusStatusPage() {
             window.print();
         } else if (action === 'copy') {
             navigator.clipboard.writeText(JSON.stringify(syllabusData, null, 2));
-            toast({ title: "Success", description: "Copied to clipboard" });
+            tt.success("copied_to_clipboard");
         } else if (action === 'excel') {
-            const rows: any[] = [];
+            const rows: Record<string, string | number>[] = [];
             syllabusData.forEach((l) => {
-                (l.topics || []).forEach((t) => {
+                (l.topics || []).forEach((topic) => {
                     rows.push({
-                        "Class": criteria.class_name,
-                        "Section": criteria.section,
-                        "Subject": criteria.subject,
-                        "Lesson": l.lesson,
-                        "Topic": t.name,
-                        "Status": t.isCompleted ? "Completed" : "Incomplete",
-                        "Completion Date": t.completionDate || "—"
+                        [t("class")]: criteria.class_name,
+                        [t("section")]: criteria.section,
+                        [t("subject")]: criteria.subject,
+                        [t("lesson")]: l.lesson,
+                        [t("topic")]: topic.name,
+                        [t("status")]: topic.isCompleted ? t("completed") : t("incomplete"),
+                        [t("completion_date") || "Completion Date"]: topic.completionDate ? formatDate(topic.completionDate) : "—"
                     });
                 });
             });
@@ -265,25 +262,27 @@ export default function ManageSyllabusStatusPage() {
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Syllabus Status");
             XLSX.writeFile(wb, "syllabus_status.xlsx");
-            toast({ title: "Success", description: "Exported to Excel" });
+            tt.success("exported_to_excel");
         } else if (action === 'pdf') {
             const doc = new jsPDF();
-            doc.text(`Syllabus Status: ${criteria.subject} (${criteria.class_name} - ${criteria.section})`, 14, 15);
-            const rows: any[] = [];
+            doc.text(`${t("manage_syllabus_status")}: ${criteria.subject} (${criteria.class_name} - ${criteria.section})`, 14, 15);
+            const rows: (string | number)[][] = [];
             syllabusData.forEach((l, lIdx) => {
-                (l.topics || []).forEach((t) => {
-                    rows.push([`${lIdx + 1}. ${l.lesson}`, t.name, t.isCompleted ? "Completed" : "Incomplete", t.completionDate || "—"]);
+                (l.topics || []).forEach((topic) => {
+                    rows.push([`${lIdx + 1}. ${l.lesson}`, topic.name, topic.isCompleted ? t("completed") : t("incomplete"), topic.completionDate ? formatDate(topic.completionDate) : "—"]);
                 });
             });
             autoTable(doc, {
-                head: [["Lesson", "Topic", "Status", "Completion Date"]],
+                head: [[t("lesson"), t("topic"), t("status"), t("completion_date") || "Completion Date"]],
                 body: rows,
                 startY: 20
             });
             doc.save("syllabus_status.pdf");
-            toast({ title: "Success", description: "Exported to PDF" });
+            tt.success("exported_to_pdf");
         }
     };
+
+
 
     return (
         <div className="space-y-6 p-4 sm:p-5 font-sans bg-gray-50/10 min-h-screen">
@@ -294,15 +293,19 @@ export default function ManageSyllabusStatusPage() {
                         <Filter className="h-5 w-5" />
                     </span>
                     <div>
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Select Criteria</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Choose class, section, subject group &amp; subject</p>
+                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                            {t("select_criteria") || "Select Criteria"}
+                        </CardTitle>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("choose_class_section_subject_group_desc") || "Choose class, section, subject group & subject"}
+                        </p>
                     </div>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Class <span className="text-red-500">*</span>
+                                {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
                                 value={criteria.class_name}
@@ -315,11 +318,13 @@ export default function ManageSyllabusStatusPage() {
                                 }}
                             >
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Class" />
+                                    <SelectValue placeholder={t("select_class") || "Select Class"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
+                                        <SelectItem key={c.id} value={c.name || ""}>
+                                            {translateClassName(c.name, shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -327,7 +332,7 @@ export default function ManageSyllabusStatusPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Section <span className="text-red-500">*</span>
+                                {t("section")} <span className="text-red-500">*</span>
                             </Label>
                             <Select
                                 value={criteria.section}
@@ -338,11 +343,13 @@ export default function ManageSyllabusStatusPage() {
                                 disabled={!criteria.class_name}
                             >
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Section" />
+                                    <SelectValue placeholder={t("select_section") || "Select Section"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => (
-                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.name || ""}>
+                                            {translateSectionName(s.name, shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -350,15 +357,17 @@ export default function ManageSyllabusStatusPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Subject Group <span className="text-red-500">*</span>
+                                {t("subject_group")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={criteria.subject_group} onValueChange={(val) => setCriteria({...criteria, subject_group: val})} disabled={!criteria.class_name}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Subject Group" />
+                                    <SelectValue placeholder={t("select_subject_group") || "Select Subject Group"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjectGroups.map(g => (
-                                        <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
+                                        <SelectItem key={g.id} value={g.name || g.group_name || ""}>
+                                            {translateSubjectGroupName(g.name || g.group_name, shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -366,15 +375,17 @@ export default function ManageSyllabusStatusPage() {
 
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                Subject <span className="text-red-500">*</span>
+                                {t("subject")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={criteria.subject} onValueChange={(val) => setCriteria({...criteria, subject: val})}>
                                 <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder="Select Subject" />
+                                    <SelectValue placeholder={t("select_subject") || "Select Subject"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {subjects.map(s => (
-                                        <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.name || ""}>
+                                            {translateSubjectName(s.name, shortCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -385,9 +396,9 @@ export default function ManageSyllabusStatusPage() {
                         <Button
                             onClick={handleSearch}
                             disabled={loading}
-                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full"
+                            className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full cursor-pointer"
                         >
-                            {loading ? "Searching..." : <><Search className="h-4 w-4" /> Search</>}
+                            {loading ? (t("searching") || "Searching...") : <><Search className="h-4 w-4" /> {t("search")}</>}
                         </Button>
                     </div>
                 </CardContent>
@@ -404,11 +415,15 @@ export default function ManageSyllabusStatusPage() {
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-400 font-bold uppercase">Syllabus Status For:</span>
-                                        <span className="font-black text-sm text-indigo-700 dark:text-indigo-300">{criteria.subject}</span>
+                                        <span className="text-xs text-gray-400 font-bold uppercase">
+                                            {t("syllabus_status_for") || "Syllabus Status For:"}
+                                        </span>
+                                        <span className="font-black text-sm text-indigo-700 dark:text-indigo-300">
+                                            {translateSubjectName(criteria.subject, shortCode)}
+                                        </span>
                                     </div>
                                     <p className="text-[11px] text-gray-500 font-medium">
-                                        {criteria.class_name} • Section {criteria.section} • {criteria.subject_group}
+                                        {translateClassName(criteria.class_name, shortCode)} • {translateSectionName(criteria.section, shortCode)} • {translateSubjectGroupName(criteria.subject_group, shortCode)}
                                     </p>
                                 </div>
                             </div>
@@ -416,8 +431,12 @@ export default function ManageSyllabusStatusPage() {
                             {/* Live Progress Stats */}
                             <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                    <div className="text-[10px] uppercase font-bold text-gray-400">Total Completion</div>
-                                    <div className="text-sm font-black text-indigo-600 dark:text-indigo-400">{progressPercent}%</div>
+                                    <div className="text-[10px] uppercase font-bold text-gray-400">
+                                        {t("total_completion") || "Total Completion"}
+                                    </div>
+                                    <div className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                                        {toLocaleNumber(progressPercent, shortCode)}%
+                                    </div>
                                 </div>
                                 <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
                                     <div
@@ -426,7 +445,10 @@ export default function ManageSyllabusStatusPage() {
                                     />
                                 </div>
                                 <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold px-2.5 py-1">
-                                    {completedTopics} / {totalTopics} Topics
+                                    {t("x_of_y_topics", {
+                                        completed: toLocaleNumber(completedTopics, shortCode),
+                                        total: toLocaleNumber(totalTopics, shortCode)
+                                    })}
                                 </Badge>
                             </div>
                         </div>
@@ -440,23 +462,28 @@ export default function ManageSyllabusStatusPage() {
                                     <ListChecks className="h-5 w-5" />
                                 </span>
                                 <div>
-                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">Manage Syllabus Status</CardTitle>
+                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                        {t("manage_syllabus_status") || "Manage Syllabus Status"}
+                                    </CardTitle>
                                     <p className="text-[11px] text-gray-500 mt-1">
-                                        {syllabusData.length} lesson{syllabusData.length === 1 ? '' : 's'} • {totalTopics} topic{totalTopics === 1 ? '' : 's'}
+                                        {t("x_lessons_y_topics", {
+                                            lessons: toLocaleNumber(syllabusData.length, shortCode),
+                                            topics: toLocaleNumber(totalTopics, shortCode)
+                                        })}
                                     </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={() => handleAction('copy')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
+                                <Button onClick={() => handleAction('copy')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("copy") || "Copy"}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={() => handleAction('excel')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
+                                <Button onClick={() => handleAction('excel')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_excel") || "Export Excel"}>
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={() => handleAction('pdf')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
+                                <Button onClick={() => handleAction('pdf')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_pdf") || "Export PDF"}>
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={() => handleAction('print')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
+                                <Button onClick={() => handleAction('print')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("print") || "Print"}>
                                     <Printer className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -467,14 +494,14 @@ export default function ManageSyllabusStatusPage() {
                                 <TableSkeleton rows={4} />
                             ) : syllabusData.length === 0 ? (
                                 <div className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
-                                    No syllabus data found
+                                    {t("no_syllabus_data_found") || "No syllabus data found"}
                                 </div>
                             ) : (
                                 <div className="p-5 space-y-6">
                                     {syllabusData.map((lesson, idx) => {
                                         const isFirst = idx === 0;
                                         const isLast = idx === syllabusData.length - 1;
-                                        const lessonCompletedTopics = lesson.topics.filter(t => t.isCompleted).length;
+                                        const lessonCompletedTopics = lesson.topics.filter(tItem => tItem.isCompleted).length;
                                         const lessonTotalTopics = lesson.topics.length;
                                         const isLessonDone = lessonTotalTopics > 0 && lessonCompletedTopics === lessonTotalTopics;
 
@@ -494,21 +521,21 @@ export default function ManageSyllabusStatusPage() {
                                                                 ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white"
                                                                 : "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
                                                         )}>
-                                                            {isLessonDone ? <Check className="h-4 w-4 stroke-[3]" /> : idx + 1}
+                                                            {isLessonDone ? <Check className="h-4 w-4 stroke-[3]" /> : toLocaleNumber(idx + 1, shortCode)}
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                                                                    Step {idx + 1}
+                                                                    {t("step_x", { step: toLocaleNumber(idx + 1, shortCode) })}
                                                                 </span>
                                                                 {isFirst && (
                                                                     <span className="text-[8.5px] bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold border border-orange-200 dark:border-orange-800">
-                                                                        Initial
+                                                                        {t("initial") || "Initial"}
                                                                     </span>
                                                                 )}
                                                                 {isLast && syllabusData.length > 1 && (
                                                                     <span className="text-[8.5px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-200 dark:border-emerald-800">
-                                                                        Final Step
+                                                                        {t("final_step") || "Final Step"}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -520,7 +547,10 @@ export default function ManageSyllabusStatusPage() {
 
                                                     <div className="flex items-center gap-3 self-end sm:self-center">
                                                         <Badge variant="outline" className="bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold border-gray-200">
-                                                            {lessonCompletedTopics} / {lessonTotalTopics} Completed
+                                                            {t("x_of_y_completed", {
+                                                                completed: toLocaleNumber(lessonCompletedTopics, shortCode),
+                                                                total: toLocaleNumber(lessonTotalTopics, shortCode)
+                                                            })}
                                                         </Badge>
                                                     </div>
                                                 </div>
@@ -529,7 +559,7 @@ export default function ManageSyllabusStatusPage() {
                                                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
                                                     {lesson.topics.length === 0 ? (
                                                         <div className="p-4 text-center text-xs text-gray-400 italic">
-                                                            No topics registered under this lesson
+                                                            {t("no_topics_registered_under_this_lesson") || "No topics registered under this lesson"}
                                                         </div>
                                                     ) : (
                                                         lesson.topics.map((topic, tIdx) => (
@@ -551,7 +581,7 @@ export default function ManageSyllabusStatusPage() {
                                                                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                                                                             : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
                                                                     )}>
-                                                                        {idx + 1}.{tIdx + 1}
+                                                                        {toLocaleNumber(idx + 1, shortCode)}.{toLocaleNumber(tIdx + 1, shortCode)}
                                                                     </div>
                                                                     <div className="min-w-0">
                                                                         <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
@@ -566,7 +596,7 @@ export default function ManageSyllabusStatusPage() {
                                                                     <div className="flex items-center gap-1.5 text-xs text-gray-500">
                                                                         <Calendar className="h-3.5 w-3.5 text-gray-400" />
                                                                         <span className={topic.completionDate ? "font-semibold text-gray-700 dark:text-gray-300" : "italic text-gray-400"}>
-                                                                            {topic.completionDate || "Not completed"}
+                                                                            {topic.completionDate ? toLocaleNumber(formatDate(topic.completionDate), shortCode) : (t("not_completed") || "Not completed")}
                                                                         </span>
                                                                     </div>
 
@@ -579,7 +609,7 @@ export default function ManageSyllabusStatusPage() {
                                                                                 : "bg-gray-100 text-gray-500 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
                                                                         )}
                                                                     >
-                                                                        {topic.isCompleted ? "Completed" : "Incomplete"}
+                                                                        {topic.isCompleted ? (t("completed") || "Completed") : (t("incomplete") || "Incomplete")}
                                                                     </span>
 
                                                                     {/* Action Toggle Switch */}
@@ -589,7 +619,7 @@ export default function ManageSyllabusStatusPage() {
                                                                             disabled={updatingId === topic.id}
                                                                             onCheckedChange={() => toggleStatus(topic.id, topic.isCompleted)}
                                                                             className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-gray-200"
-                                                                            title={topic.isCompleted ? "Mark Incomplete" : "Mark Completed"}
+                                                                            title={topic.isCompleted ? (t("mark_incomplete") || "Mark Incomplete") : (t("mark_completed") || "Mark Completed")}
                                                                         />
                                                                     </div>
                                                                 </div>
@@ -612,8 +642,12 @@ export default function ManageSyllabusStatusPage() {
                     <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-2xl mb-4 text-indigo-500">
                         <Search className="h-8 w-8" />
                     </div>
-                    <h3 className="text-gray-600 dark:text-gray-300 text-sm font-bold">Select criteria to view syllabus status</h3>
-                    <p className="text-gray-400 text-xs mt-1">Class, Section, Subject Group, and Subject required</p>
+                    <h3 className="text-gray-600 dark:text-gray-300 text-sm font-bold">
+                        {t("select_criteria_to_view_syllabus_status") || "Select criteria to view syllabus status"}
+                    </h3>
+                    <p className="text-gray-400 text-xs mt-1">
+                        {t("class_section_subject_group_required") || "Class, Section, Subject Group, and Subject required"}
+                    </p>
                 </div>
             )}
         </div>

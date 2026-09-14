@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,12 +19,27 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Search, FileText, PieChart, Users, UserPlus, ClipboardList, BookOpen, Key, GraduationCap, ChevronLeft, ChevronRight, MenuIcon, Pencil, Eye, Monitor } from "lucide-react";
+import {
+    Search,
+    FileText,
+    PieChart,
+    Users,
+    UserPlus,
+    ClipboardList,
+    BookOpen,
+    Key,
+    GraduationCap,
+    ChevronLeft,
+    ChevronRight,
+    Pencil,
+    Eye,
+    Monitor,
+    Loader2,
+} from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
     Dialog,
@@ -31,6 +47,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { useLanguage } from "@/components/providers/language-provider";
 
 function TableSkeleton({ cols }: { cols: number }) {
     return (
@@ -39,7 +56,10 @@ function TableSkeleton({ cols }: { cols: number }) {
                 <TableRow key={i}>
                     {Array.from({ length: cols }).map((_, j) => (
                         <TableCell key={j} className="py-3">
-                            <Skeleton className="h-4 rounded" style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }} />
+                            <Skeleton
+                                className="h-4 rounded"
+                                style={{ width: `${55 + ((i * 3 + j * 7) % 35)}%` }}
+                            />
                         </TableCell>
                     ))}
                 </TableRow>
@@ -48,43 +68,52 @@ function TableSkeleton({ cols }: { cols: number }) {
     );
 }
 
-const reportLinks = [
+interface ReportLink {
+    id: string;
+    key: string;
+    icon: typeof FileText;
+    active?: boolean;
+}
+
+const reportLinks: { group: ReportLink[] }[] = [
     {
         group: [
-            { name: "Student Report", icon: FileText, active: true },
-            { name: "Student History", icon: ClipboardList },
-            { name: "Class Subject Report", icon: BookOpen },
-            { name: "Student Profile", icon: UserPlus },
-            { name: "Online Admission Report", icon: GraduationCap },
-        ]
+            { id: "Student Report", key: "student_report", icon: FileText, active: true },
+            { id: "Student History", key: "student_history", icon: ClipboardList },
+            { id: "Class Subject Report", key: "class_subject_report", icon: BookOpen },
+            { id: "Student Profile", key: "student_profile", icon: UserPlus },
+            { id: "Online Admission Report", key: "online_admission_report", icon: GraduationCap },
+        ],
     },
     {
         group: [
-            { name: "Class & Section Report", icon: ClipboardList },
-            { name: "Student Login Credential", icon: Key },
-            { name: "Admission Report", icon: FileText },
-            { name: "Student Gender Ratio Report", icon: PieChart },
-        ]
+            { id: "Class & Section Report", key: "class_and_section_report", icon: ClipboardList },
+            { id: "Student Login Credential", key: "student_login_credential", icon: Key },
+            { id: "Admission Report", key: "admission_report", icon: FileText },
+            { id: "Student Gender Ratio Report", key: "student_gender_ratio_report", icon: PieChart },
+        ],
     },
     {
         group: [
-            { name: "Guardian Report", icon: Users },
-            { name: "Parent Login Credential", icon: Key },
-            { name: "Sibling Report", icon: Users },
-            { name: "Student Teacher Ratio Report", icon: Users },
-        ]
-    }
+            { id: "Guardian Report", key: "guardian_report", icon: Users },
+            { id: "Parent Login Credential", key: "parent_login_credential", icon: Key },
+            { id: "Sibling Report", key: "sibling_report", icon: Users },
+            { id: "Student Teacher Ratio Report", key: "student_teacher_ratio_report", icon: Users },
+        ],
+    },
 ];
 
 export default function StudentInformationReportPage() {
     const { toast } = useToast();
-    
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
+
     // Data states
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
-    
+
     // Filter states
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("all");
@@ -119,51 +148,51 @@ export default function StudentInformationReportPage() {
     const [guardianTotalPages, setGuardianTotalPages] = useState(0);
     const [guardianTotalEntries, setGuardianTotalEntries] = useState(0);
 
-    useEffect(() => {
-        fetchInitialData();
-    }, []);
-
-    useEffect(() => {
-        if (activeReportTab === "Class & Section Report") {
-            fetchClassSectionReport();
-        }
-    }, [activeReportTab]);
-
-    const fetchInitialData = async () => {
+    const fetchInitialData = useCallback(async () => {
         try {
             const [classesRes, categoriesRes] = await Promise.all([
-                api.get('/academics/classes?no_paginate=true'),
-                api.get('/student-categories?no_paginate=true')
+                api.get("/academics/classes?no_paginate=true"),
+                api.get("/student-categories?no_paginate=true"),
             ]);
-            const classesData = classesRes.data?.data;
-            const categoriesData = categoriesRes.data?.data;
-            setClasses(Array.isArray(classesData) ? classesData : classesData?.data || []);
-            setCategories(Array.isArray(categoriesData) ? categoriesData : categoriesData?.data || []);
+            const classesData = classesRes.data?.data?.data || classesRes.data?.data || [];
+            const categoriesData = categoriesRes.data?.data?.data || categoriesRes.data?.data || [];
+            setClasses(Array.isArray(classesData) ? classesData : []);
+            setCategories(Array.isArray(categoriesData) ? categoriesData : []);
         } catch (error) {
             console.error("Failed to fetch initial data", error);
             setClasses([]);
             setCategories([]);
         }
-    };
+    }, []);
 
-    const fetchClassSectionReport = async () => {
+    const fetchClassSectionReport = useCallback(async () => {
         setClassSectionLoading(true);
         try {
             const params = new URLSearchParams();
-            if (classSectionSearch) params.append('search', classSectionSearch);
-            params.append('limit', '50');
+            if (classSectionSearch) params.append("search", classSectionSearch);
+            params.append("limit", "50");
             const res = await api.get(`/student-reports/class-section?${params.toString()}`);
-            setClassSectionData(res.data.data.data || []);
-        } catch (error) {
+            setClassSectionData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch class & section report data.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setClassSectionLoading(false);
         }
-    };
+    }, [classSectionSearch, t, toast]);
+
+    useEffect(() => {
+        fetchInitialData();
+    }, [fetchInitialData]);
+
+    useEffect(() => {
+        if (activeReportTab === "Class & Section Report") {
+            fetchClassSectionReport();
+        }
+    }, [activeReportTab, fetchClassSectionReport]);
 
     const handleClassSectionSearch = () => {
         fetchClassSectionReport();
@@ -174,10 +203,9 @@ export default function StudentInformationReportPage() {
         setSelectedSection("all");
         setSections([]);
         if (!classId || classId === "all") return;
-        
+
         try {
             const res = await api.get(`/academics/classes/${classId}`);
-            // The class show endpoint returns the class object with its sections eagerly loaded
             const sectionsData = res.data?.data?.sections;
             setSections(Array.isArray(sectionsData) ? sectionsData : []);
         } catch (error) {
@@ -193,8 +221,6 @@ export default function StudentInformationReportPage() {
     const [admissionYears, setAdmissionYears] = useState<string[]>([]);
 
     useEffect(() => {
-        fetchInitialData();
-        // Generate last 10 years for admission year dropdown
         const currentYear = new Date().getFullYear();
         const years = Array.from({ length: 15 }, (_, i) => (currentYear - i).toString());
         setAdmissionYears(years);
@@ -203,9 +229,9 @@ export default function StudentInformationReportPage() {
     const handleHistorySearch = async () => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -213,17 +239,19 @@ export default function StudentInformationReportPage() {
         setHistoryLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedAdmissionYear !== "all") params.append('admission_year', selectedAdmissionYear);
-            params.append('limit', '100'); // Higher limit for history
+            params.append("school_class_id", selectedClass);
+            if (selectedAdmissionYear !== "all") {
+                params.append("admission_year", selectedAdmissionYear);
+            }
+            params.append("limit", "100");
 
             const res = await api.get(`/students?${params.toString()}`);
-            setHistoryStudents(res.data.data.data || []);
-        } catch (error) {
+            setHistoryStudents(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch student history data.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setHistoryLoading(false);
@@ -237,9 +265,9 @@ export default function StudentInformationReportPage() {
     const handleCredentialSearch = async () => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -247,17 +275,17 @@ export default function StudentInformationReportPage() {
         setCredentialLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            params.append('limit', '100');
+            params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            params.append("limit", "100");
 
             const res = await api.get(`/students?${params.toString()}`);
-            setCredentialStudents(res.data.data.data || []);
-        } catch (error) {
+            setCredentialStudents(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch student credentials.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setCredentialLoading(false);
@@ -271,9 +299,9 @@ export default function StudentInformationReportPage() {
     const handleParentCredentialSearch = async () => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -281,17 +309,17 @@ export default function StudentInformationReportPage() {
         setParentCredentialLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            params.append('limit', '100');
+            params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            params.append("limit", "100");
 
             const res = await api.get(`/students?${params.toString()}`);
-            setParentCredentialStudents(res.data.data.data || []);
-        } catch (error) {
+            setParentCredentialStudents(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch parent credentials.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setParentCredentialLoading(false);
@@ -306,9 +334,9 @@ export default function StudentInformationReportPage() {
     const handleClassSubjectSearch = async () => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -316,27 +344,17 @@ export default function StudentInformationReportPage() {
         setClassSubjectLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            
-            const res = await api.get(`/academics/class-timetables?${params.toString()}`);
-            // Transform timetable data into the format expected by the report table
-            const data = res.data?.data?.data || [];
-            const transformed = data.map((item: any) => ({
-                id: item.id,
-                class: item.school_class?.name,
-                section: item.section?.name,
-                subject: item.subject?.name,
-                teacher: `${item.staff?.first_name || ''} ${item.staff?.last_name || ''}`.trim() || 'N/A',
-                time: `${item.start_time || ''} - ${item.end_time || ''}`,
-                room_no: item.room_no || 'N/A'
-            }));
-            setClassSubjectData(transformed);
-        } catch (error) {
+            params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            params.append("limit", "100");
+
+            const res = await api.get(`/student-reports/class-subject?${params.toString()}`);
+            setClassSubjectData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch class subject data.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setClassSubjectLoading(false);
@@ -361,9 +379,9 @@ export default function StudentInformationReportPage() {
     const handleAdmissionSearch = async () => {
         if (!selectedSearchType || selectedSearchType === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Search Type.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_criteria") || "Please select a Search Type.",
+                variant: "destructive",
             });
             return;
         }
@@ -371,16 +389,16 @@ export default function StudentInformationReportPage() {
         setAdmissionLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('search_type', selectedSearchType);
-            params.append('limit', '100');
+            params.append("search_type", selectedSearchType);
+            params.append("limit", "100");
 
             const res = await api.get(`/students?${params.toString()}`);
-            setAdmissionData(res.data.data.data || []);
-        } catch (error) {
+            setAdmissionData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch admission report.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setAdmissionLoading(false);
@@ -395,9 +413,9 @@ export default function StudentInformationReportPage() {
     const handleSiblingSearch = async () => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -405,38 +423,35 @@ export default function StudentInformationReportPage() {
         setSiblingLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            params.append('with_siblings', 'true');
-            params.append('limit', '100');
+            params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            params.append("limit", "100");
 
-            const res = await api.get(`/students?${params.toString()}`);
-            // Logic: A student has a sibling if there are other students with the same guardian phone
-            // For now, we fetch students and their sibling info if available from the backend
-            setSiblingData(res.data.data.data || []);
-        } catch (error) {
+            const res = await api.get(`/student-reports/sibling?${params.toString()}`);
+            setSiblingData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch sibling report.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setSiblingLoading(false);
         }
     };
 
-    // Student Profile Report State
+    // Student Profile State
     const [profileData, setProfileData] = useState<any[]>([]);
     const [profileLoading, setProfileLoading] = useState(false);
-    const [profileSearch, setProfileSearch] = useState("");
     const [selectedProfileSearchType, setSelectedProfileSearchType] = useState("all");
+    const [profileSearch, setProfileSearch] = useState("");
 
     const handleProfileSearch = async () => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -444,18 +459,20 @@ export default function StudentInformationReportPage() {
         setProfileLoading(true);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            if (selectedProfileSearchType !== "all") params.append('search_type', selectedProfileSearchType);
-            params.append('limit', '100');
+            params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            if (selectedProfileSearchType !== "all") {
+                params.append("search_type", selectedProfileSearchType);
+            }
+            params.append("limit", "100");
 
             const res = await api.get(`/students?${params.toString()}`);
-            setProfileData(res.data.data.data || []);
-        } catch (error) {
+            setProfileData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch student profile report.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setProfileLoading(false);
@@ -467,54 +484,54 @@ export default function StudentInformationReportPage() {
     const [genderRatioLoading, setGenderRatioLoading] = useState(false);
     const [genderRatioSearch, setGenderRatioSearch] = useState("");
 
-    const fetchGenderRatioReport = async () => {
+    const fetchGenderRatioReport = useCallback(async () => {
         setGenderRatioLoading(true);
         try {
-            const res = await api.get('/student-reports/gender-ratio');
-            setGenderRatioData(res.data.data.data || []);
-        } catch (error) {
+            const res = await api.get("/student-reports/gender-ratio");
+            setGenderRatioData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch gender ratio report.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setGenderRatioLoading(false);
         }
-    };
+    }, [t, toast]);
 
     useEffect(() => {
         if (activeReportTab === "Student Gender Ratio Report") {
             fetchGenderRatioReport();
         }
-    }, [activeReportTab]);
+    }, [activeReportTab, fetchGenderRatioReport]);
 
     // Student Teacher Ratio Report State
     const [teacherRatioData, setTeacherRatioData] = useState<any[]>([]);
     const [teacherRatioLoading, setTeacherRatioLoading] = useState(false);
     const [teacherRatioSearch, setTeacherRatioSearch] = useState("");
 
-    const fetchTeacherRatioReport = async () => {
+    const fetchTeacherRatioReport = useCallback(async () => {
         setTeacherRatioLoading(true);
         try {
-            const res = await api.get('/student-reports/student-teacher-ratio');
-            setTeacherRatioData(res.data.data.data || []);
-        } catch (error) {
+            const res = await api.get("/student-reports/student-teacher-ratio");
+            setTeacherRatioData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch student teacher ratio report.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setTeacherRatioLoading(false);
         }
-    };
+    }, [t, toast]);
 
     useEffect(() => {
         if (activeReportTab === "Student Teacher Ratio Report") {
             fetchTeacherRatioReport();
         }
-    }, [activeReportTab]);
+    }, [activeReportTab, fetchTeacherRatioReport]);
 
     // Online Admission Report State
     const [onlineAdmissionData, setOnlineAdmissionData] = useState<any[]>([]);
@@ -525,18 +542,18 @@ export default function StudentInformationReportPage() {
         setOnlineAdmissionLoading(true);
         try {
             const params = new URLSearchParams();
-            if (selectedClass !== "all") params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            if (selectedOnlineStatus !== "all") params.append('status', selectedOnlineStatus);
-            params.append('limit', '100');
+            if (selectedClass !== "all") params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            if (selectedOnlineStatus !== "all") params.append("status", selectedOnlineStatus);
+            params.append("limit", "100");
 
             const res = await api.get(`/online-admissions?${params.toString()}`);
-            setOnlineAdmissionData(res.data.data.data || []);
-        } catch (error) {
+            setOnlineAdmissionData(res.data?.data?.data || res.data?.data || []);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch online admission report.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setOnlineAdmissionLoading(false);
@@ -546,9 +563,9 @@ export default function StudentInformationReportPage() {
     const handleGuardianSearch = async (page = 1) => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -557,21 +574,21 @@ export default function StudentInformationReportPage() {
         setGuardianCurrentPage(page);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            if (guardianSearchText) params.append('search', guardianSearchText);
-            params.append('page', page.toString());
-            params.append('limit', itemsPerPageNum.toString());
+            params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            if (guardianSearchText) params.append("search", guardianSearchText);
+            params.append("page", page.toString());
+            params.append("limit", itemsPerPageNum.toString());
 
             const res = await api.get(`/students?${params.toString()}`);
-            setGuardianStudents(res.data.data.data || []);
-            setGuardianTotalPages(res.data.data.last_page || 0);
-            setGuardianTotalEntries(res.data.data.total || 0);
-        } catch (error) {
+            setGuardianStudents(res.data?.data?.data || res.data?.data || []);
+            setGuardianTotalPages(res.data?.data?.last_page || 0);
+            setGuardianTotalEntries(res.data?.data?.total || 0);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch guardian report data.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setGuardianLoading(false);
@@ -581,9 +598,9 @@ export default function StudentInformationReportPage() {
     const handleSearch = async (page = 1) => {
         if (!selectedClass || selectedClass === "all") {
             toast({
-                title: "Validation Error",
-                description: "Please select a Class.",
-                variant: "destructive"
+                title: t("validation_error") || "Validation Error",
+                description: t("please_select_a_class"),
+                variant: "destructive",
             });
             return;
         }
@@ -592,30 +609,29 @@ export default function StudentInformationReportPage() {
         setCurrentPage(page);
         try {
             const params = new URLSearchParams();
-            params.append('school_class_id', selectedClass);
-            if (selectedSection !== "all") params.append('section_id', selectedSection);
-            if (selectedCategory !== "all") params.append('category', selectedCategory);
-            if (selectedGender !== "all") params.append('gender', selectedGender);
-            if (selectedRte !== "all") params.append('rte', selectedRte);
-            params.append('page', page.toString());
-            params.append('limit', itemsPerPageNum.toString());
+            params.append("school_class_id", selectedClass);
+            if (selectedSection !== "all") params.append("section_id", selectedSection);
+            if (selectedCategory !== "all") params.append("category", selectedCategory);
+            if (selectedGender !== "all") params.append("gender", selectedGender);
+            if (selectedRte !== "all") params.append("rte", selectedRte);
+            params.append("page", page.toString());
+            params.append("limit", itemsPerPageNum.toString());
 
             const res = await api.get(`/students?${params.toString()}`);
-            setStudents(res.data.data.data || []);
-            setTotalPages(res.data.data.last_page || 0);
-            setTotalEntries(res.data.data.total || 0);
-        } catch (error) {
+            setStudents(res.data?.data?.data || res.data?.data || []);
+            setTotalPages(res.data?.data?.last_page || 0);
+            setTotalEntries(res.data?.data?.total || 0);
+        } catch {
             toast({
-                title: "Error",
-                description: "Failed to fetch student report data.",
-                variant: "destructive"
+                title: t("error") || "Error",
+                description: t("failed_to_fetch_report"),
+                variant: "destructive",
             });
         } finally {
             setLoading(false);
         }
     };
 
-    // Actions
     const handleView = (student: any) => {
         setSelectedStudent(student);
         setIsViewDialogOpen(true);
@@ -623,207 +639,280 @@ export default function StudentInformationReportPage() {
 
     const handleEdit = (student: any) => {
         toast({
-            title: "Redirecting",
-            description: `Redirecting to edit profile for ${student.name}...`,
+            title: t("redirecting") || "Redirecting",
+            description: `${t("edit")}: ${student.name}...`,
         });
     };
 
     const startIndex = (currentPage - 1) * itemsPerPageNum;
 
     return (
-        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
-            {/* Gradient header card with report-type tabs inside */}
-            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Users className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Student Information Report</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Generate student, guardian, and class reports</p>
-                            </div>
-                        </div>
-                        <Link
-                            href="/user/profile"
-                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
-                        >
-                            <Monitor className="h-3.5 w-3.5" />
-                            Student Portal View
-                        </Link>
+        <div className="space-y-6">
+            {/* Standalone Edge-to-Edge Gradient Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Users className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("student_information_report")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("generate_student_guardian_reports")}
+                        </p>
                     </div>
-                </CardHeader>
-                <CardContent className="p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {reportLinks.flatMap(col => col.group).map((link) => {
-                            const isActive = activeReportTab === link.name;
-                            return (
+                </div>
+                <Link
+                    href="/user/profile"
+                    className="flex items-center gap-1.5 h-8 px-4 rounded-full text-white text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] transition-all active:scale-95 shadow-md shrink-0"
+                >
+                    <Monitor className="h-3.5 w-3.5" />
+                    {t("student_portal_view")}
+                </Link>
+            </div>
+
+            {/* Navigation Grid of 13 Report Tabs */}
+            <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {reportLinks.flatMap((col) => col.group).map((link) => {
+                        const isActive = activeReportTab === link.id;
+                        return (
+                            <div
+                                key={link.id}
+                                onClick={() => setActiveReportTab(link.id)}
+                                className={cn(
+                                    "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all group",
+                                    isActive
+                                        ? "border-indigo-200 bg-indigo-50/50 shadow-xs ring-1 ring-indigo-200"
+                                        : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-xs"
+                                )}
+                            >
                                 <div
-                                    key={link.name}
-                                    onClick={() => setActiveReportTab(link.name)}
                                     className={cn(
-                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
+                                        "p-2 rounded-lg transition-all duration-300",
                                         isActive
-                                            ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
-                                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
+                                            ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                            : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
                                     )}
                                 >
-                                    <div className={cn(
-                                        "p-2 rounded-lg transition-all duration-300",
-                                        isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
-                                    )}>
-                                        <link.icon className="h-4 w-4" />
-                                    </div>
-                                    <span className={cn(
-                                        "text-[10px] font-bold tracking-tight uppercase transition-colors duration-300",
-                                        isActive ? "text-indigo-700" : "text-gray-600"
-                                    )}>
-                                        {link.name}
-                                    </span>
+                                    <link.icon className="h-4 w-4" />
                                 </div>
-                            );
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
+                                <span
+                                    className={cn(
+                                        "text-xs font-bold tracking-tight transition-colors duration-300",
+                                        isActive ? "text-[#6366f1]" : "text-gray-700"
+                                    )}
+                                >
+                                    {t(link.key)}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
 
-
+            {/* Tab 1: Student Report */}
             {activeReportTab === "Student Report" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")}
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Sections</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Category</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("category")}
+                                </Label>
                                 <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_categories")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All Categories</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_categories")}
+                                        </SelectItem>
                                         {categories.map((cat) => (
-                                            <SelectItem key={cat.id} value={cat.id.toString()}>{cat.category_name}</SelectItem>
+                                            <SelectItem key={cat.id} value={cat.id.toString()} className="text-xs">
+                                                {cat.category_name}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Gender</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("gender")}
+                                </Label>
                                 <Select value={selectedGender} onValueChange={setSelectedGender}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
-                                        <SelectItem value="Male">Male</SelectItem>
-                                        <SelectItem value="Female">Female</SelectItem>
+                                        <SelectItem value="all" className="text-xs">{t("all")}</SelectItem>
+                                        <SelectItem value="Male" className="text-xs">{t("male")}</SelectItem>
+                                        <SelectItem value="Female" className="text-xs">{t("female")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">RTE</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("rte")}
+                                </Label>
                                 <Select value={selectedRte} onValueChange={setSelectedRte}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">All</SelectItem>
-                                        <SelectItem value="Yes">Yes</SelectItem>
-                                        <SelectItem value="No">No</SelectItem>
+                                        <SelectItem value="all" className="text-xs">{t("all")}</SelectItem>
+                                        <SelectItem value="Yes" className="text-xs">{t("yes")}</SelectItem>
+                                        <SelectItem value="No" className="text-xs">{t("no")}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={() => handleSearch(1)} 
-                                disabled={loading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={() => handleSearch(1)}
+                                disabled={loading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Student Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Report</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("student_report")}
+                        </h2>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1500px]">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Section</TableHead>
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name</TableHead>
-                                        <TableHead className="py-3 px-4">Father Name</TableHead>
-                                        <TableHead className="py-3 px-4">Date Of Birth</TableHead>
-                                        <TableHead className="py-3 px-4">Gender</TableHead>
-                                        <TableHead className="py-3 px-4">Category</TableHead>
-                                        <TableHead className="py-3 px-4">Mobile Number</TableHead>
-                                        <TableHead className="py-3 px-4">Local Identification Number</TableHead>
-                                        <TableHead className="py-3 px-4">National Identification Number</TableHead>
-                                        <TableHead className="py-3 px-4">RTE</TableHead>
-                                        <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("section")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("father_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("date_of_birth")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("gender")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("category")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("mobile_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("local_identification_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("national_identification_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("rte")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-right pr-4">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {loading ? <TableSkeleton cols={12} /> : students.length > 0 ? (
-                                        students.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-gray-600">{student.section?.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.father_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.dob || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.gender || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.student_category?.category_name || student.category || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.phone || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.local_identification_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.national_identification_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.rte || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 pr-4 text-right">
+                                    {loading ? (
+                                        <TableSkeleton cols={12} />
+                                    ) : students.length > 0 ? (
+                                        students.map((student) => (
+                                            <TableRow
+                                                key={student.id}
+                                                className="hover:bg-indigo-50/30 transition-colors cursor-pointer border-b border-gray-50 text-xs whitespace-nowrap"
+                                                onClick={() => handleView(student)}
+                                            >
+                                                <TableCell className="py-3 px-4 text-gray-600">
+                                                    {translateSectionName(student.section?.name, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                    {toLocaleNumber(student.admission_no, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {student.name} {student.last_name || ""}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.father_name || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.dob ? toLocaleNumber(student.dob, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.gender ? (t(student.gender.toLowerCase()) || student.gender) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.student_category?.category_name || student.category || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.phone ? toLocaleNumber(student.phone, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.local_identification_no || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.national_identification_no || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.rte || "—"}
+                                                </TableCell>
+                                                <TableCell
+                                                    className="py-3 px-4 pr-4 text-right"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
                                                     <div className="flex items-center justify-end gap-1.5">
-                                                        <Button onClick={() => handleView(student)} size="icon" className="h-7 w-7 rounded-md bg-[#10b981] hover:bg-[#059669] text-white shadow-sm">
-                                                            <MenuIcon className="h-3.5 w-3.5" />
+                                                        <Button
+                                                            onClick={() => handleView(student)}
+                                                            size="icon"
+                                                            className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
+                                                            title={t("view")}
+                                                        >
+                                                            <Eye className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button onClick={() => handleEdit(student)} size="icon" className="h-7 w-7 rounded-md bg-[#6366f1] hover:bg-[#4f46e5] text-white shadow-sm">
+                                                        <Button
+                                                            onClick={() => handleEdit(student)}
+                                                            size="icon"
+                                                            className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-xs shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
+                                                            title={t("edit")}
+                                                        >
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
@@ -831,17 +920,14 @@ export default function StudentInformationReportPage() {
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
+                                        <TableRow className="h-56">
                                             <TableCell colSpan={12} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-emerald-500 font-bold text-[10px] flex items-center gap-1">
-                                                        <span className="text-lg">←</span> Search with different criteria.
+                                                <div className="flex flex-col items-center justify-center space-y-2 opacity-60">
+                                                    <p className="text-rose-500 font-bold text-xs">
+                                                        {t("no_data_available_in_table")}
+                                                    </p>
+                                                    <p className="text-gray-400 text-xs">
+                                                        {t("search_with_different_criteria")}
                                                     </p>
                                                 </div>
                                             </TableCell>
@@ -851,42 +937,57 @@ export default function StudentInformationReportPage() {
                             </Table>
                         </div>
 
-                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
+                        {/* Pagination */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-3 border-t border-gray-100">
                             <div>
-                                {totalEntries > 0 ? (
-                                    `Showing ${startIndex + 1} to ${Math.min(startIndex + itemsPerPageNum, totalEntries)} of ${totalEntries} entries`
-                                ) : (
-                                    "Showing 0 to 0 of 0 entries"
-                                )}
+                                {totalEntries > 0
+                                    ? t("showing_x_to_y_of_z", {
+                                          from: toLocaleNumber(startIndex + 1, langCode),
+                                          to: toLocaleNumber(
+                                              Math.min(startIndex + itemsPerPageNum, totalEntries),
+                                              langCode
+                                          ),
+                                          total: toLocaleNumber(totalEntries, langCode),
+                                      })
+                                    : t("showing_x_to_y_of_z", {
+                                          from: toLocaleNumber(0, langCode),
+                                          to: toLocaleNumber(0, langCode),
+                                          total: toLocaleNumber(0, langCode),
+                                      })}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => handleSearch(Math.max(1, currentPage - 1))}
                                     disabled={currentPage === 1 || loading}
+                                    className="h-8 px-3 rounded-full text-xs"
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    <ChevronLeft className="h-3.5 w-3.5" />
                                 </Button>
                                 {Array.from({ length: totalPages }).map((_, i) => (
                                     <Button
                                         key={i}
                                         onClick={() => handleSearch(i + 1)}
                                         disabled={loading}
-                                        className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold", currentPage === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}
+                                        className={cn(
+                                            "h-8 w-8 p-0 rounded-full text-xs font-bold transition-all",
+                                            currentPage === i + 1
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                        )}
                                     >
-                                        {i + 1}
+                                        {toLocaleNumber(i + 1, langCode)}
                                     </Button>
                                 ))}
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => handleSearch(Math.min(totalPages, currentPage + 1))}
                                     disabled={currentPage === totalPages || totalPages === 0 || loading}
+                                    className="h-8 px-3 rounded-full text-xs"
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         </div>
@@ -894,71 +995,72 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 2: Class & Section Report */}
             {activeReportTab === "Class & Section Report" && (
-                <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                    <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Class & Section Report</h2>
+                <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                    <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                        {t("class_and_section_report")}
+                    </h2>
 
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="relative w-64">
-                            <input 
+                    <div className="flex justify-between items-center mb-4 gap-3">
+                        <div className="relative w-72">
+                            <input
                                 type="text"
-                                placeholder="Search" 
-                                className="w-full h-8 px-3 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                placeholder={t("search")}
+                                className="w-full h-9 px-3 text-xs border border-gray-200 rounded-full bg-gray-50/60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                 value={classSectionSearch}
                                 onChange={(e) => setClassSectionSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleClassSectionSearch()}
+                                onKeyDown={(e) => e.key === "Enter" && handleClassSectionSearch()}
                             />
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Select defaultValue="50">
-                                <SelectTrigger className="h-8 w-16 text-[11px] border-none shadow-none focus:ring-0">
-                                    <SelectValue placeholder="50" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <div className="flex gap-2 text-gray-400">
-                                <FileText className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                <PieChart className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                <Users className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                            </div>
                         </div>
                     </div>
 
-                    <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                    <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                         <Table className="min-w-full">
-                            <TableHeader className="bg-transparent">
-                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4 w-16">S.No.</TableHead>
-                                    <TableHead className="py-3 px-4">Class</TableHead>
-                                    <TableHead className="py-3 px-4">Students</TableHead>
-                                    <TableHead className="py-3 px-4 text-right">Action</TableHead>
+                            <TableHeader className="bg-gray-50/80 text-xs">
+                                <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                    <TableHead className="py-3 px-4 w-16">{t("s_no")}</TableHead>
+                                    <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                    <TableHead className="py-3 px-4">{t("total_students")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-right pr-4">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {classSectionLoading ? <TableSkeleton cols={4} /> : classSectionData.length > 0 ? (
+                                {classSectionLoading ? (
+                                    <TableSkeleton cols={4} />
+                                ) : classSectionData.length > 0 ? (
                                     classSectionData.map((row, idx) => (
-                                        <TableRow key={idx} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                            <TableCell className="py-3 px-4 text-gray-600">{row.s_no}</TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class_name} ({row.section_name})</TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">{row.students_count}</TableCell>
+                                        <TableRow
+                                            key={idx}
+                                            className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                        >
+                                            <TableCell className="py-3 px-4 text-gray-600">
+                                                {toLocaleNumber(row.s_no || idx + 1, langCode)}
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                {translateClassName(row.class_name, langCode)} (
+                                                {translateSectionName(row.section_name, langCode)})
+                                            </TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600 font-medium">
+                                                {toLocaleNumber(row.students_count || 0, langCode)}
+                                            </TableCell>
                                             <TableCell className="py-3 px-4 pr-4 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <Button size="icon" className="h-6 w-6 rounded-md bg-[#6366f1] hover:bg-[#4f46e5] text-white shadow-sm">
-                                                        <Eye className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
+                                                <Button
+                                                    size="icon"
+                                                    className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs active:scale-95 transition-all"
+                                                    title={t("view")}
+                                                >
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
-                                    <TableRow className="hover:bg-transparent h-64">
+                                    <TableRow className="h-56">
                                         <TableCell colSpan={4} className="text-center py-12">
-                                            <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                            </div>
+                                            <p className="text-rose-500 font-bold text-xs">
+                                                {t("no_data_available_in_table")}
+                                            </p>
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -968,176 +1070,206 @@ export default function StudentInformationReportPage() {
                 </div>
             )}
 
+            {/* Tab 3: Guardian Report */}
             {activeReportTab === "Guardian Report" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Section</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={() => handleGuardianSearch(1)} 
-                                disabled={guardianLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={() => handleGuardianSearch(1)}
+                                disabled={guardianLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {guardianLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Guardian Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Guardian Report</h2>
-
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="relative w-64">
-                                <input 
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                            <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                {t("guardian_report")}
+                            </h2>
+                            <div className="relative w-72">
+                                <input
                                     type="text"
-                                    placeholder="Search" 
-                                    className="w-full h-8 px-3 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    placeholder={t("search")}
+                                    className="w-full h-8 px-3 text-xs border border-gray-200 rounded-full bg-gray-50/60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                     value={guardianSearchText}
                                     onChange={(e) => setGuardianSearchText(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleGuardianSearch(1)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleGuardianSearch(1)}
                                 />
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-8 w-16 text-[11px] border-none shadow-none focus:ring-0">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex gap-2 text-gray-400">
-                                    <FileText className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <PieChart className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <Users className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                </div>
                             </div>
                         </div>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Class (Section)</TableHead>
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name</TableHead>
-                                        <TableHead className="py-3 px-4">Mobile Number</TableHead>
-                                        <TableHead className="py-3 px-4">Guardian Name</TableHead>
-                                        <TableHead className="py-3 px-4">Guardian Relation</TableHead>
-                                        <TableHead className="py-3 px-4">Guardian Phone</TableHead>
-                                        <TableHead className="py-3 px-4">Father Name</TableHead>
-                                        <TableHead className="py-3 px-4">Father Phone</TableHead>
-                                        <TableHead className="py-3 px-4">Mother Name</TableHead>
-                                        <TableHead className="py-3 px-4">Mother Phone</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("section")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("mobile_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_relation")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_phone")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_occupation")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_address")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {guardianLoading ? <TableSkeleton cols={11} /> : guardianStudents.length > 0 ? (
-                                        guardianStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'} ({student.section?.name || 'N/A'})</TableCell>
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.phone || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.guardian_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.guardian_relation || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.guardian_phone || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.father_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.father_phone || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.mother_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.mother_phone || 'N/A'}</TableCell>
+                                    {guardianLoading ? (
+                                        <TableSkeleton cols={10} />
+                                    ) : guardianStudents.length > 0 ? (
+                                        guardianStudents.map((student) => (
+                                            <TableRow
+                                                key={student.id}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {translateClassName(student.school_class?.name, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {translateSectionName(student.section?.name, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                    {toLocaleNumber(student.admission_no, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {student.name} {student.last_name || ""}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.phone ? toLocaleNumber(student.phone, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">
+                                                    {student.guardian_name || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.guardian_relation || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.guardian_phone ? toLocaleNumber(student.guardian_phone, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.guardian_occupation || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500 truncate max-w-xs">
+                                                    {student.guardian_address || "—"}
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
-                                            <TableCell colSpan={11} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        <TableRow className="h-56">
+                                            <TableCell colSpan={10} className="text-center py-12">
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
                             </Table>
                         </div>
-                        
-                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
+
+                        {/* Pagination */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-3 border-t border-gray-100">
                             <div>
-                                {guardianTotalEntries > 0 ? (
-                                    `Showing ${(guardianCurrentPage - 1) * itemsPerPageNum + 1} to ${Math.min(guardianCurrentPage * itemsPerPageNum, guardianTotalEntries)} of ${guardianTotalEntries} entries`
-                                ) : (
-                                    "Showing 0 to 0 of 0 entries"
-                                )}
+                                {guardianTotalEntries > 0
+                                    ? t("showing_x_to_y_of_z", {
+                                          from: toLocaleNumber((guardianCurrentPage - 1) * itemsPerPageNum + 1, langCode),
+                                          to: toLocaleNumber(
+                                              Math.min((guardianCurrentPage - 1) * itemsPerPageNum + itemsPerPageNum, guardianTotalEntries),
+                                              langCode
+                                          ),
+                                          total: toLocaleNumber(guardianTotalEntries, langCode),
+                                      })
+                                    : t("showing_x_to_y_of_z", {
+                                          from: toLocaleNumber(0, langCode),
+                                          to: toLocaleNumber(0, langCode),
+                                          total: toLocaleNumber(0, langCode),
+                                      })}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                            <div className="flex items-center gap-1.5">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => handleGuardianSearch(Math.max(1, guardianCurrentPage - 1))}
                                     disabled={guardianCurrentPage === 1 || guardianLoading}
+                                    className="h-8 px-3 rounded-full text-xs"
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    <ChevronLeft className="h-3.5 w-3.5" />
                                 </Button>
                                 {Array.from({ length: guardianTotalPages }).map((_, i) => (
                                     <Button
                                         key={i}
                                         onClick={() => handleGuardianSearch(i + 1)}
                                         disabled={guardianLoading}
-                                        className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold", guardianCurrentPage === i + 1 ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200")}
+                                        className={cn(
+                                            "h-8 w-8 p-0 rounded-full text-xs font-bold transition-all",
+                                            guardianCurrentPage === i + 1
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                        )}
                                     >
-                                        {i + 1}
+                                        {toLocaleNumber(i + 1, langCode)}
                                     </Button>
                                 ))}
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-lg border-gray-100 shadow-sm text-gray-400 hover:text-gray-600 bg-white"
+                                <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => handleGuardianSearch(Math.min(guardianTotalPages, guardianCurrentPage + 1))}
                                     disabled={guardianCurrentPage === guardianTotalPages || guardianTotalPages === 0 || guardianLoading}
+                                    className="h-8 px-3 rounded-full text-xs"
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         </div>
@@ -1145,102 +1277,126 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 4: Student History */}
             {activeReportTab === "Student History" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Admission Year</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("admission_year")}
+                                </Label>
                                 <Select value={selectedAdmissionYear} onValueChange={setSelectedAdmissionYear}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_years")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Year</SelectItem>
+                                        <SelectItem value="all" className="text-xs">{t("all_years")}</SelectItem>
                                         {admissionYears.map((year) => (
-                                            <SelectItem key={year} value={year}>{year}</SelectItem>
+                                            <SelectItem key={year} value={year} className="text-xs">
+                                                {toLocaleNumber(year, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleHistorySearch} 
-                                disabled={historyLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleHistorySearch}
+                                disabled={historyLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {historyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Student History Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student History</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("student_history")}
+                        </h2>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name</TableHead>
-                                        <TableHead className="py-3 px-4">Admission Date</TableHead>
-                                        <TableHead className="py-3 px-4">Class (Start - End)</TableHead>
-                                        <TableHead className="py-3 px-4">Session (Start - End)</TableHead>
-                                        <TableHead className="py-3 px-4">Years</TableHead>
-                                        <TableHead className="py-3 px-4">Mobile Number</TableHead>
-                                        <TableHead className="py-3 px-4">Guardian Name</TableHead>
-                                        <TableHead className="py-3 px-4">Guardian Phone</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_date")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("session") || "Session"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("mobile_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_phone")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {historyLoading ? <TableSkeleton cols={9} /> : historyStudents.length > 0 ? (
-                                        historyStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.admission_date || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.school_class?.name || 'N/A'} - {student.school_class?.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.academic_session?.session || 'N/A'} - {student.academic_session?.session || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">
-                                                    {student.admission_date ? (new Date().getFullYear() - new Date(student.admission_date).getFullYear()) : 'N/A'}
+                                    {historyLoading ? (
+                                        <TableSkeleton cols={8} />
+                                    ) : historyStudents.length > 0 ? (
+                                        historyStudents.map((student) => (
+                                            <TableRow
+                                                key={student.id}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                    {toLocaleNumber(student.admission_no, langCode)}
                                                 </TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.phone || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.guardian_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.guardian_phone || 'N/A'}</TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {student.name} {student.last_name || ""}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.admission_date ? toLocaleNumber(student.admission_date, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {translateClassName(student.school_class?.name, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.academic_session?.session || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.phone ? toLocaleNumber(student.phone, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.guardian_name || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.guardian_phone ? toLocaleNumber(student.guardian_phone, langCode) : "—"}
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
-                                            <TableCell colSpan={9} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        <TableRow className="h-56">
+                                            <TableCell colSpan={8} className="text-center py-12">
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -1251,90 +1407,112 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 5: Student Login Credential */}
             {activeReportTab === "Student Login Credential" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Section</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleCredentialSearch} 
-                                disabled={credentialLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleCredentialSearch}
+                                disabled={credentialLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {credentialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Student Login Credential Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Login Credential Report</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("student_login_credential")}
+                        </h2>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name</TableHead>
-                                        <TableHead className="py-3 px-4">Username</TableHead>
-                                        <TableHead className="py-3 px-4">Password</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("username")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("password")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {credentialLoading ? <TableSkeleton cols={4} /> : credentialStudents.length > 0 ? (
-                                        credentialStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.email || student.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">********</TableCell>
+                                    {credentialLoading ? (
+                                        <TableSkeleton cols={4} />
+                                    ) : credentialStudents.length > 0 ? (
+                                        credentialStudents.map((student) => (
+                                            <TableRow
+                                                key={student.id}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                    {toLocaleNumber(student.admission_no, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {student.name} {student.last_name || ""}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 font-mono text-gray-600">
+                                                    {student.user?.email || student.admission_no}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 font-mono text-gray-600">
+                                                    ******
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
+                                        <TableRow className="h-56">
                                             <TableCell colSpan={4} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Key className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -1345,90 +1523,116 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 6: Parent Login Credential */}
             {activeReportTab === "Parent Login Credential" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Section</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleParentCredentialSearch} 
-                                disabled={parentCredentialLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleParentCredentialSearch}
+                                disabled={parentCredentialLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {parentCredentialLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Parent Login Credential Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Parent Login Credential Report</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("parent_login_credential")}
+                        </h2>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name</TableHead>
-                                        <TableHead className="py-3 px-4">Parent Username</TableHead>
-                                        <TableHead className="py-3 px-4">Parent Password</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("parent_username")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("parent_password")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {parentCredentialLoading ? <TableSkeleton cols={4} /> : parentCredentialStudents.length > 0 ? (
-                                        parentCredentialStudents.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">parent_{student.admission_no || student.id}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">********</TableCell>
+                                    {parentCredentialLoading ? (
+                                        <TableSkeleton cols={5} />
+                                    ) : parentCredentialStudents.length > 0 ? (
+                                        parentCredentialStudents.map((student) => (
+                                            <TableRow
+                                                key={student.id}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                    {toLocaleNumber(student.admission_no, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {student.name} {student.last_name || ""}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-600 font-medium">
+                                                    {student.guardian_name || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 font-mono text-gray-600">
+                                                    {student.guardian_email || `parent_${student.admission_no}`}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 font-mono text-gray-600">
+                                                    ******
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
-                                            <TableCell colSpan={4} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Key className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        <TableRow className="h-56">
+                                            <TableCell colSpan={5} className="text-center py-12">
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -1439,125 +1643,138 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 7: Class Subject Report */}
             {activeReportTab === "Class Subject Report" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Section</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleClassSubjectSearch} 
-                                disabled={classSubjectLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleClassSubjectSearch}
+                                disabled={classSubjectLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {classSubjectLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Class Subject Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Class Subject Report</h2>
-
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="relative w-64">
-                                <input 
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                            <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                {t("class_subject_report")}
+                            </h2>
+                            <div className="relative w-72">
+                                <input
                                     type="text"
-                                    placeholder="Search" 
-                                    className="w-full h-8 px-3 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    placeholder={t("search")}
+                                    className="w-full h-8 px-3 text-xs border border-gray-200 rounded-full bg-gray-50/60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                     value={classSubjectSearch}
                                     onChange={(e) => setClassSubjectSearch(e.target.value)}
                                 />
                             </div>
-                            <div className="flex items-center gap-4">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-8 w-16 text-[11px] border-none shadow-none focus:ring-0">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex gap-2 text-gray-400">
-                                    <FileText className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <PieChart className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <Users className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                </div>
-                            </div>
                         </div>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Class</TableHead>
-                                        <TableHead className="py-3 px-4">Section</TableHead>
-                                        <TableHead className="py-3 px-4">Subject</TableHead>
-                                        <TableHead className="py-3 px-4">Teacher</TableHead>
-                                        <TableHead className="py-3 px-4">Time</TableHead>
-                                        <TableHead className="py-3 px-4">Room No.</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("section")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("subject")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("teacher")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("time") || "Time"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("room_no") || "Room No"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {classSubjectLoading ? <TableSkeleton cols={6} /> : classSubjectData.length > 0 ? (
-                                        classSubjectData.filter(item => 
-                                            item.subject?.toLowerCase().includes(classSubjectSearch.toLowerCase()) ||
-                                            item.teacher?.toLowerCase().includes(classSubjectSearch.toLowerCase())
-                                        ).map((row, idx) => (
-                                            <TableRow key={row.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.section || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{row.subject || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.teacher || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.time || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.room_no || 'N/A'}</TableCell>
-                                            </TableRow>
-                                        ))
+                                    {classSubjectLoading ? (
+                                        <TableSkeleton cols={6} />
+                                    ) : classSubjectData.length > 0 ? (
+                                        classSubjectData
+                                            .filter(
+                                                (item) =>
+                                                    !classSubjectSearch ||
+                                                    item.subject?.toLowerCase().includes(classSubjectSearch.toLowerCase()) ||
+                                                    item.teacher?.toLowerCase().includes(classSubjectSearch.toLowerCase())
+                                            )
+                                            .map((row, idx) => (
+                                                <TableRow
+                                                    key={row.id || idx}
+                                                    className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                                >
+                                                    <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                        {translateClassName(row.class, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {translateSectionName(row.section, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                        {row.subject || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-800 font-medium">
+                                                        {row.teacher || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {row.time ? toLocaleNumber(row.time, langCode) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {row.room_no ? toLocaleNumber(row.room_no, langCode) : "—"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
+                                        <TableRow className="h-56">
                                             <TableCell colSpan={6} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <BookOpen className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -1568,85 +1785,109 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 8: Admission Report */}
             {activeReportTab === "Admission Report" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("search_type")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedSearchType} onValueChange={setSelectedSearchType}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select</SelectItem>
+                                        <SelectItem value="all" className="text-xs">{t("all")}</SelectItem>
                                         {searchTypes.map((type) => (
-                                            <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                                            <SelectItem key={type.id} value={type.id} className="text-xs">
+                                                {t(type.id) || type.name}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleAdmissionSearch} 
-                                disabled={admissionLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleAdmissionSearch}
+                                disabled={admissionLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {admissionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Admission Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Admission Report</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("admission_report")}
+                        </h2>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name</TableHead>
-                                        <TableHead className="py-3 px-4">Class</TableHead>
-                                        <TableHead className="py-3 px-4">Father Name</TableHead>
-                                        <TableHead className="py-3 px-4">Date Of Birth</TableHead>
-                                        <TableHead className="py-3 px-4">Admission Date</TableHead>
-                                        <TableHead className="py-3 px-4">Gender</TableHead>
-                                        <TableHead className="py-3 px-4">Category</TableHead>
-                                        <TableHead className="py-3 px-4">Mobile Number</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("father_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("date_of_birth")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_date")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("gender")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("category")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("mobile_number")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {admissionLoading ? <TableSkeleton cols={9} /> : admissionData.length > 0 ? (
-                                        admissionData.map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.father_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.dob || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.admission_date || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.gender || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.category_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.phone || 'N/A'}</TableCell>
+                                    {admissionLoading ? (
+                                        <TableSkeleton cols={9} />
+                                    ) : admissionData.length > 0 ? (
+                                        admissionData.map((student) => (
+                                            <TableRow
+                                                key={student.id}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                    {toLocaleNumber(student.admission_no, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {student.name} {student.last_name || ""}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">
+                                                    {translateClassName(student.school_class?.name, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.father_name || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.dob ? toLocaleNumber(student.dob, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.admission_date ? toLocaleNumber(student.admission_date, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.gender ? (t(student.gender.toLowerCase()) || student.gender) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.category_name || "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {student.phone ? toLocaleNumber(student.phone, langCode) : "—"}
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
+                                        <TableRow className="h-56">
                                             <TableCell colSpan={9} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -1657,129 +1898,146 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 9: Sibling Report */}
             {activeReportTab === "Sibling Report" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Section</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleSiblingSearch} 
-                                disabled={siblingLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleSiblingSearch}
+                                disabled={siblingLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {siblingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Sibling Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Sibling Report</h2>
-
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="relative w-64">
-                                <input 
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                            <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                {t("sibling_report")}
+                            </h2>
+                            <div className="relative w-72">
+                                <input
                                     type="text"
-                                    placeholder="Search" 
-                                    className="w-full h-8 px-3 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    placeholder={t("search")}
+                                    className="w-full h-8 px-3 text-xs border border-gray-200 rounded-full bg-gray-50/60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                     value={siblingSearch}
                                     onChange={(e) => setSiblingSearch(e.target.value)}
                                 />
                             </div>
-                            <div className="flex items-center gap-4">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-8 w-16 text-[11px] border-none shadow-none focus:ring-0">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex gap-2 text-gray-400">
-                                    <FileText className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <PieChart className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <Users className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                </div>
-                            </div>
                         </div>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1200px]">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Father Name</TableHead>
-                                        <TableHead className="py-3 px-4">Mother Name</TableHead>
-                                        <TableHead className="py-3 px-4">Guardian Name</TableHead>
-                                        <TableHead className="py-3 px-4">Guardian Phone</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name (Sibling)</TableHead>
-                                        <TableHead className="py-3 px-4">Class</TableHead>
-                                        <TableHead className="py-3 px-4">Admission Date</TableHead>
-                                        <TableHead className="py-3 px-4">Gender</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("father_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("mother_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("guardian_phone")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")} ({t("sibling_name") || "Sibling"})</TableHead>
+                                        <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_date")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("gender")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {siblingLoading ? <TableSkeleton cols={8} /> : siblingData.length > 0 ? (
-                                        siblingData.filter(student => 
-                                            student.name?.toLowerCase().includes(siblingSearch.toLowerCase()) ||
-                                            student.guardian_name?.toLowerCase().includes(siblingSearch.toLowerCase())
-                                        ).map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.father_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.mother_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.guardian_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.guardian_phone || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name} {student.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.admission_date || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.gender || 'N/A'}</TableCell>
-                                            </TableRow>
-                                        ))
+                                    {siblingLoading ? (
+                                        <TableSkeleton cols={8} />
+                                    ) : siblingData.length > 0 ? (
+                                        siblingData
+                                            .filter(
+                                                (student) =>
+                                                    !siblingSearch ||
+                                                    student.name?.toLowerCase().includes(siblingSearch.toLowerCase()) ||
+                                                    student.guardian_name?.toLowerCase().includes(siblingSearch.toLowerCase())
+                                            )
+                                            .map((student) => (
+                                                <TableRow
+                                                    key={student.id}
+                                                    className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                                >
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.father_name || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.mother_name || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.guardian_name || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.guardian_phone ? toLocaleNumber(student.guardian_phone, langCode) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                        {student.name} {student.last_name || ""}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-800 font-medium">
+                                                        {translateClassName(student.school_class?.name, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.admission_date ? toLocaleNumber(student.admission_date, langCode) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.gender ? (t(student.gender.toLowerCase()) || student.gender) : "—"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
+                                        <TableRow className="h-56">
                                             <TableCell colSpan={8} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -1790,166 +2048,193 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 10: Student Profile */}
             {activeReportTab === "Student Profile" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search By Admission Date</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("admission_date")}
+                                </Label>
                                 <Select value={selectedProfileSearchType} onValueChange={setSelectedProfileSearchType}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select</SelectItem>
+                                        <SelectItem value="all" className="text-xs">{t("all")}</SelectItem>
                                         {searchTypes.map((type) => (
-                                            <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                                            <SelectItem key={type.id} value={type.id} className="text-xs">
+                                                {t(type.id) || type.name}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")} <span className="text-rose-500">*</span>
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Section</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleProfileSearch} 
-                                disabled={profileLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleProfileSearch}
+                                disabled={profileLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {profileLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Student Profile Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Profile</h2>
-
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="relative w-64">
-                                <input 
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                            <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide">
+                                {t("student_profile")}
+                            </h2>
+                            <div className="relative w-72">
+                                <input
                                     type="text"
-                                    placeholder="Search" 
-                                    className="w-full h-8 px-3 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                    placeholder={t("search")}
+                                    className="w-full h-8 px-3 text-xs border border-gray-200 rounded-full bg-gray-50/60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                                     value={profileSearch}
                                     onChange={(e) => setProfileSearch(e.target.value)}
                                 />
                             </div>
-                            <div className="flex items-center gap-4">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-8 w-16 text-[11px] border-none shadow-none focus:ring-0">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex gap-2 text-gray-400">
-                                    <FileText className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <PieChart className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <Users className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                </div>
-                            </div>
                         </div>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[2000px]">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Roll Number</TableHead>
-                                        <TableHead className="py-3 px-4">Class</TableHead>
-                                        <TableHead className="py-3 px-4">Section</TableHead>
-                                        <TableHead className="py-3 px-4">First Name</TableHead>
-                                        <TableHead className="py-3 px-4">Last Name</TableHead>
-                                        <TableHead className="py-3 px-4">Gender</TableHead>
-                                        <TableHead className="py-3 px-4">Date Of Birth</TableHead>
-                                        <TableHead className="py-3 px-4">Category</TableHead>
-                                        <TableHead className="py-3 px-4">Religion</TableHead>
-                                        <TableHead className="py-3 px-4">Caste</TableHead>
-                                        <TableHead className="py-3 px-4">Mobile Number</TableHead>
-                                        <TableHead className="py-3 px-4">Email</TableHead>
-                                        <TableHead className="py-3 px-4">Admission Date</TableHead>
-                                        <TableHead className="py-3 px-4">Blood Group</TableHead>
-                                        <TableHead className="py-3 px-4">House</TableHead>
-                                        <TableHead className="py-3 px-4">Height</TableHead>
-                                        <TableHead className="py-3 px-4">Weight</TableHead>
-                                        <TableHead className="py-3 px-4">Measurement Date</TableHead>
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("roll_number") || "Roll Number"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("section")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("first_name") || "First Name"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("last_name") || "Last Name"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("gender")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("date_of_birth")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("category")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("religion") || "Religion"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("caste") || "Caste"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("mobile_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("email") || "Email"}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_date")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("blood_group") || "Blood Group"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {profileLoading ? <TableSkeleton cols={19} /> : profileData.length > 0 ? (
-                                        profileData.filter(student => 
-                                            student.name?.toLowerCase().includes(profileSearch.toLowerCase()) ||
-                                            student.admission_no?.toLowerCase().includes(profileSearch.toLowerCase())
-                                        ).map((student, idx) => (
-                                            <TableRow key={student.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{student.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.roll_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.school_class?.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.section?.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{student.last_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.gender || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.dob || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.category_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.religion || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.caste || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.phone || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.email || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.admission_date || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.blood_group || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.school_house_name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.height || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.weight || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{student.measurement_date || 'N/A'}</TableCell>
-                                            </TableRow>
-                                        ))
+                                    {profileLoading ? (
+                                        <TableSkeleton cols={15} />
+                                    ) : profileData.length > 0 ? (
+                                        profileData
+                                            .filter(
+                                                (student) =>
+                                                    !profileSearch ||
+                                                    student.name?.toLowerCase().includes(profileSearch.toLowerCase()) ||
+                                                    student.admission_no?.toLowerCase().includes(profileSearch.toLowerCase())
+                                            )
+                                            .map((student) => (
+                                                <TableRow
+                                                    key={student.id}
+                                                    className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                                >
+                                                    <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                        {toLocaleNumber(student.admission_no, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.roll_no ? toLocaleNumber(student.roll_no, langCode) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                        {translateClassName(student.school_class?.name, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {translateSectionName(student.section?.name, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-800 font-medium">
+                                                        {student.name || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-800 font-medium">
+                                                        {student.last_name || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.gender ? (t(student.gender.toLowerCase()) || student.gender) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.dob ? toLocaleNumber(student.dob, langCode) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.category_name || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.religion || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.caste || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.phone ? toLocaleNumber(student.phone, langCode) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.email || "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.admission_date ? toLocaleNumber(student.admission_date, langCode) : "—"}
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-gray-500">
+                                                        {student.blood_group || "—"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
-                                            <TableCell colSpan={19} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                        <TableRow className="h-56">
+                                            <TableCell colSpan={15} className="text-center py-12">
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -1960,287 +2245,319 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* Tab 11: Student Gender Ratio Report */}
             {activeReportTab === "Student Gender Ratio Report" && (
-                <>
-                    {/* Student Gender Ratio Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Gender Ratio Report</h2>
+                <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                    <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                        {t("student_gender_ratio_report")}
+                    </h2>
 
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="relative w-64">
-                                <input 
-                                    type="text"
-                                    placeholder="Search" 
-                                    className="w-full h-8 px-3 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    value={genderRatioSearch}
-                                    onChange={(e) => setGenderRatioSearch(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-8 w-16 text-[11px] border-none shadow-none focus:ring-0">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex gap-2 text-gray-400">
-                                    <FileText className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <PieChart className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <Users className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                </div>
-                            </div>
+                    <div className="flex justify-between items-center mb-4 gap-3">
+                        <div className="relative w-72">
+                            <input
+                                type="text"
+                                placeholder={t("search")}
+                                className="w-full h-9 px-3 text-xs border border-gray-200 rounded-full bg-gray-50/60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                value={genderRatioSearch}
+                                onChange={(e) => setGenderRatioSearch(e.target.value)}
+                            />
                         </div>
+                    </div>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                            <Table className="min-w-full">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Class (Section)</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Total Boys</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Total Girls</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Total Students</TableHead>
-                                        <TableHead className="py-3 px-4 text-right">Boys - Girls Ratio</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {genderRatioLoading ? <TableSkeleton cols={5} /> : genderRatioData.length > 0 ? (
-                                        genderRatioData.filter(item => 
+                    <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-full">
+                            <TableHeader className="bg-gray-50/80 text-xs">
+                                <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                    <TableHead className="py-3 px-4">{t("class")} ({t("section")})</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">{t("boys")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">{t("girls")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">{t("total_students")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-right pr-4">{t("ratio")}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {genderRatioLoading ? (
+                                    <TableSkeleton cols={5} />
+                                ) : genderRatioData.length > 0 ? (
+                                    genderRatioData
+                                        .filter((item) =>
                                             item.class_section?.toLowerCase().includes(genderRatioSearch.toLowerCase())
-                                        ).map((row, idx) => (
-                                            <TableRow key={idx} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class_section}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_boys}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_girls}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-indigo-600 font-bold">{row.total_students}</TableCell>
-                                                <TableCell className="py-3 px-4 text-right text-gray-500 font-medium tracking-wider">{row.ratio}</TableCell>
+                                        )
+                                        .map((row, idx) => (
+                                            <TableRow
+                                                key={idx}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {row.class_section}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-600 font-medium">
+                                                    {toLocaleNumber(row.total_boys || 0, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-600 font-medium">
+                                                    {toLocaleNumber(row.total_girls || 0, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-[#6366f1] font-bold">
+                                                    {toLocaleNumber(row.total_students || 0, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-right pr-4 text-gray-500 font-semibold">
+                                                    {row.ratio || "—"}
+                                                </TableCell>
                                             </TableRow>
                                         ))
-                                    ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
-                                            <TableCell colSpan={5} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
-                </>
-            )}
-
-            {activeReportTab === "Student Teacher Ratio Report" && (
-                <>
-                    {/* Student Teacher Ratio Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Student Teacher Ratio Report</h2>
-
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="relative w-64">
-                                <input 
-                                    type="text"
-                                    placeholder="Search" 
-                                    className="w-full h-8 px-3 py-1 text-[11px] border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    value={teacherRatioSearch}
-                                    onChange={(e) => setTeacherRatioSearch(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-8 w-16 text-[11px] border-none shadow-none focus:ring-0">
-                                        <SelectValue placeholder="50" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex gap-2 text-gray-400">
-                                    <FileText className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <PieChart className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                    <Users className="h-4 w-4 cursor-pointer hover:text-gray-600" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                            <Table className="min-w-full">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Class (Section)</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Total Students</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Total Assigned Teachers</TableHead>
-                                        <TableHead className="py-3 px-4 text-right">Student - Teacher Ratio</TableHead>
+                                ) : (
+                                    <TableRow className="h-56">
+                                        <TableCell colSpan={5} className="text-center py-12">
+                                            <p className="text-rose-500 font-bold text-xs">
+                                                {t("no_data_available_in_table")}
+                                            </p>
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {teacherRatioLoading ? <TableSkeleton cols={4} /> : teacherRatioData.length > 0 ? (
-                                        teacherRatioData.filter(item => 
-                                            item.class_section?.toLowerCase().includes(teacherRatioSearch.toLowerCase())
-                                        ).map((row, idx) => (
-                                            <TableRow key={idx} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.class_section}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_students}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-600">{row.total_teachers}</TableCell>
-                                                <TableCell className="py-3 px-4 text-right text-gray-500 font-medium tracking-wider">{row.ratio}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
-                                            <TableCell colSpan={4} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <Users className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
-                </>
+                </div>
             )}
 
+            {/* Tab 12: Student Teacher Ratio Report */}
+            {activeReportTab === "Student Teacher Ratio Report" && (
+                <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                    <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                        {t("student_teacher_ratio_report")}
+                    </h2>
+
+                    <div className="flex justify-between items-center mb-4 gap-3">
+                        <div className="relative w-72">
+                            <input
+                                type="text"
+                                placeholder={t("search")}
+                                className="w-full h-9 px-3 text-xs border border-gray-200 rounded-full bg-gray-50/60 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                value={teacherRatioSearch}
+                                onChange={(e) => setTeacherRatioSearch(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
+                        <Table className="min-w-full">
+                            <TableHeader className="bg-gray-50/80 text-xs">
+                                <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                    <TableHead className="py-3 px-4">{t("class")} ({t("section")})</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">{t("total_students")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-center">{t("total_teachers")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-right pr-4">{t("ratio")}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {teacherRatioLoading ? (
+                                    <TableSkeleton cols={4} />
+                                ) : teacherRatioData.length > 0 ? (
+                                    teacherRatioData
+                                        .filter((item) =>
+                                            item.class_section?.toLowerCase().includes(teacherRatioSearch.toLowerCase())
+                                        )
+                                        .map((row, idx) => (
+                                            <TableRow
+                                                key={idx}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {row.class_section}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-600 font-medium">
+                                                    {toLocaleNumber(row.total_students || 0, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-600 font-medium">
+                                                    {toLocaleNumber(row.total_teachers || 0, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-right pr-4 text-gray-500 font-semibold">
+                                                    {row.ratio || "—"}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                ) : (
+                                    <TableRow className="h-56">
+                                        <TableCell colSpan={4} className="text-center py-12">
+                                            <p className="text-rose-500 font-bold text-xs">
+                                                {t("no_data_available_in_table")}
+                                            </p>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+            )}
+
+            {/* Tab 13: Online Admission Report */}
             {activeReportTab === "Online Admission Report" && (
                 <>
-                    {/* Select Criteria Section */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("select_criteria")}
+                        </h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("class")}
+                                </Label>
                                 <Select value={selectedClass} onValueChange={handleClassChange}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Class</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("select_class")}
+                                        </SelectItem>
                                         {classes.map((cls) => (
-                                            <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                            <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs">
+                                                {translateClassName(cls.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("section")}
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_sections")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select Section</SelectItem>
+                                        <SelectItem value="all" className="text-xs">
+                                            {t("all_sections")}
+                                        </SelectItem>
                                         {sections.map((sec) => (
-                                            <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                            <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs">
+                                                {translateSectionName(sec.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Status</Label>
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("status")}
+                                </Label>
                                 <Select value={selectedOnlineStatus} onValueChange={setSelectedOnlineStatus}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                        <SelectValue placeholder="Select" />
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("all_status")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
-                                        <SelectItem value="approved">Approved</SelectItem>
-                                        <SelectItem value="rejected">Rejected</SelectItem>
+                                        <SelectItem value="all" className="text-xs">{t("all_status")}</SelectItem>
+                                        <SelectItem value="approved" className="text-xs">{t("approved") || "Approved"}</SelectItem>
+                                        <SelectItem value="pending" className="text-xs">{t("pending") || "Pending"}</SelectItem>
+                                        <SelectItem value="rejected" className="text-xs">{t("rejected") || "Rejected"}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
-                        <div className="flex justify-end">
-                            <Button 
-                                onClick={handleOnlineAdmissionSearch} 
-                                disabled={onlineAdmissionLoading} 
-                                variant="gradient"
-                                className="h-9 px-8 text-[11px] uppercase tracking-wider shadow-lg shadow-orange-500/20"
+                        <div className="flex justify-end pt-2">
+                            <Button
+                                onClick={handleOnlineAdmissionSearch}
+                                disabled={onlineAdmissionLoading}
+                                className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                             >
-                                <Search className="h-4 w-4" />
-                                Search
+                                {onlineAdmissionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                {t("search")}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Online Admission Report Table */}
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden min-h-[400px]">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Online Admission Report</h2>
+                    <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs space-y-4">
+                        <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wide border-b border-gray-100 pb-3">
+                            {t("online_admission_report")}
+                        </h2>
 
-                        <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                            <Table className="min-w-[1500px]">
-                                <TableHeader className="bg-gray-50 text-xs uppercase">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-3 px-4">Reference No</TableHead>
-                                        <TableHead className="py-3 px-4">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4">Student Name</TableHead>
-                                        <TableHead className="py-3 px-4">Class</TableHead>
-                                        <TableHead className="py-3 px-4">Mobile Number</TableHead>
-                                        <TableHead className="py-3 px-4">Date Of Birth</TableHead>
-                                        <TableHead className="py-3 px-4">Gender</TableHead>
-                                        <TableHead className="py-3 px-4">Form Status</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Payment Status</TableHead>
-                                        <TableHead className="py-3 px-4 text-center">Enrolled</TableHead>
-                                        <TableHead className="py-3 px-4 text-right">Amount</TableHead>
+                        <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar">
+                            <Table className="min-w-[1200px]">
+                                <TableHeader className="bg-gray-50/80 text-xs">
+                                    <TableRow className="border-b border-gray-100 whitespace-nowrap text-xs font-bold text-gray-700">
+                                        <TableHead className="py-3 px-4">{t("reference_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("student_name")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("mobile_number")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("date_of_birth")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("gender")}</TableHead>
+                                        <TableHead className="py-3 px-4">{t("status")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-center">{t("payment_status")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-center">{t("enrolled")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-right pr-4">{t("paid_amount")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {onlineAdmissionLoading ? <TableSkeleton cols={11} /> : onlineAdmissionData.length > 0 ? (
-                                        onlineAdmissionData.map((row, idx) => (
-                                            <TableRow key={row.id} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-50 transition-colors">
-                                                <TableCell className="py-3 px-4 text-indigo-600 font-medium">{row.reference_no}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.admission_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">{row.first_name} {row.last_name || ''}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.school_class?.name || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.mobile_no || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.dob || 'N/A'}</TableCell>
-                                                <TableCell className="py-3 px-4 text-gray-500">{row.gender || 'N/A'}</TableCell>
+                                    {onlineAdmissionLoading ? (
+                                        <TableSkeleton cols={11} />
+                                    ) : onlineAdmissionData.length > 0 ? (
+                                        onlineAdmissionData.map((row) => (
+                                            <TableRow
+                                                key={row.id}
+                                                className="hover:bg-indigo-50/30 transition-colors border-b border-gray-50 text-xs whitespace-nowrap"
+                                            >
+                                                <TableCell className="py-3 px-4 text-[#6366f1] font-semibold">
+                                                    {row.reference_no}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {row.admission_no ? toLocaleNumber(row.admission_no, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-semibold">
+                                                    {row.first_name} {row.last_name || ""}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-800 font-medium">
+                                                    {translateClassName(row.school_class?.name, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {row.mobile_no ? toLocaleNumber(row.mobile_no, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {row.dob ? toLocaleNumber(row.dob, langCode) : "—"}
+                                                </TableCell>
+                                                <TableCell className="py-3 px-4 text-gray-500">
+                                                    {row.gender ? (t(row.gender.toLowerCase()) || row.gender) : "—"}
+                                                </TableCell>
                                                 <TableCell className="py-3 px-4">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                                                        row.status === 'approved' ? 'bg-green-50 text-green-600 border border-green-100' :
-                                                        row.status === 'rejected' ? 'bg-red-50 text-red-600 border border-red-100' :
-                                                        'bg-orange-50 text-orange-600 border border-orange-100'
-                                                    }`}>
-                                                        {row.status || 'Pending'}
+                                                    <span
+                                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                                            row.status === "approved"
+                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                                                : row.status === "rejected"
+                                                                ? "bg-rose-50 text-rose-600 border border-rose-100"
+                                                                : "bg-amber-50 text-amber-600 border border-amber-100"
+                                                        }`}
+                                                    >
+                                                        {t(row.status || "pending") || row.status || "Pending"}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-500">{row.payment_status || 'Unpaid'}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center text-gray-500 font-medium">
+                                                    {t(row.payment_status?.toLowerCase()) || row.payment_status || "—"}
+                                                </TableCell>
                                                 <TableCell className="py-3 px-4 text-center">
-                                                    <span className={`text-[10px] font-bold ${row.is_enrolled ? 'text-green-600' : 'text-red-400'}`}>
-                                                        {row.is_enrolled ? 'YES' : 'NO'}
+                                                    <span
+                                                        className={`text-xs font-bold ${
+                                                            row.is_enrolled ? "text-emerald-600" : "text-rose-500"
+                                                        }`}
+                                                    >
+                                                        {row.is_enrolled ? t("yes") : t("no")}
                                                     </span>
                                                 </TableCell>
-                                                <TableCell className="py-3 px-4 text-right text-gray-800 font-medium">{row.paid_amount || '0.00'}</TableCell>
+                                                <TableCell className="py-3 px-4 text-right pr-4 text-gray-800 font-bold">
+                                                    {toLocaleNumber(row.paid_amount || "0.00", langCode)}
+                                                </TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
-                                        <TableRow className="hover:bg-transparent h-64">
+                                        <TableRow className="h-56">
                                             <TableCell colSpan={11} className="text-center py-12">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                                    <p className="text-red-400 font-bold mb-4">No data available in table</p>
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                            <FileText className="h-8 w-8 text-gray-200" />
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                <p className="text-rose-500 font-bold text-xs">
+                                                    {t("no_data_available_in_table")}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -2251,45 +2568,89 @@ export default function StudentInformationReportPage() {
                 </>
             )}
 
+            {/* View Student Details Dialog */}
             <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                <DialogContent className="sm:max-w-[500px] p-0 rounded bg-white overflow-hidden">
-                    <DialogHeader className="px-6 py-4 bg-indigo-50 border-b border-indigo-100">
-                        <DialogTitle className="text-lg font-bold text-indigo-900">Student Details</DialogTitle>
+                <DialogContent className="sm:max-w-[520px] p-0 rounded-2xl overflow-hidden border-none shadow-2xl bg-white">
+                    <DialogHeader className="p-5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100 flex flex-row items-center gap-3 space-y-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Users className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <DialogTitle className="text-base font-bold text-gray-800 leading-none">
+                                {t("student_details")}
+                            </DialogTitle>
+                            <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                                {selectedStudent?.name} {selectedStudent?.last_name || ""}
+                            </p>
+                        </div>
                     </DialogHeader>
                     {selectedStudent && (
-                        <div className="p-6 space-y-4 text-sm text-gray-700">
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="p-5 space-y-4 text-xs">
+                            <div className="grid grid-cols-2 gap-3 bg-gray-50/60 p-4 rounded-xl border border-gray-100">
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Admission No</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.admission_no || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("admission_no")}
+                                    </span>
+                                    <p className="font-bold text-[#6366f1]">
+                                        {toLocaleNumber(selectedStudent.admission_no, langCode) || "—"}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Student Name</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.name} {selectedStudent.last_name || ''}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("student_name")}
+                                    </span>
+                                    <p className="font-bold text-gray-800">
+                                        {selectedStudent.name} {selectedStudent.last_name || ""}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Class & Section</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.school_class?.name || 'N/A'} - {selectedStudent.section?.name || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("class_and_section")}
+                                    </span>
+                                    <p className="font-bold text-gray-800">
+                                        {translateClassName(selectedStudent.school_class?.name, langCode)} -{" "}
+                                        {translateSectionName(selectedStudent.section?.name, langCode)}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Date of Birth</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.dob || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("date_of_birth")}
+                                    </span>
+                                    <p className="font-bold text-gray-800">
+                                        {selectedStudent.dob ? toLocaleNumber(selectedStudent.dob, langCode) : "—"}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Gender</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.gender || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("gender")}
+                                    </span>
+                                    <p className="font-bold text-gray-800">
+                                        {selectedStudent.gender ? (t(selectedStudent.gender.toLowerCase()) || selectedStudent.gender) : "—"}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Category</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.student_category?.category_name || selectedStudent.category || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("category")}
+                                    </span>
+                                    <p className="font-bold text-gray-800">
+                                        {selectedStudent.student_category?.category_name || selectedStudent.category || "—"}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Contact Phone</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.phone || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("contact_phone")}
+                                    </span>
+                                    <p className="font-bold text-gray-800">
+                                        {selectedStudent.phone ? toLocaleNumber(selectedStudent.phone, langCode) : "—"}
+                                    </p>
                                 </div>
                                 <div>
-                                    <span className="text-xs font-bold text-gray-400 uppercase">RTE</span>
-                                    <p className="font-semibold text-gray-800">{selectedStudent.rte || 'N/A'}</p>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block mb-0.5">
+                                        {t("rte")}
+                                    </span>
+                                    <p className="font-bold text-gray-800">
+                                        {selectedStudent.rte || "—"}
+                                    </p>
                                 </div>
                             </div>
                         </div>

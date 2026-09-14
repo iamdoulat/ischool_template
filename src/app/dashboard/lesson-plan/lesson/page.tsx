@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,13 +51,9 @@ import {
     BookOpen,
     Layers,
     GraduationCap,
-    Sparkles,
-    CheckCircle2,
-    Route,
-    Milestone,
-    ArrowDown
+    Route
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName, translateSubjectGroupName, translateSubjectName } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -96,7 +93,10 @@ interface OptionItem {
 }
 
 export default function LessonPage() {
-    const { toast } = useToast();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+    const tt = useTranslateToast();
+
     const [searchTerm, setSearchTerm] = useState("");
     const [lessonsInputs, setLessonsInputs] = useState([{ id: Date.now(), value: "" }]);
     const [lessonsList, setLessonsList] = useState<LessonEntry[]>([]);
@@ -128,6 +128,15 @@ export default function LessonPage() {
         fetchInitialData();
     }, []);
 
+    const extractData = (res: { data?: unknown }): OptionItem[] => {
+        const data = res.data as { data?: unknown } | unknown[] | undefined;
+        if (Array.isArray(data)) return data as OptionItem[];
+        if (data && Array.isArray((data as { data?: unknown }).data)) {
+            return (data as { data: OptionItem[] }).data;
+        }
+        return [];
+    };
+
     const fetchInitialData = async () => {
         try {
             const [classesRes, groupsRes, subjectsRes] = await Promise.all([
@@ -135,15 +144,6 @@ export default function LessonPage() {
                 api.get('/academics/subject-groups?no_paginate=true').catch(() => ({ data: [] })),
                 api.get('/academics/subjects?no_paginate=true').catch(() => ({ data: [] }))
             ]);
-
-            const extractData = (res: { data?: unknown }): OptionItem[] => {
-                const data = res.data as { data?: unknown } | unknown[] | undefined;
-                if (Array.isArray(data)) return data as OptionItem[];
-                if (data && Array.isArray((data as { data?: unknown }).data)) {
-                    return (data as { data: OptionItem[] }).data;
-                }
-                return [];
-            };
 
             setClasses(extractData(classesRes));
             setSubjectGroups(extractData(groupsRes));
@@ -173,7 +173,7 @@ export default function LessonPage() {
             const response = await api.get('/lesson-plan/lessons');
             setLessonsList(Array.isArray(response.data) ? response.data : []);
         } catch {
-            toast({ title: "Error", description: "Failed to fetch lessons", variant: "destructive" });
+            tt.error("failed_to_fetch_lessons");
         } finally {
             setLoading(false);
         }
@@ -181,13 +181,13 @@ export default function LessonPage() {
 
     const handleSave = async () => {
         if (!formData.class_name || !formData.section || !formData.subject_group || !formData.subject) {
-            toast({ title: "Validation Error", description: "Please select all required fields", variant: "destructive" });
+            tt.error("please_fill_required_fields");
             return;
         }
 
         const validLessons = lessonsInputs.map(l => l.value).filter(v => v.trim() !== "");
         if (validLessons.length === 0) {
-            toast({ title: "Validation Error", description: "Please enter at least one lesson", variant: "destructive" });
+            tt.error("please_enter_at_least_one_lesson");
             return;
         }
 
@@ -200,16 +200,16 @@ export default function LessonPage() {
 
             if (editMode && selectedId) {
                 await api.put(`/lesson-plan/lessons/${selectedId}`, payload);
-                toast({ title: "Success", description: "Lessons updated successfully" });
+                tt.success("lessons_updated_successfully");
             } else {
                 await api.post('/lesson-plan/lessons', payload);
-                toast({ title: "Success", description: "Lessons created successfully" });
+                tt.success("lessons_created_successfully");
             }
 
             resetForm();
             fetchLessons();
         } catch {
-            toast({ title: "Error", description: "Failed to save lessons", variant: "destructive" });
+            tt.error("failed_to_save_lessons");
         } finally {
             setSubmitting(false);
         }
@@ -233,10 +233,10 @@ export default function LessonPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/lesson-plan/lessons/${deleteId}`);
-            toast({ title: "Success", description: "Lessons deleted successfully" });
+            tt.success("lessons_deleted_successfully");
             fetchLessons();
         } catch {
-            toast({ title: "Error", description: "Failed to delete lessons", variant: "destructive" });
+            tt.error("failed_to_delete_lessons");
         } finally {
             setDeleteId(null);
         }
@@ -271,6 +271,8 @@ export default function LessonPage() {
         }
     };
 
+
+
     // Filter & Pagination logic
     const filteredLessons = lessonsList.filter(entry =>
         (entry.className || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -291,29 +293,29 @@ export default function LessonPage() {
             window.print();
         } else if (action === 'copy') {
             navigator.clipboard.writeText(JSON.stringify(filteredLessons, null, 2));
-            toast({ title: "Success", description: "Copied to clipboard" });
+            tt.success("copied_to_clipboard");
         } else if (action === 'excel') {
             const ws = XLSX.utils.json_to_sheet(filteredLessons.map(l => ({
-                "Class": l.className,
-                "Section": l.section,
-                "Subject Group": l.subjectGroup,
-                "Subject": l.subject,
-                "Lessons": (l.lessons || []).join(", ")
+                [t("class")]: l.className,
+                [t("section")]: l.section,
+                [t("subject_group")]: l.subjectGroup,
+                [t("subject")]: l.subject,
+                [t("lesson_names") || "Lessons"]: (l.lessons || []).join(", ")
             })));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Lessons");
             XLSX.writeFile(wb, "lessons.xlsx");
-            toast({ title: "Success", description: "Exported to Excel" });
+            tt.success("exported_to_excel");
         } else if (action === 'pdf') {
             const doc = new jsPDF();
-            doc.text("Lesson List", 14, 15);
+            doc.text(t("lesson_list") || "Lesson List", 14, 15);
             autoTable(doc, {
-                head: [["Class", "Section", "Subject Group", "Subject", "Lessons"]],
+                head: [[t("class"), t("section"), t("subject_group"), t("subject"), t("lesson_names") || "Lessons"]],
                 body: filteredLessons.map(l => [l.className, l.section, l.subjectGroup, l.subject, (l.lessons || []).join(", ")]),
                 startY: 20
             });
             doc.save("lessons.pdf");
-            toast({ title: "Success", description: "Exported to PDF" });
+            tt.success("exported_to_pdf");
         }
     };
 
@@ -328,10 +330,10 @@ export default function LessonPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editMode ? "Edit Lesson" : "Add Lesson"}
+                                {editMode ? (t("edit_lesson") || "Edit Lesson") : (t("add_lesson") || "Add Lesson")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                Configure curriculum lessons
+                                {t("configure_curriculum_lessons") || "Configure curriculum lessons"}
                             </p>
                         </div>
                     </CardHeader>
@@ -339,7 +341,7 @@ export default function LessonPage() {
                         <div className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                    Class <span className="text-red-500">*</span>
+                                    {t("class")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select
                                     value={formData.class_name}
@@ -350,11 +352,13 @@ export default function LessonPage() {
                                     }}
                                 >
                                     <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                        <SelectValue placeholder="Select Class" />
+                                        <SelectValue placeholder={t("select_class") || "Select Class"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {classes.map(c => (
-                                            <SelectItem key={c.id} value={c.name || ""}>{c.name}</SelectItem>
+                                            <SelectItem key={c.id} value={c.name || ""}>
+                                                {translateClassName(c.name, shortCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -362,7 +366,7 @@ export default function LessonPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                    Section <span className="text-red-500">*</span>
+                                    {t("section")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select
                                     value={formData.section}
@@ -370,11 +374,13 @@ export default function LessonPage() {
                                     disabled={!formData.class_name}
                                 >
                                     <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                        <SelectValue placeholder="Select Section" />
+                                        <SelectValue placeholder={t("select_section") || "Select Section"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {sections.map(s => (
-                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>
+                                                {translateSectionName(s.name, shortCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -382,15 +388,17 @@ export default function LessonPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                    Subject Group <span className="text-red-500">*</span>
+                                    {t("subject_group")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={formData.subject_group} onValueChange={(val) => setFormData({...formData, subject_group: val})}>
                                     <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                        <SelectValue placeholder="Select Subject Group" />
+                                        <SelectValue placeholder={t("select_subject_group") || "Select Subject Group"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {subjectGroups.map(g => (
-                                            <SelectItem key={g.id} value={g.name || g.group_name || ""}>{g.name || g.group_name}</SelectItem>
+                                            <SelectItem key={g.id} value={g.name || g.group_name || ""}>
+                                                {translateSubjectGroupName(g.name || g.group_name, shortCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -398,15 +406,17 @@ export default function LessonPage() {
 
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                    Subject <span className="text-red-500">*</span>
+                                    {t("subject")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={formData.subject} onValueChange={(val) => setFormData({...formData, subject: val})}>
                                     <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                        <SelectValue placeholder="Select Subject" />
+                                        <SelectValue placeholder={t("select_subject") || "Select Subject"} />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {subjects.map(s => (
-                                            <SelectItem key={s.id} value={s.name || ""}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={s.name || ""}>
+                                                {translateSubjectName(s.name, shortCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -415,26 +425,28 @@ export default function LessonPage() {
                             <div className="space-y-2 pt-1 border-t border-gray-100 dark:border-gray-800">
                                 <div className="flex justify-between items-center">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                        Lesson Names <span className="text-red-500">*</span>
+                                        {t("lesson_names") || "Lesson Names"} <span className="text-red-500">*</span>
                                     </Label>
                                     <Button
                                         type="button"
                                         onClick={addMoreLesson}
                                         variant="ghost"
                                         size="sm"
-                                        className="h-7 px-3 text-[10.5px] font-bold uppercase btn-gradient flex items-center gap-1 rounded-full shadow-xs"
+                                        className="h-7 px-3 text-[10.5px] font-bold uppercase btn-gradient flex items-center gap-1 rounded-full shadow-xs cursor-pointer"
                                     >
-                                        <Plus className="h-3 w-3" /> Add Lesson
+                                        <Plus className="h-3 w-3" /> {t("add_lesson") || "Add Lesson"}
                                     </Button>
                                 </div>
 
                                 <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                                     {lessonsInputs.map((input, idx) => (
                                         <div key={input.id} className="flex gap-1.5 items-center group">
-                                            <span className="text-[10px] font-bold text-gray-400 w-4 text-center">#{idx + 1}</span>
+                                            <span className="text-[10px] font-bold text-gray-400 w-4 text-center">
+                                                #{toLocaleNumber(idx + 1, shortCode)}
+                                            </span>
                                             <Input
                                                 value={input.value}
-                                                placeholder={`e.g. Chapter ${idx + 1}`}
+                                                placeholder={`${t("lesson")} ${toLocaleNumber(idx + 1, shortCode)}`}
                                                 onChange={(e) => updateLessonInput(input.id, e.target.value)}
                                                 className="h-9 border-gray-200 bg-gray-50/30 text-xs shadow-none focus-visible:ring-indigo-500 rounded-lg flex-1"
                                             />
@@ -442,7 +454,7 @@ export default function LessonPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => removeLessonInput(input.id)}
-                                                    className="h-7 w-7 rounded-md hover:bg-rose-50 text-gray-400 hover:text-rose-600 flex items-center justify-center transition-colors shrink-0"
+                                                    className="h-7 w-7 rounded-md hover:bg-rose-50 text-gray-400 hover:text-rose-600 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
                                                 >
                                                     <X className="h-3.5 w-3.5" />
                                                 </button>
@@ -454,16 +466,16 @@ export default function LessonPage() {
 
                             <div className="flex justify-end pt-3 gap-2 border-t border-gray-100 dark:border-gray-800">
                                 {editMode && (
-                                    <Button onClick={resetForm} variant="outline" className="h-9 text-xs rounded-full px-4 border-gray-200 font-bold uppercase">
-                                        Cancel
+                                    <Button onClick={resetForm} variant="outline" className="h-9 text-xs rounded-full px-4 border-gray-200 font-bold uppercase cursor-pointer">
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
                                     onClick={handleSave}
                                     disabled={submitting}
-                                    className="btn-gradient text-white px-8 h-9 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50 transition-all rounded-full"
+                                    className="btn-gradient text-white px-8 h-9 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50 transition-all rounded-full cursor-pointer"
                                 >
-                                    {submitting ? "Saving..." : editMode ? "Update" : "Save Lesson"}
+                                    {submitting ? (t("saving") || "Saving...") : editMode ? (t("update") || "Update") : (t("save_lesson") || "Save Lesson")}
                                 </Button>
                             </div>
                         </div>
@@ -481,10 +493,10 @@ export default function LessonPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    Lesson List
+                                    {t("lesson_list") || "Lesson List"}
                                 </CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {filteredLessons.length} syllabus group{filteredLessons.length === 1 ? '' : 's'} recorded
+                                    {t("x_syllabus_groups_recorded", { count: toLocaleNumber(filteredLessons.length, shortCode) })}
                                 </p>
                             </div>
                         </div>
@@ -494,26 +506,26 @@ export default function LessonPage() {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, shortCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, shortCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, shortCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={() => handleAction('copy')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
+                                <Button onClick={() => handleAction('copy')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("copy") || "Copy"}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={() => handleAction('excel')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
+                                <Button onClick={() => handleAction('excel')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_excel") || "Export Excel"}>
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={() => handleAction('pdf')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
+                                <Button onClick={() => handleAction('pdf')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_pdf") || "Export PDF"}>
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={() => handleAction('print')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
+                                <Button onClick={() => handleAction('print')} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("print") || "Print"}>
                                     <Printer className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Columns">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("columns") || "Columns"}>
                                     <Columns className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -525,7 +537,7 @@ export default function LessonPage() {
                             <div className="relative w-full md:w-72">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search by class, subject, lesson..."
+                                    placeholder={t("search_by_class_subject_lesson") || "Search by class, subject, lesson..."}
                                     value={searchTerm}
                                     onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                                     className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
@@ -534,7 +546,9 @@ export default function LessonPage() {
                             {filteredLessons.length > 0 && (
                                 <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
                                     <Layers className="h-3 w-3 mr-1" />
-                                    {filteredLessons.reduce((acc, curr) => acc + (curr.lessons?.length || 0), 0)} Total Lessons
+                                    {t("x_total_lessons", {
+                                        count: toLocaleNumber(filteredLessons.reduce((acc, curr) => acc + (curr.lessons?.length || 0), 0), shortCode)
+                                    })}
                                 </Badge>
                             )}
                         </div>
@@ -544,17 +558,17 @@ export default function LessonPage() {
                             <Table>
                                 <TableHeader className="bg-gray-50/90 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300">
                                     <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
-                                        <TableHead className="py-3 px-4 w-[120px]">Class</TableHead>
-                                        <TableHead className="py-3 px-4 w-[100px]">Section</TableHead>
-                                        <TableHead className="py-3 px-4 w-[150px]">Subject Group</TableHead>
-                                        <TableHead className="py-3 px-4 w-[150px]">Subject</TableHead>
+                                        <TableHead className="py-3 px-4 w-[120px]">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[100px]">{t("section")}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[150px]">{t("subject_group")}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[150px]">{t("subject")}</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[300px]">
                                             <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
                                                 <Route className="h-3.5 w-3.5" />
-                                                <span>Lesson Progression & Hierarchy</span>
+                                                <span>{t("lesson_progression_and_hierarchy") || "Lesson Progression & Hierarchy"}</span>
                                             </div>
                                         </TableHead>
-                                        <TableHead className="py-3 px-4 text-right w-[90px]">Action</TableHead>
+                                        <TableHead className="py-3 px-4 text-right w-[90px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -563,7 +577,7 @@ export default function LessonPage() {
                                     ) : filteredLessons.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
-                                                No lessons found
+                                                {t("no_lessons_found") || "No lessons found"}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -576,14 +590,14 @@ export default function LessonPage() {
                                                 <TableCell className="py-4 px-4 align-top">
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs">
                                                         <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
-                                                        {entry.className}
+                                                        {translateClassName(entry.className, shortCode)}
                                                     </span>
                                                 </TableCell>
 
                                                 {/* Section */}
                                                 <TableCell className="py-4 px-4 align-top">
                                                     <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-[11px] border border-gray-200 dark:border-gray-700">
-                                                        Section {entry.section}
+                                                        {translateSectionName(entry.section, shortCode)}
                                                     </span>
                                                 </TableCell>
 
@@ -591,7 +605,7 @@ export default function LessonPage() {
                                                 <TableCell className="py-4 px-4 align-top font-medium text-gray-600 dark:text-gray-400">
                                                     <div className="flex items-center gap-1.5">
                                                         <Layers className="h-3.5 w-3.5 text-gray-400" />
-                                                        <span>{entry.subjectGroup}</span>
+                                                        <span>{translateSubjectGroupName(entry.subjectGroup, shortCode)}</span>
                                                     </div>
                                                 </TableCell>
 
@@ -599,7 +613,7 @@ export default function LessonPage() {
                                                 <TableCell className="py-4 px-4 align-top font-bold text-gray-800 dark:text-gray-200">
                                                     <div className="flex items-center gap-1.5">
                                                         <BookOpen className="h-3.5 w-3.5 text-indigo-500" />
-                                                        <span>{entry.subject}</span>
+                                                        <span>{translateSubjectName(entry.subject, shortCode)}</span>
                                                     </div>
                                                 </TableCell>
 
@@ -618,22 +632,22 @@ export default function LessonPage() {
                                                                         isLast ? "bg-emerald-500 text-white" :
                                                                         "bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
                                                                     )}>
-                                                                        {idx + 1}
+                                                                        {toLocaleNumber(idx + 1, shortCode)}
                                                                     </div>
 
                                                                     {/* Step Content Box */}
                                                                     <div className="flex-1 bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700/80 rounded-xl p-2.5 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-600 transition-all hover:shadow-xs">
                                                                         <div className="flex items-center justify-between gap-2">
                                                                             <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                                                                                <span>Step {idx + 1}</span>
+                                                                                <span>{t("step_x", { step: toLocaleNumber(idx + 1, shortCode) })}</span>
                                                                                 {isFirst && (
                                                                                     <span className="text-[8.5px] bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300 px-1.5 py-0.5 rounded font-bold border border-orange-200 dark:border-orange-800">
-                                                                                        Initial
+                                                                                        {t("initial") || "Initial"}
                                                                                     </span>
                                                                                 )}
                                                                                 {isLast && (entry.lessons?.length || 0) > 1 && (
                                                                                     <span className="text-[8.5px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-200 dark:border-emerald-800">
-                                                                                        Final Step
+                                                                                        {t("final_step") || "Final Step"}
                                                                                     </span>
                                                                                 )}
                                                                             </span>
@@ -655,8 +669,8 @@ export default function LessonPage() {
                                                             size="icon"
                                                             variant="ghost"
                                                             onClick={() => handleEdit(entry)}
-                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Edit Lessons"
+                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs cursor-pointer"
+                                                            title={t("edit") || "Edit"}
                                                         >
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
@@ -664,8 +678,8 @@ export default function LessonPage() {
                                                             size="icon"
                                                             variant="ghost"
                                                             onClick={() => setDeleteId(entry.id)}
-                                                            className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Delete Lessons"
+                                                            className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs cursor-pointer"
+                                                            title={t("delete") || "Delete"}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
@@ -682,24 +696,28 @@ export default function LessonPage() {
                         {filteredLessons.length > 0 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
                                 <div>
-                                    Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredLessons.length)} of {filteredLessons.length} entries
+                                    {t("showing_x_to_y_of_z_entries", {
+                                        from: toLocaleNumber((currentPage - 1) * itemsPerPage + 1, shortCode),
+                                        to: toLocaleNumber(Math.min(currentPage * itemsPerPage, filteredLessons.length), shortCode),
+                                        total: toLocaleNumber(filteredLessons.length, shortCode)
+                                    }) || `Showing ${(currentPage - 1) * itemsPerPage + 1} to ${Math.min(currentPage * itemsPerPage, filteredLessons.length)} of ${filteredLessons.length} entries`}
                                 </div>
                                 <div className="flex gap-1.5">
                                     <Button
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                         disabled={currentPage === 1}
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
                                     <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm font-black">
-                                        {currentPage}
+                                        {toLocaleNumber(currentPage, shortCode)}
                                     </Button>
                                     <Button
                                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                         disabled={currentPage === totalPages || totalPages === 0}
                                     >
                                         <ChevronRight className="h-4 w-4" />
@@ -715,15 +733,19 @@ export default function LessonPage() {
             <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
                 <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">Delete Lessons</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">
+                            {t("delete_lessons") || "Delete Lessons"}
+                        </AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            Are you sure you want to delete all lessons associated with this group? This action cannot be undone.
+                            {t("delete_lessons_confirm_message") || "Are you sure you want to delete all lessons associated with this group? This action cannot be undone."}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            Yes, Delete Lessons
+                        <AlertDialogCancel className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200 cursor-pointer">
+                            {t("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md cursor-pointer">
+                            {t("yes_delete_lessons") || "Yes, Delete Lessons"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

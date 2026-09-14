@@ -18,7 +18,6 @@ import {
     GraduationCap,
     Calendar,
     Phone,
-    CheckCircle2,
     Users,
     AlertCircle
 } from "lucide-react";
@@ -31,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, translateClassName, translateSectionName, translateStudentCategory, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -84,21 +83,32 @@ interface Student {
     student_category?: { category_name: string };
 }
 
+interface AcademicClass {
+    id: number | string;
+    name: string;
+}
+
+interface AcademicSection {
+    id: number | string;
+    name: string;
+}
+
 export default function BulkDeletePage() {
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const [classes, setClasses] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
+    const [classes, setClasses] = useState<AcademicClass[]>([]);
+    const [sections, setSections] = useState<AcademicSection[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [selectedSection, setSelectedSection] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalStudents, setTotalStudents] = useState(0);
+    const [limit, setLimit] = useState("20");
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [searched, setSearched] = useState(false);
-    const { t } = useTranslation();
+    const { t, language, isRtl } = useTranslation();
     const tt = useTranslateToast();
 
     const fetchDropdowns = useCallback(async () => {
@@ -125,7 +135,7 @@ export default function BulkDeletePage() {
         }
     };
 
-    const fetchStudents = useCallback(async (pg = currentPage, kw = searchTerm) => {
+    const fetchStudents = useCallback(async (pg = currentPage, kw = searchTerm, lim = limit) => {
         setLoading(true);
         try {
             const response = await api.get("/students", {
@@ -134,7 +144,7 @@ export default function BulkDeletePage() {
                     section_id: selectedSection || undefined,
                     search: kw || undefined,
                     page: pg,
-                    limit: 50
+                    limit: Number(lim)
                 }
             });
             setStudents(response.data.data?.data || response.data.data || []);
@@ -148,7 +158,7 @@ export default function BulkDeletePage() {
         } finally {
             setLoading(false);
         }
-    }, [selectedClass, selectedSection, tt]);
+    }, [selectedClass, selectedSection, limit, tt]);
 
     useEffect(() => {
         fetchDropdowns();
@@ -186,7 +196,7 @@ export default function BulkDeletePage() {
         try {
             await api.post("/students/bulk-delete", { ids: Array.from(selectedIds) });
             tt.success("students_deleted_successfully");
-            fetchStudents(currentPage, searchTerm);
+            fetchStudents(currentPage, searchTerm, limit);
         } catch (error) {
             console.error("Error deleting students:", error);
             tt.error("failed_to_delete_students");
@@ -200,13 +210,13 @@ export default function BulkDeletePage() {
         if (students.length === 0) return;
         const headers = ["#", t("admission_no"), t("student_name"), t("class"), t("dob"), t("gender"), t("category"), t("mobile_number")];
         const rows = students.map((s, idx) => [
-            (currentPage - 1) * 50 + idx + 1,
+            (currentPage - 1) * Number(limit) + idx + 1,
             s.admission_no,
             `${s.name} ${s.last_name || ""}`.trim(),
-            `${s.school_class?.name || ""} (${s.section?.name || ""})`,
+            `${translateClassName(s.school_class?.name, language?.short_code)} (${translateSectionName(s.section?.name, language?.short_code)})`,
             s.dob ? formatDate(s.dob) : "-",
-            s.gender || "-",
-            s.student_category?.category_name || s.category || "General",
+            s.gender ? (t(s.gender.toLowerCase()) || s.gender) : "-",
+            translateStudentCategory(s.student_category?.category_name || s.category || "General", language?.short_code),
             s.phone || "-"
         ]);
         const text = [headers.join("\t"), ...rows.map(row => row.join("\t"))].join("\n");
@@ -217,13 +227,13 @@ export default function BulkDeletePage() {
     const exportToExcel = () => {
         if (students.length === 0) return;
         const data = students.map((s, idx) => ({
-            "#": (currentPage - 1) * 50 + idx + 1,
+            "#": (currentPage - 1) * Number(limit) + idx + 1,
             [t("admission_no")]: s.admission_no,
             [t("student_name")]: `${s.name} ${s.last_name || ""}`.trim(),
-            [t("class")]: `${s.school_class?.name || ""} (${s.section?.name || ""})`,
+            [t("class")]: `${translateClassName(s.school_class?.name, language?.short_code)} (${translateSectionName(s.section?.name, language?.short_code)})`,
             [t("date_of_birth")]: s.dob ? formatDate(s.dob) : "-",
-            [t("gender")]: s.gender || "-",
-            [t("category")]: s.student_category?.category_name || s.category || "General",
+            [t("gender")]: s.gender ? (t(s.gender.toLowerCase()) || s.gender) : "-",
+            [t("category")]: translateStudentCategory(s.student_category?.category_name || s.category || "General", language?.short_code),
             [t("mobile_number")]: s.phone || "-"
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
@@ -240,13 +250,13 @@ export default function BulkDeletePage() {
         autoTable(doc, {
             head: [["#", t("adm_no"), t("name"), t("class"), t("dob"), t("gender"), t("cat"), t("mobile")]],
             body: students.map((s, idx) => [
-                (currentPage - 1) * 50 + idx + 1,
+                (currentPage - 1) * Number(limit) + idx + 1,
                 s.admission_no,
                 `${s.name} ${s.last_name || ""}`.trim(),
-                `${s.school_class?.name || ""} (${s.section?.name || ""})`,
+                `${translateClassName(s.school_class?.name, language?.short_code)} (${translateSectionName(s.section?.name, language?.short_code)})`,
                 s.dob ? formatDate(s.dob) : "-",
-                s.gender || "-",
-                s.student_category?.category_name || s.category || "General",
+                s.gender ? (t(s.gender.toLowerCase()) || s.gender) : "-",
+                translateStudentCategory(s.student_category?.category_name || s.category || "General", language?.short_code),
                 s.phone || "-"
             ]),
             startY: 20
@@ -306,7 +316,11 @@ export default function BulkDeletePage() {
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>
+                                            {translateClassName(c.name, language?.short_code)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -325,7 +339,11 @@ export default function BulkDeletePage() {
                                     <SelectValue placeholder={!selectedClass ? t("select_class_first") : t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                    {sections.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>
+                                            {translateSectionName(s.name, language?.short_code)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -339,7 +357,7 @@ export default function BulkDeletePage() {
                                         return;
                                     }
                                     setCurrentPage(1);
-                                    fetchStudents(1, searchTerm);
+                                    fetchStudents(1, searchTerm, limit);
                                 }}
                                 disabled={loading}
                                 className="btn-gradient text-white gap-2 h-10 px-8 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full w-full md:w-auto"
@@ -365,13 +383,13 @@ export default function BulkDeletePage() {
                                     {t("student_list")}
                                 </CardTitle>
                                 <p className="text-[11px] text-gray-500 mt-1">
-                                    {t("students_found", { count: totalStudents })}
-                                    {selectedIds.size > 0 && ` • ${selectedIds.size} selected`}
+                                    {t("total_students_found_count", { total: toLocaleNumber(totalStudents, language?.short_code) })}
+                                    {selectedIds.size > 0 && ` • ${t("selected_count", { count: toLocaleNumber(selectedIds.size, language?.short_code) }) || `${toLocaleNumber(selectedIds.size, language?.short_code)} ${t("selected") || "selected"}`}`}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Actions Toolbar */}
+                        {/* Actions Toolbar & Row Selector */}
                         <div className="flex items-center gap-2">
                             {selectedIds.size > 0 && (
                                 <Button
@@ -380,22 +398,42 @@ export default function BulkDeletePage() {
                                     className="h-8 px-3 text-xs bg-rose-600 hover:bg-rose-700 text-white rounded-lg flex items-center gap-1.5 font-bold shadow-md animate-in fade-in cursor-pointer"
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
-                                    Delete Selected ({selectedIds.size})
+                                    {t("delete_selected")} ({toLocaleNumber(selectedIds.size, language?.short_code)})
                                 </Button>
                             )}
-                            <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
+                            <Select
+                                value={limit}
+                                onValueChange={(val) => {
+                                    setLimit(val);
+                                    setCurrentPage(1);
+                                    fetchStudents(1, searchTerm, val);
+                                }}
+                            >
+                                <SelectTrigger className="w-[72px] h-8 text-xs font-semibold rounded-lg border-gray-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs focus:ring-1 focus:ring-primary/20 cursor-pointer">
+                                    <SelectValue placeholder={toLocaleNumber(limit, language?.short_code)}>
+                                        {toLocaleNumber(limit, language?.short_code)}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="20">{toLocaleNumber(20, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("copy") || "Copy"}>
                                 <Copy className="h-4 w-4" />
                             </Button>
-                            <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
+                            <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_excel") || "Export Excel"}>
                                 <FileSpreadsheet className="h-4 w-4" />
                             </Button>
-                            <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
+                            <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_pdf") || "Export PDF"}>
                                 <FileText className="h-4 w-4" />
                             </Button>
-                            <Button onClick={() => window.print()} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
+                            <Button onClick={() => window.print()} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("print") || "Print"}>
                                 <Printer className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Columns">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("columns") || "Columns"}>
                                 <Columns className="h-4 w-4" />
                             </Button>
                         </div>
@@ -407,10 +445,10 @@ export default function BulkDeletePage() {
                             <div className="relative w-full md:w-72">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search students..."
+                                    placeholder={t("search_students")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && fetchStudents(1, searchTerm)}
+                                    onKeyDown={(e) => e.key === "Enter" && fetchStudents(1, searchTerm, limit)}
                                     className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
                                 />
                             </div>
@@ -418,7 +456,7 @@ export default function BulkDeletePage() {
                             {totalStudents > 0 && (
                                 <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
                                     <Users className="h-3 w-3 mr-1" />
-                                    {totalStudents} Students Found
+                                    {t("total_students_found_count", { total: toLocaleNumber(totalStudents, language?.short_code) })}
                                 </Badge>
                             )}
                         </div>
@@ -474,9 +512,9 @@ export default function BulkDeletePage() {
                                                         />
                                                     </TableCell>
 
-                                                    {/* Serial Number (Renamed from HASH) */}
+                                                    {/* Serial Number */}
                                                     <TableCell className="py-3.5 px-3 font-bold text-gray-400 text-xs">
-                                                        {(currentPage - 1) * 50 + idx + 1}
+                                                        {toLocaleNumber((currentPage - 1) * Number(limit) + idx + 1, language?.short_code)}
                                                     </TableCell>
 
                                                     {/* Student Avatar, Full Name & Admission No */}
@@ -497,7 +535,7 @@ export default function BulkDeletePage() {
                                                                     {student.name} {student.last_name || ""}
                                                                 </p>
                                                                 <span className="inline-flex items-center gap-1 font-mono text-[10.5px] text-gray-500 font-semibold">
-                                                                    {student.admission_no}
+                                                                    {student.admission_no ? toLocaleNumber(student.admission_no, language?.short_code) : "—"}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -507,7 +545,7 @@ export default function BulkDeletePage() {
                                                     <TableCell className="py-3.5 px-4">
                                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs">
                                                             <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
-                                                            {student.school_class?.name} ({student.section?.name})
+                                                            {translateClassName(student.school_class?.name, language?.short_code)} ({translateSectionName(student.section?.name, language?.short_code)})
                                                         </span>
                                                     </TableCell>
 
@@ -515,21 +553,21 @@ export default function BulkDeletePage() {
                                                     <TableCell className="py-3.5 px-4 text-gray-600 dark:text-gray-300">
                                                         <div className="flex items-center gap-1.5 text-xs font-medium">
                                                             <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                                                            {student.dob ? formatDate(student.dob) : "—"}
+                                                            {student.dob ? toLocaleNumber(formatDate(student.dob), language?.short_code) : "—"}
                                                         </div>
                                                     </TableCell>
 
                                                     {/* Gender */}
                                                     <TableCell className="py-3.5 px-4">
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold text-xs border border-gray-200 dark:border-gray-700">
-                                                            {student.gender || "—"}
+                                                            {student.gender ? (t(student.gender.toLowerCase()) || student.gender) : "—"}
                                                         </span>
                                                     </TableCell>
 
                                                     {/* Category */}
                                                     <TableCell className="py-3.5 px-4">
                                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 text-[10.5px] font-bold uppercase tracking-wider border border-indigo-100 dark:border-indigo-800">
-                                                            {student.student_category?.category_name || student.category || "General"}
+                                                            {translateStudentCategory(student.student_category?.category_name || student.category || "General", language?.short_code)}
                                                         </span>
                                                     </TableCell>
 
@@ -537,7 +575,7 @@ export default function BulkDeletePage() {
                                                     <TableCell className="py-3.5 px-4 text-gray-600 dark:text-gray-300">
                                                         <div className="flex items-center gap-1.5 text-xs font-medium font-mono">
                                                             <Phone className="h-3.5 w-3.5 text-gray-400" />
-                                                            {student.phone || "—"}
+                                                            {student.phone ? toLocaleNumber(student.phone, language?.short_code) : "—"}
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -553,23 +591,23 @@ export default function BulkDeletePage() {
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
                                 <div>
                                     {t("showing_x_to_y_of_z", {
-                                        from: (currentPage - 1) * 50 + 1,
-                                        to: Math.min(currentPage * 50, totalStudents),
-                                        total: totalStudents
+                                        from: toLocaleNumber(totalStudents === 0 ? 0 : (currentPage - 1) * Number(limit) + 1, language?.short_code),
+                                        to: toLocaleNumber(Math.min(currentPage * Number(limit), totalStudents), language?.short_code),
+                                        total: toLocaleNumber(totalStudents, language?.short_code)
                                     })}
                                 </div>
-                                <div className="flex gap-1.5">
+                                <div className="flex items-center gap-1.5">
                                     <Button
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                         disabled={currentPage === 1 || loading}
                                         onClick={() => {
                                             const newPg = currentPage - 1;
                                             setCurrentPage(newPg);
-                                            fetchStudents(newPg, searchTerm);
+                                            fetchStudents(newPg, searchTerm, limit);
                                         }}
                                     >
-                                        <ChevronLeft className="h-4 w-4" />
+                                        {isRtl ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                                     </Button>
 
                                     {[...Array(totalPages)].map((_, i) => {
@@ -584,18 +622,18 @@ export default function BulkDeletePage() {
                                                     key={page}
                                                     size="sm"
                                                     className={cn(
-                                                        "h-8 w-8 p-0 rounded-[10px] text-xs font-black shadow-sm transition-all",
+                                                        "h-8 w-8 p-0 rounded-[10px] text-xs font-black shadow-sm transition-all cursor-pointer",
                                                         currentPage === page
                                                             ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0"
                                                             : "bg-white border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
                                                     )}
                                                     onClick={() => {
                                                         setCurrentPage(page);
-                                                        fetchStudents(page, searchTerm);
+                                                        fetchStudents(page, searchTerm, limit);
                                                     }}
                                                     disabled={loading}
                                                 >
-                                                    {page}
+                                                    {toLocaleNumber(page, language?.short_code)}
                                                 </Button>
                                             );
                                         } else if (
@@ -609,15 +647,15 @@ export default function BulkDeletePage() {
 
                                     <Button
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                         disabled={currentPage === totalPages || loading}
                                         onClick={() => {
                                             const newPg = currentPage + 1;
                                             setCurrentPage(newPg);
-                                            fetchStudents(newPg, searchTerm);
+                                            fetchStudents(newPg, searchTerm, limit);
                                         }}
                                     >
-                                        <ChevronRight className="h-4 w-4" />
+                                        {isRtl ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </Button>
                                 </div>
                             </div>

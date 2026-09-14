@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,7 +9,7 @@ import {
     Card,
     CardContent,
     CardHeader,
-    CardTitle
+    CardTitle,
 } from "@/components/ui/card";
 import {
     Select,
@@ -28,13 +29,21 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
-    Search, FolderOpen, ChevronLeft, ChevronRight, 
-    UserPlus, ShieldAlert, GraduationCap, Users, 
-    Zap, RefreshCw, Save, Calendar, Loader2,
-    CheckCircle2, Sparkles, AlertTriangle, User,
-    Phone, Mail, Hash, Layers
+    Search,
+    FolderOpen,
+    ShieldAlert,
+    GraduationCap,
+    Users, 
+    Zap,
+    RefreshCw,
+    Save,
+    Calendar,
+    Loader2,
+    Sparkles,
+    AlertTriangle,
+    Layers,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
@@ -89,8 +98,9 @@ interface SchoolClass {
 }
 
 export default function AssignIncidentPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
+    const shortCode = language?.short_code || "en";
     const getImageUrl = useImageUrl();
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -109,8 +119,8 @@ export default function AssignIncidentPage() {
     const [open, setOpen] = useState(false);
     const [formData, setFormData] = useState({
         incident_id: "",
-        incident_date: new Date().toISOString().split('T')[0],
-        description: ""
+        incident_date: new Date().toISOString().split("T")[0],
+        description: "",
     });
 
     useEffect(() => {
@@ -120,7 +130,7 @@ export default function AssignIncidentPage() {
 
     useEffect(() => {
         if (selectedClass) {
-            const cls = criteria.classes.find(c => c.id.toString() === selectedClass);
+            const cls = criteria.classes.find((c) => c.id.toString() === selectedClass);
             setSections(cls?.sections || []);
         } else {
             setSections([]);
@@ -130,19 +140,19 @@ export default function AssignIncidentPage() {
 
     const fetchCriteria = async () => {
         try {
-            const response = await api.get('/behaviour/reports/criteria');
-            setCriteria(response.data);
+            const response = await api.get("/behaviour/reports/criteria");
+            setCriteria(response.data || { classes: [] });
         } catch {
-            console.error("Failed to fetch analytical criteria");
+            // Error silently ignored on criteria
         }
     };
 
     const fetchIncidents = async () => {
         try {
-            const response = await api.get('/behaviour/incidents', { params: { per_page: 100 } });
+            const response = await api.get("/behaviour/incidents", { params: { per_page: 100 } });
             setIncidents(response.data.data || []);
         } catch {
-            console.error("Failed to fetch incident registry");
+            // Error silently ignored
         }
     };
 
@@ -154,8 +164,8 @@ export default function AssignIncidentPage() {
 
         setLoading(true);
         try {
-            const response = await api.get('/behaviour/assigned-incidents/search-students', {
-                params: { class_id: selectedClass, section_id: selectedSection }
+            const response = await api.get("/behaviour/assigned-incidents/search-students", {
+                params: { class_id: selectedClass, section_id: selectedSection },
             });
             const data = Array.isArray(response.data) ? response.data : (response.data?.data || []);
             setStudents(data);
@@ -181,16 +191,16 @@ export default function AssignIncidentPage() {
 
         setSubmitting(true);
         try {
-            await api.post('/behaviour/assigned-incidents', {
+            await api.post("/behaviour/assigned-incidents", {
                 student_ids: selectedStudents,
-                ...formData
+                ...formData,
             });
             tt.success("behavioural_incident_assigned_successfully");
             setOpen(false);
             setFormData({
                 incident_id: "",
-                incident_date: new Date().toISOString().split('T')[0],
-                description: ""
+                incident_date: new Date().toISOString().split("T")[0],
+                description: "",
             });
             handleSearch(); // Refresh total points
         } catch {
@@ -202,12 +212,12 @@ export default function AssignIncidentPage() {
 
     const toggleStudent = (id: string | number) => {
         const idStr = String(id);
-        setSelectedStudents(prev => 
-            prev.includes(idStr) ? prev.filter(item => item !== idStr) : [...prev, idStr]
+        setSelectedStudents((prev) => 
+            prev.includes(idStr) ? prev.filter((item) => item !== idStr) : [...prev, idStr]
         );
     };
 
-    const filteredStudents = students.filter(student => {
+    const filteredStudents = students.filter((student) => {
         if (!filterSearch.trim()) return true;
         const q = filterSearch.toLowerCase();
         const fullName = `${student.name || ""} ${student.last_name || ""}`.toLowerCase();
@@ -220,11 +230,19 @@ export default function AssignIncidentPage() {
         if (selectedStudents.length === filteredStudents.length && filteredStudents.length > 0) {
             setSelectedStudents([]);
         } else {
-            setSelectedStudents(filteredStudents.map(s => String(s.id)));
+            setSelectedStudents(filteredStudents.map((s) => String(s.id)));
         }
     };
 
-    const selectedIncident = incidents.find(i => String(i.id) === String(formData.incident_id));
+    const formatGender = (gender: string) => {
+        const lower = String(gender || "").toLowerCase();
+        if (lower === "male") return t("male");
+        if (lower === "female") return t("female");
+        if (lower === "other") return t("other");
+        return gender || "—";
+    };
+
+    const selectedIncident = incidents.find((i) => String(i.id) === String(formData.incident_id));
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -236,10 +254,10 @@ export default function AssignIncidentPage() {
                     </span>
                     <div className="min-w-0">
                         <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-none">
-                            {t("assign_incident") || "Assign Incident"}
+                            {t("assign_incident")}
                         </CardTitle>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            {t("pick_a_class_and_section_to_find_students") || "Pick a class and section to find students"}
+                            {t("pick_a_class_and_section_to_find_students")}
                         </p>
                     </div>
                 </CardHeader>
@@ -249,16 +267,17 @@ export default function AssignIncidentPage() {
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                                 <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
-                                {t("class") || "Class"} <span className="text-red-500">*</span>
+                                <span>{t("class")}</span>
+                                <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-10 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-2xs rounded-xl focus:ring-2 focus:ring-indigo-500/20">
-                                    <SelectValue placeholder={t("select_class") || "Select Class"} />
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60">
-                                    {criteria.classes.map(cls => (
+                                    {criteria.classes.map((cls) => (
                                         <SelectItem key={cls.id} value={cls.id.toString()} className="text-xs font-medium">
-                                            {cls.name}
+                                            {translateClassName(cls.name, shortCode)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -269,14 +288,15 @@ export default function AssignIncidentPage() {
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
                                 <Layers className="h-3.5 w-3.5 text-purple-500" />
-                                {t("section") || "Section"} <span className="text-red-500">*</span>
+                                <span>{t("section")}</span>
+                                <span className="text-red-500">*</span>
                             </Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                                 <SelectTrigger className="h-10 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-2xs rounded-xl focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50">
-                                    <SelectValue placeholder={t("select_section") || "Select Section"} />
+                                    <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60">
-                                    {sections.map(sec => (
+                                    {sections.map((sec) => (
                                         <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs font-medium">
                                             {sec.name}
                                         </SelectItem>
@@ -293,7 +313,7 @@ export default function AssignIncidentPage() {
                                 className="w-full h-10 rounded-xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all cursor-pointer disabled:opacity-50"
                             >
                                 {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                                {t("find_students") || "Find Students"}
+                                <span>{t("find_students")}</span>
                             </Button>
                         </div>
                     </div>
@@ -310,16 +330,16 @@ export default function AssignIncidentPage() {
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-none">
-                                    {t("students") || "Students"}
+                                    {t("students")}
                                 </CardTitle>
                                 {students.length > 0 && (
                                     <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
-                                        {students.length}
+                                        {toLocaleNumber(students.length, shortCode)}
                                     </span>
                                 )}
                             </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {t("select_students_to_assign_an_incident") || "Select students to record and assign behavioural incidents"}
+                                {t("select_students_to_assign_an_incident")}
                             </p>
                         </div>
                     </div>
@@ -327,9 +347,9 @@ export default function AssignIncidentPage() {
                     <div className="flex flex-wrap items-center gap-2.5">
                         {students.length > 0 && (
                             <div className="relative w-48 sm:w-60">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                                 <Input
-                                    placeholder={t("quick_filter") || "Filter students..."}
+                                    placeholder={t("quick_filter")}
                                     value={filterSearch}
                                     onChange={(e) => setFilterSearch(e.target.value)}
                                     className="h-9 text-xs pl-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
@@ -343,7 +363,7 @@ export default function AssignIncidentPage() {
                                 className="h-9 px-4 rounded-xl bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all shrink-0 cursor-pointer animate-in zoom-in-95"
                             >
                                 <ShieldAlert className="h-4 w-4" />
-                                {t("assign_to_selected") || "Assign Incident"} ({selectedStudents.length})
+                                <span>{t("assign_to_selected")} ({toLocaleNumber(selectedStudents.length, shortCode)})</span>
                             </Button>
                         )}
                     </div>
@@ -358,15 +378,15 @@ export default function AssignIncidentPage() {
                                         <Checkbox
                                             checked={filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length}
                                             onCheckedChange={toggleAll}
-                                            aria-label="Select all students"
+                                            aria-label={t("select_all")}
                                         />
                                     </TableHead>
-                                    <TableHead className="px-4 py-3.5 font-bold">{t("student") || "Student"}</TableHead>
-                                    <TableHead className="px-4 py-3.5 font-bold">{t("adm_no") || "Adm No"}</TableHead>
-                                    <TableHead className="px-4 py-3.5 font-bold">{t("roll_no") || "Roll No"}</TableHead>
-                                    <TableHead className="px-4 py-3.5 font-bold text-center">{t("gender") || "Gender"}</TableHead>
-                                    <TableHead className="px-4 py-3.5 font-bold text-center">{t("points") || "Score / Points"}</TableHead>
-                                    <TableHead className="px-4 py-3.5 font-bold text-right w-[110px]">{t("action") || "Action"}</TableHead>
+                                    <TableHead className="px-4 py-3.5 font-bold">{t("student")}</TableHead>
+                                    <TableHead className="px-4 py-3.5 font-bold">{t("adm_no")}</TableHead>
+                                    <TableHead className="px-4 py-3.5 font-bold">{t("roll_no")}</TableHead>
+                                    <TableHead className="px-4 py-3.5 font-bold text-center">{t("gender")}</TableHead>
+                                    <TableHead className="px-4 py-3.5 font-bold text-center">{t("score_points")}</TableHead>
+                                    <TableHead className="px-4 py-3.5 font-bold text-right w-[110px]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -399,10 +419,10 @@ export default function AssignIncidentPage() {
                                                 </div>
                                                 <div>
                                                     <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                                                        {t("no_students_found") || "No Students Found"}
+                                                        {t("no_students_found")}
                                                     </p>
                                                     <p className="text-xs text-gray-400 mt-0.5">
-                                                        {t("select_a_class_and_section_then_click_find_students") || "Select a class and section above, then click Find Students."}
+                                                        {t("select_a_class_and_section_then_click_find_students")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -411,15 +431,15 @@ export default function AssignIncidentPage() {
                                 ) : filteredStudents.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="px-4 py-10 text-center text-xs text-gray-400">
-                                            {t("no_students_match_filter") || "No students match your filter search."}
+                                            {t("no_students_match_filter")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredStudents.map((student, idx) => {
+                                    filteredStudents.map((student) => {
                                         const isSelected = selectedStudents.includes(String(student.id));
                                         const studentPhoto = student.avatar || student.student_photo || student.photo || student.image || student.user?.avatar || student.user?.photo;
                                         const photoUrl = studentPhoto ? getImageUrl(studentPhoto) : "";
-                                        const fullName = `${student.name || ""} ${student.last_name || ""}`.trim() || "Student";
+                                        const fullName = `${student.name || ""} ${student.last_name || ""}`.trim() || t("student");
                                         const initials = student.name ? student.name.substring(0, 2).toUpperCase() : "ST";
                                         const totalPts = Number(student.total_points || 0);
 
@@ -465,7 +485,7 @@ export default function AssignIncidentPage() {
                                                                     {student.email || student.phone}
                                                                 </p>
                                                             ) : (
-                                                                <span className="text-[10px] text-gray-400">Student</span>
+                                                                <span className="text-[10px] text-gray-400">{t("student")}</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -502,7 +522,7 @@ export default function AssignIncidentPage() {
                                                                 ? "bg-blue-50 text-blue-700 border-blue-200/70 dark:bg-blue-950/60 dark:text-blue-300"
                                                                 : "bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/60 dark:text-rose-300"
                                                         )}>
-                                                            {student.gender}
+                                                            {formatGender(student.gender)}
                                                         </span>
                                                     ) : (
                                                         <span className="text-gray-300">—</span>
@@ -526,7 +546,7 @@ export default function AssignIncidentPage() {
                                                         ) : (
                                                             <Sparkles className="h-3 w-3 text-gray-400" />
                                                         )}
-                                                        {totalPts > 0 ? `+${totalPts}` : totalPts} pts
+                                                        {totalPts > 0 ? `+${toLocaleNumber(totalPts, shortCode)}` : toLocaleNumber(totalPts, shortCode)} {t("pts")}
                                                     </span>
                                                 </TableCell>
 
@@ -538,7 +558,7 @@ export default function AssignIncidentPage() {
                                                         className="h-7 px-3 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold shadow-xs active:scale-95 transition-all cursor-pointer gap-1"
                                                     >
                                                         <ShieldAlert className="h-3 w-3" />
-                                                        {t("assign") || "Assign"}
+                                                        <span>{t("assign")}</span>
                                                     </Button>
                                                 </TableCell>
                                             </TableRow>
@@ -554,11 +574,14 @@ export default function AssignIncidentPage() {
                         <div className="px-5 py-3.5 bg-gray-50/70 dark:bg-gray-800/40 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-500 dark:text-gray-400">
                             <div className="flex items-center gap-2">
                                 <span className="font-semibold text-gray-700 dark:text-gray-200">
-                                    Showing {filteredStudents.length} of {students.length} student{students.length !== 1 ? 's' : ''}
+                                    {t("showing_x_of_y_students", {
+                                        x: toLocaleNumber(filteredStudents.length, shortCode),
+                                        y: toLocaleNumber(students.length, shortCode),
+                                    })}
                                 </span>
                                 {selectedStudents.length > 0 && (
                                     <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold border border-indigo-200/60">
-                                        {selectedStudents.length} selected
+                                        {t("selected_count", { count: toLocaleNumber(selectedStudents.length, shortCode) })}
                                     </span>
                                 )}
                             </div>
@@ -568,9 +591,9 @@ export default function AssignIncidentPage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={toggleAll}
-                                    className="h-7 px-3 text-[11px] font-semibold rounded-lg border-gray-200 dark:border-gray-700"
+                                    className="h-7 px-3 text-[11px] font-semibold rounded-lg border-gray-200 dark:border-gray-700 cursor-pointer"
                                 >
-                                    {selectedStudents.length === filteredStudents.length ? "Deselect All" : "Select All"}
+                                    {selectedStudents.length === filteredStudents.length ? t("deselect_all") : t("select_all")}
                                 </Button>
                             </div>
                         </div>
@@ -587,10 +610,10 @@ export default function AssignIncidentPage() {
                         </span>
                         <div className="min-w-0 flex-1">
                             <DialogTitle className="text-base font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-none">
-                                {t("assign_incident") || "Assign Incident"}
+                                {t("assign_incident")}
                             </DialogTitle>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {t("record_and_assign_behavioural_incident_to_students") || "Record and assign behavioural incident to selected student(s)"}
+                                {t("record_and_assign_behavioural_incident_to_students")}
                             </p>
                         </div>
                     </DialogHeader>
@@ -604,29 +627,29 @@ export default function AssignIncidentPage() {
                                 </span>
                                 <div>
                                     <p className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                                        {selectedStudents.length} Student{selectedStudents.length !== 1 ? 's' : ''} Selected
+                                        {t("target_students_selected", { count: toLocaleNumber(selectedStudents.length, shortCode) })}
                                     </p>
                                     <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
-                                        Incident score will be recorded for each selected student
+                                        {t("incident_score_info")}
                                     </p>
                                 </div>
                             </div>
                             <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                                {selectedStudents.length} Target
+                                {toLocaleNumber(selectedStudents.length, shortCode)} {t("target")}
                             </span>
                         </div>
 
                         {/* Incident Type Select */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                                {t("incident_type") || "Incident Type"} <span className="text-red-500">*</span>
+                                {t("incident_type")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={formData.incident_id} onValueChange={(val) => setFormData({...formData, incident_id: val})}>
                                 <SelectTrigger className="h-10 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500/20">
-                                    <SelectValue placeholder={t("select_incident_type") || "Select Incident Type"} />
+                                    <SelectValue placeholder={t("select_incident_type")} />
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60">
-                                    {incidents.map(inc => {
+                                    {incidents.map((inc) => {
                                         const pts = Number(inc.point || 0);
                                         return (
                                             <SelectItem key={inc.id} value={inc.id.toString()} className="text-xs">
@@ -638,7 +661,7 @@ export default function AssignIncidentPage() {
                                                             ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" 
                                                             : "bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
                                                     )}>
-                                                        {pts > 0 ? `+${pts}` : pts} pts
+                                                        {pts > 0 ? `+${toLocaleNumber(pts, shortCode)}` : toLocaleNumber(pts, shortCode)} {t("pts")}
                                                     </span>
                                                 </div>
                                             </SelectItem>
@@ -651,14 +674,14 @@ export default function AssignIncidentPage() {
                         {/* Selected Incident Details Badge */}
                         {selectedIncident && (
                             <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700 flex items-center justify-between text-xs">
-                                <span className="font-medium text-gray-600 dark:text-gray-300">Score Modifier:</span>
+                                <span className="font-medium text-gray-600 dark:text-gray-300">{t("score_modifier")}</span>
                                 <span className={cn(
                                     "font-bold font-mono px-2 py-0.5 rounded-full text-xs",
                                     Number(selectedIncident.point || 0) >= 0 
                                         ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" 
                                         : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
                                 )}>
-                                    {Number(selectedIncident.point || 0) > 0 ? `+${selectedIncident.point}` : selectedIncident.point} Points
+                                    {Number(selectedIncident.point || 0) > 0 ? `+${toLocaleNumber(selectedIncident.point, shortCode)}` : toLocaleNumber(selectedIncident.point, shortCode)} {t("points")}
                                 </span>
                             </div>
                         )}
@@ -666,7 +689,7 @@ export default function AssignIncidentPage() {
                         {/* Incident Date Input */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                                {t("incident_date") || "Incident Date"} <span className="text-red-500">*</span>
+                                {t("incident_date")} <span className="text-red-500">*</span>
                             </Label>
                             <div className="relative">
                                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -682,12 +705,12 @@ export default function AssignIncidentPage() {
                         {/* Description Textarea */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-gray-700 dark:text-gray-300">
-                                {t("assigned_description") || "Description / Notes"}
+                                {t("assigned_description")}
                             </Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                                placeholder={t("details_regarding_this_specific_assignment") || "Add any specific context or remarks regarding this incident..."}
+                                placeholder={t("details_regarding_this_specific_assignment")}
                                 rows={3}
                                 className="text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500/20 resize-none"
                             />
@@ -702,7 +725,7 @@ export default function AssignIncidentPage() {
                             onClick={() => setOpen(false)}
                             className="h-9 px-4 text-xs font-semibold rounded-xl border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer"
                         >
-                            {t("discard") || "Cancel"}
+                            {t("cancel")}
                         </Button>
                         <Button
                             type="button"
@@ -713,12 +736,12 @@ export default function AssignIncidentPage() {
                             {submitting ? (
                                 <>
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    {t("saving") || "Saving..."}
+                                    <span>{t("saving")}</span>
                                 </>
                             ) : (
                                 <>
                                     <Save className="h-3.5 w-3.5" />
-                                    {t("commit_assignment") || "Assign Incident"}
+                                    <span>{t("commit_assignment")}</span>
                                 </>
                             )}
                         </Button>

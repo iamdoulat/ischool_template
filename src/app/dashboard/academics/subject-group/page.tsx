@@ -20,15 +20,12 @@ import {
     ChevronLeft,
     ChevronRight,
     Loader2,
-    Library,
     Layers,
     Search,
     GraduationCap,
     BookOpen,
     CheckCircle2,
     Sparkles,
-    CheckSquare,
-    Square,
     Columns
 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
@@ -48,17 +45,17 @@ import api from "@/lib/api";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName, translateSubjectName, toLocaleNumber } from "@/lib/utils";
 
 const GROUP_PRESETS = [
-    "Class 1st Subject Group",
-    "Class 2nd Subject Group",
-    "Class 3rd Subject Group",
-    "Class 4th Subject Group",
-    "Class 5th Subject Group",
-    "Science Group",
-    "Business Studies",
-    "Humanities / Arts"
+    { key: "class_1st_subject_group", defaultLabel: "Class 1st Subject Group" },
+    { key: "class_2nd_subject_group", defaultLabel: "Class 2nd Subject Group" },
+    { key: "class_3rd_subject_group", defaultLabel: "Class 3rd Subject Group" },
+    { key: "class_4th_subject_group", defaultLabel: "Class 4th Subject Group" },
+    { key: "class_5th_subject_group", defaultLabel: "Class 5th Subject Group" },
+    { key: "science_group", defaultLabel: "Science Group" },
+    { key: "business_studies", defaultLabel: "Business Studies" },
+    { key: "humanities_arts", defaultLabel: "Humanities / Arts" }
 ];
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -67,9 +64,11 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
             {Array.from({ length: rows }).map((_, i) => (
                 <tr key={i} className="border-b border-muted/30">
                     {Array.from({ length: cols }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
-                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
-                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        <td key={j} className="px-4 py-3.5">
+                            <div
+                                className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }}
+                            />
                         </td>
                     ))}
                 </tr>
@@ -93,6 +92,7 @@ interface SchoolClass {
 interface Subject {
     id: number;
     name: string;
+    code?: string;
 }
 
 interface SubjectGroup {
@@ -107,8 +107,24 @@ interface SubjectGroup {
 
 export default function SubjectGroupPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
+
+    const formatGroupName = (grpName: string) => {
+        if (!grpName) return "";
+        const lower = grpName.toLowerCase().trim();
+        
+        const presetKey = lower.replace(/[^a-z0-9]+/g, '_');
+        const translatedPreset = t(presetKey);
+        if (translatedPreset && translatedPreset !== presetKey) return translatedPreset;
+
+        const match = lower.match(/^class\s*(\d+)(?:st|nd|rd|th)?\s*(?:subject|subject group|subjects)?$/i);
+        if (match) {
+            const num = match[1];
+            return t("class_x_subject_group", { class: toLocaleNumber(num, language?.short_code) }) || grpName;
+        }
+        return grpName;
+    };
 
     // Data states
     const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -161,7 +177,10 @@ export default function SubjectGroupPage() {
 
     // Fetch sections filtered by selected class ID
     const fetchSectionsByClass = async (selectedClassId: string) => {
-        if (!selectedClassId) { setSections([]); return; }
+        if (!selectedClassId) {
+            setSections([]);
+            return;
+        }
         try {
             const res = await api.get('/academics/sections?with_class=true&no_paginate=true');
             const all: Section[] = res.data?.data || res.data || [];
@@ -205,7 +224,7 @@ export default function SubjectGroupPage() {
     // Handle Class Selection Change
     const handleClassChange = (value: string) => {
         setClassId(value);
-        setSelectedSections([]); // Reset section selection when class changes
+        setSelectedSections([]);
         fetchSectionsByClass(value);
     };
 
@@ -213,7 +232,7 @@ export default function SubjectGroupPage() {
         if (selectedSubjects.length === subjects.length) {
             setSelectedSubjects([]);
         } else {
-            setSelectedSubjects(subjects.map(s => s.id));
+            setSelectedSubjects(subjects.map((s) => s.id));
         }
     };
 
@@ -221,7 +240,7 @@ export default function SubjectGroupPage() {
         if (selectedSections.length === sections.length) {
             setSelectedSections([]);
         } else {
-            setSelectedSections(sections.map(s => s.id));
+            setSelectedSections(sections.map((s) => s.id));
         }
     };
 
@@ -293,8 +312,8 @@ export default function SubjectGroupPage() {
         setName(group.name);
         setClassId(group.school_class_id.toString());
         fetchSectionsByClass(group.school_class_id.toString());
-        setSelectedSections(group.sections.map(s => s.id));
-        setSelectedSubjects(group.subjects.map(s => s.id));
+        setSelectedSections(group.sections.map((s) => s.id));
+        setSelectedSubjects(group.subjects.map((s) => s.id));
         setDescription(group.description || "");
         setEditingId(group.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -313,7 +332,7 @@ export default function SubjectGroupPage() {
             fetchSubjectGroups(currentPage);
             tt.success("deleted_successfully");
         } catch (error) {
-            const err = error as { response?: { data?: { message?: string }, status?: number } };
+            const err = error as { response?: { data?: { message?: string }; status?: number } };
             console.error("Error deleting subject group:", error);
             tt.error(err.response?.data?.message || "failed_to_delete");
         } finally {
@@ -327,15 +346,18 @@ export default function SubjectGroupPage() {
     const exportDataForTable = () => {
         return subjectGroups.map((group, idx) => ({
             "#": idx + 1,
-            [t("name")]: group.name,
-            [t("class_sections")]: `${group.school_class?.name || ''} (${group.sections.map(s => s.name).join(', ')})`,
-            [t("subjects")]: group.subjects.map(s => s.name).join(', '),
-            "Status": "Active"
+            [t("name")]: formatGroupName(group.name),
+            [t("class_sections") || "Class Sections"]: `${translateClassName(group.school_class?.name || "", language?.short_code)} (${group.sections.map((s) => `${t("section_short")} ${translateSectionName(s.name, language?.short_code)}`).join(', ')})`,
+            [t("subjects")]: group.subjects.map((s) => translateSubjectName(s.name, language?.short_code)).join(', '),
+            [t("status") || "Status"]: t("active") || "Active"
         }));
     };
 
     const exportToCopy = () => {
-        const text = exportDataForTable().map((row: Record<string, string | number>) => `${row["#"]}. ${row[t("name")]}\t${row[t("class_sections")]}\t${row[t("subjects")]}`).join("\n");
+        const classSecLabel = t("class_sections") || "Class Sections";
+        const text = exportDataForTable()
+            .map((row: Record<string, string | number>) => `${row["#"]}. ${row[t("name")]}\t${row[classSecLabel]}\t${row[t("subjects")]}`)
+            .join("\n");
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
     };
@@ -349,15 +371,15 @@ export default function SubjectGroupPage() {
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        doc.text("Subject Group List", 14, 15);
+        doc.text(t("subject_group_list"), 14, 15);
         autoTable(doc, {
-            head: [["#", t("name"), t("class_sections"), t("subjects"), "Status"]],
+            head: [["#", t("name"), t("class_sections") || "Class Sections", t("subjects"), t("status") || "Status"]],
             body: subjectGroups.map((group, idx) => [
                 idx + 1,
-                group.name,
-                group.sections.map(s => `${group.school_class?.name || ''} - ${s.name}`).join('\n'),
-                group.subjects.map(s => s.name).join(', '),
-                "Active"
+                formatGroupName(group.name),
+                group.sections.map((s) => `${translateClassName(group.school_class?.name || "", language?.short_code)} - ${t("section_short")} ${translateSectionName(s.name, language?.short_code)}`).join('\n'),
+                group.subjects.map((s) => translateSubjectName(s.name, language?.short_code)).join(', '),
+                t("active") || "Active"
             ]),
             startY: 20
         });
@@ -373,19 +395,17 @@ export default function SubjectGroupPage() {
             {/* Left Column: Form */}
             <form onSubmit={handleSave} className="w-full lg:w-1/3">
                 <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
-                    <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Library className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {editingId ? t("edit_subject_group") : t("add_subject_group")}
-                                </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                    {selectedSubjects.length} subject{selectedSubjects.length === 1 ? '' : 's'} selected
-                                </p>
-                            </div>
+                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <Layers className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                {editingId ? t("edit_subject_group") : t("add_subject_group")}
+                            </CardTitle>
+                            <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1">
+                                {t("x_subjects_selected", { count: toLocaleNumber(selectedSubjects.length, language?.short_code) })}
+                            </p>
                         </div>
                     </CardHeader>
 
@@ -399,8 +419,8 @@ export default function SubjectGroupPage() {
                                 id="name"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g. Class 1st Subject Group, Science..."
-                                className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
+                                placeholder={t("subject_group_name_placeholder")}
+                                className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500 font-medium"
                                 required
                             />
                         </div>
@@ -408,45 +428,50 @@ export default function SubjectGroupPage() {
                         {/* Quick Group Presets */}
                         <div className="space-y-1.5 pt-1">
                             <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                                <Sparkles className="h-3 w-3 text-amber-500" /> Quick Name Presets
+                                <Sparkles className="h-3 w-3 text-amber-500" /> {t("quick_name_presets")}
                             </Label>
-                            <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto pr-1">
-                                {GROUP_PRESETS.map((preset) => (
-                                    <button
-                                        key={preset}
-                                        type="button"
-                                        onClick={() => setName(preset)}
-                                        className={cn(
-                                            "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
-                                            name === preset
-                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                                : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
-                                        )}
-                                    >
-                                        {preset}
-                                    </button>
-                                ))}
+                            <div className="flex flex-wrap gap-1.5 max-h-[90px] overflow-y-auto pr-1">
+                                {GROUP_PRESETS.map((preset) => {
+                                    const label = t(preset.key) || preset.defaultLabel;
+                                    return (
+                                        <button
+                                            key={preset.key}
+                                            type="button"
+                                            onClick={() => setName(label)}
+                                            className={cn(
+                                                "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer",
+                                                name === label
+                                                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                                                    : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
+                                            )}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
-                        {/* Class */}
+                        {/* Class Selection */}
                         <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                                 {t("class")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={classId} onValueChange={handleClassChange}>
-                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none">
-                                    <SelectValue placeholder={t("select")} />
+                                <SelectTrigger className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none font-medium">
+                                    <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                    {classes.map((c) => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>
+                                            {translateClassName(c.name, language?.short_code)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Sections */}
+                        {/* Sections Selection */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
@@ -456,37 +481,37 @@ export default function SubjectGroupPage() {
                                     <button
                                         type="button"
                                         onClick={handleSelectAllSections}
-                                        className="text-[10px] font-bold text-indigo-600 hover:underline"
+                                        className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
                                     >
-                                        {selectedSections.length === sections.length ? "Deselect All" : "Select All"}
+                                        {selectedSections.length === sections.length ? t("deselect_all") : t("select_all")}
                                     </button>
                                 )}
                             </div>
                             {!classId ? (
-                                <p className="text-xs text-gray-400 border border-dashed rounded-xl p-3 text-center bg-gray-50/50">
-                                    {t("select_class_first_to_see_sections")}
+                                <p className="text-xs text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-3 text-center bg-gray-50/30">
+                                    {t("select_class_first_to_see_sections") || "Select Class First To See Sections"}
                                 </p>
                             ) : sections.length === 0 ? (
-                                <p className="text-xs text-gray-400 border border-dashed rounded-xl p-3 text-center bg-gray-50/50">
-                                    {t("no_sections_available_for_this_class")}
+                                <p className="text-xs text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-3 text-center bg-gray-50/30">
+                                    {t("no_sections_available_for_this_class") || "No sections available for this class"}
                                 </p>
                             ) : (
-                                <div className="grid grid-cols-2 gap-2 border border-gray-200 rounded-xl p-3 max-h-[140px] overflow-y-auto bg-gray-50/30">
-                                    {sections.map(section => (
+                                <div className="grid grid-cols-2 gap-2 border border-gray-200 dark:border-gray-800 rounded-xl p-3 max-h-[140px] overflow-y-auto bg-gray-50/20">
+                                    {sections.map((section) => (
                                         <div
                                             key={section.id}
                                             onClick={() => {
                                                 if (selectedSections.includes(section.id)) {
-                                                    setSelectedSections(prev => prev.filter(id => id !== section.id));
+                                                    setSelectedSections((prev) => prev.filter((id) => id !== section.id));
                                                 } else {
-                                                    setSelectedSections(prev => [...prev, section.id]);
+                                                    setSelectedSections((prev) => [...prev, section.id]);
                                                 }
                                             }}
                                             className={cn(
                                                 "flex items-center space-x-2 p-2 rounded-lg border text-xs font-semibold cursor-pointer transition-all",
                                                 selectedSections.includes(section.id)
-                                                    ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40"
-                                                    : "bg-white border-gray-200 text-gray-600 hover:border-indigo-200"
+                                                    ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-700 dark:text-indigo-300 shadow-2xs"
+                                                    : "bg-white dark:bg-zinc-800 border-gray-200 text-gray-700 dark:text-zinc-300 hover:border-indigo-200"
                                             )}
                                         >
                                             <Checkbox
@@ -495,7 +520,7 @@ export default function SubjectGroupPage() {
                                                 className="h-4 w-4 rounded-md data-[state=checked]:bg-indigo-600"
                                             />
                                             <Label htmlFor={`section-${section.id}`} className="cursor-pointer">
-                                                Section {section.name}
+                                                {t("section_short")} {translateSectionName(section.name, language?.short_code)}
                                             </Label>
                                         </div>
                                     ))}
@@ -503,7 +528,7 @@ export default function SubjectGroupPage() {
                             )}
                         </div>
 
-                        {/* Subjects */}
+                        {/* Subjects Selection */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
@@ -513,45 +538,53 @@ export default function SubjectGroupPage() {
                                     <button
                                         type="button"
                                         onClick={handleSelectAllSubjects}
-                                        className="text-[10px] font-bold text-indigo-600 hover:underline"
+                                        className="text-[10px] font-bold text-indigo-600 hover:underline cursor-pointer"
                                     >
-                                        {selectedSubjects.length === subjects.length ? "Deselect All" : "Select All"}
+                                        {selectedSubjects.length === subjects.length ? t("deselect_all") : t("select_all")}
                                     </button>
                                 )}
                             </div>
                             {subjects.length === 0 ? (
-                                <p className="text-xs text-gray-400 border border-dashed rounded-xl p-3 text-center bg-gray-50/50">
-                                    {t("no_subjects_available_in_system")}
+                                <p className="text-xs text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-lg p-3 text-center bg-gray-50/30">
+                                    {t("no_subjects_available_in_system") || "No subjects available in the system"}
                                 </p>
                             ) : (
-                                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1 border border-gray-200 rounded-xl p-3 bg-gray-50/30">
+                                <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1 border border-gray-200 dark:border-gray-800 rounded-xl p-3 bg-gray-50/20">
                                     {subjects.map((subject) => {
                                         const isChecked = selectedSubjects.includes(subject.id);
+                                        const displayName = translateSubjectName(subject.name, language?.short_code);
                                         return (
                                             <div
                                                 key={subject.id}
                                                 onClick={() => {
-                                                    if (isChecked) setSelectedSubjects(prev => prev.filter(id => id !== subject.id));
-                                                    else setSelectedSubjects(prev => [...prev, subject.id]);
+                                                    if (isChecked) {
+                                                        setSelectedSubjects((prev) => prev.filter((id) => id !== subject.id));
+                                                    } else {
+                                                        setSelectedSubjects((prev) => [...prev, subject.id]);
+                                                    }
                                                 }}
                                                 className={cn(
-                                                    "flex items-center space-x-2 p-2 rounded-lg border text-xs font-semibold cursor-pointer transition-all",
+                                                    "flex items-center justify-between p-2 rounded-lg border text-xs font-semibold cursor-pointer transition-all",
                                                     isChecked
-                                                        ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40"
-                                                        : "bg-white border-gray-200 text-gray-600 hover:border-indigo-200"
+                                                        ? "bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-700 dark:text-indigo-300 shadow-2xs"
+                                                        : "bg-white dark:bg-zinc-800 border-gray-200 text-gray-700 dark:text-zinc-300 hover:border-indigo-200"
                                                 )}
                                             >
-                                                <Checkbox
-                                                    id={`subject-${subject.id}`}
-                                                    checked={isChecked}
-                                                    className="h-4 w-4 rounded-md data-[state=checked]:bg-indigo-600"
-                                                />
-                                                <Label
-                                                    htmlFor={`subject-${subject.id}`}
-                                                    className="cursor-pointer w-full"
-                                                >
-                                                    {subject.name}
-                                                </Label>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`subject-${subject.id}`}
+                                                        checked={isChecked}
+                                                        className="h-4 w-4 rounded-md data-[state=checked]:bg-indigo-600"
+                                                    />
+                                                    <Label htmlFor={`subject-${subject.id}`} className="cursor-pointer">
+                                                        {displayName}
+                                                    </Label>
+                                                </div>
+                                                {subject.code && (
+                                                    <span className="text-[10px] font-mono font-bold text-gray-400 bg-gray-100 dark:bg-zinc-700 px-1.5 py-0.5 rounded">
+                                                        {toLocaleNumber(subject.code, language?.short_code)}
+                                                    </span>
+                                                )}
                                             </div>
                                         );
                                     })}
@@ -568,18 +601,19 @@ export default function SubjectGroupPage() {
                                 id="description"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Optional details about this subject combination..."
-                                className="min-h-[80px] resize-none border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
+                                placeholder={t("subject_group_desc_placeholder")}
+                                className="min-h-[75px] resize-none border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500 font-medium"
                             />
                         </div>
 
+                        {/* Form Action Buttons */}
                         <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
                             {editingId && (
                                 <Button
                                     type="button"
                                     onClick={resetForm}
                                     variant="outline"
-                                    className="h-9 px-4 rounded-full text-xs font-bold uppercase border-gray-200"
+                                    className="h-9 px-4 rounded-full text-xs font-bold uppercase border-gray-200 cursor-pointer"
                                 >
                                     {t("cancel")}
                                 </Button>
@@ -587,9 +621,9 @@ export default function SubjectGroupPage() {
                             <Button
                                 type="submit"
                                 disabled={saving}
-                                className="btn-gradient text-white px-8 h-9 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50 transition-all rounded-full flex items-center gap-2"
+                                className="btn-gradient text-white px-8 h-9 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50 transition-all rounded-full flex items-center gap-2 cursor-pointer"
                             >
-                                {saving && <Loader2 className="h-3 w-3 animate-spin" />}
+                                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                                 {editingId ? t("update") : t("save")}
                             </Button>
                         </div>
@@ -599,45 +633,78 @@ export default function SubjectGroupPage() {
 
             {/* Right Column: List View */}
             <div className="w-full lg:w-2/3">
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 font-sans">
                     <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                         <div className="flex items-center gap-2.5">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Library className="h-5 w-5" />
+                                <Layers className="h-5 w-5" />
                             </span>
                             <div>
-                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("subject_group_list")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: total })}</p>
+                                <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                    {t("subject_group_list")}
+                                </CardTitle>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    {t("total_entries_count", { count: toLocaleNumber(total, language?.short_code) })}
+                                </p>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                             <Select value={limit} onValueChange={(v) => setLimit(v)}>
                                 <SelectTrigger className="h-8 w-16 text-xs border-gray-200 rounded-lg">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber(50, language?.short_code)} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
                                 </SelectContent>
                             </Select>
 
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
+                                <Button
+                                    onClick={exportToCopy}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                    title={t("copy")}
+                                >
                                     <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
+                                <Button
+                                    onClick={exportToExcel}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                    title={t("excel")}
+                                >
                                     <FileSpreadsheet className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
+                                <Button
+                                    onClick={exportToPDF}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                    title={t("pdf")}
+                                >
                                     <FileText className="h-4 w-4" />
                                 </Button>
-                                <Button onClick={printTable} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
+                                <Button
+                                    onClick={printTable}
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                    title={t("print")}
+                                >
                                     <Printer className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Columns">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                    title={t("columns")}
+                                >
                                     <Columns className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -645,22 +712,22 @@ export default function SubjectGroupPage() {
                     </CardHeader>
 
                     <CardContent className="px-5 pb-5 space-y-4">
-                        {/* Search Bar */}
+                        {/* Search Bar & Stats Badge */}
                         <div className="flex justify-between items-center gap-4">
                             <div className="relative w-full md:w-72">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search subject groups..."
+                                    placeholder={t("search_subject_groups")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
+                                    className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none font-medium"
                                 />
                             </div>
 
-                            {subjectGroups.length > 0 && (
+                            {total > 0 && (
                                 <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
                                     <Layers className="h-3 w-3 mr-1" />
-                                    {total} Subject Groups
+                                    {t("x_subject_groups", { count: toLocaleNumber(total, language?.short_code) })}
                                 </Badge>
                             )}
                         </div>
@@ -672,9 +739,9 @@ export default function SubjectGroupPage() {
                                     <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
                                         <TableHead className="py-3 px-4 w-[60px]">#</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[180px]">{t("name")}</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[220px]">{t("class_section")}</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[240px]">{t("subject")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[120px]">Status</TableHead>
+                                        <TableHead className="py-3 px-4 min-w-[200px]">{t("class_sections") || "Class Sections"}</TableHead>
+                                        <TableHead className="py-3 px-4 min-w-[240px]">{t("subjects")}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[110px]">{t("status") || "Status"}</TableHead>
                                         <TableHead className="py-3 px-4 text-right w-[100px]">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -695,10 +762,10 @@ export default function SubjectGroupPage() {
                                             >
                                                 {/* Serial Number */}
                                                 <TableCell className="py-3.5 px-4 font-bold text-gray-400 text-xs">
-                                                    {(currentPage - 1) * parseInt(limit) + idx + 1}
+                                                    {toLocaleNumber((currentPage - 1) * parseInt(limit) + idx + 1, language?.short_code)}
                                                 </TableCell>
 
-                                                {/* Group Name & Avatar */}
+                                                {/* Group Name & Icon */}
                                                 <TableCell className="py-3.5 px-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white flex items-center justify-center font-black text-xs shadow-2xs shrink-0">
@@ -706,7 +773,7 @@ export default function SubjectGroupPage() {
                                                         </div>
                                                         <div>
                                                             <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                                                                {group.name}
+                                                                {formatGroupName(group.name)}
                                                             </p>
                                                             {group.description && (
                                                                 <p className="text-[11px] text-gray-400 font-medium line-clamp-1 max-w-[200px]">
@@ -725,8 +792,8 @@ export default function SubjectGroupPage() {
                                                                 key={sec.id}
                                                                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs"
                                                             >
-                                                                <GraduationCap className="h-3 w-3 text-indigo-500" />
-                                                                {group.school_class?.name} • Sec {sec.name}
+                                                                <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
+                                                                {translateClassName(group.school_class?.name, language?.short_code)} • {t("section_short")} {translateSectionName(sec.name, language?.short_code)}
                                                             </span>
                                                         ))}
                                                     </div>
@@ -738,10 +805,10 @@ export default function SubjectGroupPage() {
                                                         {group.subjects.map((sub) => (
                                                             <span
                                                                 key={sub.id}
-                                                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-semibold text-xs border border-gray-200 dark:border-gray-700 shadow-2xs"
+                                                                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-50/80 dark:bg-amber-950/30 text-amber-900 dark:text-amber-300 font-semibold text-xs border border-amber-200/70 dark:border-amber-900/40 shadow-2xs"
                                                             >
-                                                                <BookOpen className="h-3 w-3 text-amber-500" />
-                                                                {sub.name}
+                                                                <BookOpen className="h-3 w-3 text-amber-600" />
+                                                                {translateSubjectName(sub.name, language?.short_code)}
                                                             </span>
                                                         ))}
                                                     </div>
@@ -751,7 +818,7 @@ export default function SubjectGroupPage() {
                                                 <TableCell className="py-3.5 px-4">
                                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
                                                         <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                        Active
+                                                        {t("active") || "Active"}
                                                     </span>
                                                 </TableCell>
 
@@ -762,8 +829,8 @@ export default function SubjectGroupPage() {
                                                             onClick={() => handleEdit(group)}
                                                             size="icon"
                                                             variant="ghost"
-                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Edit Subject Group"
+                                                            className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs cursor-pointer"
+                                                            title={t("edit")}
                                                         >
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
@@ -771,8 +838,8 @@ export default function SubjectGroupPage() {
                                                             onClick={() => confirmDelete(group.id)}
                                                             size="icon"
                                                             variant="ghost"
-                                                            className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
-                                                            title="Delete Subject Group"
+                                                            className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs cursor-pointer"
+                                                            title={t("delete")}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
@@ -785,14 +852,20 @@ export default function SubjectGroupPage() {
                             </Table>
                         </div>
 
-                        {/* Pagination */}
+                        {/* Pagination Footer */}
                         {total > 0 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
-                                <div>{t("showing_x_to_y_of_z", { from, to, total })}</div>
+                                <div>
+                                    {t("showing_x_to_y_of_z", {
+                                        from: toLocaleNumber(from, language?.short_code),
+                                        to: toLocaleNumber(to, language?.short_code),
+                                        total: toLocaleNumber(total, language?.short_code)
+                                    })}
+                                </div>
                                 <div className="flex gap-1.5">
                                     <Button
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                         disabled={currentPage === 1}
                                         onClick={() => fetchSubjectGroups(currentPage - 1)}
                                     >
@@ -803,19 +876,19 @@ export default function SubjectGroupPage() {
                                             key={page}
                                             size="sm"
                                             className={cn(
-                                                "h-8 w-8 p-0 rounded-[10px] text-xs font-black shadow-sm transition-all",
+                                                "h-8 w-8 p-0 rounded-[10px] text-xs font-black shadow-sm transition-all cursor-pointer",
                                                 currentPage === page
                                                     ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0"
                                                     : "bg-white border border-gray-200 text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
                                             )}
                                             onClick={() => fetchSubjectGroups(page)}
                                         >
-                                            {page}
+                                            {toLocaleNumber(page, language?.short_code)}
                                         </Button>
                                     ))}
                                     <Button
                                         size="sm"
-                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
+                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                         disabled={currentPage === lastPage || lastPage === 0}
                                         onClick={() => fetchSubjectGroups(currentPage + 1)}
                                     >
@@ -832,14 +905,21 @@ export default function SubjectGroupPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("are_you_absolutely_sure")}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">
+                            {t("are_you_absolutely_sure") || t("are_you_sure")}
+                        </AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
                             {t("delete_subject_group_confirm_message")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200 cursor-pointer">
+                            {t("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDelete}
+                            className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md cursor-pointer text-white"
+                        >
                             {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>

@@ -4,8 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatDate, toLocaleNumber, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -132,7 +131,46 @@ const EMPTY_EVAL = {
 
 export default function DailyAssignmentPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        const num = name.replace(/[^0-9]/g, "");
+        if (num) {
+            const locNum = toLocaleNumber(num, shortCode);
+            if (shortCode === "bn") return `ক্লাস ${locNum}`;
+            if (shortCode === "hi") return `कक्षा ${locNum}`;
+            if (shortCode === "ar") return `الصف ${locNum}`;
+            return `Class ${locNum}`;
+        }
+        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        return trans !== key ? trans : name;
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        const secLabel = shortCode === "bn" ? "শাখা" : shortCode === "hi" ? "अनुभाग" : shortCode === "ar" ? "قسم" : "Section";
+        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        if (trans !== key) return `${secLabel} ${trans}`;
+        return `${secLabel} ${name}`;
+    };
+
+    const getLocalizedSubjectName = (name?: string) => {
+        if (!name) return "";
+        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        return trans !== key ? trans : name;
+    };
+
+    const getLocalizedSubjectGroupName = (name?: string) => {
+        if (!name) return "";
+        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        return trans !== key ? trans : name;
+    };
 
     const [searchTerm, setSearchTerm] = useState("");
     const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -261,7 +299,7 @@ export default function DailyAssignmentPage() {
                 to: res.data.to,
             });
         } catch {
-            toast({ title: t("error"), description: "Failed to fetch assignments", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_fetch_assignments") || "Failed to fetch assignments", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -328,16 +366,16 @@ export default function DailyAssignmentPage() {
             if (isEditing && editId) {
                 data.append("_method", "PUT");
                 await api.post(`/homework/daily-assignments/${editId}`, data);
-                toast({ title: t("success"), description: "Assignment updated successfully" });
+                toast({ title: t("success"), description: t("assignment_updated_successfully") || "Assignment updated successfully" });
             } else {
                 await api.post("/homework/daily-assignments", data);
-                toast({ title: t("success"), description: "Assignment created successfully" });
+                toast({ title: t("success"), description: t("assignment_created_successfully") || "Assignment created successfully" });
             }
             setIsDialogOpen(false);
             fetchAssignments();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast({ title: t("error"), description: e.response?.data?.message || "Failed to save assignment", variant: "destructive" });
+            toast({ title: t("error"), description: e.response?.data?.message || t("failed_to_save_assignment") || "Failed to save assignment", variant: "destructive" });
         } finally {
             setSaving(false);
         }
@@ -348,12 +386,12 @@ export default function DailyAssignmentPage() {
         setSaving(true);
         try {
             await api.post(`/homework/daily-assignments/${evalId}/evaluate`, evalData);
-            toast({ title: t("success"), description: "Assignment evaluated successfully" });
+            toast({ title: t("success"), description: t("assignment_evaluated_successfully") || "Assignment evaluated successfully" });
             setIsEvalOpen(false);
             fetchAssignments();
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } } };
-            toast({ title: t("error"), description: e.response?.data?.message || "Failed to evaluate", variant: "destructive" });
+            toast({ title: t("error"), description: e.response?.data?.message || t("failed_to_evaluate") || "Failed to evaluate", variant: "destructive" });
         } finally {
             setSaving(false);
         }
@@ -363,23 +401,23 @@ export default function DailyAssignmentPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/homework/daily-assignments/${deleteId}`);
-            toast({ title: t("success"), description: "Assignment deleted successfully" });
+            toast({ title: t("success"), description: t("assignment_deleted_successfully") || "Assignment deleted successfully" });
             setIsDeleteOpen(false);
             fetchAssignments();
         } catch {
-            toast({ title: t("error"), description: "Failed to delete assignment", variant: "destructive" });
+            toast({ title: t("error"), description: t("failed_to_delete_assignment") || "Failed to delete assignment", variant: "destructive" });
         }
     };
 
     const handleCopy = () => {
-        const text = assignments.map(a => `${a.student?.name}\t${a.title}\t${a.subject?.name}\t${a.status}`).join("\n");
+        const text = assignments.map(a => `${a.student?.name || ""}\t${getLocalizedClassName(a.class?.name)}\t${getLocalizedSectionName(a.section?.name)}\t${getLocalizedSubjectName(a.subject?.name)}\t${a.title || "—"}\t${a.status || ""}`).join("\n");
         navigator.clipboard.writeText(text);
         toast({ title: t("copied"), description: t("data_copied_to_clipboard") });
     };
 
     const handleExportCSV = () => {
-        const headers = ["Student", "Class", "Section", "Subject", "Title", "Submission Date", "Status", "Marks"];
-        const rows = assignments.map(a => [a.student?.name, a.class?.name, a.section?.name, a.subject?.name, a.title, a.submission_date, a.status, a.marks_obtained ?? ""]);
+        const headers = [t("student"), t("class"), t("section"), t("subject"), t("title"), t("submission_date"), t("status"), t("marks")];
+        const rows = assignments.map(a => [a.student?.name, getLocalizedClassName(a.class?.name), getLocalizedSectionName(a.section?.name), getLocalizedSubjectName(a.subject?.name), a.title, a.submission_date, a.status, a.marks_obtained ?? ""]);
         const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
@@ -392,73 +430,65 @@ export default function DailyAssignmentPage() {
         document.body.removeChild(link);
     };
 
-    const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: t("copy") },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
-        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
-        { Icon: Printer, onClick: () => window.print(), title: t("print") },
-        { Icon: Columns, onClick: () => {}, title: t("columns") },
-    ];
-
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
 
             {/* Filter Card */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <Filter className="h-5 w-5" />
+                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/60">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Filter className="h-4.5 w-4.5" />
                     </span>
                     <div>
                         <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("select_criteria")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">Filter daily assignments by class, section, subject & date</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("filter_daily_assignments_by_class_section_subject_date")}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5">
                     <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("class")}</Label>
-                            <Select value={filters.class_id} onValueChange={v => setFilters({ ...filters, class_id: v, section_id: "", subject_group_id: "", subject_id: "" })}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
+                            <Select value={filters.class_id} onValueChange={v => setFilters({ ...filters, class_id: v === "all" ? "" : v, section_id: "", subject_group_id: "", subject_id: "" })}>
+                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded-lg cursor-pointer bg-white">
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Classes</SelectItem>
-                                    {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                    <SelectItem value="all" className="cursor-pointer font-bold">{t("all_classes")}</SelectItem>
+                                    {classes.map(c => <SelectItem key={c.id} value={String(c.id)} className="cursor-pointer">{getLocalizedClassName(c.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("section")}</Label>
-                            <Select value={filters.section_id} onValueChange={v => setFilters({ ...filters, section_id: v })}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
+                            <Select value={filters.section_id} onValueChange={v => setFilters({ ...filters, section_id: v === "all" ? "" : v })}>
+                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded-lg cursor-pointer bg-white">
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Sections</SelectItem>
-                                    {filteredSections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                    <SelectItem value="all" className="cursor-pointer font-bold">{t("all_sections")}</SelectItem>
+                                    {filteredSections.map(s => <SelectItem key={s.id} value={String(s.id)} className="cursor-pointer">{getLocalizedSectionName(s.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("subject_group")}</Label>
                             <Select value={filters.subject_group_id} onValueChange={v => setFilters({ ...filters, subject_group_id: v })}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
+                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded-lg cursor-pointer bg-white">
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {filteredSubjectGroups.map(sg => <SelectItem key={sg.id} value={String(sg.id)}>{sg.name}</SelectItem>)}
+                                    {filteredSubjectGroups.map(sg => <SelectItem key={sg.id} value={String(sg.id)} className="cursor-pointer">{getLocalizedSubjectGroupName(sg.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("subject")}</Label>
                             <Select value={filters.subject_id} onValueChange={v => setFilters({ ...filters, subject_id: v })}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded">
+                                <SelectTrigger className="h-9 border-gray-200 text-xs focus:ring-indigo-500 rounded-lg cursor-pointer bg-white">
                                     <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {filteredSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                    {filteredSubjects.map(s => <SelectItem key={s.id} value={String(s.id)} className="cursor-pointer">{getLocalizedSubjectName(s.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -467,11 +497,11 @@ export default function DailyAssignmentPage() {
                             <DatePicker
                                 value={filters.date}
                                 onChange={d => setFilters({ ...filters, date: d })}
-                                className="h-9 border-gray-200 text-xs rounded shadow-none"
+                                className="h-9 border-gray-200 text-xs rounded-lg shadow-none"
                             />
                         </div>
                         <div className="flex justify-end pt-2">
-                            <Button type="submit" className="btn-gradient gap-2 h-9 px-8 text-[11px] font-bold uppercase rounded-full shadow-md">
+                            <Button type="submit" className="btn-gradient gap-2 h-9 px-8 text-[11px] font-bold uppercase rounded-full shadow-md cursor-pointer">
                                 <Search className="h-3.5 w-3.5" /> {t("search")}
                             </Button>
                         </div>
@@ -481,64 +511,81 @@ export default function DailyAssignmentPage() {
 
             {/* List Card */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/60">
                     <div className="flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <ClipboardList className="h-5 w-5" />
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <ClipboardList className="h-4.5 w-4.5" />
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("daily_assignment")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{pagination?.total ?? assignments.length} {t("records")}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {toLocaleNumber(pagination?.total ?? assignments.length, shortCode)} {t("records")}
+                            </p>
                         </div>
                     </div>
-                    <Button onClick={openAdd} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase rounded-full shadow-md">
-                        <Plus className="h-3.5 w-3.5" /> Add Assignment
+                    <Button onClick={openAdd} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase rounded-full shadow-md cursor-pointer">
+                        <Plus className="h-3.5 w-3.5" /> {t("add_assignment") || t("add_daily_assignment")}
                     </Button>
                 </CardHeader>
-                <CardContent className="p-5">
-                    {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4 border-b border-gray-50 pb-4">
-                        <div className="relative w-full md:w-64">
-                            <Input placeholder={t("search_in_results")} value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50" />
+                <CardContent className="p-4 space-y-4">
+                    {/* Unified Toolbar */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                            <Input
+                                placeholder={t("search_in_results") || t("search")}
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                                className="pl-9 h-8.5 text-xs border-gray-200 bg-white/90 rounded-lg focus:bg-white focus:ring-indigo-500 shadow-2xs w-full"
+                            />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Select value={limit} onValueChange={setLimit}>
-                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2">
-                                    <SelectValue />
+                        <div className="flex items-center gap-2 justify-end shrink-0">
+                            <Select value={limit} onValueChange={v => { setLimit(v); fetchAssignments(1); }}>
+                                <SelectTrigger className="h-8.5 w-[68px] bg-white border-gray-200 text-xs font-bold focus:ring-0 cursor-pointer rounded-lg shadow-2xs">
+                                    <SelectValue placeholder={toLocaleNumber(limit, shortCode)} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                    <SelectItem value="200">200</SelectItem>
+                                    {["10", "25", "50", "100", "200"].map(n => (
+                                        <SelectItem key={n} value={n} className="text-xs font-bold cursor-pointer">
+                                            {toLocaleNumber(n, shortCode)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
-                            <div className="flex items-center gap-1 text-gray-400">
-                                {toolbarActions.map((action, i) => (
-                                    <Button key={i} variant="ghost" size="icon" onClick={action.onClick} title={action.title}
-                                        className="h-7 w-7 hover:bg-gray-100 rounded">
-                                        <action.Icon className="h-3.5 w-3.5" />
-                                    </Button>
-                                ))}
+                            <div className="flex items-center gap-0.5 border border-gray-200 rounded-lg p-0.5 bg-white shadow-2xs text-gray-500">
+                                <Button variant="ghost" size="icon" onClick={handleCopy} title={t("copy")}
+                                    className="h-7.5 w-7.5 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-md cursor-pointer">
+                                    <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("export_excel")}
+                                    className="h-7.5 w-7.5 hover:bg-emerald-50 hover:text-emerald-600 transition-all rounded-md cursor-pointer">
+                                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("export_pdf")}
+                                    className="h-7.5 w-7.5 hover:bg-rose-50 hover:text-rose-600 transition-all rounded-md cursor-pointer">
+                                    <FileText className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => window.print()} title={t("print")}
+                                    className="h-7.5 w-7.5 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-md cursor-pointer">
+                                    <Printer className="h-3.5 w-3.5" />
+                                </Button>
                             </div>
                         </div>
                     </div>
 
-                    <div className="rounded border border-gray-50 overflow-hidden">
-                        <Table>
-                            <TableHeader className="bg-gray-50/50">
-                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap">
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("student_name")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("class")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("section")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("subject")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("title")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">{t("submission_date")}</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Status</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Marks</TableHead>
-                                    <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">{t("action")}</TableHead>
+                    <div className="rounded-lg border border-gray-200 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                        <Table className="min-w-[950px]">
+                            <TableHeader className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
+                                <TableRow className="hover:bg-transparent border-b border-gray-200 whitespace-nowrap">
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700">{t("student_name")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700">{t("class")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700">{t("section")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700">{t("subject")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700 min-w-[180px]">{t("title")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700">{t("submission_date")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700">{t("status")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 font-bold text-slate-700">{t("marks")}</TableHead>
+                                    <TableHead className="py-3 px-3.5 text-right font-bold text-slate-700">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -546,54 +593,59 @@ export default function DailyAssignmentPage() {
                                     assignments.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={9} className="h-72 text-center py-10">
-                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-40">
-                                                    <Inbox className="h-16 w-16 text-gray-200" />
+                                                <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
+                                                    <Inbox className="h-14 w-14 text-gray-300" />
                                                     <div className="space-y-1">
-                                                        <p className="text-xs font-bold text-red-400">{t("no_data_available_in_table")}</p>
-                                                        <p className="text-[10px] text-indigo-500 font-medium">Add assignments or search with different criteria</p>
+                                                        <p className="text-xs font-bold text-gray-500">{t("no_data_available_in_table")}</p>
                                                     </div>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
                                     ) : assignments.map(a => (
-                                        <TableRow key={a.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 transition-all duration-200 whitespace-nowrap">
-                                            <TableCell className="py-3 text-gray-700 font-medium">{a.student?.name}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{a.class?.name}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{a.section?.name}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{a.subject?.name}</TableCell>
-                                            <TableCell className="py-3 text-gray-700 font-medium max-w-[160px] truncate">{a.title}</TableCell>
-                                            <TableCell className="py-3 text-gray-500">{formatDate(a.submission_date)}</TableCell>
-                                            <TableCell className="py-3">
+                                        <TableRow key={a.id} className="text-xs border-b border-gray-100 hover:bg-indigo-50/30 hover:shadow-xs transition-all duration-200 cursor-pointer whitespace-nowrap">
+                                            <TableCell className="py-3 px-3.5 text-gray-800 font-bold">{a.student?.name || "—"}</TableCell>
+                                            <TableCell className="py-3 px-3.5 text-gray-700 font-medium">{getLocalizedClassName(a.class?.name)}</TableCell>
+                                            <TableCell className="py-3 px-3.5 text-gray-600 font-medium">{getLocalizedSectionName(a.section?.name)}</TableCell>
+                                            <TableCell className="py-3 px-3.5 text-gray-600 font-medium">{getLocalizedSubjectName(a.subject?.name)}</TableCell>
+                                            <TableCell className="py-3 px-3.5 text-gray-800 font-medium max-w-[200px] truncate">{a.title || "—"}</TableCell>
+                                            <TableCell className="py-3 px-3.5 text-gray-600 font-medium">{a.submission_date ? formatDate(a.submission_date) : "—"}</TableCell>
+                                            <TableCell className="py-3 px-3.5">
                                                 {(() => {
-                                                    const s = statusConfig[a.status || "pending"];
+                                                    const isEvaluated = a.status === "evaluated";
+                                                    const isSubmitted = a.status === "submitted";
                                                     return (
-                                                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border", s.className)}>
-                                                            {s.label}
-                                                        </span>
+                                                        <Badge variant="outline" className={cn(
+                                                            "text-[10px] font-bold border",
+                                                            isEvaluated ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                                                            isSubmitted ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                                            "bg-amber-100 text-amber-700 border-amber-200"
+                                                        )}>
+                                                            {isEvaluated ? t("evaluated") : isSubmitted ? (t("submitted") || "Submitted") : t("pending")}
+                                                        </Badge>
                                                     );
                                                 })()}
                                             </TableCell>
-                                            <TableCell className="py-3 text-gray-500">
+                                            <TableCell className="py-3 px-3.5 font-bold">
                                                 {a.marks_obtained != null ? (
-                                                    <span className="font-bold text-green-700">{a.marks_obtained}</span>
-                                                ) : "—"}
+                                                    <span className="text-emerald-700">{toLocaleNumber(a.marks_obtained, shortCode)}</span>
+                                                ) : <span className="text-gray-400">—</span>}
                                             </TableCell>
-                                            <TableCell className="py-3 text-right">
-                                                <div className="flex items-center justify-end gap-1">
+                                            <TableCell className="py-3 px-3.5 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
                                                     <Button size="icon" variant="ghost" onClick={() => { setViewAssignment(a); setIsViewOpen(true); }}
-                                                        className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-sm" title="View">
+                                                        className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-sm cursor-pointer" title={t("view")}>
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" onClick={() => openEvaluate(a)}
-                                                        className="h-7 w-7 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-sm" title="Evaluate">
+                                                        className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-sm cursor-pointer" title={t("evaluate")}>
                                                         <Star className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" onClick={() => openEdit(a)}
-                                                        className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-sm" title="Edit">
+                                                        className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-sm cursor-pointer" title={t("edit")}>
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" onClick={() => { setDeleteId(a.id); setIsDeleteOpen(true); }}
-                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm" title="Delete">
+                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm cursor-pointer" title={t("delete")}>
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
@@ -606,26 +658,30 @@ export default function DailyAssignmentPage() {
                     </div>
 
                     {/* Pagination */}
-                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
-                        <div>{t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}</div>
-                        <div className="flex gap-2 items-center">
+                    <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 font-medium pt-4 border-t border-gray-100 gap-3">
+                        <div>{t("showing_x_to_y_of_z", {
+                            from: toLocaleNumber(pagination?.from || 0, shortCode),
+                            to: toLocaleNumber(pagination?.to || 0, shortCode),
+                            total: toLocaleNumber(pagination?.total || 0, shortCode)
+                        })}</div>
+                        <div className="flex gap-1.5 items-center">
                             <Button variant="outline" size="icon" disabled={pagination?.current_page === 1}
-                                onClick={() => fetchAssignments(pagination!.current_page - 1)}
-                                className="h-7 w-7 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 hover:opacity-90 disabled:opacity-30">
+                                onClick={() => fetchAssignments((pagination?.current_page || 1) - 1)}
+                                className="h-7 w-7 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 hover:opacity-90 disabled:opacity-30 cursor-pointer">
                                 <ChevronLeft className="h-3.5 w-3.5" />
                             </Button>
                             {[...Array(pagination?.last_page || 0)].map((_, i) => (
                                 <Button key={i + 1} onClick={() => fetchAssignments(i + 1)}
-                                    className={cn("h-7 w-7 p-0 text-[11px] font-bold rounded-[10px] shadow-sm",
+                                    className={cn("h-7 w-7 p-0 text-xs font-bold rounded-lg shadow-sm cursor-pointer transition-all",
                                         pagination?.current_page === i + 1
                                             ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white"
                                             : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50")}>
-                                    {i + 1}
+                                    {toLocaleNumber(i + 1, shortCode)}
                                 </Button>
                             ))}
                             <Button variant="outline" size="icon" disabled={pagination?.current_page === pagination?.last_page}
-                                onClick={() => fetchAssignments(pagination!.current_page + 1)}
-                                className="h-7 w-7 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 hover:opacity-90 disabled:opacity-30">
+                                onClick={() => fetchAssignments((pagination?.current_page || 1) + 1)}
+                                className="h-7 w-7 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 hover:opacity-90 disabled:opacity-30 cursor-pointer">
                                 <ChevronRight className="h-3.5 w-3.5" />
                             </Button>
                         </div>
@@ -635,49 +691,49 @@ export default function DailyAssignmentPage() {
 
             {/* ── Add / Edit Assignment Dialog ── */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden">
+                <DialogContent className="sm:max-w-[620px] p-0 overflow-hidden rounded-2xl">
                     <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                        <DialogTitle className="text-lg font-bold text-white">
-                            {isEditing ? "Edit Assignment" : "Add Daily Assignment"}
+                        <DialogTitle className="text-base font-bold text-white">
+                            {isEditing ? (t("edit_assignment") || "Edit Assignment") : (t("add_daily_assignment") || "Add Daily Assignment")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="grid grid-cols-2 gap-4 px-6 py-5 max-h-[75vh] overflow-y-auto">
                         {/* Class */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("class")} <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("class")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.class_id}
                                 onValueChange={v => setFormData({ ...formData, class_id: v, section_id: "", subject_id: "", student_id: "" })}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
+                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none rounded-lg cursor-pointer">
                                     <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                    {classes.map(c => <SelectItem key={c.id} value={String(c.id)} className="cursor-pointer">{getLocalizedClassName(c.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         {/* Section */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("section")} <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("section")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.section_id}
                                 onValueChange={v => setFormData({ ...formData, section_id: v, student_id: "" })}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
+                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none rounded-lg cursor-pointer">
                                     <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {formFilteredSections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                    {formFilteredSections.map(s => <SelectItem key={s.id} value={String(s.id)} className="cursor-pointer">{getLocalizedSectionName(s.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         {/* Student */}
                         <div className="space-y-1.5 col-span-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Student <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("student")} <span className="text-red-500">*</span></Label>
                             
-                            <div className="border border-gray-200 rounded-md p-3 max-h-48 overflow-y-auto space-y-3 bg-white">
+                            <div className="border border-gray-200 rounded-xl p-3 max-h-48 overflow-y-auto space-y-3 bg-white">
                                 {!formData.class_id || !formData.section_id ? (
-                                    <div className="text-sm text-gray-400">Select class & section first</div>
+                                    <div className="text-xs text-gray-400">{t("select_class_section_first")}</div>
                                 ) : (
                                     <>
-                                        <div className="flex items-center space-x-2 pb-2 border-b">
+                                        <div className="flex items-center space-x-2 pb-2 border-b border-gray-100">
                                             <Checkbox 
                                                 id="all-students"
                                                 checked={formData.student_id === "all"}
@@ -685,9 +741,10 @@ export default function DailyAssignmentPage() {
                                                     if (c) setFormData({ ...formData, student_id: "all", student_ids: [] });
                                                     else setFormData({ ...formData, student_id: "" });
                                                 }}
+                                                className="cursor-pointer"
                                             />
-                                            <label htmlFor="all-students" className="text-sm font-bold leading-none cursor-pointer">
-                                                All Students
+                                            <label htmlFor="all-students" className="text-xs font-bold leading-none cursor-pointer text-gray-800">
+                                                {t("all_students")}
                                             </label>
                                         </div>
                                         {students.map(s => (
@@ -706,8 +763,9 @@ export default function DailyAssignmentPage() {
                                                             student_id: next.length > 0 ? "multiple" : "" 
                                                         });
                                                     }}
+                                                    className="cursor-pointer"
                                                 />
-                                                <label htmlFor={`student-${s.id}`} className="text-sm font-medium leading-none cursor-pointer">
+                                                <label htmlFor={`student-${s.id}`} className="text-xs font-medium leading-none cursor-pointer text-gray-700">
                                                     {s.name}
                                                 </label>
                                             </div>
@@ -718,52 +776,52 @@ export default function DailyAssignmentPage() {
                         </div>
                         {/* Subject */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("subject")} <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("subject")} <span className="text-red-500">*</span></Label>
                             <Select value={formData.subject_id} onValueChange={v => setFormData({ ...formData, subject_id: v })}>
-                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
+                                <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none rounded-lg cursor-pointer">
                                     <SelectValue placeholder={t("select_subject")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {formFilteredSubjects.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                    {formFilteredSubjects.map(s => <SelectItem key={s.id} value={String(s.id)} className="cursor-pointer">{getLocalizedSubjectName(s.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
                         {/* Title */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("title")} <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("title")} <span className="text-red-500">*</span></Label>
                             <Input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })}
-                                className="h-9 border-gray-200 text-xs shadow-none" placeholder="Assignment title" />
+                                className="h-9 border-gray-200 text-xs shadow-none rounded-lg" placeholder={t("assignment_title")} />
                         </div>
                         {/* Submission Date */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("submission_date")} <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("submission_date")} <span className="text-red-500">*</span></Label>
                             <DatePicker value={formData.submission_date}
                                 onChange={d => setFormData({ ...formData, submission_date: d })} />
                         </div>
                         {/* Evaluation Date */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("evaluation_date")}</Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("evaluation_date")}</Label>
                             <DatePicker value={formData.evaluation_date}
                                 onChange={d => setFormData({ ...formData, evaluation_date: d })} />
                         </div>
                         {/* Attachment */}
                         <div className="space-y-1.5 col-span-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("attachment")}</Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("attachment")}</Label>
                             <Input type="file" onChange={e => setAttachmentFile(e.target.files?.[0] || null)}
-                                className="h-9 border-gray-200 text-xs shadow-none cursor-pointer p-1.5"
+                                className="h-9 border-gray-200 text-xs shadow-none cursor-pointer p-1.5 rounded-lg"
                                 accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" />
                         </div>
                         {/* Description */}
                         <div className="space-y-1.5 col-span-2">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">{t("description")}</Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("description")}</Label>
                             <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                className="border-gray-200 text-xs shadow-none min-h-[80px]" placeholder="Assignment instructions..." />
+                                className="border-gray-200 text-xs shadow-none min-h-[80px] rounded-lg" placeholder={t("enter_assignment_instructions")} />
                         </div>
                     </div>
                     <DialogFooter className="px-6 pb-5">
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">{t("cancel")}</Button>
-                        <Button onClick={handleSave} disabled={saving} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">
-                            {saving ? "Saving…" : t("save")}
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full cursor-pointer">{t("cancel")}</Button>
+                        <Button onClick={handleSave} disabled={saving} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full cursor-pointer">
+                            {saving ? (t("saving") || "Saving…") : t("save")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -771,40 +829,40 @@ export default function DailyAssignmentPage() {
 
             {/* ── Evaluate Dialog ── */}
             <Dialog open={isEvalOpen} onOpenChange={setIsEvalOpen}>
-                <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden">
-                    <DialogHeader className="px-6 py-4 bg-gradient-to-r from-green-500 to-teal-500">
-                        <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
-                            <CheckCircle2 className="h-5 w-5" /> Evaluate Assignment
+                <DialogContent className="sm:max-w-[440px] p-0 overflow-hidden rounded-2xl">
+                    <DialogHeader className="px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-500">
+                        <DialogTitle className="text-base font-bold text-white flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5" /> {t("evaluate_assignment") || "Evaluate Assignment"}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="px-6 py-5 space-y-4">
                         {maxMarks != null && (
-                            <p className="text-xs text-gray-500">Max marks: <span className="font-bold text-gray-800">{maxMarks}</span></p>
+                            <p className="text-xs text-gray-500">{t("max_marks")}: <span className="font-bold text-gray-800">{toLocaleNumber(maxMarks, shortCode)}</span></p>
                         )}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Marks Obtained <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("marks_obtained")} <span className="text-red-500">*</span></Label>
                             <Input type="number" min="0" step="0.5"
                                 value={evalData.marks_obtained}
                                 onChange={e => setEvalData({ ...evalData, marks_obtained: e.target.value })}
-                                className="h-9 border-gray-200 text-xs shadow-none" placeholder="Enter marks obtained" />
+                                className="h-9 border-gray-200 text-xs shadow-none rounded-lg" placeholder={t("enter_marks_obtained")} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Evaluation Date <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("evaluation_date")} <span className="text-red-500">*</span></Label>
                             <DatePicker value={evalData.evaluation_date}
                                 onChange={d => setEvalData({ ...evalData, evaluation_date: d })} />
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Remarks</Label>
+                            <Label className="text-[11px] font-bold text-gray-500 uppercase">{t("teacher_remarks") || "Remarks"}</Label>
                             <Textarea value={evalData.teacher_remarks}
                                 onChange={e => setEvalData({ ...evalData, teacher_remarks: e.target.value })}
-                                className="border-gray-200 text-xs shadow-none min-h-[70px]" placeholder="Optional teacher remarks…" />
+                                className="border-gray-200 text-xs shadow-none min-h-[70px] rounded-lg" placeholder={t("optional_teacher_remarks")} />
                         </div>
                     </div>
-                    <DialogFooter className="px-6 pb-5">
-                        <Button variant="outline" onClick={() => setIsEvalOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">{t("cancel")}</Button>
+                    <DialogFooter className="px-6 pb-5 bg-gray-50/50">
+                        <Button variant="outline" onClick={() => setIsEvalOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full cursor-pointer">{t("cancel")}</Button>
                         <Button onClick={handleEvaluate} disabled={saving}
-                            className="h-9 px-8 text-[11px] uppercase font-bold rounded-full bg-green-500 hover:bg-green-600 text-white">
-                            {saving ? "Saving…" : "Save Evaluation"}
+                            className="h-9 px-8 text-[11px] uppercase font-bold rounded-full bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer">
+                            {saving ? (t("saving") || "Saving…") : (t("save_evaluation") || "Save Evaluation")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -812,39 +870,43 @@ export default function DailyAssignmentPage() {
 
             {/* ── View Dialog ── */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white">
+                <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden bg-white rounded-2xl">
                     <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                        <DialogTitle className="text-lg font-bold text-white">Daily Assignment Details</DialogTitle>
+                        <DialogTitle className="text-base font-bold text-white">{t("daily_assignment_details") || "Daily Assignment Details"}</DialogTitle>
                     </DialogHeader>
                     {viewAssignment && (
                         <div className="p-6 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
                             <div className="flex items-center gap-2 mb-2">
-                                {(() => {
-                                    const s = statusConfig[viewAssignment.status || "pending"];
-                                    return <Badge className={cn("text-[10px] font-bold border", s.className)}>{s.label}</Badge>;
-                                })()}
+                                <Badge className={cn(
+                                    "text-[10px] font-bold border",
+                                    viewAssignment.status === "evaluated" ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                                    viewAssignment.status === "submitted" ? "bg-blue-100 text-blue-700 border-blue-200" :
+                                    "bg-amber-100 text-amber-700 border-amber-200"
+                                )}>
+                                    {viewAssignment.status === "evaluated" ? t("evaluated") : viewAssignment.status === "submitted" ? (t("submitted") || "Submitted") : t("pending")}
+                                </Badge>
                                 {viewAssignment.marks_obtained != null && (
-                                    <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] font-bold">
-                                        Marks: {viewAssignment.marks_obtained}
+                                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                                        {t("marks")}: {toLocaleNumber(viewAssignment.marks_obtained, shortCode)}
                                     </Badge>
                                 )}
                             </div>
-                            <div className="col-span-2 border-b pb-2">
+                            <div className="col-span-2 border-b border-gray-100 pb-2">
                                 <span className="font-bold text-gray-500 uppercase block mb-1">{t("title")}</span>
                                 <span className="text-gray-900 font-bold text-sm">{viewAssignment.title || "—"}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <span className="font-bold text-gray-500 uppercase block mb-1">Student</span>
+                                    <span className="font-bold text-gray-500 uppercase block mb-1">{t("student")}</span>
                                     <span className="text-gray-900 font-medium">{viewAssignment.student?.name || "—"}</span>
                                 </div>
                                 <div>
-                                    <span className="font-bold text-gray-500 uppercase block mb-1">Class / Section</span>
-                                    <span className="text-gray-900 font-medium">{(viewAssignment.class?.name || "—")} ({viewAssignment.section?.name || "—"})</span>
+                                    <span className="font-bold text-gray-500 uppercase block mb-1">{t("class_section")}</span>
+                                    <span className="text-gray-900 font-medium">{getLocalizedClassName(viewAssignment.class?.name)} ({getLocalizedSectionName(viewAssignment.section?.name)})</span>
                                 </div>
                                 <div>
                                     <span className="font-bold text-gray-500 uppercase block mb-1">{t("subject")}</span>
-                                    <span className="text-gray-900 font-medium">{viewAssignment.subject?.name || "—"}</span>
+                                    <span className="text-gray-900 font-medium">{getLocalizedSubjectName(viewAssignment.subject?.name)}</span>
                                 </div>
                                 <div>
                                     <span className="font-bold text-gray-500 uppercase block mb-1">{t("submission_date")}</span>
@@ -862,7 +924,7 @@ export default function DailyAssignmentPage() {
                                     <span className="font-bold text-gray-500 uppercase block mb-1">{t("description")}</span>
                                     {viewAssignment.description
                                         ? <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{viewAssignment.description}</p>
-                                        : <p className="text-gray-400 italic">No description provided</p>
+                                        : <p className="text-gray-400 italic">{t("no_description") || "No description provided"}</p>
                                     }
                                 </div>
                                 {viewAssignment.attachment && (
@@ -870,18 +932,18 @@ export default function DailyAssignmentPage() {
                                         <span className="font-bold text-gray-500 uppercase block mb-1">{t("attachment")}</span>
                                         <a href={getAttachmentUrl(viewAssignment.attachment)} target="_blank" rel="noopener noreferrer"
                                             className="text-indigo-600 hover:underline font-medium inline-flex items-center gap-1">
-                                            <Paperclip className="h-3.5 w-3.5" /> Download Attachment
+                                            <Paperclip className="h-3.5 w-3.5" /> {t("download_attachment")}
                                         </a>
                                     </div>
                                 )}
                             </div>
-                            <div className="flex justify-end gap-2 pt-4 border-t">
+                            <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
                                 <Button onClick={() => { setIsViewOpen(false); openEvaluate(viewAssignment); }}
-                                    className="h-8 px-5 text-[11px] rounded-full bg-green-500 hover:bg-green-600 text-white">
-                                    <Star className="h-3.5 w-3.5 mr-1" /> Evaluate
+                                    className="h-8 px-5 text-xs rounded-full bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer">
+                                    <Star className="h-3.5 w-3.5 mr-1" /> {t("evaluate")}
                                 </Button>
                                 <Button onClick={() => setIsViewOpen(false)}
-                                    className="h-8 px-5 text-[11px] rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90">
+                                    className="h-8 px-5 text-xs rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 cursor-pointer">
                                     {t("close")}
                                 </Button>
                             </div>
@@ -892,14 +954,14 @@ export default function DailyAssignmentPage() {
 
             {/* ── Delete Confirm ── */}
             <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Assignment?</AlertDialogTitle>
-                        <AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+                        <AlertDialogTitle>{t("delete_assignment") || "Delete Assignment?"}</AlertDialogTitle>
+                        <AlertDialogDescription>{t("delete_assignment_confirmation")}</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white">Delete</AlertDialogAction>
+                        <AlertDialogCancel className="cursor-pointer">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white cursor-pointer">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

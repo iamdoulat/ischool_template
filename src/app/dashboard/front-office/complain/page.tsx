@@ -338,7 +338,7 @@ export default function ComplainPage() {
         if (complaints.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Complaint No", "Type", "Complain By", "Phone", "Date"]],
+            head: [[t("complaint_id"), t("complaint_type"), t("complain_by"), t("phone"), t("date")]],
             body: complaints.map(c => [c.complaint_id || c.id, c.complaint_type || "-", c.complain_by, c.phone || "-", c.date || "-"]),
         });
         doc.save("complaints_list.pdf");
@@ -442,7 +442,7 @@ export default function ComplainPage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.complain_by || ""}
                                         onChange={(e) => setFormData({ ...formData, complain_by: e.target.value })}
-                                        placeholder="Complainant Name"
+                                        placeholder={t("enter_complainant_name")}
                                         required
                                     />
                                 </div>
@@ -455,7 +455,7 @@ export default function ComplainPage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.phone || ""}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        placeholder="Phone number"
+                                        placeholder={t("enter_phone_number")}
                                     />
                                 </div>
 
@@ -466,7 +466,7 @@ export default function ComplainPage() {
                                     <DatePicker
                                         value={formData.date || ""}
                                         onChange={(val) => setFormData({ ...formData, date: val })}
-                                        placeholder="Select Date"
+                                        placeholder={t("select_date")}
                                         className="h-10 bg-gray-50/40 border-gray-200"
                                     />
                                 </div>
@@ -479,7 +479,7 @@ export default function ComplainPage() {
                                         className="min-h-[70px] rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-medium text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none"
                                         value={formData.description || ""}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        placeholder="Complaint details"
+                                        placeholder={t("enter_complaint_details")}
                                     />
                                 </div>
 
@@ -491,7 +491,7 @@ export default function ComplainPage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.action_taken || ""}
                                         onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })}
-                                        placeholder="Action taken if any"
+                                        placeholder={t("enter_action_taken")}
                                     />
                                 </div>
 
@@ -503,7 +503,7 @@ export default function ComplainPage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.assigned || ""}
                                         onChange={(e) => setFormData({ ...formData, assigned: e.target.value })}
-                                        placeholder="Assigned staff"
+                                        placeholder={t("enter_assigned_staff")}
                                     />
                                 </div>
 
@@ -515,7 +515,7 @@ export default function ComplainPage() {
                                         className="min-h-[70px] rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-medium text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none"
                                         value={formData.note || ""}
                                         onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                                        placeholder="Additional notes"
+                                        placeholder={t("additional_notes")}
                                     />
                                 </div>
 
@@ -525,7 +525,7 @@ export default function ComplainPage() {
                                     </label>
                                     <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 bg-gray-50/40 hover:bg-indigo-50/20 hover:border-indigo-400 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 group/upload">
                                         <CloudUpload className="h-6 w-6 text-gray-400 group-hover/upload:text-indigo-600 transition-colors" />
-                                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 group-hover/upload:text-indigo-600 transition-colors">{t("drag_and_drop_file") || "Upload Attachment"}</p>
+                                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 group-hover/upload:text-indigo-600 transition-colors">{t("upload_attachment")}</p>
                                     </div>
                                 </div>
 

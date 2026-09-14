@@ -10,9 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import {
     KeyRound,
     Cpu,
@@ -23,23 +22,17 @@ import {
     ShieldCheck,
     Zap,
     Terminal,
-    RefreshCw,
     Send,
     Loader2,
     CheckCircle2,
-    XCircle,
     BookOpen,
     Pencil,
-    Activity,
-    Layers,
     Search,
-    Filter,
-    Globe,
     Code,
-    Sparkles
 } from "lucide-react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
+import { useLanguage } from "@/components/providers/language-provider";
 import { toast as sonnerToast } from "sonner";
 
 interface ApiKeyItem {
@@ -65,22 +58,22 @@ interface ApiEndpointItem {
 }
 
 const PERMISSION_SCOPES = [
-    { id: "*", label: "Full Access (*)", desc: "All module endpoints & MCP tools" },
-    { id: "students.read", label: "Students (Read)", desc: "View student directory & profiles" },
-    { id: "students.write", label: "Students (Write)", desc: "Create & update student records" },
-    { id: "staff.read", label: "Staff (Read)", desc: "View staff directory & designations" },
-    { id: "fees.read", label: "Fee Collection (Read)", desc: "View fee structures & due reports" },
-    { id: "attendance.read", label: "Attendance (Read)", desc: "View student & staff attendance" },
-    { id: "mcp.all", label: "MCP Protocol (All)", desc: "Execute Model Context Protocol tools" },
+    { id: "*", labelKey: "full_access", fallbackLabel: "Full Access (*)", desc: "All module endpoints & MCP tools" },
+    { id: "students.read", labelKey: "students_read", fallbackLabel: "Students (Read)", desc: "View student directory & profiles" },
+    { id: "students.write", labelKey: "students_write", fallbackLabel: "Students (Write)", desc: "Create & update student records" },
+    { id: "staff.read", labelKey: "staff_read", fallbackLabel: "Staff (Read)", desc: "View staff directory & designations" },
+    { id: "fees.read", labelKey: "fees_read", fallbackLabel: "Fee Collection (Read)", desc: "View fee structures & due reports" },
+    { id: "attendance.read", labelKey: "attendance_read", fallbackLabel: "Attendance (Read)", desc: "View student & staff attendance" },
+    { id: "mcp.all", labelKey: "mcp_all", fallbackLabel: "MCP Protocol (All)", desc: "Execute Model Context Protocol tools" },
 ];
 
 const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
-    // ── Authentication ──────────────────────────────────────────────────────────
+    // Authentication
     { id: "a1",  method: "POST",   path: "/api/v1/login",                                              module: "Authentication",        category: "auth",              scope: "*",              desc: "Authenticate user and obtain Sanctum access token." },
     { id: "a2",  method: "POST",   path: "/api/v1/logout",                                             module: "Authentication",        category: "auth",              scope: "*",              desc: "Revoke the currently authenticated user's access token." },
     { id: "a3",  method: "GET",    path: "/api/v1/profile",                                            module: "Authentication",        category: "auth",              scope: "*",              desc: "Get the authenticated user's profile and role information." },
 
-    // ── Student Information ─────────────────────────────────────────────────────
+    // Student Information
     { id: "s1",  method: "GET",    path: "/api/v1/students",                                           module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "List all enrolled students with class, section, roll number, and search filters." },
     { id: "s2",  method: "GET",    path: "/api/v1/students/{id}",                                      module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "Fetch a specific student's complete profile details." },
     { id: "s3",  method: "POST",   path: "/api/v1/students",                                           module: "Student Information",   category: "student_info",      scope: "students.write", desc: "Create a new student record with profile, parent details, and class assignment." },
@@ -93,7 +86,7 @@ const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
     { id: "s10", method: "GET",    path: "/api/v1/multi-class-students",                               module: "Student Information",   category: "student_info",      scope: "students.read",  desc: "List students enrolled in multiple classes simultaneously." },
     { id: "s11", method: "DELETE", path: "/api/v1/multi-class-students/{id}",                          module: "Student Information",   category: "student_info",      scope: "students.write", desc: "Remove a student's multi-class enrollment entry." },
 
-    // ── Front Office ────────────────────────────────────────────────────────────
+    // Front Office
     { id: "fo1", method: "GET",    path: "/api/v1/front-office/admission-enquiries",                   module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "Fetch admission enquiry logs with follow-up status and source." },
     { id: "fo2", method: "POST",   path: "/api/v1/front-office/admission-enquiries",                   module: "Front Office",          category: "front_office",      scope: "front_office.write", desc: "Create a new admission enquiry record." },
     { id: "fo3", method: "GET",    path: "/api/v1/front-office/visitors",                              module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "Retrieve visitor logbook entries with timestamps and purpose." },
@@ -103,7 +96,7 @@ const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
     { id: "fo7", method: "GET",    path: "/api/v1/front-office/postal-receives",                       module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "Retrieve incoming postal receive records." },
     { id: "fo8", method: "GET",    path: "/api/v1/front-office/complaints",                            module: "Front Office",          category: "front_office",      scope: "front_office.read",  desc: "List registered school complaints and their resolution status." },
 
-    // ── Academics ───────────────────────────────────────────────────────────────
+    // Academics
     { id: "ac1", method: "GET",    path: "/api/v1/academics/classes",                                  module: "Academics",             category: "academics",         scope: "academics.read",  desc: "List all academic school classes with section counts." },
     { id: "ac2", method: "POST",   path: "/api/v1/academics/classes",                                  module: "Academics",             category: "academics",         scope: "academics.write", desc: "Create a new school class record." },
     { id: "ac3", method: "PUT",    path: "/api/v1/academics/classes/{id}",                             module: "Academics",             category: "academics",         scope: "academics.write", desc: "Update an existing class name or attributes." },
@@ -115,7 +108,7 @@ const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
     { id: "ac9", method: "GET",    path: "/api/v1/academics/class-teachers",                           module: "Academics",             category: "academics",         scope: "academics.read",  desc: "List class-teacher assignments per class and section." },
     { id: "ac10",method: "POST",   path: "/api/v1/academics/promote-students",                         module: "Academics",             category: "academics",         scope: "academics.write", desc: "Promote students from one class/session to the next year." },
 
-    // ── Human Resource ─────────────────────────────────────────────────────────
+    // Human Resource
     { id: "hr1", method: "GET",    path: "/api/v1/staff-directory",                                    module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "Retrieve school staff directory, teachers, and designations." },
     { id: "hr2", method: "GET",    path: "/api/v1/staff-directory/{id}",                               module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "Fetch a specific staff member's full profile." },
     { id: "hr3", method: "POST",   path: "/api/v1/staff-directory",                                    module: "Human Resource",        category: "academics_hr",      scope: "staff.write",     desc: "Add new teacher or staff employee record to the directory." },
@@ -127,7 +120,7 @@ const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
     { id: "hr9", method: "GET",    path: "/api/v1/hr/leave-requests",                                  module: "Human Resource",        category: "academics_hr",      scope: "staff.read",      desc: "List staff leave requests and their approval status." },
     { id: "hr10",method: "PUT",    path: "/api/v1/hr/leave-requests/{id}/status",                      module: "Human Resource",        category: "academics_hr",      scope: "staff.write",     desc: "Approve or reject a staff leave request." },
 
-    // ── Fee Collection & Finance ────────────────────────────────────────────────
+    // Fees Collection & Finance
     { id: "f1",  method: "GET",    path: "/api/v1/fee-collection/fee-collection",                      module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "Fetch student fee collection ledgers, transactions, and balance dues." },
     { id: "f2",  method: "POST",   path: "/api/v1/fee-collection/fee-collection",                      module: "Fees Collection",       category: "fees_finance",      scope: "fees.write",      desc: "Record a fee payment transaction against a student invoice." },
     { id: "f3",  method: "GET",    path: "/api/v1/fee-collection/fees-groups",                         module: "Fees Collection",       category: "fees_finance",      scope: "fees.read",       desc: "List fee structure groups (Tuition, Bus, Library, Hostel fees)." },
@@ -142,175 +135,22 @@ const API_ENDPOINTS_DIRECTORY: ApiEndpointItem[] = [
     { id: "f12", method: "GET",    path: "/api/v1/expense/expenses",                                   module: "Expenses",              category: "fees_finance",      scope: "finance.read",    desc: "Retrieve operational expense vouchers and expense head breakdowns." },
     { id: "f13", method: "POST",   path: "/api/v1/expense/expenses",                                   module: "Expenses",              category: "fees_finance",      scope: "finance.write",   desc: "Create a new expense voucher entry." },
 
-    // ── Attendance ──────────────────────────────────────────────────────────────
+    // Attendance & Exams
     { id: "at1", method: "GET",    path: "/api/v1/attendance/student",                                 module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "Fetch daily class student attendance records by date and class." },
     { id: "at2", method: "POST",   path: "/api/v1/attendance/student-attendance",                      module: "Attendance",            category: "attendance_exams",  scope: "attendance.write", desc: "Submit or bulk update student daily attendance entries." },
-    { id: "at3", method: "GET",    path: "/api/v1/attendance/approve-leave",                           module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "List pending student leave requests awaiting approval." },
-    { id: "at4", method: "DELETE", path: "/api/v1/attendance/approve-leave/{id}",                      module: "Attendance",            category: "attendance_exams",  scope: "attendance.write", desc: "Reject and delete a student leave request." },
-    { id: "at5", method: "GET",    path: "/api/v1/attendance/period",                                  module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "Fetch period/subject-wise attendance records." },
-    { id: "at6", method: "GET",    path: "/api/v1/attendance/qr-settings",                             module: "Attendance",            category: "attendance_exams",  scope: "attendance.read",  desc: "Fetch QR code attendance terminal settings and configurations." },
-
-    // ── Examinations ────────────────────────────────────────────────────────────
     { id: "ex1", method: "GET",    path: "/api/v1/examination/exam-group",                             module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Fetch examination groups, schedule periods, and grading standards." },
-    { id: "ex2", method: "POST",   path: "/api/v1/examination/exam-group",                             module: "Examinations",          category: "attendance_exams",  scope: "exams.write",     desc: "Create a new examination group with grading configuration." },
-    { id: "ex3", method: "GET",    path: "/api/v1/examination/exam-schedule",                          module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve exam schedule timetable for selected exam group." },
-    { id: "ex4", method: "GET",    path: "/api/v1/examination/exam-result",                            module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve student exam marksheets, grades, and rank reports." },
-    { id: "ex5", method: "GET",    path: "/api/v1/examination/marks-grade",                            module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "List grade scale definitions (A+, A, B, C, D, F ranges)." },
-    { id: "ex6", method: "GET",    path: "/api/v1/examination/marks-division",                         module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Fetch marks division categories (Distinction, First, Second, Pass)." },
-    { id: "ex7", method: "GET",    path: "/api/v1/online-examination/online-exam",                     module: "Online Examinations",   category: "attendance_exams",  scope: "exams.read",      desc: "Fetch online test papers with questions and attempt configuration." },
-    { id: "ex8", method: "GET",    path: "/api/v1/online-examination/question-bank",                   module: "Online Examinations",   category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve the question bank with category and difficulty filters." },
+    { id: "ex2", method: "GET",    path: "/api/v1/examination/exam-schedule",                          module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve exam schedule timetable for selected exam group." },
+    { id: "ex3", method: "GET",    path: "/api/v1/examination/exam-result",                            module: "Examinations",          category: "attendance_exams",  scope: "exams.read",      desc: "Retrieve student exam marksheets, grades, and rank reports." },
 
-    // ── Communicate & Messaging ─────────────────────────────────────────────────
-    { id: "cm1", method: "GET",    path: "/api/v1/communicate/notices",                                module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Fetch notice board announcements with publish date and target role." },
-    { id: "cm2", method: "POST",   path: "/api/v1/communicate/notices",                                module: "Communicate",           category: "communicate_sms",   scope: "communicate.write",desc: "Post a new notice board announcement to selected roles." },
-    { id: "cm3", method: "GET",    path: "/api/v1/communicate/logs",                                   module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Retrieve sent email/SMS communication log history." },
-    { id: "cm4", method: "GET",    path: "/api/v1/communicate/scheduled-logs",                         module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Fetch scheduled email/SMS queued delivery log records." },
-    { id: "cm5", method: "POST",   path: "/api/v1/communicate/send-sms",                               module: "Communicate",           category: "communicate_sms",   scope: "sms.send",         desc: "Dispatch broadcast SMS to selected classes, roles, or custom numbers." },
-    { id: "cm6", method: "POST",   path: "/api/v1/communicate/send-email",                             module: "Communicate",           category: "communicate_sms",   scope: "communicate.write",desc: "Send bulk email notifications to selected recipients." },
-    { id: "cm7", method: "POST",   path: "/api/v1/system-setting/sms-settings/test",                   module: "System Setting",        category: "communicate_sms",   scope: "sms.send",         desc: "Test-send SMS via active gateway or Round Robin balancer." },
-    { id: "cm8", method: "POST",   path: "/api/v1/system-setting/email-gateways/test",                 module: "System Setting",        category: "communicate_sms",   scope: "communicate.write",desc: "Test-send email via an active SMTP gateway configuration." },
-    { id: "cm9", method: "GET",    path: "/api/v1/communicate/users-by-role/{role}",                   module: "Communicate",           category: "communicate_sms",   scope: "communicate.read", desc: "Fetch users filtered by role for targeted messaging." },
-
-    // ── Library ─────────────────────────────────────────────────────────────────
-    { id: "li1", method: "GET",    path: "/api/v1/library/book-list",                                  module: "Library",               category: "operations",        scope: "library.read",    desc: "List all books in the school library with availability status." },
-    { id: "li2", method: "GET",    path: "/api/v1/library/issue",                                      module: "Library",               category: "operations",        scope: "library.read",    desc: "Fetch currently issued books and expected return dates." },
-    { id: "li3", method: "GET",    path: "/api/v1/library/return",                                     module: "Library",               category: "operations",        scope: "library.read",    desc: "Retrieve book return history and overdue penalty records." },
-
-    // ── Inventory ───────────────────────────────────────────────────────────────
-    { id: "in1", method: "GET",    path: "/api/v1/inventory/items",                                    module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "List inventory items with current stock levels and store location." },
-    { id: "in2", method: "POST",   path: "/api/v1/inventory/items",                                    module: "Inventory",             category: "operations",        scope: "inventory.write", desc: "Add a new inventory item to the catalog." },
-    { id: "in3", method: "GET",    path: "/api/v1/inventory/item-categories",                          module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "List inventory item category definitions." },
-    { id: "in4", method: "GET",    path: "/api/v1/inventory/item-stores",                              module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "Fetch storage location/store records for inventory items." },
-    { id: "in5", method: "GET",    path: "/api/v1/inventory/item-stocks",                              module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "View current stock levels and incoming stock additions." },
-    { id: "in6", method: "GET",    path: "/api/v1/inventory/issue-items",                              module: "Inventory",             category: "operations",        scope: "inventory.read",  desc: "List issued inventory items with recipient and return status." },
-
-    // ── Transport ───────────────────────────────────────────────────────────────
-    { id: "tr1", method: "GET",    path: "/api/v1/transport/transport",                                module: "Transport",             category: "operations",        scope: "transport.read",  desc: "Fetch transport routes, pickup points, and assigned vehicle details." },
-    { id: "tr2", method: "POST",   path: "/api/v1/transport/transport",                                module: "Transport",             category: "operations",        scope: "transport.write", desc: "Create a new transport route entry." },
-    { id: "tr3", method: "GET",    path: "/api/v1/route-pickup-points",                                module: "Transport",             category: "operations",        scope: "transport.read",  desc: "Fetch route-wise student pickup point assignments." },
-
-    // ── Hostel ──────────────────────────────────────────────────────────────────
-    { id: "ho1", method: "GET",    path: "/api/v1/hostel/hostels",                                     module: "Hostel",                category: "operations",        scope: "hostel.read",     desc: "List hostel buildings with room capacities and occupancy stats." },
-    { id: "ho2", method: "GET",    path: "/api/v1/hostel/rooms",                                       module: "Hostel",                category: "operations",        scope: "hostel.read",     desc: "Fetch hostel room allocations and resident student assignments." },
-
-    // ── Annual Calendar & Lesson Plan ───────────────────────────────────────────
-    { id: "lp1", method: "GET",    path: "/api/v1/annual-calendar/annual-calendar",                    module: "Annual Calendar",       category: "academics",         scope: "academics.read",  desc: "Retrieve annual academic calendar events and school holidays." },
-    { id: "lp2", method: "GET",    path: "/api/v1/annual-calendar/holiday-type",                       module: "Annual Calendar",       category: "academics",         scope: "academics.read",  desc: "List holiday type categories (National, Regional, School-specific)." },
-    { id: "lp3", method: "GET",    path: "/api/v1/lesson-plan/manage-lesson-plan",                     module: "Lesson Plan",           category: "academics",         scope: "academics.read",  desc: "Fetch teacher lesson plans for assigned subjects and classes." },
-    { id: "lp4", method: "POST",   path: "/api/v1/lesson-plan/manage-lesson-plan",                     module: "Lesson Plan",           category: "academics",         scope: "academics.write", desc: "Submit or update a subject lesson plan entry." },
-    { id: "lp5", method: "DELETE", path: "/api/v1/lesson-plan/manage-lesson-plan/{id}",                module: "Lesson Plan",           category: "academics",         scope: "academics.write", desc: "Delete a lesson plan record." },
-
-    // ── Download Center & Homework ──────────────────────────────────────────────
-    { id: "hw1", method: "GET",    path: "/api/v1/homework/daily-assignments",                         module: "Homework",              category: "academics",         scope: "academics.read",  desc: "Fetch daily homework assignments with due dates and class filters." },
-    { id: "hw2", method: "POST",   path: "/api/v1/homework/daily-assignments",                         module: "Homework",              category: "academics",         scope: "academics.write", desc: "Create a new daily homework assignment entry." },
-    { id: "hw3", method: "GET",    path: "/api/v1/download-center/download-center",                    module: "Download Center",       category: "academics",         scope: "academics.read",  desc: "List shared content files, study materials, and video tutorials." },
-
-    // ── Behaviour Records ───────────────────────────────────────────────────────
-    { id: "bh1", method: "GET",    path: "/api/v1/behaviour/assigned-incidents",                       module: "Behaviour Records",     category: "academics",         scope: "academics.read",  desc: "Fetch assigned student behaviour incident records." },
-    { id: "bh2", method: "GET",    path: "/api/v1/behaviour/reports",                                  module: "Behaviour Records",     category: "academics",         scope: "academics.read",  desc: "Generate behaviour summary reports by student or incident type." },
-    { id: "bh3", method: "DELETE", path: "/api/v1/behaviour/assigned-incidents/{id}",                  module: "Behaviour Records",     category: "academics",         scope: "academics.write", desc: "Remove an assigned behaviour incident record." },
-
-    // ── Online Course & Alumni ─────────────────────────────────────────────────
-    { id: "oc1", method: "GET",    path: "/api/v1/online-course/course",                               module: "Online Course",         category: "academics",         scope: "academics.read",  desc: "List available online courses with enrollment and content info." },
-    { id: "oc2", method: "GET",    path: "/api/v1/alumni/manage",                                      module: "Alumni",                category: "academics",         scope: "academics.read",  desc: "Fetch alumni directory with graduation year and contact info." },
-    { id: "oc3", method: "GET",    path: "/api/v1/alumni/events",                                      module: "Alumni",                category: "academics",         scope: "academics.read",  desc: "List alumni community events and reunion schedules." },
-
-    // ── Certificate & ID Cards ─────────────────────────────────────────────────
-    { id: "ce1", method: "GET",    path: "/api/v1/certificate/certificate",                            module: "Certificate",           category: "academics",         scope: "academics.read",  desc: "List issued student and staff certificates with verification codes." },
-    { id: "ce2", method: "GET",    path: "/api/v1/certificate/transfer-certificates/verify",           module: "Certificate",           category: "academics",         scope: "academics.read",  desc: "Verify a student transfer certificate by serial number." },
-
-    // ── Reports ─────────────────────────────────────────────────────────────────
-    { id: "rp1", method: "GET",    path: "/api/v1/reports/attendance-report",                          module: "Reports",               category: "reports",           scope: "attendance.read", desc: "Generate comprehensive student attendance reports with filters." },
-    { id: "rp2", method: "GET",    path: "/api/v1/reports/examination-report",                         module: "Reports",               category: "reports",           scope: "exams.read",      desc: "Generate examination results and performance analysis reports." },
-    { id: "rp3", method: "GET",    path: "/api/v1/reports/human-resource-report",                      module: "Reports",               category: "reports",           scope: "staff.read",      desc: "Generate staff activity, leave, and attendance reports." },
-    { id: "rp4", method: "GET",    path: "/api/v1/reports/homework-report",                            module: "Reports",               category: "reports",           scope: "academics.read",  desc: "Report on homework assignment completion rates by class." },
-    { id: "rp5", method: "GET",    path: "/api/v1/reports/library-report",                             module: "Reports",               category: "reports",           scope: "library.read",    desc: "Generate library book issuance and overdue penalty reports." },
-    { id: "rp6", method: "GET",    path: "/api/v1/reports/inventory-report",                           module: "Reports",               category: "reports",           scope: "inventory.read",  desc: "Generate inventory stock movement and issuance reports." },
-    { id: "rp7", method: "GET",    path: "/api/v1/reports/transport-report",                           module: "Reports",               category: "reports",           scope: "transport.read",  desc: "Generate student transport route allocation and fee reports." },
-    { id: "rp8", method: "GET",    path: "/api/v1/reports/hostel-report",                              module: "Reports",               category: "reports",           scope: "hostel.read",     desc: "Generate hostel occupancy and room allocation reports." },
-    { id: "rp9", method: "GET",    path: "/api/v1/reports/audit-trail-report",                         module: "Reports",               category: "reports",           scope: "system.read",     desc: "Audit trail log of all admin user actions in the system." },
-    { id: "rp10",method: "GET",    path: "/api/v1/reports/user-log-report",                            module: "Reports",               category: "reports",           scope: "system.read",     desc: "User login/logout activity log report." },
-    { id: "rp11",method: "GET",    path: "/api/v1/balance-fees-report",                                module: "Reports",               category: "reports",           scope: "fees.read",       desc: "Balance fees outstanding report aggregated across all classes." },
-    { id: "rp12",method: "GET",    path: "/api/v1/balance-fees-statement",                             module: "Reports",               category: "reports",           scope: "fees.read",       desc: "Detailed student-wise balance fees statement printable report." },
-
-    // ── Front CMS ───────────────────────────────────────────────────────────────
-    { id: "cs1", method: "GET",    path: "/api/v1/menus",                                              module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Fetch public-facing website navigation menu structure." },
-    { id: "cs2", method: "GET",    path: "/api/v1/pages",                                              module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "List CMS website pages with slug, title, and publish status." },
-    { id: "cs3", method: "GET",    path: "/api/v1/events",                                             module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Fetch school website event listings with dates and descriptions." },
-    { id: "cs4", method: "GET",    path: "/api/v1/news",                                               module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "List published school news articles and announcements." },
-    { id: "cs5", method: "GET",    path: "/api/v1/gallery",                                            module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Retrieve school photo gallery albums and image collections." },
-    { id: "cs6", method: "GET",    path: "/api/v1/banners",                                            module: "Front CMS",             category: "front_cms",         scope: "cms.read",        desc: "Fetch homepage banner/slider image configurations." },
-    { id: "cs7", method: "DELETE", path: "/api/v1/banners/{id}",                                       module: "Front CMS",             category: "front_cms",         scope: "cms.write",       desc: "Delete a banner image from the website homepage slider." },
-
-    // ── System Settings ─────────────────────────────────────────────────────────
-    { id: "ss1", method: "GET",    path: "/api/v1/system-setting/general-setting",                     module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Retrieve school profile, logo, session year, and general settings." },
-    { id: "ss2", method: "PUT",    path: "/api/v1/system-setting/general-setting",                     module: "System Setting",        category: "system_setting",    scope: "system.write",    desc: "Update school general settings (name, logo, address, currency)." },
-    { id: "ss3", method: "GET",    path: "/api/v1/system-setting/sms-gateways",                        module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch multi-gateway SMS configurations and Round Robin state." },
-    { id: "ss4", method: "GET",    path: "/api/v1/email-gateways",                                     module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch SMTP multi-gateway email configurations and Round Robin state." },
-    { id: "ss5", method: "GET",    path: "/api/v1/payment-settings",                                   module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch active online payment gateway configurations." },
-    { id: "ss6", method: "GET",    path: "/api/v1/system-setting/languages",                           module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "List all installed language packs and active language settings." },
-    { id: "ss7", method: "GET",    path: "/api/v1/system-setting/sessions",                            module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Fetch all academic session year records." },
-    { id: "ss8", method: "GET",    path: "/api/v1/system-setting/sidebar-menu",                        module: "System Setting",        category: "system_setting",    scope: "system.read",     desc: "Retrieve current sidebar navigation menu configuration." },
-
-    // ── API Keys & MCP ──────────────────────────────────────────────────────────
+    // API Keys & MCP
     { id: "ak1", method: "GET",    path: "/api/v1/system-setting/api-keys",                            module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.read",     desc: "List all RESTful API keys with scopes, rate limits, and status." },
     { id: "ak2", method: "POST",   path: "/api/v1/system-setting/api-keys",                            module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Generate a new API key with permission scopes and rate limits." },
     { id: "ak3", method: "PUT",    path: "/api/v1/system-setting/api-keys/{id}",                       module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Update API key name, scopes, and rate limit settings." },
     { id: "ak4", method: "DELETE", path: "/api/v1/system-setting/api-keys/{id}",                       module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Permanently revoke and delete an API key." },
-    { id: "ak5", method: "POST",   path: "/api/v1/system-setting/api-keys/{id}/toggle",                module: "API Keys & MCP",        category: "mcp_ai",            scope: "system.write",    desc: "Toggle API key active/revoked status." },
-    { id: "ak6", method: "GET",    path: "/api/v1/mcp/manifest",                                       module: "API Keys & MCP",        category: "mcp_ai",            scope: "mcp.all",         desc: "Fetch MCP server manifest with capabilities and tool listings." },
-    { id: "ak7", method: "POST",   path: "/api/v1/mcp",                                                module: "API Keys & MCP",        category: "mcp_ai",            scope: "mcp.all",         desc: "Execute MCP JSON-RPC 2.0 requests (initialize, tools/list, tools/call)." },
-
-    // ── Dashboard ───────────────────────────────────────────────────────────────
-    { id: "db1", method: "GET",    path: "/api/v1/dashboard",                                          module: "Dashboard",             category: "dashboard",         scope: "*",               desc: "Fetch main dashboard metrics: students, staff, fees, and attendance stats." },
-    { id: "db2", method: "GET",    path: "/api/v1/user/dashboard",                                     module: "Dashboard",             category: "dashboard",         scope: "*",               desc: "Student/parent user portal dashboard with personal stats and schedule." },
-
-    // ── Notifications ────────────────────────────────────────────────────────────
-    { id: "nt1", method: "GET",    path: "/api/v1/notifications",                                      module: "Notifications",         category: "communicate_sms",   scope: "communicate.read", desc: "Fetch in-app notification list for the authenticated user." },
-    { id: "nt2", method: "DELETE", path: "/api/v1/notifications/{id}",                                 module: "Notifications",         category: "communicate_sms",   scope: "communicate.read", desc: "Mark and delete a specific notification from the inbox." },
-
-    // ── Student / User Portal ────────────────────────────────────────────────────
-    { id: "up1",  method: "GET",  path: "/api/v1/user/dashboard",                                      module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Student / parent portal dashboard with personal KPIs and recent activity." },
-    { id: "up2",  method: "GET",  path: "/api/v1/user/profile",                                        module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Get the authenticated student's own profile details." },
-    { id: "up3",  method: "GET",  path: "/api/v1/user/fees",                                           module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Retrieve the student's fee schedule, paid invoices, and outstanding dues." },
-    { id: "up4",  method: "POST", path: "/api/v1/user/fees/offline-payment",                           module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Submit an offline bank payment slip for fee collection verification." },
-    { id: "up5",  method: "GET",  path: "/api/v1/user/payment-gateways",                               module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List active online payment gateways available for fee payment." },
-    { id: "up6",  method: "GET",  path: "/api/v1/user/attendance",                                     module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch the student's own attendance records with monthly breakdown." },
-    { id: "up7",  method: "GET",  path: "/api/v1/user/exam-results",                                   module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Retrieve the student's exam marksheets, grades, and rank." },
-    { id: "up8",  method: "GET",  path: "/api/v1/user/exam-schedule",                                  module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch the student's upcoming exam timetable and schedule." },
-    { id: "up9",  method: "GET",  path: "/api/v1/user/class-timetable",                                module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Retrieve the student's weekly class timetable schedule." },
-    { id: "up10", method: "GET",  path: "/api/v1/user/homework",                                       module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List homework assignments assigned to the authenticated student." },
-    { id: "up11", method: "POST", path: "/api/v1/user/homework/{homeworkId}/submit",                    module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Submit a homework assignment response for a specific homework entry." },
-    { id: "up12", method: "GET",  path: "/api/v1/user/homework/{homeworkId}/submission",                module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "View the student's own submission for a specific homework assignment." },
-    { id: "up13", method: "GET",  path: "/api/v1/user/lesson-plan",                                    module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Retrieve the lesson plan/syllabus for the student's enrolled subjects." },
-    { id: "up14", method: "GET",  path: "/api/v1/user/syllabus-status",                                module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Get coverage percentage and completion status for each subject syllabus." },
-    { id: "up15", method: "GET",  path: "/api/v1/user/online-exams",                                   module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List available online/MCQ exams assigned to the student." },
-    { id: "up16", method: "GET",  path: "/api/v1/user/online-exams/{id}",                              module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch questions and details for a specific online exam by ID." },
-    { id: "up17", method: "POST", path: "/api/v1/user/online-exams/{id}/submit",                       module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Submit answers for an online exam and receive immediate result." },
-    { id: "up18", method: "GET",  path: "/api/v1/user/behaviour",                                      module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Retrieve student's own behaviour incident records." },
-    { id: "up19", method: "GET",  path: "/api/v1/user/library/books-issued",                           module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List books currently issued to the authenticated student." },
-    { id: "up20", method: "GET",  path: "/api/v1/user/transport-routes",                               module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch the transport route and pickup point assigned to the student." },
-    { id: "up21", method: "GET",  path: "/api/v1/user/hostel-rooms",                                   module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Get the hostel room details and roommates assigned to the student." },
-    { id: "up22", method: "GET",  path: "/api/v1/user/online-courses",                                 module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List online courses the student is enrolled in." },
-    { id: "up23", method: "GET",  path: "/api/v1/user/gmeet-live-classes",                             module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch scheduled Google Meet live class sessions for the student." },
-    { id: "up24", method: "GET",  path: "/api/v1/user/zoom-live-classes",                              module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch scheduled Zoom live class sessions for the student." },
-    { id: "up25", method: "GET",  path: "/api/v1/user/certificates",                                   module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Retrieve certificates issued to the authenticated student." },
-    { id: "up26", method: "GET",  path: "/api/v1/user/id-card",                                        module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch the student's digital ID card data for printing/display." },
-    { id: "up27", method: "GET",  path: "/api/v1/user/my-qr-code",                                     module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Generate / fetch the student's personal QR code for attendance." },
-    { id: "up28", method: "GET",  path: "/api/v1/user/leave-types",                                    module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List available leave type categories for student leave application." },
-    { id: "up29", method: "POST", path: "/api/v1/user/apply-leave",                                    module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Submit a new student leave application for approval." },
-    { id: "up30", method: "GET",  path: "/api/v1/user/teachers-reviews",                               module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch teacher review/rating submissions made by the student." },
-    { id: "up31", method: "POST", path: "/api/v1/user/teachers-reviews",                               module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Submit a new teacher rating / review from the student portal." },
-    { id: "up32", method: "GET",  path: "/api/v1/user/visitors",                                       module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "View visitor logbook entries related to the authenticated user." },
-    { id: "up33", method: "GET",  path: "/api/v1/user/video-tutorials",                                module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List downloadable video tutorial resources from the download center." },
-    { id: "up34", method: "GET",  path: "/api/v1/user/cbse-exam-schedule",                             module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Fetch CBSE exam schedule for the authenticated student." },
-    { id: "up35", method: "GET",  path: "/api/v1/user/cbse-exam-result",                               module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "Retrieve CBSE pattern exam results with co-scholastic grades." },
-    { id: "up36", method: "GET",  path: "/api/v1/user/branches",                                       module: "Student Portal",        category: "student_portal",    scope: "*",               desc: "List school branches accessible to the authenticated user." },
+    { id: "ak5", method: "GET",    path: "/api/v1/mcp/manifest",                                       module: "API Keys & MCP",        category: "mcp_ai",            scope: "mcp.all",         desc: "Fetch MCP server manifest with capabilities and tool listings." },
+    { id: "ak6", method: "POST",   path: "/api/v1/mcp",                                                module: "API Keys & MCP",        category: "mcp_ai",            scope: "mcp.all",         desc: "Execute MCP JSON-RPC 2.0 requests (initialize, tools/list, tools/call)." },
 ];
 
-// ──────────────────────────────────────────────────────────────────────────────
-// MCP TOOLS REGISTRY — mirrors every MCP tool registered in McpController.php
-// ──────────────────────────────────────────────────────────────────────────────
 interface McpToolDef {
     name:        string;
     label:       string;
@@ -321,72 +161,25 @@ interface McpToolDef {
 }
 
 const MCP_TOOLS: McpToolDef[] = [
-    // ── Student Information ─────────────────────────────────────────────
     { name: "get_students",                category: "Students",          label: "get_students",                paramType: "search",        paramHint: "Search by name, roll, or admission number",        desc: "Retrieve student directory with optional name/ID search and class filter." },
     { name: "get_student_by_id",           category: "Students",          label: "get_student_by_id",           paramType: "id",            paramHint: "Enter student numeric ID",                         desc: "Fetch a specific student's complete profile by numeric ID." },
-    { name: "get_online_admissions",       category: "Students",          label: "get_online_admissions",       paramType: "none",                                                                        desc: "Retrieve pending online admission applications queue." },
-    // ── Academics ────────────────────────────────────────────────────────
     { name: "get_classes",                 category: "Academics",         label: "get_classes",                 paramType: "none",                                                                        desc: "List all school academic classes." },
     { name: "get_sections",                category: "Academics",         label: "get_sections",                paramType: "class_filter",  paramHint: "Enter class ID to filter sections",                desc: "Retrieve class sections, optionally filtered by class ID." },
     { name: "get_subjects",                category: "Academics",         label: "get_subjects",                paramType: "class_filter",  paramHint: "Enter class ID to filter subjects",                desc: "List curriculum subjects for a given class." },
-    { name: "get_class_timetable",         category: "Academics",         label: "get_class_timetable",         paramType: "class_filter",  paramHint: "Enter class ID",                                  desc: "Fetch the weekly timetable for a specific class." },
-    { name: "get_annual_calendar",         category: "Academics",         label: "get_annual_calendar",         paramType: "none",                                                                        desc: "Retrieve school calendar events and holidays for the active session." },
-    { name: "get_lesson_plans",            category: "Academics",         label: "get_lesson_plans",            paramType: "subject_filter", paramHint: "Enter subject ID to filter plans",               desc: "Fetch teacher lesson plans, optionally filtered by subject ID." },
-    { name: "get_homework_assignments",    category: "Academics",         label: "get_homework_assignments",    paramType: "class_filter",  paramHint: "Enter class ID to filter assignments",             desc: "Retrieve daily homework assignments for a class." },
-    // ── Human Resource ───────────────────────────────────────────────────
     { name: "get_staff",                   category: "HR & Payroll",      label: "get_staff",                   paramType: "search",        paramHint: "Search by name or employee ID",                    desc: "Retrieve school staff directory, teachers, and designations." },
-    { name: "get_staff_attendance",        category: "HR & Payroll",      label: "get_staff_attendance",        paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Fetch daily staff attendance records for a given date." },
-    { name: "get_payroll",                 category: "HR & Payroll",      label: "get_payroll",                 paramType: "none",                                                                        desc: "Retrieve staff payroll salary slip records." },
-    { name: "get_leave_requests",          category: "HR & Payroll",      label: "get_leave_requests",          paramType: "none",                                                                        desc: "List pending and approved staff leave requests." },
-    { name: "get_teacher_ratings",         category: "HR & Payroll",      label: "get_teacher_ratings",         paramType: "none",                                                                        desc: "Fetch teacher performance rating submissions." },
-    // ── Fees & Finance ───────────────────────────────────────────────────
     { name: "get_fee_due_list",            category: "Fees & Finance",    label: "get_fee_due_list",            paramType: "class_filter",  paramHint: "Enter class ID to filter dues",                    desc: "Generate overdue fee list across classes." },
-    { name: "get_fee_collection_report",   category: "Fees & Finance",    label: "get_fee_collection_report",   paramType: "date_filter",   paramHint: "Enter date range (e.g. 2024-01-01)",               desc: "Fetch fee collection ledger and transaction summary." },
-    { name: "get_income_report",           category: "Fees & Finance",    label: "get_income_report",           paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Retrieve school income entries for a given period." },
-    { name: "get_expense_report",          category: "Fees & Finance",    label: "get_expense_report",          paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Retrieve school expense vouchers for a given period." },
-    // ── Attendance ───────────────────────────────────────────────────────
     { name: "get_attendance_summary",      category: "Attendance",        label: "get_attendance_summary",      paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Fetch student attendance summary for a specific date." },
-    { name: "get_period_attendance",       category: "Attendance",        label: "get_period_attendance",       paramType: "date_filter",   paramHint: "Enter date YYYY-MM-DD",                            desc: "Fetch subject/period-wise attendance for a specific date." },
-    { name: "get_leave_applications",      category: "Attendance",        label: "get_leave_applications",      paramType: "none",                                                                        desc: "List pending student leave requests awaiting approval." },
-    // ── Examinations ─────────────────────────────────────────────────────
-    { name: "get_exam_groups",             category: "Examinations",      label: "get_exam_groups",             paramType: "none",                                                                        desc: "Fetch examination groups with schedules and grading config." },
     { name: "get_exam_results",            category: "Examinations",      label: "get_exam_results",            paramType: "class_filter",  paramHint: "Enter class ID to filter results",                 desc: "Retrieve student exam marksheets and grade reports." },
-    { name: "get_online_exams",            category: "Examinations",      label: "get_online_exams",            paramType: "none",                                                                        desc: "Fetch available online test papers and question bank entries." },
-    // ── Communications ───────────────────────────────────────────────────
-    { name: "get_notices",                 category: "Communicate",       label: "get_notices",                 paramType: "none",                                                                        desc: "Fetch active notice board announcements for all roles." },
     { name: "send_sms_notification",       category: "Communicate",       label: "send_sms_notification",       paramType: "sms",                                                                         desc: "Dispatch an SMS notification to a specified phone number." },
-    { name: "get_communication_logs",      category: "Communicate",       label: "get_communication_logs",      paramType: "none",                                                                        desc: "Retrieve sent SMS/email communication log history." },
-    // ── Operations ───────────────────────────────────────────────────────
-    { name: "get_front_office_enquiries",  category: "Operations",        label: "get_front_office_enquiries",  paramType: "none",                                                                        desc: "Fetch admission enquiry logs with follow-up status." },
-    { name: "get_inventory",               category: "Operations",        label: "get_inventory",               paramType: "search",        paramHint: "Search by item name or category",                  desc: "List inventory items with stock levels and store location." },
-    { name: "get_transport_routes",        category: "Operations",        label: "get_transport_routes",        paramType: "none",                                                                        desc: "Retrieve transport routes, pickup points, and vehicle assignments." },
-    { name: "get_hostel_rooms",            category: "Operations",        label: "get_hostel_rooms",            paramType: "none",                                                                        desc: "Fetch hostel room occupancy and resident student assignments." },
-    // ── System & Dashboard ───────────────────────────────────────────────
     { name: "get_system_settings",         category: "System",            label: "get_system_settings",         paramType: "none",                                                                        desc: "Retrieve school profile, session year, and general settings." },
     { name: "get_dashboard_stats",         category: "System",            label: "get_dashboard_stats",         paramType: "none",                                                                        desc: "Fetch main dashboard KPIs: student count, fee collection, attendance rate." },
-    { name: "get_reports_summary",         category: "System",            label: "get_reports_summary",         paramType: "none",                                                                        desc: "Generate a comprehensive report summary across all modules." },
-    // ── Student / User Portal ────────────────────────────────────────────
-    { name: "portal_dashboard",            category: "Student Portal",    label: "portal_dashboard",            paramType: "none",                                                                        desc: "Student portal dashboard with personal KPIs, upcoming exams, and dues." },
-    { name: "portal_my_fees",              category: "Student Portal",    label: "portal_my_fees",              paramType: "none",                                                                        desc: "Retrieve the student's fee schedule, paid invoices, and outstanding dues." },
-    { name: "portal_my_attendance",        category: "Student Portal",    label: "portal_my_attendance",        paramType: "date_filter",   paramHint: "Enter month/year (YYYY-MM)",                       desc: "Fetch student's own attendance records with monthly breakdown." },
-    { name: "portal_exam_results",         category: "Student Portal",    label: "portal_exam_results",         paramType: "none",                                                                        desc: "Retrieve student's exam marksheets, grades, and rank position." },
-    { name: "portal_exam_schedule",        category: "Student Portal",    label: "portal_exam_schedule",        paramType: "none",                                                                        desc: "Fetch student's upcoming exam timetable and hall ticket details." },
-    { name: "portal_class_timetable",      category: "Student Portal",    label: "portal_class_timetable",      paramType: "none",                                                                        desc: "Retrieve student's weekly class schedule and subject timings." },
-    { name: "portal_my_homework",          category: "Student Portal",    label: "portal_my_homework",          paramType: "none",                                                                        desc: "List homework assignments assigned to the authenticated student." },
-    { name: "portal_submit_homework",      category: "Student Portal",    label: "portal_submit_homework",      paramType: "id",            paramHint: "Enter homework ID to submit",                      desc: "Submit a homework assignment response by homework ID." },
-    { name: "portal_lesson_plan",          category: "Student Portal",    label: "portal_lesson_plan",          paramType: "none",                                                                        desc: "Retrieve lesson plan and syllabus coverage status for enrolled subjects." },
-    { name: "portal_online_exams",         category: "Student Portal",    label: "portal_online_exams",         paramType: "none",                                                                        desc: "List available online/MCQ exams assigned to the student." },
-    { name: "portal_apply_leave",          category: "Student Portal",    label: "portal_apply_leave",          paramType: "sms",                                                                         desc: "Submit a student leave application. Requires reason and date range." },
-    { name: "portal_library_books",        category: "Student Portal",    label: "portal_library_books",        paramType: "none",                                                                        desc: "List library books currently issued to the authenticated student." },
-    { name: "portal_my_certificates",      category: "Student Portal",    label: "portal_my_certificates",      paramType: "none",                                                                        desc: "Retrieve certificates and transfer certificates issued to student." },
-    { name: "portal_my_qr_code",           category: "Student Portal",    label: "portal_my_qr_code",           paramType: "none",                                                                        desc: "Generate / fetch the student's personal QR code for attendance." },
-    { name: "portal_live_classes",         category: "Student Portal",    label: "portal_live_classes",         paramType: "none",                                                                        desc: "List scheduled Google Meet and Zoom live class sessions for the student." },
 ];
 
 export default function ApiKeyPage() {
     const { t } = useTranslation();
+    const { language } = useLanguage();
 
-    const [activeTab, setActiveTab] = useState<string>("keys");
+    const [activeTab, setActiveTab] = useState<"keys" | "mcp" | "docs">("keys");
     const [loading, setLoading] = useState<boolean>(true);
     const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>([]);
     const [stats, setStats] = useState<{ total_keys: number; active_keys: number; mcp_status: string }>({
@@ -429,8 +222,6 @@ export default function ApiKeyPage() {
     const [docSearch, setDocSearch] = useState<string>("");
     const [docMethod, setDocMethod] = useState<string>("all");
     const [selectedEndpoint, setSelectedEndpoint] = useState<ApiEndpointItem>(API_ENDPOINTS_DIRECTORY[0]);
-
-    // Copy snippet helper
     const [copiedSnippet, setCopiedSnippet] = useState<boolean>(false);
 
     useEffect(() => {
@@ -448,19 +239,14 @@ export default function ApiKeyPage() {
                 }
             }
         } catch (error) {
-            console.error("Failed to load API keys:", error);
-            sonnerToast.error("Failed to load API keys");
+            console.error(error);
         } finally {
             setLoading(false);
         }
     };
 
     const handleCreateKey = async () => {
-        if (!newKeyName.trim()) {
-            sonnerToast.error("Please enter an API Key name");
-            return;
-        }
-
+        if (!newKeyName.trim()) return;
         setCreating(true);
         try {
             const res = await api.post('/system-setting/api-keys', {
@@ -468,20 +254,19 @@ export default function ApiKeyPage() {
                 permissions: selectedPermissions,
                 rate_limit: newRateLimit,
             });
-
             if (res.data?.status === 'success') {
-                setCreatedSecret(res.data.raw_token);
                 setIsCreateOpen(false);
                 setNewKeyName("");
                 setSelectedPermissions(["*"]);
                 setNewRateLimit(60);
+                if (res.data.secret) {
+                    setCreatedSecret(res.data.secret);
+                }
                 fetchApiKeys();
-                sonnerToast.success("API Key generated successfully!");
-            } else {
-                sonnerToast.error(res.data?.message || "Failed to generate API Key");
+                sonnerToast.success(t("key_created_successfully"));
             }
         } catch (error: any) {
-            sonnerToast.error(error.response?.data?.message || "Failed to generate API Key");
+            sonnerToast.error(error.response?.data?.message || t("failed_to_save"));
         } finally {
             setCreating(false);
         }
@@ -496,12 +281,7 @@ export default function ApiKeyPage() {
     };
 
     const handleUpdateKey = async () => {
-        if (!editingItem) return;
-        if (!editKeyName.trim()) {
-            sonnerToast.error("Please enter an API Key name");
-            return;
-        }
-
+        if (!editingItem || !editKeyName.trim()) return;
         setUpdating(true);
         try {
             const res = await api.put(`/system-setting/api-keys/${editingItem.id}`, {
@@ -509,49 +289,40 @@ export default function ApiKeyPage() {
                 permissions: editPermissions,
                 rate_limit: editRateLimit,
             });
-
             if (res.data?.status === 'success') {
                 setIsEditOpen(false);
-                setEditingItem(null);
                 fetchApiKeys();
-                sonnerToast.success("API Key updated successfully!");
-            } else {
-                sonnerToast.error(res.data?.message || "Failed to update API Key");
+                sonnerToast.success(t("key_updated_successfully"));
             }
         } catch (error: any) {
-            sonnerToast.error(error.response?.data?.message || "Failed to update API Key");
+            sonnerToast.error(error.response?.data?.message || t("failed_to_save"));
         } finally {
             setUpdating(false);
         }
     };
 
-    const handleToggleStatus = async (id: number, currentName: string) => {
+    const handleToggleStatus = async (id: number, name: string) => {
         try {
             const res = await api.post(`/system-setting/api-keys/${id}/toggle`);
             if (res.data?.status === 'success') {
-                const updatedStatus = res.data.data.status;
-                setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: updatedStatus } : k));
-                if (updatedStatus) {
-                    sonnerToast.success(`API Key '${currentName}' activated`);
-                } else {
-                    sonnerToast.info(`API Key '${currentName}' revoked`);
-                }
+                setApiKeys(prev => prev.map(k => k.id === id ? { ...k, status: res.data.data.status } : k));
+                sonnerToast.success(t("key_updated_successfully"));
             }
         } catch (error) {
-            sonnerToast.error("Failed to toggle API Key status");
+            sonnerToast.error(t("failed_to_save"));
         }
     };
 
     const handleDeleteKey = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this API key? This action cannot be undone.")) return;
+        if (!window.confirm(t("confirm_delete") || "Are you sure you want to delete this API Key?")) return;
         try {
             const res = await api.delete(`/system-setting/api-keys/${id}`);
             if (res.data?.status === 'success') {
                 setApiKeys(prev => prev.filter(k => k.id !== id));
-                sonnerToast.success("API Key deleted");
+                sonnerToast.success(t("key_deleted_successfully"));
             }
         } catch (error) {
-            sonnerToast.error("Failed to delete API Key");
+            sonnerToast.error(t("failed_to_save"));
         }
     };
 
@@ -565,7 +336,6 @@ export default function ApiKeyPage() {
             if (toolDef?.paramType === "class_filter" && mcpSearch.trim())  args.class_id = mcpSearch.trim();
             if (toolDef?.paramType === "date_filter" && mcpSearch.trim())   args.date    = mcpSearch.trim();
             if (toolDef?.paramType === "id" && mcpSearch.trim())            args.id      = mcpSearch.trim();
-            if (toolDef?.paramType === "subject_filter" && mcpSearch.trim()) args.subject_id = mcpSearch.trim();
             if (toolDef?.paramType === "sms") {
                 args.phone   = mcpPhone.trim();
                 args.message = mcpMessage.trim();
@@ -580,13 +350,13 @@ export default function ApiKeyPage() {
 
             setMcpResult(res.data);
             if (!res.data?.result?.isError) {
-                sonnerToast.success(`MCP Tool '${mcpTool}' executed successfully!`);
+                sonnerToast.success(`${t("execute_mcp_tool")}: ${mcpTool}`);
             } else {
-                sonnerToast.error("MCP tool returned an error response");
+                sonnerToast.error(t("failed_to_save"));
             }
         } catch (error: any) {
             setMcpResult({ error: error.response?.data?.message || error.message || "MCP Execution Failed" });
-            sonnerToast.error("MCP Execution Failed");
+            sonnerToast.error(t("failed_to_save"));
         } finally {
             setMcpTesting(false);
         }
@@ -601,10 +371,33 @@ export default function ApiKeyPage() {
             setCopiedSnippet(true);
             setTimeout(() => setCopiedSnippet(false), 2000);
         }
-        sonnerToast.success("Copied to clipboard!");
+        sonnerToast.success(t("copied_to_clipboard"));
     };
 
-    // Filtered endpoints directory
+    const translateCategory = (cat: string) => {
+        switch (cat) {
+            case "auth": return t("authentication") || "Authentication";
+            case "student_info":
+            case "Students": return t("student_information") || "Student Information";
+            case "front_office":
+            case "Operations": return t("front_office") || "Front Office";
+            case "academics":
+            case "Academics": return t("academics") || "Academics";
+            case "academics_hr":
+            case "HR & Payroll": return t("human_resource") || "HR & Payroll";
+            case "fees_finance":
+            case "Fees & Finance": return t("fees_collection") || "Fees & Finance";
+            case "attendance_exams":
+            case "Attendance":
+            case "Examinations": return t("attendance") || "Attendance & Exams";
+            case "communicate_sms":
+            case "Communicate": return t("communicate") || "Communicate";
+            case "mcp_ai":
+            case "System": return t("system_setting") || "System & MCP";
+            default: return cat;
+        }
+    };
+
     const filteredEndpoints = useMemo(() => {
         return API_ENDPOINTS_DIRECTORY.filter((item) => {
             const matchesCategory = docCategory === "all" || item.category === docCategory;
@@ -646,654 +439,663 @@ export default function ApiKeyPage() {
     return (
         <div className="p-3 sm:p-4 md:p-6 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             
-            {/* Header Banner */}
-            <Card className="p-0 overflow-hidden border border-gray-100/80 shadow-md hover:shadow-lg transition-all rounded-xl bg-gradient-to-r from-[#FFF5E7] via-[#EFF0FD] to-[#F3E8FF]">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4">
-                    <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
-                            <KeyRound className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h1 className="text-[16px] sm:text-[18px] font-bold text-gray-800 tracking-tight leading-tight">
-                                RESTful API Keys & Model Context Protocol (MCP)
-                            </h1>
-                            <p className="text-[11px] text-gray-500 mt-0.5">
-                                Manage API access tokens for third-party software & connect AI agents via MCP Protocol
-                            </p>
-                        </div>
+            {/* Page Header Banner (Mandatory Rule: Edge-to-edge gradient div, NEVER inside Card) */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <KeyRound className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("api_keys_mcp_title")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("api_keys_mcp_desc")}
+                        </p>
                     </div>
-
-                    <Button
-                        onClick={() => setIsCreateOpen(true)}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-9 px-4 text-[11px] font-bold uppercase rounded-lg shadow-md hover:shadow-indigo-500/25 transition-all"
-                    >
-                        <Plus className="h-4 w-4 mr-1.5" /> Generate New API Key
-                    </Button>
                 </div>
-            </Card>
 
-            {/* Overview Stat Cards with Realistic Metrics & Outer Shadows */}
+                <Button
+                    onClick={() => setIsCreateOpen(true)}
+                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-9 px-4 text-xs font-bold rounded-lg shadow-xs transition-all border-none cursor-pointer"
+                >
+                    <Plus className="h-4 w-4 mr-1.5" /> {t("generate_new_api_key")}
+                </Button>
+            </div>
+
+            {/* Overview Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
-                    <div className="h-11 w-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-inner">
+                <Card className="p-4 flex items-center gap-3.5 border-gray-100 shadow-xs bg-white rounded-xl">
+                    <div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
                         <KeyRound className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total API Keys</p>
-                        <p className="text-18 font-extrabold text-gray-800 leading-tight">{loading ? "..." : stats.total_keys}</p>
-                        <p className="text-[10px] font-semibold text-indigo-600 mt-0.5">{stats.active_keys} active keys configured</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            {t("total_api_keys")}
+                        </p>
+                        <p className="text-xl font-extrabold text-gray-800 leading-tight">
+                            {loading ? "..." : toLocaleNumber(stats.total_keys, language?.short_code)}
+                        </p>
+                        <p className="text-[10px] font-semibold text-indigo-600 mt-0.5">
+                            {toLocaleNumber(stats.active_keys, language?.short_code)} {t("active_keys_configured")}
+                        </p>
                     </div>
                 </Card>
 
-                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
-                    <div className="h-11 w-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-inner">
+                <Card className="p-4 flex items-center gap-3.5 border-gray-100 shadow-xs bg-white rounded-xl">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                         <ShieldCheck className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Active Keys</p>
-                        <p className="text-18 font-extrabold text-emerald-600 leading-tight">{loading ? "..." : stats.active_keys}</p>
-                        <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">100% Operational & Verified</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            {t("active_keys")}
+                        </p>
+                        <p className="text-xl font-extrabold text-emerald-600 leading-tight">
+                            {loading ? "..." : toLocaleNumber(stats.active_keys, language?.short_code)}
+                        </p>
+                        <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">
+                            {t("operational_verified")}
+                        </p>
                     </div>
                 </Card>
 
-                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
-                    <div className="h-11 w-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 shadow-inner">
+                <Card className="p-4 flex items-center gap-3.5 border-gray-100 shadow-xs bg-white rounded-xl">
+                    <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
                         <Cpu className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">MCP Server Status</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            {t("mcp_server_status")}
+                        </p>
                         <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-xs font-extrabold text-gray-800">{stats.mcp_status} (JSON-RPC 2.0)</span>
                         </div>
-                        <p className="text-[10px] font-semibold text-purple-600 mt-0.5">6 Core MCP Tools Active</p>
+                        <p className="text-[10px] font-semibold text-purple-600 mt-0.5">
+                            {toLocaleNumber(MCP_TOOLS.length, language?.short_code)} {t("core_mcp_tools_active")}
+                        </p>
                     </div>
                 </Card>
 
-                <Card className="p-4.5 flex items-center gap-3.5 border-gray-100/90 shadow-md hover:shadow-lg transition-all bg-white rounded-xl">
-                    <div className="h-11 w-11 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 shadow-inner">
+                <Card className="p-4 flex items-center gap-3.5 border-gray-100 shadow-xs bg-white rounded-xl">
+                    <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
                         <Zap className="h-5 w-5" />
                     </div>
                     <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Default Rate Limit</p>
-                        <p className="text-18 font-extrabold text-gray-800 leading-tight">60 req / min</p>
-                        <p className="text-[10px] font-semibold text-orange-600 mt-0.5">Configurable up to 10,000</p>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                            {t("default_rate_limit")}
+                        </p>
+                        <p className="text-xl font-extrabold text-gray-800 leading-tight">
+                            {toLocaleNumber(60, language?.short_code)} {t("req_per_min")}
+                        </p>
+                        <p className="text-[10px] font-semibold text-orange-600 mt-0.5">
+                            {t("configurable_up_to")}
+                        </p>
                     </div>
                 </Card>
             </div>
 
-            {/* Navigation Tabs */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-4">
-                <TabsList className="bg-white border border-gray-200 p-1 rounded-lg h-auto flex flex-wrap gap-1 shadow-sm">
-                    <TabsTrigger value="keys" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-                        <KeyRound className="h-3.5 w-3.5 mr-1.5" /> API Keys Management
-                    </TabsTrigger>
-                    <TabsTrigger value="mcp" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-                        <Cpu className="h-3.5 w-3.5 mr-1.5" /> MCP AI Agent Protocol
-                    </TabsTrigger>
-                    <TabsTrigger value="docs" className="text-[11px] font-bold uppercase px-4 py-2 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-600">
-                        <BookOpen className="h-3.5 w-3.5 mr-1.5" /> REST API Documentation ({API_ENDPOINTS_DIRECTORY.length}+)
-                    </TabsTrigger>
-                </TabsList>
+            {/* High Contrast Navigation Tabs */}
+            <div className="flex items-center p-1 rounded-xl bg-white/95 border border-gray-200/80 shadow-xs gap-1 flex-wrap">
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("keys")}
+                    className={cn(
+                        "h-8 px-4 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                        activeTab === "keys"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                            : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/80"
+                    )}
+                >
+                    <KeyRound className="h-3.5 w-3.5" />
+                    <span>{t("api_keys_management")}</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("mcp")}
+                    className={cn(
+                        "h-8 px-4 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                        activeTab === "mcp"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                            : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/80"
+                    )}
+                >
+                    <Cpu className="h-3.5 w-3.5" />
+                    <span>{t("mcp_ai_agent_protocol")}</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setActiveTab("docs")}
+                    className={cn(
+                        "h-8 px-4 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer select-none",
+                        activeTab === "docs"
+                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                            : "text-gray-700 hover:text-gray-900 hover:bg-gray-100/80"
+                    )}
+                >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span>
+                        {t("rest_api_documentation")} ({toLocaleNumber(API_ENDPOINTS_DIRECTORY.length, language?.short_code)}+)
+                    </span>
+                </button>
+            </div>
 
-                {/* TAB 1: API Keys Management */}
-                <TabsContent value="keys">
-                    <Card className="pt-0 border-gray-100 shadow-md">
-                        <CardHeader className="px-5 py-4 border-b border-gray-100 flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle className="text-14 font-bold text-gray-800">Active API Keys</CardTitle>
-                                <CardDescription className="text-11 text-gray-400 mt-0.5">
-                                    Third-party software authentication keys with custom permission scopes & rate limits
-                                </CardDescription>
+            {/* TAB 1: API Keys Management */}
+            {activeTab === "keys" && (
+                <Card className="rounded-xl border-gray-100 shadow-sm bg-white overflow-hidden">
+                    <CardHeader className="px-5 py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-bold text-gray-800">
+                                {t("active_api_keys")}
+                            </CardTitle>
+                            <CardDescription className="text-xs text-gray-500 mt-0.5">
+                                {t("active_api_keys_desc")}
+                            </CardDescription>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {loading ? (
+                            <div className="p-6 space-y-3">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
                             </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {loading ? (
-                                <div className="p-6 space-y-3">
-                                    <Skeleton className="h-10 w-full" />
-                                    <Skeleton className="h-10 w-full" />
-                                </div>
-                            ) : apiKeys.length === 0 ? (
-                                <div className="p-12 text-center space-y-3">
-                                    <KeyRound className="h-12 w-12 text-gray-300 mx-auto" />
-                                    <p className="text-xs font-bold text-gray-600 uppercase">No API Keys Generated</p>
-                                    <p className="text-[11px] text-gray-400">Generate an API key to allow external software to access iSchool endpoints.</p>
-                                    <Button
-                                        onClick={() => setIsCreateOpen(true)}
-                                        size="sm"
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold uppercase mt-2"
-                                    >
-                                        <Plus className="h-3.5 w-3.5 mr-1" /> Create First API Key
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <Table>
-                                        <TableHeader className="bg-gray-50/50">
-                                            <TableRow>
-                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Key Name</TableHead>
-                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Token Prefix</TableHead>
-                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Permissions</TableHead>
-                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Rate Limit</TableHead>
-                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Status</TableHead>
-                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500">Last Used</TableHead>
-                                                <TableHead className="text-[10px] font-bold uppercase text-gray-500 text-right">Actions</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {apiKeys.map((item) => (
-                                                <TableRow key={item.id} className="hover:bg-gray-50/50">
-                                                    <TableCell className="font-bold text-[12px] text-gray-800">
-                                                        {item.name}
-                                                    </TableCell>
-                                                    <TableCell className="font-mono text-[11px] text-gray-600 bg-gray-50 px-2 py-1 rounded w-fit">
-                                                        {item.secret || item.key.substring(0, 15) + "..."}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {(item.permissions || ["*"]).map((perm) => (
-                                                                <span
-                                                                    key={perm}
-                                                                    className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100"
-                                                                >
-                                                                    {perm}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-[11px] text-gray-600 font-semibold">
-                                                        {item.rate_limit || 60} req/min
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex items-center gap-2">
-                                                            <Switch
-                                                                checked={item.status}
-                                                                onCheckedChange={() => handleToggleStatus(item.id, item.name)}
-                                                                className="data-[state=checked]:bg-emerald-600"
-                                                            />
-                                                            <span className={cn("text-[10px] font-bold", item.status ? "text-emerald-600" : "text-gray-400")}>
-                                                                {item.status ? "Active" : "Revoked"}
+                        ) : apiKeys.length === 0 ? (
+                            <div className="p-12 text-center space-y-3">
+                                <KeyRound className="h-12 w-12 text-gray-300 mx-auto" />
+                                <p className="text-xs font-bold text-gray-600 uppercase">
+                                    {t("no_api_keys_generated")}
+                                </p>
+                                <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                                    {t("no_api_keys_desc")}
+                                </p>
+                                <Button
+                                    onClick={() => setIsCreateOpen(true)}
+                                    size="sm"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white text-xs font-bold uppercase mt-2 rounded-lg"
+                                >
+                                    <Plus className="h-3.5 w-3.5 mr-1" /> {t("create_first_api_key")}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader className="bg-gray-50/50">
+                                        <TableRow>
+                                            <TableHead className="text-xs font-bold text-gray-600">{t("key_name")}</TableHead>
+                                            <TableHead className="text-xs font-bold text-gray-600">{t("token_prefix")}</TableHead>
+                                            <TableHead className="text-xs font-bold text-gray-600">{t("permissions")}</TableHead>
+                                            <TableHead className="text-xs font-bold text-gray-600">{t("rate_limit")}</TableHead>
+                                            <TableHead className="text-xs font-bold text-gray-600">{t("status")}</TableHead>
+                                            <TableHead className="text-xs font-bold text-gray-600">{t("last_used")}</TableHead>
+                                            <TableHead className="text-xs font-bold text-gray-600 text-right">{t("action") || t("actions")}</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {apiKeys.map((item) => (
+                                            <TableRow key={item.id} className="hover:bg-gray-50/50 h-12">
+                                                <TableCell className="font-bold text-xs text-gray-800">
+                                                    {item.name}
+                                                </TableCell>
+                                                <TableCell className="font-mono text-xs text-gray-600 bg-gray-50 px-2 py-1 rounded w-fit">
+                                                    {item.secret || item.key.substring(0, 15) + "..."}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {(item.permissions || ["*"]).map((perm) => (
+                                                            <span
+                                                                key={perm}
+                                                                className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100"
+                                                            >
+                                                                {perm}
                                                             </span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-[10px] text-gray-400">
-                                                        {item.last_used_at ? new Date(item.last_used_at).toLocaleString() : "Never"}
-                                                    </TableCell>
-                                                    <TableCell className="text-right space-x-1">
+                                                        ))}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-xs text-gray-600 font-semibold">
+                                                    {toLocaleNumber(item.rate_limit || 60, language?.short_code)} {t("req_per_min")}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center gap-2">
+                                                        <Switch
+                                                            checked={item.status}
+                                                            onCheckedChange={() => handleToggleStatus(item.id, item.name)}
+                                                            className="data-[state=checked]:bg-emerald-600 scale-90"
+                                                        />
+                                                        <span className={cn("text-xs font-bold", item.status ? "text-emerald-600" : "text-gray-400")}>
+                                                            {item.status ? t("active") : t("revoked")}
+                                                        </span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-xs text-gray-400">
+                                                    {item.last_used_at ? new Date(item.last_used_at).toLocaleString() : t("never")}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
                                                         <Button
                                                             variant="ghost"
-                                                            size="sm"
+                                                            size="icon"
                                                             onClick={() => handleOpenEditModal(item)}
-                                                            className="h-7 w-7 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
-                                                            title="Edit API Key"
+                                                            className="bg-gradient-to-r from-amber-500 to-orange-600 h-7 w-7 rounded-lg text-white shadow-xs active:scale-95 transition-all"
+                                                            title={t("edit_api_key")}
                                                         >
-                                                            <Pencil className="h-3.5 w-3.5 text-indigo-600" />
+                                                            <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
-                                                            size="sm"
+                                                            size="icon"
                                                             onClick={() => copyToClipboard(item.key, 'snippet')}
-                                                            className="h-7 w-7 p-0 text-gray-500 hover:text-indigo-600"
-                                                            title="Copy Token"
+                                                            className="bg-gradient-to-r from-[#6366f1] to-indigo-600 h-7 w-7 rounded-lg text-white shadow-xs active:scale-95 transition-all"
+                                                            title={t("copy_token")}
                                                         >
                                                             <Copy className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
-                                                            size="sm"
+                                                            size="icon"
                                                             onClick={() => handleDeleteKey(item.id)}
-                                                            className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
-                                                            title="Delete Key"
+                                                            className="bg-gradient-to-r from-rose-500 to-red-600 h-7 w-7 rounded-lg text-white shadow-xs active:scale-95 transition-all"
+                                                            title={t("delete_key")}
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                {/* TAB 2: Model Context Protocol (MCP) Protocol */}
-                <TabsContent value="mcp" className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        
-                        {/* Left: MCP Configuration & Connection Guide */}
-                        <Card className="pt-0 border-indigo-100 shadow-md">
-                            <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
-                                <Cpu className="h-5 w-5 text-indigo-600" />
-                                <div>
-                                    <h2 className="text-14 font-bold text-gray-800">MCP Client Setup Guide</h2>
-                                    <p className="text-[10px] text-gray-500">Connect Claude Desktop, Cursor, or AI agents to iSchool MCP Server</p>
-                                </div>
-                            </div>
-                            <CardContent className="p-5 space-y-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[11px] font-bold text-gray-600 uppercase">MCP Server Endpoint</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            readOnly
-                                            value={mcpEndpointUrl}
-                                            className="font-mono text-[11px] bg-gray-50 border-gray-200 h-9"
-                                        />
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => copyToClipboard(mcpEndpointUrl, 'snippet')}
-                                            className="h-9 px-3 text-xs border-indigo-200 text-indigo-700"
-                                        >
-                                            <Copy className="h-3.5 w-3.5 mr-1" /> Copy
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-[11px] font-bold text-gray-600 uppercase">
-                                            claude_desktop_config.json Snippet
-                                        </Label>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => copyToClipboard(claudeConfigCode, 'snippet')}
-                                            className="h-6 text-[10px] text-indigo-600 font-bold uppercase"
-                                        >
-                                            {copiedSnippet ? <Check className="h-3 w-3 mr-1 text-emerald-600" /> : <Copy className="h-3 w-3 mr-1" />}
-                                            {copiedSnippet ? "Copied" : "Copy JSON"}
-                                        </Button>
-                                    </div>
-                                    <pre className="p-3 bg-gray-900 text-emerald-400 font-mono text-[10px] rounded-lg overflow-x-auto leading-relaxed border border-gray-800">
-                                        {claudeConfigCode}
-                                    </pre>
-                                </div>
-
-                                <div className="p-3 bg-indigo-50/50 rounded-lg border border-indigo-100 text-[11px] text-indigo-900 leading-relaxed">
-                                    💡 <strong>How it works:</strong> Third-party AI models (like Claude, ChatGPT, or autonomous agents) connect to this endpoint using the JSON-RPC 2.0 MCP protocol to securely query student lists, attendance rates, fee reports, and trigger automated SMS alerts.
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Right: Live Interactive MCP Tester Console */}
-                        <Card className="pt-0 border-emerald-100 shadow-md">
-                            <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-100">
-                                <Terminal className="h-5 w-5 text-emerald-600" />
-                                <div>
-                                    <h2 className="text-14 font-bold text-gray-800">Interactive MCP Live Inspector</h2>
-                                    <p className="text-[10px] text-gray-500">Test MCP tool execution and inspect live JSON-RPC 2.0 payloads</p>
-                                </div>
-                            </div>
-                            <CardContent className="p-5 space-y-4">
-                                {/* ── MCP Tool Search & Category Filter ── */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-[11px] font-bold text-gray-600 uppercase">Select MCP Tool</Label>
-                                        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                            {MCP_TOOLS.length} Tools Available
-                                        </span>
-                                    </div>
-
-                                    {/* Category filter pills */}
-                                    <div className="flex flex-wrap gap-1">
-                                        {["All", ...Array.from(new Set(MCP_TOOLS.map(t => t.category)))].map(cat => (
-                                            <button
-                                                key={cat}
-                                                type="button"
-                                                onClick={() => setMcpToolCategory(cat)}
-                                                className={cn(
-                                                    "text-[9px] font-bold px-2 py-0.5 rounded-full transition-all border",
-                                                    mcpToolCategory === cat
-                                                        ? "bg-emerald-600 text-white border-emerald-600"
-                                                        : "bg-gray-50 text-gray-500 border-gray-200 hover:border-emerald-300"
-                                                )}
-                                            >
-                                                {cat}
-                                                {cat !== "All" && (
-                                                    <span className={cn("ml-1", mcpToolCategory === cat ? "opacity-70" : "opacity-50")}>
-                                                        ({MCP_TOOLS.filter(t => t.category === cat).length})
-                                                    </span>
-                                                )}
-                                            </button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
                                         ))}
-                                    </div>
-
-                                    {/* Tool search input */}
-                                    <div className="relative">
-                                        <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-gray-400" />
-                                        <Input
-                                            placeholder="Search tools…"
-                                            value={mcpToolSearch}
-                                            onChange={e => setMcpToolSearch(e.target.value)}
-                                            className="pl-7 h-8 text-[11px] border-gray-200 bg-white"
-                                        />
-                                    </div>
-
-                                    {/* Scrollable tool card list */}
-                                    <div className="max-h-56 overflow-y-auto space-y-1 pr-0.5 rounded-lg border border-gray-100 bg-gray-50/40 p-1.5">
-                                        {MCP_TOOLS
-                                            .filter(t =>
-                                                (mcpToolCategory === "All" || t.category === mcpToolCategory) &&
-                                                (mcpToolSearch === "" || t.name.toLowerCase().includes(mcpToolSearch.toLowerCase()) || t.desc.toLowerCase().includes(mcpToolSearch.toLowerCase()))
-                                            )
-                                            .map(t => (
-                                                <div
-                                                    key={t.name}
-                                                    onClick={() => { setMcpTool(t.name); setMcpSearch(""); }}
-                                                    className={cn(
-                                                        "p-2 rounded-lg cursor-pointer border transition-all",
-                                                        mcpTool === t.name
-                                                            ? "border-emerald-500 bg-emerald-50/60 shadow-sm"
-                                                            : "border-transparent hover:border-emerald-200 hover:bg-white"
-                                                    )}
-                                                >
-                                                    <div className="flex items-center justify-between gap-1">
-                                                        <span className="text-[10px] font-bold font-mono text-gray-800">{t.name}</span>
-                                                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">{t.category}</span>
-                                                    </div>
-                                                    <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{t.desc}</p>
-                                                </div>
-                                            ))
-                                        }
-                                        {MCP_TOOLS.filter(t =>
-                                            (mcpToolCategory === "All" || t.category === mcpToolCategory) &&
-                                            (mcpToolSearch === "" || t.name.toLowerCase().includes(mcpToolSearch.toLowerCase()) || t.desc.toLowerCase().includes(mcpToolSearch.toLowerCase()))
-                                        ).length === 0 && (
-                                            <div className="p-4 text-center text-[10px] text-gray-400">No tools match your filter.</div>
-                                        )}
-                                    </div>
-
-                                    {/* Selected tool info banner */}
-                                    {mcpTool && (() => {
-                                        const sel = MCP_TOOLS.find(t => t.name === mcpTool);
-                                        return sel ? (
-                                            <div className="flex items-start gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                                                <div>
-                                                    <p className="text-[10px] font-bold text-emerald-800 font-mono">{sel.name}</p>
-                                                    <p className="text-[9px] text-emerald-700 mt-0.5">{sel.desc}</p>
-                                                </div>
-                                            </div>
-                                        ) : null;
-                                    })()}
-                                </div>
-
-                                {/* Dynamic parameter inputs based on paramType */}
-                                {(() => {
-                                    const sel = MCP_TOOLS.find(t => t.name === mcpTool);
-                                    if (!sel) return null;
-                                    if (sel.paramType === "sms") return (
-                                        <div className="space-y-2">
-                                            <div className="space-y-1">
-                                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Recipient Phone *</Label>
-                                                <Input type="text" value={mcpPhone} onChange={e => setMcpPhone(e.target.value)} className="h-8 text-[11px] border-gray-200" placeholder="+880xxxxxxxxxx" />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <Label className="text-[11px] font-bold text-gray-500 uppercase">Message Text *</Label>
-                                                <Input type="text" value={mcpMessage} onChange={e => setMcpMessage(e.target.value)} className="h-8 text-[11px] border-gray-200" placeholder="Your message here…" />
-                                            </div>
-                                        </div>
-                                    );
-                                    if (sel.paramType !== "none") return (
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px] font-bold text-gray-500 uppercase">Parameter (Optional)</Label>
-                                            <Input
-                                                type="text"
-                                                value={mcpSearch}
-                                                onChange={e => setMcpSearch(e.target.value)}
-                                                className="h-8 text-[11px] border-gray-200"
-                                                placeholder={sel.paramHint || "Enter filter value…"}
-                                            />
-                                        </div>
-                                    );
-                                    return null;
-                                })()}
-
-                                <Button
-                                    onClick={handleTestMcpTool}
-                                    disabled={mcpTesting}
-                                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white h-9 text-xs font-bold uppercase rounded-lg shadow-sm"
-                                >
-                                    {mcpTesting ? (
-                                        <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Executing Tool...</>
-                                    ) : (
-                                        <><Send className="h-3.5 w-3.5 mr-1.5" /> Execute MCP Tool Call</>
-                                    )}
-                                </Button>
-
-                                {mcpResult && (
-                                    <div className="space-y-1 pt-2">
-                                        <Label className="text-[10px] font-bold text-gray-400 uppercase">JSON-RPC 2.0 Response</Label>
-                                        <pre className="p-3 bg-gray-900 text-emerald-400 font-mono text-[10px] rounded-lg overflow-x-auto max-h-56 border border-gray-800">
-                                            {JSON.stringify(mcpResult, null, 2)}
-                                        </pre>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                </TabsContent>
-
-                {/* TAB 3: REST API Documentation (All Modules API Endpoints Directory) */}
-                <TabsContent value="docs" className="space-y-6">
-                    <Card className="pt-0 border-gray-100 shadow-md">
-                        <CardHeader className="px-5 py-4 border-b border-gray-100">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
-                                    <CardTitle className="text-15 font-bold text-gray-800 flex items-center gap-2">
-                                        <BookOpen className="h-4 w-4 text-indigo-600" />
-                                        RESTful API Endpoints Directory
-                                    </CardTitle>
-                                    <CardDescription className="text-11 text-gray-400 mt-0.5">
-                                        Secured RESTful API endpoints across all iSchool modules accessible using header <code className="bg-gray-100 px-1 py-0.5 rounded text-indigo-600 font-mono">X-API-KEY: ischool_sk_...</code>
-                                    </CardDescription>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                        {filteredEndpoints.length} of {API_ENDPOINTS_DIRECTORY.length} Endpoints
-                                    </span>
-                                </div>
+                                    </TableBody>
+                                </Table>
                             </div>
-                        </CardHeader>
-                        
-                        <CardContent className="p-5 space-y-6">
-                            
-                            {/* Search & Filters Toolbar */}
-                            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-gray-50/70 p-3 rounded-xl border border-gray-200/80">
-                                {/* Search input */}
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* TAB 2: Model Context Protocol (MCP) */}
+            {activeTab === "mcp" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left: Setup Guide */}
+                    <Card className="rounded-xl border-indigo-100 shadow-sm bg-white overflow-hidden">
+                        <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-gray-100">
+                            <Cpu className="h-5 w-5 text-indigo-600" />
+                            <div>
+                                <h2 className="text-sm font-bold text-gray-800">{t("mcp_client_setup_guide")}</h2>
+                                <p className="text-xs text-gray-500">{t("mcp_client_setup_desc")}</p>
+                            </div>
+                        </div>
+                        <CardContent className="p-5 space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-600 uppercase">{t("mcp_server_endpoint")}</Label>
+                                <div className="flex gap-2">
                                     <Input
-                                        placeholder="Search endpoints by path, module, or description..."
-                                        value={docSearch}
-                                        onChange={(e) => setDocSearch(e.target.value)}
-                                        className="pl-8 text-[11px] h-9 border-gray-200 bg-white"
+                                        readOnly
+                                        value={mcpEndpointUrl}
+                                        className="font-mono text-xs bg-gray-50 border-gray-200 h-9"
                                     />
-                                </div>
-
-                                {/* Method Filter Select */}
-                                <div className="w-full md:w-44">
-                                    <Select value={docMethod} onValueChange={setDocMethod}>
-                                        <SelectTrigger className="h-9 text-[11px] bg-white border-gray-200">
-                                            <SelectValue placeholder="All Methods" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all" className="text-[11px]">All Methods</SelectItem>
-                                            <SelectItem value="GET" className="text-[11px]">GET (Read)</SelectItem>
-                                            <SelectItem value="POST" className="text-[11px]">POST (Create / Action)</SelectItem>
-                                            <SelectItem value="PUT" className="text-[11px]">PUT (Update)</SelectItem>
-                                            <SelectItem value="DELETE" className="text-[11px]">DELETE (Remove)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            {/* Module Category Filter Buttons */}
-                            <div className="flex flex-wrap gap-1.5 pb-1 border-b border-gray-100">
-                                {[
-                                    { id: "all",                label: "All Modules",          count: API_ENDPOINTS_DIRECTORY.length },
-                                    { id: "auth",               label: "Auth",                 count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="auth").length },
-                                    { id: "student_info",       label: "Student Info",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="student_info").length },
-                                    { id: "front_office",       label: "Front Office",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="front_office").length },
-                                    { id: "academics",          label: "Academics",            count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="academics").length },
-                                    { id: "academics_hr",       label: "HR & Payroll",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="academics_hr").length },
-                                    { id: "fees_finance",       label: "Fees & Finance",       count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="fees_finance").length },
-                                    { id: "attendance_exams",   label: "Attendance & Exams",   count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="attendance_exams").length },
-                                    { id: "communicate_sms",    label: "Communicate & SMS",    count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="communicate_sms").length },
-                                    { id: "operations",         label: "Ops / Hostel",         count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="operations").length },
-                                    { id: "reports",            label: "Reports",              count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="reports").length },
-                                    { id: "front_cms",          label: "Front CMS",            count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="front_cms").length },
-                                    { id: "system_setting",     label: "System Settings",      count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="system_setting").length },
-                                    { id: "mcp_ai",             label: "API Keys & MCP",       count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="mcp_ai").length },
-                                    { id: "dashboard",          label: "Dashboard",            count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="dashboard").length },
-                                    { id: "student_portal",     label: "Student Portal",       count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="student_portal").length },
-                                ].map((cat) => (
                                     <Button
-                                        key={cat.id}
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
-                                        onClick={() => setDocCategory(cat.id)}
-                                        className={cn(
-                                            "h-7 text-[10px] font-bold uppercase px-2.5 rounded-full transition-all gap-1.5",
-                                            docCategory === cat.id
-                                                ? "bg-indigo-600 text-white shadow-xs hover:bg-indigo-700"
-                                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                        )}
+                                        onClick={() => copyToClipboard(mcpEndpointUrl, 'snippet')}
+                                        className="h-9 px-3 text-xs border-indigo-200 text-indigo-700"
                                     >
-                                        {cat.label}
-                                        <span className={cn(
-                                            "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
-                                            docCategory === cat.id ? "bg-white/25 text-white" : "bg-white text-gray-500"
-                                        )}>{cat.count}</span>
+                                        <Copy className="h-3.5 w-3.5 mr-1" /> {t("copy") || "Copy"}
                                     </Button>
-                                ))}
+                                </div>
                             </div>
 
-                            {/* Endpoints Directory Cards Grid */}
-                            {filteredEndpoints.length === 0 ? (
-                                <div className="p-12 text-center space-y-2">
-                                    <Search className="h-10 w-10 text-gray-300 mx-auto" />
-                                    <p className="text-xs font-bold text-gray-600 uppercase">No Endpoints Match Your Query</p>
-                                    <p className="text-[11px] text-gray-400">Try adjusting your search terms or category filters.</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                                    {filteredEndpoints.map((ep) => {
-                                        const isSelected = selectedEndpoint.id === ep.id;
-                                        return (
-                                            <div
-                                                key={ep.id}
-                                                onClick={() => setSelectedEndpoint(ep)}
-                                                className={cn(
-                                                    "p-3.5 rounded-xl border transition-all cursor-pointer space-y-2",
-                                                    isSelected
-                                                        ? "border-indigo-500 bg-indigo-50/30 shadow-md ring-1 ring-indigo-500"
-                                                        : "border-gray-200 hover:border-indigo-200 hover:bg-gray-50/60 bg-white shadow-xs"
-                                                )}
-                                            >
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span
-                                                            className={cn(
-                                                                "text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wide",
-                                                                ep.method === "GET" && "bg-blue-100 text-blue-700 border border-blue-200",
-                                                                ep.method === "POST" && "bg-emerald-100 text-emerald-700 border border-emerald-200",
-                                                                ep.method === "PUT" && "bg-amber-100 text-amber-700 border border-amber-200",
-                                                                ep.method === "DELETE" && "bg-rose-100 text-rose-700 border border-rose-200"
-                                                            )}
-                                                        >
-                                                            {ep.method}
-                                                        </span>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                                                            {ep.module}
-                                                        </span>
-                                                    </div>
-
-                                                    <span className="text-[9px] font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                                                        {ep.scope}
-                                                    </span>
-                                                </div>
-
-                                                <code className="text-xs font-mono font-bold text-gray-800 block break-all select-all">
-                                                    {ep.path}
-                                                </code>
-
-                                                <p className="text-[11px] text-gray-500 leading-snug">
-                                                    {ep.desc}
-                                                </p>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            {/* Selected Endpoint cURL Code Generator */}
-                            <div className="space-y-2 pt-2 border-t border-gray-100">
+                            <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                    <Label className="text-[11px] font-bold text-gray-700 uppercase flex items-center gap-1.5">
-                                        <Code className="h-3.5 w-3.5 text-indigo-600" />
-                                        Selected Request cURL Generator (<span className="text-indigo-600">{selectedEndpoint.method} {selectedEndpoint.path}</span>)
+                                    <Label className="text-xs font-bold text-gray-600 uppercase">
+                                        {t("claude_config_snippet")}
                                     </Label>
-
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => copyToClipboard(currentCurlCode, 'snippet')}
+                                        onClick={() => copyToClipboard(claudeConfigCode, 'snippet')}
                                         className="h-6 text-[10px] text-indigo-600 font-bold uppercase"
                                     >
-                                        <Copy className="h-3 w-3 mr-1" /> Copy cURL
+                                        {copiedSnippet ? <Check className="h-3 w-3 mr-1 text-emerald-600" /> : <Copy className="h-3 w-3 mr-1" />}
+                                        {copiedSnippet ? t("copied_to_clipboard") : t("copy_json")}
                                     </Button>
                                 </div>
-                                <pre className="p-4 bg-gray-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto border border-gray-800 leading-relaxed shadow-inner">
-                                    {currentCurlCode}
+                                <pre className="p-3 bg-gray-900 text-emerald-400 font-mono text-xs rounded-lg overflow-x-auto leading-relaxed border border-gray-800">
+                                    {claudeConfigCode}
                                 </pre>
                             </div>
 
+                            <div className="p-3 bg-indigo-50/60 rounded-lg border border-indigo-100 text-xs text-indigo-900 leading-relaxed">
+                                {t("mcp_how_it_works")}
+                            </div>
                         </CardContent>
                     </Card>
-                </TabsContent>
-            </Tabs>
+
+                    {/* Right: Live Interactive MCP Tester */}
+                    <Card className="rounded-xl border-emerald-100 shadow-sm bg-white overflow-hidden">
+                        <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-gray-100">
+                            <Terminal className="h-5 w-5 text-emerald-600" />
+                            <div>
+                                <h2 className="text-sm font-bold text-gray-800">{t("interactive_mcp_inspector")}</h2>
+                                <p className="text-xs text-gray-500">{t("interactive_mcp_desc")}</p>
+                            </div>
+                        </div>
+                        <CardContent className="p-5 space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-bold text-gray-600 uppercase">{t("select_mcp_tool")}</Label>
+                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                        {toLocaleNumber(MCP_TOOLS.length, language?.short_code)} {t("tools_available")}
+                                    </span>
+                                </div>
+
+                                <div className="relative">
+                                    <Search className="absolute left-2.5 top-2.5 h-3 w-3 text-gray-400" />
+                                    <Input
+                                        placeholder={t("search_tools")}
+                                        value={mcpToolSearch}
+                                        onChange={e => setMcpToolSearch(e.target.value)}
+                                        className="pl-7 h-8 text-xs border-gray-200 bg-white"
+                                    />
+                                </div>
+
+                                <div className="max-h-52 overflow-y-auto space-y-1 rounded-lg border border-gray-100 bg-gray-50/40 p-1.5">
+                                    {MCP_TOOLS
+                                        .filter(item =>
+                                            mcpToolSearch === "" ||
+                                            item.name.toLowerCase().includes(mcpToolSearch.toLowerCase()) ||
+                                            item.desc.toLowerCase().includes(mcpToolSearch.toLowerCase())
+                                        )
+                                        .map(tool => (
+                                            <div
+                                                key={tool.name}
+                                                onClick={() => { setMcpTool(tool.name); setMcpSearch(""); }}
+                                                className={cn(
+                                                    "p-2 rounded-lg cursor-pointer border transition-all",
+                                                    mcpTool === tool.name
+                                                        ? "border-emerald-500 bg-emerald-50/70 shadow-xs"
+                                                        : "border-transparent hover:border-emerald-200 hover:bg-white"
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-between gap-1">
+                                                    <span className="text-xs font-bold font-mono text-gray-800">{tool.name}</span>
+                                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                                                        {translateCategory(tool.category)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{tool.desc}</p>
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+
+                                {mcpTool && (() => {
+                                    const sel = MCP_TOOLS.find(item => item.name === mcpTool);
+                                    return sel ? (
+                                        <div className="flex items-start gap-2 p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                                            <div>
+                                                <p className="text-xs font-bold text-emerald-800 font-mono">{sel.name}</p>
+                                                <p className="text-[11px] text-emerald-700 mt-0.5">{sel.desc}</p>
+                                            </div>
+                                        </div>
+                                    ) : null;
+                                })()}
+                            </div>
+
+                            {/* Tool parameter inputs */}
+                            {(() => {
+                                const sel = MCP_TOOLS.find(item => item.name === mcpTool);
+                                if (!sel) return null;
+                                if (sel.paramType === "sms") return (
+                                    <div className="space-y-2">
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-bold text-gray-600 uppercase">{t("phone_number")}</Label>
+                                            <Input type="text" value={mcpPhone} onChange={e => setMcpPhone(e.target.value)} className="h-8 text-xs border-gray-200" placeholder="+880xxxxxxxxxx" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-xs font-bold text-gray-600 uppercase">{t("message_text")}</Label>
+                                            <Input type="text" value={mcpMessage} onChange={e => setMcpMessage(e.target.value)} className="h-8 text-xs border-gray-200" placeholder="Your message here…" />
+                                        </div>
+                                    </div>
+                                );
+                                if (sel.paramType !== "none") return (
+                                    <div className="space-y-1">
+                                        <Label className="text-xs font-bold text-gray-600 uppercase">{t("parameter")}</Label>
+                                        <Input
+                                            type="text"
+                                            value={mcpSearch}
+                                            onChange={e => setMcpSearch(e.target.value)}
+                                            className="h-8 text-xs border-gray-200"
+                                            placeholder={sel.paramHint || "Enter parameter value…"}
+                                        />
+                                    </div>
+                                );
+                                return null;
+                            })()}
+
+                            <Button
+                                onClick={handleTestMcpTool}
+                                disabled={mcpTesting}
+                                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 text-white h-9 text-xs font-bold uppercase rounded-lg shadow-xs"
+                            >
+                                {mcpTesting ? (
+                                    <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> {t("executing")}</>
+                                ) : (
+                                    <><Send className="h-3.5 w-3.5 mr-1.5" /> {t("execute_mcp_tool")}</>
+                                )}
+                            </Button>
+
+                            {mcpResult && (
+                                <div className="space-y-1 pt-2">
+                                    <Label className="text-[10px] font-bold text-gray-400 uppercase">{t("jsonrpc_response_label")}</Label>
+                                    <pre className="p-3 bg-gray-900 text-emerald-400 font-mono text-xs rounded-lg overflow-x-auto max-h-56 border border-gray-800">
+                                        {JSON.stringify(mcpResult, null, 2)}
+                                    </pre>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* TAB 3: REST API Documentation */}
+            {activeTab === "docs" && (
+                <Card className="rounded-xl border-gray-100 shadow-sm bg-white overflow-hidden">
+                    <CardHeader className="px-5 py-4 border-b border-gray-100">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                    <BookOpen className="h-4 w-4 text-indigo-600" />
+                                    {t("rest_api_documentation")}
+                                </CardTitle>
+                                <CardDescription className="text-xs text-gray-500 mt-0.5">
+                                    {t("endpoints_directory_desc")}
+                                </CardDescription>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                    {toLocaleNumber(filteredEndpoints.length, language?.short_code)} / {toLocaleNumber(API_ENDPOINTS_DIRECTORY.length, language?.short_code)} {t("endpoints_found")}
+                                </span>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    
+                    <CardContent className="p-5 space-y-5">
+                        {/* Search & Filters */}
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-gray-50/70 p-3 rounded-xl border border-gray-200/80">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input
+                                    placeholder={t("search_endpoints_placeholder")}
+                                    value={docSearch}
+                                    onChange={(e) => setDocSearch(e.target.value)}
+                                    className="pl-8 text-xs h-9 border-gray-200 bg-white"
+                                />
+                            </div>
+
+                            <div className="w-full md:w-44">
+                                <Select value={docMethod} onValueChange={setDocMethod}>
+                                    <SelectTrigger className="h-9 text-xs bg-white border-gray-200">
+                                        <SelectValue placeholder={t("all_methods")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all" className="text-xs">{t("all_methods")}</SelectItem>
+                                        <SelectItem value="GET" className="text-xs">GET</SelectItem>
+                                        <SelectItem value="POST" className="text-xs">POST</SelectItem>
+                                        <SelectItem value="PUT" className="text-xs">PUT</SelectItem>
+                                        <SelectItem value="DELETE" className="text-xs">DELETE</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Category filter pills */}
+                        <div className="flex flex-wrap gap-1.5 pb-1 border-b border-gray-100">
+                            {[
+                                { id: "all", label: t("all_categories") || "All Categories", count: API_ENDPOINTS_DIRECTORY.length },
+                                { id: "auth", label: t("authentication") || "Auth", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="auth").length },
+                                { id: "student_info", label: t("student_information") || "Student Info", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="student_info").length },
+                                { id: "front_office", label: t("front_office") || "Front Office", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="front_office").length },
+                                { id: "academics", label: t("academics") || "Academics", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="academics").length },
+                                { id: "academics_hr", label: t("human_resource") || "HR & Payroll", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="academics_hr").length },
+                                { id: "fees_finance", label: t("fees_collection") || "Fees & Finance", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="fees_finance").length },
+                                { id: "attendance_exams", label: t("attendance") || "Attendance & Exams", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="attendance_exams").length },
+                                { id: "mcp_ai", label: t("api_keys_mcp_title") || "API Keys & MCP", count: API_ENDPOINTS_DIRECTORY.filter(e=>e.category==="mcp_ai").length },
+                            ].map((cat) => (
+                                <Button
+                                    key={cat.id}
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDocCategory(cat.id)}
+                                    className={cn(
+                                        "h-7 text-[10px] font-bold uppercase px-2.5 rounded-full transition-all gap-1.5",
+                                        docCategory === cat.id
+                                            ? "bg-indigo-600 text-white shadow-xs hover:bg-indigo-700"
+                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    )}
+                                >
+                                    {cat.label}
+                                    <span className={cn(
+                                        "text-[9px] font-bold px-1.5 py-0.5 rounded-full",
+                                        docCategory === cat.id ? "bg-white/25 text-white" : "bg-white text-gray-500"
+                                    )}>
+                                        {toLocaleNumber(cat.count, language?.short_code)}
+                                    </span>
+                                </Button>
+                            ))}
+                        </div>
+
+                        {/* Endpoints Directory Cards Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                            {filteredEndpoints.map((ep) => {
+                                const isSelected = selectedEndpoint.id === ep.id;
+                                return (
+                                    <div
+                                        key={ep.id}
+                                        onClick={() => setSelectedEndpoint(ep)}
+                                        className={cn(
+                                            "p-3.5 rounded-xl border transition-all cursor-pointer space-y-2",
+                                            isSelected
+                                                ? "border-indigo-500 bg-indigo-50/30 shadow-md ring-1 ring-indigo-500"
+                                                : "border-gray-200 hover:border-indigo-200 hover:bg-gray-50/60 bg-white shadow-xs"
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={cn(
+                                                        "text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wide",
+                                                        ep.method === "GET" && "bg-blue-100 text-blue-700 border border-blue-200",
+                                                        ep.method === "POST" && "bg-emerald-100 text-emerald-700 border border-emerald-200",
+                                                        ep.method === "PUT" && "bg-amber-100 text-amber-700 border border-amber-200",
+                                                        ep.method === "DELETE" && "bg-rose-100 text-rose-700 border border-rose-200"
+                                                    )}
+                                                >
+                                                    {ep.method}
+                                                </span>
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                                    {translateCategory(ep.module)}
+                                                </span>
+                                            </div>
+
+                                            <span className="text-[9px] font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                                {ep.scope}
+                                            </span>
+                                        </div>
+
+                                        <code className="text-xs font-mono font-bold text-gray-800 block break-all select-all">
+                                            {ep.path}
+                                        </code>
+
+                                        <p className="text-xs text-gray-500 leading-snug">
+                                            {ep.desc}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Selected Endpoint cURL Code Generator */}
+                        <div className="space-y-2 pt-2 border-t border-gray-100">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold text-gray-700 uppercase flex items-center gap-1.5">
+                                    <Code className="h-3.5 w-3.5 text-indigo-600" />
+                                    {t("curl_command_snippet")} (<span className="text-indigo-600">{selectedEndpoint.method} {selectedEndpoint.path}</span>)
+                                </Label>
+
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyToClipboard(currentCurlCode, 'snippet')}
+                                    className="h-6 text-[10px] text-indigo-600 font-bold uppercase"
+                                >
+                                    <Copy className="h-3 w-3 mr-1" /> {t("copy_curl")}
+                                </Button>
+                            </div>
+                            <pre className="p-4 bg-gray-900 text-emerald-400 font-mono text-xs rounded-xl overflow-x-auto border border-gray-800 leading-relaxed shadow-inner">
+                                {currentCurlCode}
+                            </pre>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Create API Key Dialog */}
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="text-15 font-bold text-gray-800 flex items-center gap-2">
+                        <DialogTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
                             <KeyRound className="h-4 w-4 text-indigo-600" />
-                            Generate New API Key
+                            {t("generate_key_modal_title")}
                         </DialogTitle>
-                        <DialogDescription className="text-11 text-gray-500">
-                            Configure API key name, scope permissions, and rate limit per minute.
+                        <DialogDescription className="text-xs text-gray-500">
+                            {t("generate_key_modal_desc")}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Key Name *</Label>
+                            <Label className="text-xs font-bold text-gray-700 uppercase">{t("key_friendly_name")} *</Label>
                             <Input
-                                placeholder="e.g., Mobile App Integration / Claude MCP Client"
+                                placeholder={t("key_name_placeholder")}
                                 value={newKeyName}
                                 onChange={(e) => setNewKeyName(e.target.value)}
-                                className="h-9 text-[11px] border-gray-200"
+                                className="h-9 text-xs border-gray-200"
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Rate Limit (Requests per minute)</Label>
+                            <Label className="text-xs font-bold text-gray-700 uppercase">{t("rate_limit_label")}</Label>
                             <Input
                                 type="number"
                                 min={1}
                                 max={10000}
                                 value={newRateLimit}
                                 onChange={(e) => setNewRateLimit(Number(e.target.value))}
-                                className="h-9 text-[11px] border-gray-200"
+                                className="h-9 text-xs border-gray-200"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Permission Scopes</Label>
+                            <Label className="text-xs font-bold text-gray-700 uppercase">{t("api_permission_scopes")}</Label>
                             <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto bg-gray-50/50">
                                 {PERMISSION_SCOPES.map((scope) => {
                                     const isChecked = selectedPermissions.includes(scope.id);
@@ -1316,7 +1118,9 @@ export default function ApiKeyPage() {
                                         >
                                             <Checkbox checked={isChecked} className="mt-0.5" />
                                             <div>
-                                                <p className="text-[11px] font-bold text-gray-800">{scope.label}</p>
+                                                <p className="text-xs font-bold text-gray-800">
+                                                    {t(scope.labelKey) || scope.fallbackLabel}
+                                                </p>
                                                 <p className="text-[10px] text-gray-400">{scope.desc}</p>
                                             </div>
                                         </div>
@@ -1328,7 +1132,7 @@ export default function ApiKeyPage() {
 
                     <DialogFooter>
                         <Button variant="outline" size="sm" onClick={() => setIsCreateOpen(false)} className="text-xs">
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleCreateKey}
@@ -1336,7 +1140,7 @@ export default function ApiKeyPage() {
                             size="sm"
                             className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase"
                         >
-                            {creating ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Generating...</> : "Generate API Key"}
+                            {creating ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> {t("executing")}</> : t("generate_new_api_key")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1346,40 +1150,40 @@ export default function ApiKeyPage() {
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="text-15 font-bold text-gray-800 flex items-center gap-2">
+                        <DialogTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
                             <Pencil className="h-4 w-4 text-indigo-600" />
-                            Edit API Key Settings
+                            {t("edit_key_modal_title")}
                         </DialogTitle>
-                        <DialogDescription className="text-11 text-gray-500">
-                            Update key name, permission scopes, and rate limits.
+                        <DialogDescription className="text-xs text-gray-500">
+                            {t("edit_key_modal_desc")}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Key Name *</Label>
+                            <Label className="text-xs font-bold text-gray-700 uppercase">{t("key_name")} *</Label>
                             <Input
-                                placeholder="Key Name"
+                                placeholder={t("key_name")}
                                 value={editKeyName}
                                 onChange={(e) => setEditKeyName(e.target.value)}
-                                className="h-9 text-[11px] border-gray-200"
+                                className="h-9 text-xs border-gray-200"
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Rate Limit (Requests per minute)</Label>
+                            <Label className="text-xs font-bold text-gray-700 uppercase">{t("rate_limit_label")}</Label>
                             <Input
                                 type="number"
                                 min={1}
                                 max={10000}
                                 value={editRateLimit}
-                                onChange={(e) => setEditRateLimit(Number(e.target.value))}
-                                className="h-9 text-[11px] border-gray-200"
+                                onChange={(e) => setNewRateLimit(Number(e.target.value))}
+                                className="h-9 text-xs border-gray-200"
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[11px] font-bold text-gray-700 uppercase">Permission Scopes</Label>
+                            <Label className="text-xs font-bold text-gray-700 uppercase">{t("api_permission_scopes")}</Label>
                             <div className="border border-gray-200 rounded-lg p-3 space-y-2 max-h-48 overflow-y-auto bg-gray-50/50">
                                 {PERMISSION_SCOPES.map((scope) => {
                                     const isChecked = editPermissions.includes(scope.id);
@@ -1402,7 +1206,9 @@ export default function ApiKeyPage() {
                                         >
                                             <Checkbox checked={isChecked} className="mt-0.5" />
                                             <div>
-                                                <p className="text-[11px] font-bold text-gray-800">{scope.label}</p>
+                                                <p className="text-xs font-bold text-gray-800">
+                                                    {t(scope.labelKey) || scope.fallbackLabel}
+                                                </p>
                                                 <p className="text-[10px] text-gray-400">{scope.desc}</p>
                                             </div>
                                         </div>
@@ -1414,7 +1220,7 @@ export default function ApiKeyPage() {
 
                     <DialogFooter>
                         <Button variant="outline" size="sm" onClick={() => setIsEditOpen(false)} className="text-xs">
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleUpdateKey}
@@ -1422,7 +1228,7 @@ export default function ApiKeyPage() {
                             size="sm"
                             className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold uppercase"
                         >
-                            {updating ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> Updating...</> : "Update API Key"}
+                            {updating ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> {t("executing")}</> : t("save_changes")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1432,18 +1238,18 @@ export default function ApiKeyPage() {
             <Dialog open={Boolean(createdSecret)} onOpenChange={(open) => !open && setCreatedSecret(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
-                        <DialogTitle className="text-15 font-bold text-emerald-700 flex items-center gap-2">
+                        <DialogTitle className="text-sm font-bold text-emerald-700 flex items-center gap-2">
                             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                            API Key Secret Token Generated
+                            {t("secret_key_modal_title")}
                         </DialogTitle>
-                        <DialogDescription className="text-11 text-gray-500">
-                            Please copy your secret key now. <strong>For security reasons, it will not be displayed again.</strong>
+                        <DialogDescription className="text-xs text-gray-500">
+                            {t("secret_key_modal_desc")}
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="space-y-3 py-2">
                         <div className="p-3 bg-gray-900 rounded-lg border border-gray-800 flex items-center justify-between gap-2">
-                            <code className="text-emerald-400 font-mono text-[11px] break-all select-all">
+                            <code className="text-emerald-400 font-mono text-xs break-all select-all">
                                 {createdSecret}
                             </code>
                             <Button
@@ -1454,9 +1260,6 @@ export default function ApiKeyPage() {
                                 {copiedSecret ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                             </Button>
                         </div>
-                        <p className="text-[10px] text-amber-600 font-medium bg-amber-50 p-2 rounded border border-amber-200">
-                            ⚠️ Keep this key secret. Anyone with this key can access your iSchool REST API endpoints.
-                        </p>
                     </div>
 
                     <DialogFooter>
@@ -1464,7 +1267,7 @@ export default function ApiKeyPage() {
                             onClick={() => setCreatedSecret(null)}
                             className="bg-indigo-600 text-white text-xs font-bold uppercase w-full"
                         >
-                            I Have Saved My Secret Key
+                            {t("copied_the_key")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

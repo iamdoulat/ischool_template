@@ -5,6 +5,9 @@ import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { getImageUrl } from "@/lib/image-url";
+import { toLocaleNumber } from "@/lib/utils";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,10 +16,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     Pencil, Trash2, Eye, Upload, Image as ImageIcon, Search,
-    Copy, FileSpreadsheet, FileText, Printer, Columns,
+    Copy, FileSpreadsheet, FileText, Printer,
     ChevronLeft, ChevronRight, Palette, FileBadge, Settings2, FileCheck,
     Loader2
 } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -83,7 +87,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function DesignMarksheetPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [templates, setTemplates] = useState<Marksheet[]>([]);
@@ -285,7 +290,7 @@ export default function DesignMarksheetPage() {
     const handleEdit = (template: MarksheetFormData & { id: string }) => {
         setEditMode(true);
         setSelectedId(template.id);
-        const safeData: any = { ...template };
+        const safeData: Record<string, unknown> = { ...template };
         for (const key in safeData) {
             if (safeData[key] === null) {
                 if (key.startsWith('show_') || key === 'is_active') {
@@ -296,9 +301,58 @@ export default function DesignMarksheetPage() {
             }
         }
         setFormData({
-            ...safeData,
+            ...(safeData as unknown as MarksheetFormData),
             printing_date: safeData.printing_date ? String(safeData.printing_date).substring(0, 10) : ""
         });
+    };
+
+    const handleCopy = () => {
+        if (templates.length === 0) return;
+        const headers = [t("id"), t("template_name"), t("status")];
+        const rows = templates.map(item => [
+            `#${toLocaleNumber(item.id, shortCode)}`,
+            item.name,
+            item.is_active ? t("active") : t("draft")
+        ]);
+        const text = [headers.join("\t"), ...rows.map(r => r.join("\t"))].join("\n");
+        navigator.clipboard.writeText(text);
+        tt.success("data_copied_to_clipboard");
+    };
+
+    const handleExportCSV = () => {
+        if (templates.length === 0) return;
+        const headers = [t("id"), t("template_name"), t("status")];
+        const rows = templates.map(item => [
+            `"#${toLocaleNumber(item.id, shortCode)}"`,
+            `"${item.name.replace(/"/g, '""')}"`,
+            `"${item.is_active ? t("active") : t("draft")}"`
+        ]);
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Marksheet_Templates_${new Date().toISOString().split("T")[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        tt.success("csv_downloaded_successfully");
+    };
+
+    const handleExportPDF = () => {
+        if (templates.length === 0) return;
+        const doc = new jsPDF();
+        doc.text(t("marksheet_templates"), 14, 15);
+        autoTable(doc, {
+            head: [[t("id"), t("template_name"), t("status")]],
+            body: templates.map(item => [
+                `#${toLocaleNumber(item.id, shortCode)}`,
+                item.name,
+                item.is_active ? t("active") : t("draft")
+            ]),
+            startY: 20
+        });
+        doc.save(`Marksheet_Templates_${new Date().toISOString().split("T")[0]}.pdf`);
+        tt.success("pdf_downloaded_successfully");
     };
 
     const executeDelete = async () => {
@@ -307,7 +361,7 @@ export default function DesignMarksheetPage() {
             await api.delete(`/examination/marksheet-templates/${deleteId}`);
             tt.success("template_deleted_successfully");
             fetchTemplates();
-        } catch (error) {
+        } catch {
             tt.error("failed_to_delete_template");
         } finally {
             setDeleteId(null);
@@ -368,7 +422,7 @@ export default function DesignMarksheetPage() {
                             </div>
                         </div>
 
-                        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+                        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                                     {t("template_name")} <span className="text-red-500">*</span>
@@ -376,7 +430,7 @@ export default function DesignMarksheetPage() {
                                 <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    placeholder="e.g. School Final Marksheet"
+                                    placeholder={t("eg_marksheet_template")}
                                     className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
@@ -399,16 +453,59 @@ export default function DesignMarksheetPage() {
                                 />
                             </div>
 
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("exam_center")}</Label>
+                                <Input
+                                    value={formData.exam_center}
+                                    onChange={(e) => setFormData({...formData, exam_center: e.target.value})}
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("body_text")}</Label>
+                                <Input
+                                    value={formData.body_text}
+                                    onChange={(e) => setFormData({...formData, body_text: e.target.value})}
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("footer_text")}</Label>
+                                <Input
+                                    value={formData.footer_text}
+                                    onChange={(e) => setFormData({...formData, footer_text: e.target.value})}
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus:ring-indigo-500 shadow-none"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">{t("printing_date")}</Label>
+                                <DatePicker
+                                    value={formData.printing_date}
+                                    onChange={(val) => setFormData({...formData, printing_date: val})}
+                                    placeholder="DD/MM/YYYY"
+                                    className="h-10 border-gray-100 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none text-xs"
+                                />
+                            </div>
+
                             {/* Toggles Section */}
                             <div className="pt-4 border-t border-dashed border-gray-100 space-y-4">
                                 <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4">{t("display_configurations")}</h3>
                                 {[
                                     { key: "show_name", label: t("student_name") },
                                     { key: "show_father_name", label: t("father_name") },
+                                    { key: "show_mother_name", label: t("mother_name") },
                                     { key: "show_roll_no", label: t("roll_number") },
+                                    { key: "show_exam_number", label: t("exam_roll_number") },
+                                    { key: "show_admission_no", label: t("admission_no") },
+                                    { key: "show_division", label: t("division") },
                                     { key: "show_photo", label: t("student_photo") },
-                                    { key: "show_class", label: t("class_and_section") },
-                                    { key: "show_status", label: t("pass_fail_status") }
+                                    { key: "show_class", label: t("class") },
+                                    { key: "show_section", label: t("section") },
+                                    { key: "show_status", label: t("pass_fail_status") },
+                                    { key: "show_remark", label: t("remark") },
                                 ].map((item) => (
                                     <div key={item.key} className="flex items-center justify-between group">
                                         <Label className="text-[11px] font-bold text-gray-600 cursor-pointer group-hover:text-indigo-600 transition-colors">{item.label}</Label>
@@ -437,7 +534,7 @@ export default function DesignMarksheetPage() {
                                         <div key={field.key} className="space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <Label className="text-[11px] font-bold text-gray-500 uppercase">{field.label}</Label>
-                                                {(formData as any)[field.key] && (
+                                                {Boolean((formData as Record<string, unknown>)[field.key]) && (
                                                     <Button 
                                                         variant="ghost" 
                                                         size="sm" 
@@ -448,10 +545,10 @@ export default function DesignMarksheetPage() {
                                                     </Button>
                                                 )}
                                             </div>
-                                            {(formData as any)[field.key] ? (
+                                            {Boolean((formData as Record<string, unknown>)[field.key]) ? (
                                                 <div className="border border-gray-200 rounded-lg p-2 bg-white relative overflow-hidden flex items-center justify-center min-h-[100px]">
                                                     <img 
-                                                        src={resolveImageUrl((formData as any)[field.key] as string)} 
+                                                        src={resolveImageUrl(String((formData as Record<string, unknown>)[field.key]))} 
                                                         alt={field.label} 
                                                         className="max-h-[120px] max-w-full object-contain" 
                                                     />
@@ -483,14 +580,14 @@ export default function DesignMarksheetPage() {
 
                         <div className="p-6 border-t border-gray-50 bg-gray-50/30 rounded-b-2xl flex gap-2 justify-end">
                             {editMode && (
-                                <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
+                                <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5 cursor-pointer">
                                     {t("cancel")}
                                 </Button>
                             )}
                             <Button
                                 onClick={handleSave}
                                 disabled={submitting}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95 cursor-pointer"
                             >
                                 {submitting ? t("saving") : editMode ? t("update_template") : t("save_template")}
                             </Button>
@@ -508,36 +605,33 @@ export default function DesignMarksheetPage() {
                                 </span>
                                 <div>
                                     <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("marksheet_templates")}</h2>
-                                    <p className="text-[11px] text-gray-500 mt-1">{totalEntries} {t("templates_configured")}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(totalEntries, shortCode)} {t("templates_configured")}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg bg-white">
-                                        <SelectValue placeholder="50" />
+                                    <SelectTrigger className="w-[75px] h-8 text-xs border-gray-200 rounded-lg bg-white">
+                                        <SelectValue placeholder={toLocaleNumber("50", shortCode)} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="20">20</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                        <SelectItem value="500">500</SelectItem>
+                                        <SelectItem value="20">{toLocaleNumber("20", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
+                                        <SelectItem value="500">{toLocaleNumber("500", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center gap-1 text-gray-400">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={handleCopy} title="Copy" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <Copy className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={handleExportCSV} title="CSV" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <FileSpreadsheet className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={handleExportPDF} title="PDF" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <FileText className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
+                                    <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
                                         <Printer className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer">
-                                        <Columns className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -560,8 +654,8 @@ export default function DesignMarksheetPage() {
                                 <Table>
                                     <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
                                         <TableRow className="hover:bg-transparent border-gray-50">
-                                            <TableHead className="py-4 px-6">{t("certificate_name")}</TableHead>
-                                            <TableHead className="py-4 px-6">{t("design_status")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("template_name")}</TableHead>
+                                            <TableHead className="py-4 px-6">{t("status")}</TableHead>
                                             <TableHead className="py-4 px-6">{t("assets")}</TableHead>
                                             <TableHead className="py-4 px-6 text-right">{t("action")}</TableHead>
                                         </TableRow>
@@ -581,7 +675,7 @@ export default function DesignMarksheetPage() {
                                                     <TableCell className="py-4 px-6">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-indigo-600 uppercase tracking-tight">{item.name}</span>
-                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("system_id")}: {item.id}</span>
+                                                            <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{t("id")}: #{toLocaleNumber(item.id, shortCode)}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6">
@@ -613,10 +707,10 @@ export default function DesignMarksheetPage() {
                                                             const isSystemDesign = item.name.toLowerCase().includes('design 1') || item.name.toLowerCase().includes('design 2');
                                                             return (
                                                                 <div className="flex items-center justify-end gap-2">
-                                                                    <Button size="icon" variant="ghost" onClick={() => setPreviewTemplate(item)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md">
+                                                                    <Button size="icon" variant="ghost" onClick={() => setPreviewTemplate(item)} className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md cursor-pointer">
                                                                         <Eye className="h-4 w-4" />
                                                                     </Button>
-                                                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md">
+                                                                    <Button size="icon" variant="ghost" onClick={() => handleEdit(item)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md cursor-pointer">
                                                                         <Pencil className="h-4 w-4" />
                                                                     </Button>
                                                                     <Button 
@@ -624,7 +718,7 @@ export default function DesignMarksheetPage() {
                                                                         variant="ghost" 
                                                                         onClick={() => !isSystemDesign && setDeleteId(item.id)} 
                                                                         disabled={isSystemDesign}
-                                                                        className={`h-8 w-8 rounded-lg shadow-md ${isSystemDesign ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+                                                                        className={`h-8 w-8 rounded-lg shadow-md cursor-pointer ${isSystemDesign ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600 text-white'}`}
                                                                         title={isSystemDesign ? t("system_design_cannot_be_deleted") : ""}
                                                                     >
                                                                         <Trash2 className="h-4 w-4" />
@@ -642,22 +736,22 @@ export default function DesignMarksheetPage() {
 
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                                 <div>
-                                    {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
+                                    {t("showing_x_to_y_of_z", { from: toLocaleNumber(((currentPage - 1) * itemsPerPage) + (templates.length > 0 ? 1 : 0), shortCode), to: toLocaleNumber(Math.min(currentPage * itemsPerPage, totalEntries), shortCode), total: toLocaleNumber(totalEntries, shortCode) })}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
                                         disabled={currentPage === 1}
                                     >
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
                                     <Button variant="default" size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
-                                        {currentPage}
+                                        {toLocaleNumber(currentPage, shortCode)}
                                     </Button>
                                     <Button
                                         onClick={() => setCurrentPage(p => p + 1)}
-                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600"
+                                        variant="outline" size="sm" className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
                                         disabled={templates.length < itemsPerPage}
                                     >
                                         <ChevronRight className="h-4 w-4" />
@@ -679,8 +773,8 @@ export default function DesignMarksheetPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200 cursor-pointer">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md cursor-pointer">
                             {t("yes_delete_template")}
                         </AlertDialogAction>
                     </AlertDialogFooter>

@@ -1,6 +1,9 @@
+"use client";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface StatCardProps {
     title: string;
@@ -23,13 +26,15 @@ const colorMaps = {
 };
 
 export function StatCard({ title, current, total, percentage, icon: Icon, color }: StatCardProps) {
+    const { language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
     // Generate dynamic points based on the percentage so each card looks slightly different
     // This creates a realistic looking sparkline
     const pt1 = 25 - (percentage % 15);
     const pt2 = 10 + (percentage % 20);
     const pt3 = 25 - (total % 15);
     const pt4 = 15 + (current % 15);
-    const pt5 = 5 + (percentage % 10);
     
     const pathD = `M0,40 L0,${pt1} C15,${pt1 + 10} 25,${pt2 - 10} 40,${pt2} C55,${pt2 + 10} 65,${pt3 - 10} 80,${pt3} C90,${pt3 + 5} 95,${pt4 - 5} 100,${pt4} L100,40 Z`;
     const lineD = `M0,${pt1} C15,${pt1 + 10} 25,${pt2 - 10} 40,${pt2} C55,${pt2 + 10} 65,${pt3 - 10} 80,${pt3} C90,${pt3 + 5} 95,${pt4 - 5} 100,${pt4}`;
@@ -44,8 +49,8 @@ export function StatCard({ title, current, total, percentage, icon: Icon, color 
                     <div>
                         <h3 className="text-xs md:text-sm font-extrabold text-white/90 uppercase tracking-widest mb-1">{title}</h3>
                         <p className="text-3xl md:text-[2.6rem] font-black tracking-tight leading-none">
-                            {current}
-                            <span className="text-sm md:text-base text-white/70 font-semibold ml-1">/{total}</span>
+                            {toLocaleNumber(current, shortCode)}
+                            <span className="text-sm md:text-base text-white/70 font-semibold ml-1">/{toLocaleNumber(total, shortCode)}</span>
                         </p>
                     </div>
 
@@ -63,7 +68,7 @@ export function StatCard({ title, current, total, percentage, icon: Icon, color 
                     ) : (
                         <Minus className="w-3.5 h-3.5" />
                     )}
-                    {percentage}%
+                    {toLocaleNumber(percentage, shortCode)}%
                 </div>
             </CardContent>
 

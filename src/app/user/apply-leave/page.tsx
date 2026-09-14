@@ -44,7 +44,7 @@ import {
     Copy, FileSpreadsheet, FileDown, Printer, Eye, CalendarCheck,
     Calendar, CalendarDays, Clock, MessageSquare, Trash2,
 } from "lucide-react";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateLeaveType } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -71,23 +71,12 @@ interface LeaveType {
 }
 
 const PAGE_SIZES = ["10", "25", "50", "100"];
-const fmt = (d: string) => (d ? formatDate(d) : "—");
-
-const statusBadge = (status: string) => (
-    <span className={cn(
-        "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border",
-        status === "Approved"
-            ? "bg-green-50 text-green-700 border-green-200"
-            : status === "Disapproved"
-                ? "bg-red-50 text-red-700 border-red-200"
-                : "bg-amber-50 text-amber-700 border-amber-200"
-    )}>
-        {status}
-    </span>
-);
 
 export default function UserApplyLeavePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const fmt = (d: string) => (d ? toLocaleNumber(formatDate(d), langCode) : "—");
+
     const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -96,6 +85,48 @@ export default function UserApplyLeavePage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalEntries, setTotalEntries] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+
+    const leaveStatusLabel = (status: string) => {
+        if (!status) return "";
+        const lower = status.toLowerCase();
+        if (lower === "pending") return t("status_pending") || t("pending") || "Pending";
+        if (lower === "approved") return t("status_approved") || t("approved") || "Approved";
+        if (lower === "disapproved") return t("status_disapproved") || t("disapproved") || "Disapproved";
+        return status;
+    };
+
+    const statusBadge = (status: string) => {
+        const lower = (status || "").toLowerCase();
+        return (
+            <span className={cn(
+                "inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border",
+                lower === "approved"
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : lower === "disapproved"
+                        ? "bg-red-50 text-red-700 border-red-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+            )}>
+                {leaveStatusLabel(status)}
+            </span>
+        );
+    };
+
+    const leaveTypeLabel = (name: string) => {
+        if (!name) return "";
+        const translated = translateLeaveType(name, langCode);
+        if (translated !== name) return translated;
+        const key = `leave_type_${name.replace(/[^a-z0-9]+/gi, "_").toLowerCase().replace(/^_+|_+$/g, "")}`;
+        return t(key) !== key ? t(key) : name;
+    };
+
+    const halfDayLabel = (val: string) => {
+        if (!val) return "";
+        const lower = val.toLowerCase();
+        if (lower === "full day" || lower === "full_day") return t("full_day") || val;
+        if (lower === "first half" || lower === "first_half") return t("first_half") || val;
+        if (lower === "second half" || lower === "second_half") return t("second_half") || val;
+        return val;
+    };
 
     // Apply dialog
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -128,8 +159,7 @@ export default function UserApplyLeavePage() {
             setTotalEntries(res.total || dataArr.length);
             setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
             setCurrentPage(res.current_page || page);
-        } catch (error) {
-            console.error("Error fetching leaves:", error);
+        } catch {
             toast.error(t("failed_to_load_leave_requests"));
         } finally {
             setLoading(false);
@@ -140,8 +170,8 @@ export default function UserApplyLeavePage() {
         try {
             const response = await api.get("/user/leave-types");
             setLeaveTypes(response.data?.data || []);
-        } catch (error) {
-            console.error("Error fetching leave types:", error);
+        } catch {
+            // Handled gracefully
         }
     }, []);
 
@@ -262,7 +292,16 @@ export default function UserApplyLeavePage() {
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {loading
                                     ? t("loading")
-                                    : `${totalEntries} request${totalEntries === 1 ? "" : "s"}${pendingCount ? ` · ${pendingCount} pending` : ""}`}
+                                    : pendingCount > 0
+                                        ? (totalEntries === 1
+                                            ? (t("request_count_with_pending") || "{total} request · {pending} pending")
+                                            : (t("requests_count_with_pending") || "{total} requests · {pending} pending"))
+                                            .replace("{total}", toLocaleNumber(totalEntries, langCode))
+                                            .replace("{pending}", toLocaleNumber(pendingCount, langCode))
+                                        : (totalEntries === 1
+                                            ? (t("request_count") || "{count} request")
+                                            : (t("requests_count") || "{count} requests"))
+                                            .replace("{count}", toLocaleNumber(totalEntries, langCode))}
                             </p>
                         </div>
                     </div>
@@ -292,11 +331,13 @@ export default function UserApplyLeavePage() {
                         <div className="flex items-center gap-2 flex-wrap">
                             <Select value={itemsPerPage} onValueChange={setItemsPerPage}>
                                 <SelectTrigger className="h-9 w-[70px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber(50, langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {PAGE_SIZES.map((s) => (
-                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                        <SelectItem key={s} value={s}>{toLocaleNumber(s, langCode)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -366,15 +407,15 @@ export default function UserApplyLeavePage() {
                                         return (
                                             <TableRow key={item.id || idx} className="text-[13px] border-b border-gray-100 hover:bg-gray-50/60 transition-colors whitespace-nowrap text-gray-600">
                                                 <TableCell className="py-3 px-4 font-medium text-gray-800">
-                                                    {item.leaveType}
+                                                    {leaveTypeLabel(item.leaveType)}
                                                     {item.halfDay && (
-                                                        <span className="ml-1.5 text-[10px] font-medium text-indigo-600">({item.halfDay})</span>
+                                                        <span className="ml-1.5 text-[10px] font-medium text-indigo-600">({halfDayLabel(item.halfDay)})</span>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="py-3 px-4">{fmt(item.applyDate)}</TableCell>
                                                 <TableCell className="py-3 px-4">{fmt(item.fromDate)}</TableCell>
                                                 <TableCell className="py-3 px-4">{fmt(item.toDate)}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.days}</TableCell>
+                                                <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.days, langCode)}</TableCell>
                                                 <TableCell className="py-3 px-4 max-w-[200px] truncate" title={item.reason}>{item.reason || "—"}</TableCell>
                                                 <TableCell className="py-3 px-4 text-center">{statusBadge(item.status)}</TableCell>
                                                 <TableCell className="py-3 px-4">
@@ -433,13 +474,17 @@ export default function UserApplyLeavePage() {
                                                 </span>
                                                 <div className="min-w-0">
                                                     <p className="text-[13px] font-bold text-gray-800 truncate">
-                                                        {item.leaveType}
+                                                        {leaveTypeLabel(item.leaveType)}
                                                         {item.halfDay && (
-                                                            <span className="ml-1 text-[10px] font-medium text-indigo-600">({item.halfDay})</span>
+                                                            <span className="ml-1 text-[10px] font-medium text-indigo-600">({halfDayLabel(item.halfDay)})</span>
                                                         )}
                                                     </p>
                                                     <p className="text-[11px] text-gray-500">
-                                                        {item.days} day{item.days === 1 ? "" : "s"} · applied {fmt(item.applyDate)}
+                                                        {(item.days === 1
+                                                            ? (t("day_count_applied") || "{count} day · applied {date}")
+                                                            : (t("days_count_applied") || "{count} days · applied {date}"))
+                                                            .replace("{count}", toLocaleNumber(item.days, langCode))
+                                                            .replace("{date}", fmt(item.applyDate))}
                                                     </p>
                                                 </div>
                                             </div>
@@ -494,7 +539,7 @@ export default function UserApplyLeavePage() {
                             <span className="text-[12px] text-gray-500">
                                 {totalEntries === 0
                                     ? t("no_entries")
-                                    : `${t("showing")} ${startIndex + 1} ${t("to")} ${Math.min(startIndex + sizeNum, totalEntries)} ${t("of")} ${totalEntries} ${t("entries")}`}
+                                    : `${t("showing")} ${toLocaleNumber(startIndex + 1, langCode)} ${t("to")} ${toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode)} ${t("of")} ${toLocaleNumber(totalEntries, langCode)} ${t("entries")}`}
                             </span>
 
                             {totalPages > 1 && (
@@ -529,7 +574,7 @@ export default function UserApplyLeavePage() {
                                                             : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                                                     )}
                                                 >
-                                                    {p}
+                                                    {toLocaleNumber(p, langCode)}
                                                 </Button>
                                             )
                                         )}
@@ -559,10 +604,13 @@ export default function UserApplyLeavePage() {
                                         <CalendarCheck className="h-5 w-5 text-[#6366F1]" />
                                     </div>
                                     <div>
-                                        <DialogTitle className="text-[15px] font-bold text-gray-800">{selected.leaveType}</DialogTitle>
+                                        <DialogTitle className="text-[15px] font-bold text-gray-800">{leaveTypeLabel(selected.leaveType)}</DialogTitle>
                                         <DialogDescription className="text-[12px] text-gray-500">
-                                            {selected.days} day{selected.days === 1 ? "" : "s"}
-                                            {selected.halfDay ? ` · ${selected.halfDay}` : ` · ${t("full_day")}`}
+                                            {(selected.days === 1
+                                                ? (t("day_count") || "{count} day")
+                                                : (t("days_count") || "{count} days"))
+                                                .replace("{count}", toLocaleNumber(selected.days, langCode))}
+                                            {selected.halfDay ? ` · ${halfDayLabel(selected.halfDay)}` : ` · ${t("full_day")}`}
                                         </DialogDescription>
                                     </div>
                                 </div>
@@ -571,7 +619,7 @@ export default function UserApplyLeavePage() {
                             <div className="grid grid-cols-2 gap-3 text-[12px] text-gray-500 pt-1">
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>{t("apply")}: <span className="font-medium text-gray-700">{fmt(selected.applyDate)}</span></span>
+                                    <span>{t("apply_date") || t("apply")}: <span className="font-medium text-gray-700">{fmt(selected.applyDate)}</span></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Clock className="h-3.5 w-3.5" />
@@ -579,11 +627,11 @@ export default function UserApplyLeavePage() {
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>{t("from")}: <span className="font-medium text-gray-700">{fmt(selected.fromDate)}</span></span>
+                                    <span>{t("from_date") || t("from")}: <span className="font-medium text-gray-700">{fmt(selected.fromDate)}</span></span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>{t("to")}: <span className="font-medium text-gray-700">{fmt(selected.toDate)}</span></span>
+                                    <span>{t("to_date") || t("to")}: <span className="font-medium text-gray-700">{fmt(selected.toDate)}</span></span>
                                 </div>
                             </div>
 
@@ -639,7 +687,7 @@ export default function UserApplyLeavePage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {leaveTypes.map(lt => (
-                                        <SelectItem key={lt.id} value={String(lt.id)}>{lt.name}</SelectItem>
+                                        <SelectItem key={lt.id} value={String(lt.id)}>{leaveTypeLabel(lt.name)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -671,7 +719,7 @@ export default function UserApplyLeavePage() {
                                 onValueChange={(val) => setFormData(prev => ({ ...prev, half_day: val }))}
                             >
                                 <SelectTrigger className="h-9 text-xs border-gray-200 rounded-[10px]">
-                                    <SelectValue placeholder="Full Day" />
+                                    <SelectValue placeholder={t("full_day") || "Full Day"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Full Day">{t("full_day") || "Full Day"}</SelectItem>

@@ -43,7 +43,7 @@ import {
     Calendar,
     Search
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, translateClassName, toLocaleNumber } from "@/lib/utils";
 import { format } from "date-fns";
 import VariablePicker from "@/components/ui/variable-picker";
 
@@ -93,7 +93,8 @@ interface ClassItem {
 }
 
 export default function SendEmailPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const ttRef = useRef(tt);
     ttRef.current = tt;
@@ -345,20 +346,20 @@ export default function SendEmailPage() {
     };
 
     const roles = [
-        { id: "Student", label: t("students") },
-        { id: "Parent", label: t("guardians") },
-        { id: "Admin", label: t("admin") },
-        { id: "Teacher", label: t("teacher") },
-        { id: "Accountant", label: t("accountant") },
-        { id: "Librarian", label: t("librarian") },
-        { id: "Receptionist", label: t("receptionist") },
+        { id: "Student", label: t("student") !== "student" ? t("student") : (t("students") !== "students" ? t("students") : "Students") },
+        { id: "Parent", label: t("parent") !== "parent" ? t("parent") : (t("guardians") !== "guardians" ? t("guardians") : "Guardians") },
+        { id: "Admin", label: t("admin") !== "admin" ? t("admin") : "Admin" },
+        { id: "Teacher", label: t("teacher") !== "teacher" ? t("teacher") : "Teacher" },
+        { id: "Accountant", label: t("accountant") !== "accountant" ? t("accountant") : "Accountant" },
+        { id: "Librarian", label: t("librarian") !== "librarian" ? t("librarian") : "Librarian" },
+        { id: "Receptionist", label: t("receptionist") !== "receptionist" ? t("receptionist") : "Receptionist" },
     ];
 
     const tabs = [
-        { id: "Group", label: t("group"), Icon: Users },
-        { id: "Individual", label: t("individual"), Icon: User },
-        { id: "Class", label: t("class"), Icon: GraduationCap },
-        { id: "Today's Birthday", label: t("birthday"), Icon: Cake }
+        { id: "Group", label: t("group") !== "group" ? t("group") : "Group", Icon: Users },
+        { id: "Individual", label: t("individual") !== "individual" ? t("individual") : "Individual", Icon: User },
+        { id: "Class", label: t("class") !== "class" ? t("class") : "Class", Icon: GraduationCap },
+        { id: "Today's Birthday", label: t("birthday") !== "birthday" ? t("birthday") : (t("todays_birthday") !== "todays_birthday" ? t("todays_birthday") : "Today's Birthday"), Icon: Cake }
     ];
 
     const getRecipientCount = (): number => {
@@ -550,9 +551,9 @@ export default function SendEmailPage() {
                         <CardContent className="p-6 min-h-[400px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold uppercase">
-                                    {activeTab === "Today's Birthday" ? t("birthday") : t(activeTab)}
+                                    {activeTab === "Today's Birthday" ? (t("birthday") !== "birthday" ? t("birthday") : "Birthday") : (t(activeTab.toLowerCase()) !== activeTab.toLowerCase() ? t(activeTab.toLowerCase()) : t(activeTab))}
                                 </span>
-                                <span className="text-[10px] font-bold text-indigo-600">{getRecipientCount()} {t("selected")}</span>
+                                <span className="text-[10px] font-bold text-indigo-600">{toLocaleNumber(getRecipientCount(), langCode)} {t("selected")}</span>
                             </div>
 
                             <div className="space-y-2 flex-1 overflow-y-auto pr-2 custom-scrollbar">
@@ -560,7 +561,7 @@ export default function SendEmailPage() {
                                 {activeTab === "Group" && (
                                     <div className="space-y-1">
                                         {roles.map((role) => (
-                                            <div
+                                             <div
                                                 key={role.id}
                                                 onClick={() => toggleRole(role.id)}
                                                 className={cn(
@@ -629,7 +630,7 @@ export default function SendEmailPage() {
                                                         />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.email} {u.role ? `· ${t(u.role?.toLowerCase()) || u.role}` : ''}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -647,7 +648,7 @@ export default function SendEmailPage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {classes.map(c => (
-                                                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                                    <SelectItem key={c.id} value={String(c.id)}>{translateClassName(c.name, langCode)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -676,7 +677,7 @@ export default function SendEmailPage() {
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-xs font-bold text-gray-700 truncate">
                                                                     {s.name} {s.last_name || ''}
-                                                                    {s.roll_no && <span className="text-gray-400 font-normal"> ({t("roll")}: {s.roll_no})</span>}
+                                                                    {s.roll_no && <span className="text-gray-400 font-normal"> ({t("roll")}: {toLocaleNumber(s.roll_no, langCode)})</span>}
                                                                 </p>
                                                                 <p className="text-[10px] text-gray-400 truncate">{s.email}</p>
                                                             </div>
@@ -698,7 +699,7 @@ export default function SendEmailPage() {
                                             <SelectContent>
                                                 <SelectItem value="all">{t("all_classes")}</SelectItem>
                                                 {classes.map(c => (
-                                                    <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                                    <SelectItem key={c.id} value={String(c.id)}>{translateClassName(c.name, langCode)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -716,7 +717,7 @@ export default function SendEmailPage() {
                                                         <Cake className="h-4 w-4 text-orange-500 shrink-0" />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.email} · {u.role}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.email} · {t(u.role?.toLowerCase() || "") || u.role}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -794,8 +795,8 @@ export default function SendEmailPage() {
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("confirm_email_dispatch")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
                             {formData.send_type === 'now'
-                                ? t("confirm_send_description", { count: getRecipientsArray().length })
-                                : t("confirm_schedule_description", { count: getRecipientsArray().length })
+                                ? t("confirm_send_description", { count: toLocaleNumber(getRecipientsArray().length, langCode) })
+                                : t("confirm_schedule_description", { count: toLocaleNumber(getRecipientsArray().length, langCode) })
                             }
                         </AlertDialogDescription>
                     </AlertDialogHeader>

@@ -25,7 +25,7 @@ import {
     CheckCircle2, XCircle, Download, Eye, GraduationCap, Trophy
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName, translateSubjectName } from "@/lib/utils";
 import { getImageUrl } from "@/lib/image-url";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import jsPDF from "jspdf";
@@ -211,11 +211,51 @@ const getOrdinal = (n: number) => {
 };
 
 export default function ExamResultPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const { settings } = useSettings();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
+
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        return translateClassName(name, shortCode);
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        return translateSectionName(name, shortCode);
+    };
+
+    const getLocalizedSubjectName = (name?: string) => {
+        if (!name) return "";
+        return translateSubjectName(name, shortCode);
+    };
+
+    const getLocalizedExamGroupName = (name?: string) => {
+        if (!name) return "";
+        const key = name.toLowerCase().replace(/\s+/g, "_");
+        const trans = t(key);
+        return trans && trans !== key ? trans : name;
+    };
+
+    const getLocalizedPosition = (rank: number) => {
+        if (shortCode === "bn") {
+            if (rank === 1) return "১ম";
+            if (rank === 2) return "২য়";
+            if (rank === 3) return "৩য়";
+            if (rank === 4) return "৪র্থ";
+            return `${toLocaleNumber(rank, shortCode)}ম`;
+        }
+        if (shortCode === "hi") {
+            return `${toLocaleNumber(rank, shortCode)} स्थान`;
+        }
+        if (shortCode === "ar") {
+            return `المركز ${toLocaleNumber(rank, shortCode)}`;
+        }
+        return getOrdinal(rank);
+    };
 
     // Criteria Data
     const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -443,11 +483,11 @@ export default function ExamResultPage() {
             }
         }
 
-        if (percent >= 75) return { division: "Distinction", color: "text-purple-700 bg-purple-50 border-purple-200" };
-        if (percent >= 60) return { division: "1st Division", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
-        if (percent >= 45) return { division: "2nd Division", color: "text-blue-700 bg-blue-50 border-blue-200" };
-        if (percent >= 33) return { division: "3rd Division", color: "text-amber-700 bg-amber-50 border-amber-200" };
-        return { division: "Fail", color: "text-rose-700 bg-rose-50 border-rose-200" };
+        if (percent >= 75) return { division: t("distinction") || "Distinction", color: "text-purple-700 bg-purple-50 border-purple-200" };
+        if (percent >= 60) return { division: t("first_division") || "1st Division", color: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+        if (percent >= 45) return { division: t("second_division") || "2nd Division", color: "text-blue-700 bg-blue-50 border-blue-200" };
+        if (percent >= 33) return { division: t("third_division") || "3rd Division", color: "text-amber-700 bg-amber-50 border-amber-200" };
+        return { division: t("fail") || "Fail", color: "text-rose-700 bg-rose-50 border-rose-200" };
     };
 
     const getStudentMark = (student: StudentResult, subjectId: number | string) => {
@@ -547,7 +587,7 @@ export default function ExamResultPage() {
 
         studentScores.forEach((item, index) => {
             const rank = index + 1;
-            const posText = getOrdinal(rank);
+            const posText = getLocalizedPosition(rank);
             let badgeStyle = "bg-indigo-50 text-indigo-700 border-indigo-200";
 
             if (!item.hasFailed) {
@@ -1096,7 +1136,7 @@ export default function ExamResultPage() {
                                     <SelectValue placeholder={t("select_group")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                                    {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{getLocalizedExamGroupName(g.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1122,7 +1162,7 @@ export default function ExamResultPage() {
                                     <SelectValue placeholder={t("select_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>)}
+                                    {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{toLocaleNumber(s.session, shortCode)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1135,7 +1175,7 @@ export default function ExamResultPage() {
                                     <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{getLocalizedClassName(c.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1149,7 +1189,7 @@ export default function ExamResultPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">{t("all_sections")}</SelectItem>
-                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{getLocalizedSectionName(s.name)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1165,7 +1205,7 @@ export default function ExamResultPage() {
                                     <SelectItem value="all">{t("all_students")}</SelectItem>
                                     {classStudents.map(st => (
                                         <SelectItem key={st.id} value={st.id.toString()}>
-                                            {st.name} {st.last_name || ""} ({st.admission_no})
+                                            {st.name} {st.last_name || ""} ({toLocaleNumber(st.admission_no, shortCode)})
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -1198,11 +1238,11 @@ export default function ExamResultPage() {
                                 {t("tabulation_record")}
                                 {filteredStudents.length > 0 && (
                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                        {filteredStudents.length} {t("students")}
+                                        {toLocaleNumber(filteredStudents.length, shortCode)} {t("students")}
                                     </span>
                                 )}
                             </CardTitle>
-                            <p className="text-[11px] text-slate-500 mt-0.5">{filteredStudents.length} {t("students_found")}</p>
+                            <p className="text-[11px] text-slate-500 mt-0.5">{toLocaleNumber(filteredStudents.length, shortCode)} {t("students_found")}</p>
                         </div>
                     </div>
 
@@ -1244,9 +1284,9 @@ export default function ExamResultPage() {
                                         return (
                                             <TableHead key={subject.id} className="py-4 px-4 min-w-[130px] text-center border-l border-gray-100">
                                                 <div className="flex flex-col items-center">
-                                                    <span className="text-indigo-700 font-bold tracking-tight">{subject.name}</span>
+                                                    <span className="text-indigo-700 font-bold tracking-tight">{getLocalizedSubjectName(subject.name)}</span>
                                                     <span className="text-[9px] text-gray-400 font-mono font-medium">
-                                                        {subject.code} (Max:{max}|Pass:{pass})
+                                                        {subject.code} (Max:{toLocaleNumber(max, shortCode)}|Pass:{toLocaleNumber(pass, shortCode)})
                                                     </span>
                                                 </div>
                                             </TableHead>
@@ -1290,7 +1330,7 @@ export default function ExamResultPage() {
                                                     </span>
                                                 </TableCell>
 
-                                                <TableCell className="py-4 px-4 font-mono font-bold text-gray-500 uppercase tracking-tighter bg-gray-50/20">{student.admission_no}</TableCell>
+                                                <TableCell className="py-4 px-4 font-mono font-bold text-gray-500 uppercase tracking-tighter bg-gray-50/20">{toLocaleNumber(student.admission_no, shortCode)}</TableCell>
                                                 
                                                 {/* Student Name with Real Profile Picture / Avatar */}
                                                 <TableCell className="py-4 px-5">
@@ -1308,7 +1348,7 @@ export default function ExamResultPage() {
                                                                 {student.name} {student.last_name || ""}
                                                             </Link>
                                                             {student.roll_no && (
-                                                                <span className="text-[10px] text-gray-400 font-mono">Roll: {student.roll_no}</span>
+                                                                <span className="text-[10px] text-gray-400 font-mono">Roll: {toLocaleNumber(student.roll_no, shortCode)}</span>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1350,7 +1390,7 @@ export default function ExamResultPage() {
                                                                     "font-mono font-bold text-xs",
                                                                     isFail ? "text-rose-600" : "text-gray-800"
                                                                 )}>
-                                                                    {markVal} <span className="text-[10px] text-gray-400 font-normal">/ {max}</span>
+                                                                    {toLocaleNumber(markVal, shortCode)} <span className="text-[10px] text-gray-400 font-normal">/ {toLocaleNumber(max, shortCode)}</span>
                                                                 </span>
                                                                 <span className={cn(
                                                                     "inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-bold font-mono border",
@@ -1365,14 +1405,14 @@ export default function ExamResultPage() {
 
                                                 {/* Grand Total */}
                                                 <TableCell className="py-4 px-4 text-center font-mono font-bold text-indigo-700 border-l border-indigo-100 bg-indigo-50/15">
-                                                    <div>{stats.totalObtained.toFixed(2)}</div>
-                                                    <div className="text-[10px] text-gray-400 font-normal">/ {stats.totalMax}</div>
+                                                    <div>{toLocaleNumber(stats.totalObtained.toFixed(2), shortCode)}</div>
+                                                    <div className="text-[10px] text-gray-400 font-normal">/ {toLocaleNumber(stats.totalMax, shortCode)}</div>
                                                 </TableCell>
 
                                                 {/* Percentage */}
                                                 <TableCell className="py-4 px-4 text-center font-bold border-l border-gray-100 bg-indigo-50/15">
                                                     <div className="flex flex-col items-center">
-                                                        <span className="font-mono text-indigo-600">{stats.percent}%</span>
+                                                        <span className="font-mono text-indigo-600">{toLocaleNumber(stats.percent, shortCode)}%</span>
                                                         <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1.5 overflow-hidden">
                                                             <div
                                                                 className={cn(
@@ -1456,7 +1496,7 @@ export default function ExamResultPage() {
                     {filteredStudents.length > 0 && (
                         <div className="flex items-center justify-between pt-1">
                             <div className="text-xs text-slate-500 font-medium">
-                                {t("showing")} <strong className="text-slate-800">{filteredStudents.length}</strong> {t("of")} {filteredStudents.length} {t("entries")}
+                                {t("showing")} <strong className="text-slate-800">{toLocaleNumber(filteredStudents.length, shortCode)}</strong> {t("of")} {toLocaleNumber(filteredStudents.length, shortCode)} {t("entries")}
                             </div>
                         </div>
                     )}
@@ -1551,27 +1591,27 @@ export default function ExamResultPage() {
                                         </div>
                                         <div>
                                             <span className="text-gray-400 font-bold uppercase text-[10px] block">{t("admission_no")}</span>
-                                            <span className="font-bold text-gray-800">{selectedStudentForModal.admission_no}</span>
+                                            <span className="font-bold text-gray-800">{toLocaleNumber(selectedStudentForModal.admission_no, shortCode)}</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-400 font-bold uppercase text-[10px] block">{t("roll_no")}</span>
-                                            <span className="font-bold text-gray-800">{selectedStudentForModal.roll_no || "—"}</span>
+                                            <span className="font-bold text-gray-800">{selectedStudentForModal.roll_no ? toLocaleNumber(selectedStudentForModal.roll_no, shortCode) : "—"}</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-400 font-bold uppercase text-[10px] block">{t("position")}</span>
-                                            <span className="font-bold text-indigo-700">{modalRankInfo?.positionText || "—"} Position</span>
+                                            <span className="font-bold text-indigo-700">{modalRankInfo?.positionText || "—"}</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-400 font-bold uppercase text-[10px] block">{t("class")}</span>
-                                            <span className="font-bold text-gray-800">{selectedStudentForModal.schoolClass?.name || selectedCriteria.school_class_id || "—"}</span>
+                                            <span className="font-bold text-gray-800">{getLocalizedClassName(selectedStudentForModal.schoolClass?.name || classes.find(c => c.id.toString() === selectedCriteria.school_class_id)?.name)}</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-400 font-bold uppercase text-[10px] block">{t("section")}</span>
-                                            <span className="font-bold text-gray-800">{selectedStudentForModal.section?.name || selectedCriteria.section_id || "—"}</span>
+                                            <span className="font-bold text-gray-800">{getLocalizedSectionName(selectedStudentForModal.section?.name || sections.find(s => s.id.toString() === selectedCriteria.section_id)?.name)}</span>
                                         </div>
                                         <div className="col-span-2">
                                             <span className="text-gray-400 font-bold uppercase text-[10px] block">{t("session")}</span>
-                                            <span className="font-bold text-gray-800">{sessions.find(s => s.id.toString() === selectedCriteria.session_id)?.session || "Current"}</span>
+                                            <span className="font-bold text-gray-800">{toLocaleNumber(sessions.find(s => s.id.toString() === selectedCriteria.session_id)?.session || "Current", shortCode)}</span>
                                         </div>
                                     </div>
                                 </div>

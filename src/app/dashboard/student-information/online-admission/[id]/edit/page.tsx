@@ -19,13 +19,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 
 export default function EditAdmissionPage() {
     const getImageUrl = useImageUrl();
     const { id } = useParams();
     const router = useRouter();
-    const { toast } = useToast();
+    const tt = useTranslateToast();
+    const { t } = useTranslation();
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -75,11 +77,11 @@ export default function EditAdmissionPage() {
             }
         } catch (error) {
             console.error("Error fetching data:", error);
-            toast("error", "Failed to load admission details.");
+            tt.error("failed_to_load_admission_details");
         } finally {
             setLoading(false);
         }
-    }, [id, toast]);
+    }, [id, tt]);
 
     useEffect(() => {
         fetchData();
@@ -108,12 +110,12 @@ export default function EditAdmissionPage() {
             
             await api.post(`/online-admissions/${id}`, formData);
 
-            
-            toast("success", "Admission record updated successfully.");
+            tt.success("admission_record_updated_successfully");
             router.push("/dashboard/student-information/online-admission");
         } catch (error: any) {
             console.error("Update error:", error);
-            toast("error", error.response?.data?.message || "Failed to update record.");
+            const message = error.response?.data?.message || "failed_to_save_x";
+            tt.toast("error", message);
         } finally {
             setSubmitting(false);
         }
@@ -130,8 +132,8 @@ export default function EditAdmissionPage() {
     if (!admission) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-                <p className="text-xl font-bold text-muted-foreground">Admission not found.</p>
-                <Button onClick={() => router.back()}>Go Back</Button>
+                <p className="text-xl font-bold text-muted-foreground">{t("admission_not_found")}</p>
+                <Button onClick={() => router.back()}>{t("go_back")}</Button>
             </div>
         );
     }
@@ -145,7 +147,7 @@ export default function EditAdmissionPage() {
                     className="-ml-2 text-muted-foreground hover:text-foreground"
                     onClick={() => router.back()}
                 >
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Back to List
+                    <ArrowLeft className="mr-2 h-4 w-4" /> {t("back_to_list")}
                 </Button>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
                     <div className="flex items-center gap-2.5">
@@ -153,13 +155,13 @@ export default function EditAdmissionPage() {
                             <GraduationCap className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Edit Admission Application</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">Reference: {admission.reference_no}</p>
+                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("edit_admission_application")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("reference")}: {admission.reference_no}</p>
                         </div>
                     </div>
                     <div className="flex gap-2 w-full md:w-auto">
                         <Button variant="outline" onClick={() => router.back()} className="flex-1 md:flex-none">
-                            Cancel
+                            {t("cancel")}
                         </Button>
                         <Button
                             form="edit-form"
@@ -169,7 +171,7 @@ export default function EditAdmissionPage() {
                             className="flex-1 md:flex-none min-w-[120px]"
                         >
                             {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Save Changes
+                            {t("save_changes")}
                         </Button>
                     </div>
                 </div>
@@ -186,30 +188,30 @@ export default function EditAdmissionPage() {
                                     <User className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-lg">Student Information</CardTitle>
-                                    <CardDescription>Update applicant's personal and academic details</CardDescription>
+                                    <CardTitle className="text-lg">{t("student_information")}</CardTitle>
+                                    <CardDescription>{t("update_applicants_personal_academic_details")}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">First Name <span className="text-destructive">*</span></label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("first_name")} <span className="text-destructive">*</span></label>
                                     <Input name="first_name" defaultValue={admission.first_name} required className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Middle Name</label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("middle_name")}</label>
                                     <Input name="middle_name" defaultValue={admission.middle_name} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Last Name</label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("last_name")}</label>
                                     <Input name="last_name" defaultValue={admission.last_name} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Class <span className="text-destructive">*</span></label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("class")} <span className="text-destructive">*</span></label>
                                     <div className="relative">
                                         <select 
                                             name="school_class_id" 
@@ -221,14 +223,14 @@ export default function EditAdmissionPage() {
                                             required 
                                             className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
                                         >
-                                            <option value="">Select Class</option>
+                                            <option value="">{t("select_class")}</option>
                                             {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Section <span className="text-destructive">*</span></label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("section")} <span className="text-destructive">*</span></label>
                                     <div className="relative">
                                         <select 
                                             name="section_id" 
@@ -237,14 +239,14 @@ export default function EditAdmissionPage() {
                                             required 
                                             className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer"
                                         >
-                                            <option value="">Select Section</option>
+                                            <option value="">{t("select_section")}</option>
                                             {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Date of Birth <span className="text-destructive">*</span></label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("date_of_birth")} <span className="text-destructive">*</span></label>
                                     <Input 
                                         name="dob" 
                                         type="date" 
@@ -257,10 +259,10 @@ export default function EditAdmissionPage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Category</label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("category")}</label>
                                     <div className="relative">
                                         <select name="category" defaultValue={admission.category || ""} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
-                                            <option value="">Select Category</option>
+                                            <option value="">{t("select_category")}</option>
                                             {categories.map((cat: any) => (
                                                 <option key={cat.id} value={cat.id.toString()}>{cat.category_name || cat.name}</option>
                                             ))}
@@ -269,28 +271,28 @@ export default function EditAdmissionPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Gender <span className="text-destructive">*</span></label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("gender")} <span className="text-destructive">*</span></label>
                                     <div className="relative">
                                         <select name="gender" defaultValue={admission.gender} required className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Other">Other</option>
+                                            <option value="Male">{t("male")}</option>
+                                            <option value="Female">{t("female")}</option>
+                                            <option value="Other">{t("other")}</option>
                                         </select>
                                         <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Mobile Number <span className="text-destructive">*</span></label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("mobile_number")} <span className="text-destructive">*</span></label>
                                     <Input name="phone" defaultValue={admission.phone} required className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Email</label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("email")}</label>
                                     <Input name="email" type="email" defaultValue={admission.email} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
 
                             <div className="space-y-4 pt-4 border-t border-muted/30">
-                                <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">Student Photo</label>
+                                <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">{t("student_photo")}</label>
                                 <div className="flex flex-col md:flex-row items-center gap-6">
                                     <div className="relative group">
                                         <div className="w-32 h-32 rounded-lg bg-muted/20 border-2 border-dashed border-muted flex items-center justify-center overflow-hidden transition-all group-hover:border-primary/50">
@@ -313,7 +315,7 @@ export default function EditAdmissionPage() {
                                             className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-primary file:text-white hover:file:bg-primary/90" 
                                         />
                                         <p className="text-[10px] text-muted-foreground font-medium">
-                                            Max size: 2MB. Format: JPG, PNG. Leave empty to keep the current photo.
+                                            {t("max_size_leave_empty_photo")}
                                         </p>
                                     </div>
                                 </div>
@@ -329,29 +331,29 @@ export default function EditAdmissionPage() {
                                     <Users className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-lg">Parent / Guardian Information</CardTitle>
-                                    <CardDescription>Update details of the student's parents or guardians</CardDescription>
+                                    <CardTitle className="text-lg">{t("parent_guardian_detail")}</CardTitle>
+                                    <CardDescription>{t("update_details_parents_guardians")}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Father Name <span className="text-destructive">*</span></label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("father_name")} <span className="text-destructive">*</span></label>
                                     <Input name="father_name" defaultValue={admission.father_name} required className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Father Phone</label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("father_phone")}</label>
                                     <Input name="father_phone" defaultValue={admission.father_phone} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Mother Name</label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("mother_name")}</label>
                                     <Input name="mother_name" defaultValue={admission.mother_name} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-muted-foreground ml-1">Mother Phone</label>
+                                    <label className="text-xs font-bold text-muted-foreground ml-1">{t("mother_phone")}</label>
                                     <Input name="mother_phone" defaultValue={admission.mother_phone} className="rounded-lg bg-muted/20 border-muted/50 focus:bg-background transition-all" />
                                 </div>
                             </div>
@@ -366,14 +368,14 @@ export default function EditAdmissionPage() {
                                     <MapPin className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-lg">Address Information</CardTitle>
-                                    <CardDescription>Update current and permanent addresses</CardDescription>
+                                    <CardTitle className="text-lg">{t("address_information")}</CardTitle>
+                                    <CardDescription>{t("update_current_permanent_addresses")}</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground ml-1">Current Address</label>
+                                <label className="text-xs font-bold text-muted-foreground ml-1">{t("current_address")}</label>
                                 <textarea 
                                     name="current_address" 
                                     defaultValue={admission.current_address}
@@ -381,7 +383,7 @@ export default function EditAdmissionPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground ml-1">Permanent Address</label>
+                                <label className="text-xs font-bold text-muted-foreground ml-1">{t("permanent_address")}</label>
                                 <textarea 
                                     name="permanent_address" 
                                     defaultValue={admission.permanent_address}
@@ -399,29 +401,29 @@ export default function EditAdmissionPage() {
                         <CardHeader className="border-b border-muted/50">
                             <CardTitle className="text-lg flex items-center gap-2">
                                 <Info className="h-5 w-5 text-primary" />
-                                Application Status
+                                {t("application_status")}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">Form Status</label>
+                                <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">{t("form_status")}</label>
                                 <div className="relative">
                                     <select name="form_status" defaultValue={admission.form_status} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
-                                        <option value="Submitted">Submitted</option>
-                                        <option value="Paid">Paid</option>
-                                        <option value="Enrolled">Enrolled</option>
-                                        <option value="Rejected">Rejected</option>
+                                        <option value="Submitted">{t("submitted")}</option>
+                                        <option value="Paid">{t("paid")}</option>
+                                        <option value="Enrolled">{t("enrolled")}</option>
+                                        <option value="Rejected">{t("rejected")}</option>
                                     </select>
                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">Payment Status</label>
+                                <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">{t("payment_status")}</label>
                                 <div className="relative">
                                     <select name="payment_status" defaultValue={admission.payment_status} className="w-full h-11 px-4 py-2 bg-muted/20 border border-muted/50 rounded-lg text-sm font-bold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer">
-                                        <option value="Unpaid">Unpaid</option>
-                                        <option value="Paid">Paid</option>
-                                        <option value="Partial">Partial</option>
+                                        <option value="Unpaid">{t("unpaid")}</option>
+                                        <option value="Paid">{t("paid")}</option>
+                                        <option value="Partial">{t("partial")}</option>
                                     </select>
                                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 </div>
@@ -433,21 +435,21 @@ export default function EditAdmissionPage() {
                     <Card className="border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] bg-primary/5 border border-primary/10">
                         <CardContent className="p-6 space-y-4">
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Reference No</span>
+                                <span className="text-muted-foreground">{t("reference_no")}</span>
                                 <span className="font-bold">{admission.reference_no}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Created At</span>
+                                <span className="text-muted-foreground">{t("created_at")}</span>
                                 <span className="font-medium">{new Date(admission.created_at).toLocaleDateString()}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
-                                <span className="text-muted-foreground">Session</span>
+                                <span className="text-muted-foreground">{t("session")}</span>
                                 <span className="font-medium text-primary">{admission.academic_session?.session || "N/A"}</span>
                             </div>
                             <div className="pt-4 border-t border-primary/10">
-                                <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Quick Note</p>
+                                <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{t("quick_note")}</p>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Updating academic information (Class/Section) will affect the enrollment process. Ensure the correct class and section are selected before enrolling.
+                                    {t("updating_academic_info_enrollment_note")}
                                 </p>
                             </div>
                         </CardContent>

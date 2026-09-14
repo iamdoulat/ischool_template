@@ -5,9 +5,11 @@ import { InternalChatDialog } from "@/components/chat/internal-chat-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSettings } from "@/components/providers/settings-provider";
-import { MessageSquare, Users, UserPlus, ShieldCheck, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
+import { MessageSquare, Users, ShieldCheck, FileText, AlertCircle } from "lucide-react";
 
 export default function ChatPage() {
+    const { t } = useTranslation();
     const { settings } = useSettings();
     const isChatEnabled = settings?.enable_chat !== false && (typeof window === 'undefined' || localStorage.getItem('ischool_enable_chat') !== 'false');
     const [chatOpen, setChatOpen] = useState(true);
@@ -19,9 +21,9 @@ export default function ChatPage() {
                     <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4 shadow-inner">
                         <AlertCircle className="w-7 h-7" />
                     </div>
-                    <h2 className="text-lg font-bold text-gray-800 mb-2">Chat System Disabled</h2>
+                    <h2 className="text-lg font-bold text-gray-800 mb-2">{t("chat_system_disabled") || "Chat System Disabled"}</h2>
                     <p className="text-xs text-gray-600 leading-relaxed mb-6">
-                        The real-time internal chat system has been turned <strong className="text-amber-700">OFF</strong> by Admin in General Settings.
+                        {t("chat_disabled_description") || "The real-time internal chat system has been turned OFF by Admin in General Settings."}
                     </p>
                 </Card>
             </div>
@@ -37,20 +39,20 @@ export default function ChatPage() {
                     </span>
                     <div>
                         <h1 className="text-lg font-bold text-gray-800 tracking-tight leading-none">
-                            Internal Messaging System
+                            {t("internal_messaging_system") || "Internal Messaging System"}
                         </h1>
                         <p className="text-xs text-gray-500 mt-1">
-                            Secure staff, teacher, student, and parent chat with privacy contact requests and 5 MB file sharing
+                            {t("internal_messaging_description") || "Secure staff, teacher, student, and parent chat with privacy contact requests and 5 MB file sharing"}
                         </p>
                     </div>
                 </div>
 
                 <Button
                     onClick={() => setChatOpen(true)}
-                    className="h-9 px-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold gap-2 shadow-md"
+                    className="h-9 px-6 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold gap-2 shadow-md cursor-pointer"
                 >
                     <MessageSquare className="h-4 w-4" />
-                    Open Chat Window
+                    {t("open_chat_window") || "Open Chat Window"}
                 </Button>
             </div>
 
@@ -59,11 +61,11 @@ export default function ChatPage() {
                     <CardHeader className="py-4 px-5">
                         <CardTitle className="text-xs font-bold text-gray-700 flex items-center gap-2">
                             <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                            Privacy Contact Requests
+                            {t("privacy_contact_requests") || "Privacy Contact Requests"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="px-5 pb-5 text-xs text-gray-500 leading-relaxed">
-                        To protect privacy, users must send contact requests (<span className="font-semibold text-gray-700">+ Add Request</span>). Messaging is unlocked once the recipient accepts.
+                        {t("privacy_contact_description") || "To protect privacy, users must send contact requests (+ Add Request). Messaging is unlocked once the recipient accepts."}
                     </CardContent>
                 </Card>
 
@@ -71,11 +73,11 @@ export default function ChatPage() {
                     <CardHeader className="py-4 px-5">
                         <CardTitle className="text-xs font-bold text-gray-700 flex items-center gap-2">
                             <FileText className="h-4 w-4 text-indigo-600" />
-                            File & Image Uploads (Up to 5 MB)
+                            {t("file_image_uploads") || "File & Image Uploads (Up to 5 MB)"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="px-5 pb-5 text-xs text-gray-500 leading-relaxed">
-                        Send documents, PDFs, spreadsheets, and images directly in chat messages. File size limit of 5 MB per attachment is enforced.
+                        {t("file_image_description") || "Send documents, PDFs, spreadsheets, and images directly in chat messages. File size limit of 5 MB per attachment is enforced."}
                     </CardContent>
                 </Card>
 
@@ -83,11 +85,11 @@ export default function ChatPage() {
                     <CardHeader className="py-4 px-5">
                         <CardTitle className="text-xs font-bold text-gray-700 flex items-center gap-2">
                             <Users className="h-4 w-4 text-purple-600" />
-                            Presence Control
+                            {t("presence_control") || "Presence Control"}
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="px-5 pb-5 text-xs text-gray-500 leading-relaxed">
-                        Switch your presence between <span className="font-bold text-emerald-600">Online 🟢</span>, <span className="font-bold text-gray-600">Offline ⚪</span>, or <span className="font-bold text-purple-600">Invisible 👻</span> at any time.
+                        {t("presence_control_description") || "Switch your presence between Online 🟢, Offline ⚪, or Invisible 👻 at any time."}
                     </CardContent>
                 </Card>
             </div>

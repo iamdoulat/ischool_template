@@ -31,9 +31,8 @@ import {
     ArrowUpDown,
     Eraser,
     Activity,
-    Monitor
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateRoleName } from "@/lib/utils";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -44,14 +43,19 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useLanguage } from "@/components/providers/language-provider";
 
-const tabs = ["All Users", "Staff", "Students", "Parent", "Guest"];
+const tabList = [
+    { id: "All Users", key: "all_users", label: "All Users" },
+    { id: "Staff", key: "staff", label: "Staff" },
+    { id: "Students", key: "students", label: "Students" },
+    { id: "Parent", key: "parent", label: "Parent" },
+    { id: "Guest", key: "guest", label: "Guest" },
+];
 
 function TableSkeleton({ cols }: { cols: number }) {
     return (
@@ -69,47 +73,56 @@ function TableSkeleton({ cols }: { cols: number }) {
     );
 }
 
+interface UserLogRow {
+    user?: string;
+    role?: string;
+    class?: string;
+    ipAddress?: string;
+    loginTime?: string;
+    userAgent?: string;
+}
+
 export default function UserLogPage() {
+    const { t, language } = useLanguage();
     const [activeTab, setActiveTab] = useState("All Users");
     const [searchTerm, setSearchTerm] = useState("");
 
     // Report Result States
-    const [reportList, setReportList] = useState<any[]>([]);
+    const [reportList, setReportList] = useState<UserLogRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState("50");
 
     // Fetch User logs when activeTab changes
-    const fetchUserLogs = async () => {
-        setLoading(true);
-        try {
-            const response = await api.get("/reports/user-log", {
-                params: { role: activeTab }
-            });
-            setReportList(response.data.data || []);
-            setCurrentPage(1);
-        } catch (error) {
-            console.error("Failed to fetch user logs", error);
-            toast.error("Failed to load user logs");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const fetchUserLogs = async () => {
+            setLoading(true);
+            try {
+                const response = await api.get("/reports/user-log", {
+                    params: { role: activeTab }
+                });
+                setReportList(response.data.data || []);
+                setCurrentPage(1);
+            } catch (error) {
+                console.error("Failed to fetch user logs", error);
+                toast.error(t("failed_to_load_report") || "Failed to load user logs");
+            } finally {
+                setLoading(false);
+            }
+        };
         fetchUserLogs();
-    }, [activeTab]);
+    }, [activeTab, t]);
 
     // Clear User logs Action
     const handleClearLogs = async () => {
         try {
             await api.post("/reports/user-log/clear");
             setReportList([]);
-            toast.success("User log cleared successfully");
+            toast.success(t("report_loaded_successfully") || "User log cleared successfully");
         } catch (error) {
             console.error("Failed to clear user logs", error);
-            toast.error("Failed to clear user logs");
+            toast.error(t("failed_to_load_report") || "Failed to clear user logs");
         } finally {
             setIsClearDialogOpen(false);
         }
@@ -137,20 +150,20 @@ export default function UserLogPage() {
     const startIndex = (safePage - 1) * sizeNum;
     const paginatedReportList = filteredReport.slice(startIndex, startIndex + sizeNum);
 
-    // ── Export helpers ────────────────────────────────────────────────────────
+    // Export helpers
     const exportToCopy = () => {
-        if (filteredReport.length === 0) { toast.error("No data to copy"); return; }
+        if (filteredReport.length === 0) { toast.error(t("no_data_available_in_table") || "No data to copy"); return; }
         const text = [
             "Users\tRole\tClass\tIP Address\tLogin Date Time\tUser Agent",
-            ...filteredReport.map((r: any) => `${r.user}\t${r.role}\t${r.class || "-"}\t${r.ipAddress}\t${r.loginTime}\t${r.userAgent}`)
+            ...filteredReport.map((r) => `${r.user}\t${r.role}\t${r.class || "-"}\t${r.ipAddress}\t${r.loginTime}\t${r.userAgent}`)
         ].join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
     };
 
     const exportToExcel = (isCsv = false) => {
-        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
-        const mapped = filteredReport.map((r: any) => ({
+        if (filteredReport.length === 0) { toast.error(t("no_data_available_in_table") || "No data to export"); return; }
+        const mapped = filteredReport.map((r) => ({
             "Users": r.user,
             "Role": r.role,
             "Class": r.class || "-",
@@ -160,19 +173,19 @@ export default function UserLogPage() {
         }));
         const ws = XLSX.utils.json_to_sheet(mapped);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, `User Log - ${activeTab}`);
-        if (isCsv) { XLSX.writeFile(wb, `user_log_${activeTab.toLowerCase().replace(/\s+/g, '_')}.csv`, { bookType: "csv" }); toast.success("CSV downloaded"); }
-        else { XLSX.writeFile(wb, `user_log_${activeTab.toLowerCase().replace(/\s+/g, '_')}.xlsx`); toast.success("Excel file downloaded"); }
+        XLSX.utils.book_append_sheet(wb, ws, "User Log");
+        if (isCsv) { XLSX.writeFile(wb, "user_log_report.csv", { bookType: "csv" }); toast.success(t("csv_downloaded") || "CSV downloaded"); }
+        else { XLSX.writeFile(wb, "user_log_report.xlsx"); toast.success(t("excel_downloaded") || "Excel file downloaded"); }
     };
 
     const exportToPDF = () => {
-        if (filteredReport.length === 0) { toast.error("No data to export"); return; }
+        if (filteredReport.length === 0) { toast.error(t("no_data_available_in_table") || "No data to export"); return; }
         const doc = new jsPDF("landscape");
         const head = [["Users", "Role", "Class", "IP Address", "Login Date Time", "User Agent"]];
-        const body = filteredReport.map((r: any) => [r.user, r.role, r.class || "-", r.ipAddress, r.loginTime, r.userAgent]);
+        const body = filteredReport.map((r) => [r.user, r.role, r.class || "-", r.ipAddress, r.loginTime, r.userAgent]);
         autoTable(doc, { head, body, theme: "grid" });
         doc.save(`user_log_${activeTab.toLowerCase().replace(/\s+/g, '_')}.pdf`);
-        toast.success("PDF downloaded");
+        toast.success(t("pdf_downloaded") || "PDF downloaded");
     };
 
     const handlePrint = () => {
@@ -180,46 +193,51 @@ export default function UserLogPage() {
     };
 
     return (
-        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20 text-xs">
-            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Activity className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <CardTitle className="text-base font-bold text-slate-800 leading-none">User Log</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">System user activity and login records</p>
-                            </div>
+        <div className="space-y-4 pb-12">
+            {/* Page Header Banner */}
+            <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm flex items-center justify-center shrink-0">
+                            <Activity className="h-5 w-5" />
                         </div>
-                        <div className="flex bg-white border border-gray-100 rounded-md overflow-hidden shadow-sm">
-                            {tabs.map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab)}
-                                    className={cn(
-                                        "px-3 py-1.5 text-[10px] font-bold uppercase transition-colors border-r border-gray-50 last:border-0 cursor-pointer",
-                                        activeTab === tab
-                                            ? "bg-indigo-50 text-indigo-600 shadow-inner"
-                                            : "text-gray-400 hover:bg-gray-50 bg-transparent"
-                                    )}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
+                        <div>
+                            <h1 className="text-base font-bold text-gray-800">{t("user_log") || "User Log"}</h1>
+                            <p className="text-[11px] text-gray-500">{t("user_log_description") || "System user activity and login records"}</p>
                         </div>
                     </div>
-                </CardHeader>
-            </Card>
+                    {/* Role Filter Tabs */}
+                    <div className="flex flex-wrap bg-white/80 backdrop-blur-xs border border-gray-200/80 rounded-lg p-1 shadow-xs">
+                        {tabList.map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => {
+                                    setActiveTab(tab.id);
+                                    setCurrentPage(1);
+                                    setSearchTerm("");
+                                }}
+                                className={cn(
+                                    "px-3 py-1 text-[11px] font-semibold rounded-md transition-all cursor-pointer",
+                                    activeTab === tab.id
+                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs font-bold"
+                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/50"
+                                )}
+                            >
+                                {t(tab.key) || tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[600px]">
-
-                {/* Actions Bar */}
+            {/* Table Section */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[500px] flex flex-col justify-between">
+                <div className="space-y-4 flex-1 flex flex-col">
+                    {/* Actions Bar */}
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-3">
                     <div className="relative w-full md:w-64">
                         <Input
-                            placeholder="Search..."
+                            placeholder={t("search") || "Search..."}
                             value={searchTerm}
                             onChange={(e) => {
                                 setSearchTerm(e.target.value);
@@ -229,44 +247,44 @@ export default function UserLogPage() {
                         />
                     </div>
 
-                    <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                         <Button 
                             onClick={() => setIsClearDialogOpen(true)}
-                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-3 h-7 text-[10px] font-bold uppercase transition-all rounded shadow-sm flex items-center gap-1.5 w-full md:w-auto"
+                            className="bg-gradient-to-r from-rose-500 to-red-600 hover:opacity-90 text-white px-3.5 h-8 text-[11px] font-bold transition-all rounded-lg shadow-xs flex items-center gap-1.5 w-full sm:w-auto cursor-pointer active:scale-95"
                         >
-                            <Eraser className="h-3 w-3" />
-                            Clear Userlog Record
+                            <Eraser className="h-3.5 w-3.5" />
+                            {t("clear_userlog_record") || "Clear Userlog Record"}
                         </Button>
 
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-1.5 mr-2">
-                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Rows</span>
+                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">{t("show") || "Show"}</span>
                                 <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                    <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 shadow-none rounded font-semibold">
-                                        <SelectValue placeholder="50" />
+                                    <SelectTrigger className="h-7 w-14 text-[10px] border-gray-200 bg-transparent shadow-none rounded outline-none">
+                                        <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                        <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" title="Copy" onClick={exportToCopy} className="h-7 w-7 hover:bg-gray-100 hover:text-indigo-600 rounded">
+                                <Button variant="ghost" size="icon" title={t("copy") || "Copy"} onClick={exportToCopy} className="h-7 w-7 hover:bg-gray-100 hover:text-indigo-600 rounded">
                                     <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Excel" onClick={() => exportToExcel(false)} className="h-7 w-7 hover:bg-gray-100 hover:text-emerald-600 rounded">
+                                <Button variant="ghost" size="icon" title={t("excel") || "Excel"} onClick={() => exportToExcel(false)} className="h-7 w-7 hover:bg-gray-100 hover:text-emerald-600 rounded">
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 hover:bg-gray-100 hover:text-amber-600 rounded">
+                                <Button variant="ghost" size="icon" title={t("csv") || "CSV"} onClick={() => exportToExcel(true)} className="h-7 w-7 hover:bg-gray-100 hover:text-amber-600 rounded">
                                     <FileBox className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="PDF" onClick={exportToPDF} className="h-7 w-7 hover:bg-gray-100 hover:text-rose-600 rounded">
+                                <Button variant="ghost" size="icon" title={t("pdf") || "PDF"} onClick={exportToPDF} className="h-7 w-7 hover:bg-gray-100 hover:text-rose-600 rounded">
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Print" onClick={handlePrint} className="h-7 w-7 hover:bg-gray-100 hover:text-gray-900 rounded">
+                                <Button variant="ghost" size="icon" title={t("print") || "Print"} onClick={handlePrint} className="h-7 w-7 hover:bg-gray-100 hover:text-gray-900 rounded">
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -275,16 +293,16 @@ export default function UserLogPage() {
                 </div>
 
                 {/* User Log Table */}
-                <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
+                <div className="rounded border border-gray-100 overflow-x-auto custom-scrollbar">
                     <Table className="min-w-[1200px]">
                         <TableHeader className="bg-transparent border-b border-gray-100">
                             <TableRow className="hover:bg-transparent whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                <TableHead className="py-3 px-4">Users <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Role <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Class <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">IP Address <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4">Login Date Time <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
-                                <TableHead className="py-3 px-4 text-right">User Agent</TableHead>
+                                <TableHead className="py-3 px-4">{t("users") || "Users"} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("role") || "Role"} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("class") || "Class"} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("ip_address") || "IP Address"} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4">{t("login_time") || "Login Date Time"} <ArrowUpDown className="h-2.5 w-2.5 inline ml-1 opacity-30" /></TableHead>
+                                <TableHead className="py-3 px-4 text-right">{t("user_agent") || "User Agent"}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -294,9 +312,8 @@ export default function UserLogPage() {
                                 <TableRow className="hover:bg-transparent h-64">
                                     <TableCell colSpan={6} className="text-center py-12">
                                         <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                            <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest whitespace-nowrap">No data available in table</p>
-                                            <p className="text-emerald-500 font-bold text-[10px]">
-                                                No logs are currently registered for this tab.
+                                            <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest whitespace-nowrap">
+                                                {t("no_data_available_in_table") || "No data available in table"}
                                             </p>
                                         </div>
                                     </TableCell>
@@ -307,34 +324,40 @@ export default function UserLogPage() {
                                         <TableCell className="py-3 px-4 text-gray-700 font-medium">{log.user}</TableCell>
                                         <TableCell className="py-3 px-4">
                                             <span className={cn(
-                                                log.role === "Super Admin" ? "text-blue-600 font-semibold" : "text-gray-500"
+                                                log.role === "Super Admin" ? "text-indigo-600 font-semibold" : "text-gray-500"
                                             )}>
-                                                {log.role}
+                                                {translateRoleName(log.role || "", language?.short_code)}
                                             </span>
                                         </TableCell>
                                         <TableCell className="py-3 px-4 text-gray-500">{log.class || "-"}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-500">{log.ipAddress}</TableCell>
                                         <TableCell className="py-3 px-4 text-gray-500">{log.loginTime}</TableCell>
-                                        <TableCell className="py-3 px-4 text-right text-gray-400 font-normal truncate max-w-[300px]" title={log.userAgent}>{log.userAgent}</TableCell>
+                                        <TableCell className="py-3 px-4 text-right text-gray-400 font-normal truncate max-w-[300px]" title={log.userAgent}>
+                                            {log.userAgent}
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow className="hover:bg-transparent">
                                     <TableCell colSpan={6} className="text-center py-12 text-gray-400 font-semibold uppercase text-[10px] tracking-wider">
-                                        No user logs match the search.
+                                        {t("no_items_match_the_search") || "No items match the search."}
                                     </TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                     </Table>
                 </div>
+            </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50 mt-2">
+                {/* Footer Pagination */}
+                <div className="flex flex-col sm:flex-row items-center justify-between text-[11px] text-gray-500 font-medium pt-4 border-t border-gray-100 mt-auto gap-3">
                     <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
-                        {searchTerm && ` (filtered from ${reportList.length} total entries)`}
+                        {t("showing_x_to_y_of_z", {
+                            x: toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, language?.short_code),
+                            y: toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), language?.short_code),
+                            z: toLocaleNumber(totalEntries, language?.short_code),
+                        }) || `Showing ${totalEntries > 0 ? startIndex + 1 : 0} to ${Math.min(startIndex + sizeNum, totalEntries)} of ${totalEntries} entries`}
+                        {searchTerm && ` (${t("filtered_from") || "filtered from"} ${toLocaleNumber(reportList.length, language?.short_code)} ${t("total_entries") || "total entries"})`}
                     </div>
 
                     {reportList.length > 0 && (
@@ -342,7 +365,7 @@ export default function UserLogPage() {
                             <button
                                 disabled={safePage === 1}
                                 onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 bg-white hover:bg-gray-50 text-gray-400 rounded-lg hover:shadow-xs active:scale-95 transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
@@ -352,20 +375,20 @@ export default function UserLogPage() {
                                     key={page}
                                     onClick={() => setCurrentPage(page)}
                                     className={cn(
-                                        "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer font-bold",
+                                        "h-8 w-8 transition-all text-xs flex items-center justify-center cursor-pointer font-bold rounded-lg",
                                         safePage === page
-                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95"
-                                            : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
+                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                            : "bg-white hover:bg-gray-50 text-gray-600 hover:text-gray-900 border border-gray-200"
                                     )}
                                 >
-                                    {page}
+                                    {toLocaleNumber(page, language?.short_code)}
                                 </button>
                             ))}
 
                             <button
                                 disabled={safePage === totalPages}
                                 onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                className="h-8 w-8 bg-white hover:bg-gray-50/80 text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 bg-white hover:bg-gray-50 text-gray-400 rounded-lg hover:shadow-xs active:scale-95 transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </button>
@@ -376,17 +399,22 @@ export default function UserLogPage() {
 
             {/* Clear Confirmation Dialog */}
             <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-                <AlertDialogContent className="rounded bg-white">
+                <AlertDialogContent className="rounded-xl bg-white border border-gray-200 shadow-xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>{t("are_you_sure") || "Are you absolutely sure?"}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently clear all user login logs from the database.
+                            {t("action_cannot_be_undone") || "This action cannot be undone. This will permanently clear all user login logs from the database."}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded font-bold text-xs h-9">Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleClearLogs} className="bg-red-500 hover:bg-red-600 rounded font-bold text-xs h-9 text-white">
-                            Clear All
+                        <AlertDialogCancel className="rounded-lg font-bold text-xs h-9 cursor-pointer">
+                            {t("cancel") || "Cancel"}
+                        </AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleClearLogs} 
+                            className="bg-red-500 hover:bg-red-600 rounded-lg font-bold text-xs h-9 text-white cursor-pointer"
+                        >
+                            {t("clear_all") || "Clear All"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

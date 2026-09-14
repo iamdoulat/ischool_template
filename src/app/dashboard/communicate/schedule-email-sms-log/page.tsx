@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -40,7 +41,7 @@ import {
     ChevronRight,
     X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { CardListSkeleton } from "@/components/ui/table-skeleton";
 
 interface ScheduledLog {
@@ -61,22 +62,8 @@ interface ScheduledLog {
     isClass: boolean;
 }
 
-// Helper: translate type filter value to display label and badge text
-const channelLabel = (type: "all" | "email" | "sms" | "wa", t: (key: string) => string) => {
-    if (type === "all") return t("all");
-    if (type === "email") return t("email");
-    if (type === "wa") return t("whatsapp");
-    return t("sms");
-};
-
-const logBadgeLabel = (log: ScheduledLog, t: (key: string) => string) => {
-    if (log.isEmail) return t("email");
-    if (log.isWa) return t("whatsapp");
-    return t("sms");
-};
-
 export default function ScheduleEmailSmsLogPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [logs, setLogs] = useState<ScheduledLog[]>([]);
@@ -154,7 +141,7 @@ export default function ScheduleEmailSmsLogPage() {
             }
             await Promise.all(promises);
 
-            tt.success("scheduled_logs_deleted", { count: selectedIds.size });
+            tt.success("scheduled_logs_deleted", { count: toLocaleNumber(selectedIds.size, language?.short_code) });
             setSelectedIds(new Set());
             setDeleteConfirm(false);
             fetchLogs(1);
@@ -210,8 +197,32 @@ export default function ScheduleEmailSmsLogPage() {
     };
 
     const handleExportCSV = () => {
-        const headers = ["Title", "Message", "Date", "Schedule Date", "Email", "SMS", "WhatsApp", "Group", "Individual", "Class"];
-        const rows = filteredLogs.map(l => [l.title, stripHtml(l.message), l.date, l.scheduleDate || '-', l.isEmail ? 'Yes' : 'No', l.isSms ? 'Yes' : 'No', l.isWa ? 'Yes' : 'No', l.isGroup ? 'Yes' : 'No', l.isIndividual ? 'Yes' : 'No', l.isClass ? 'Yes' : 'No']);
+        const headers = [
+            t("title") || "Title", 
+            t("message") || "Message", 
+            t("date") || "Date", 
+            t("schedule_date") || "Schedule Date", 
+            t("email") || "Email", 
+            t("sms") || "SMS", 
+            t("whatsapp") || "WhatsApp", 
+            t("group") || "Group", 
+            t("individual") || "Individual", 
+            t("class") || "Class"
+        ];
+        const yesText = t("yes") || "Yes";
+        const noText = t("no") || "No";
+        const rows = filteredLogs.map(l => [
+            l.title, 
+            stripHtml(l.message), 
+            l.date, 
+            l.scheduleDate || '-', 
+            l.isEmail ? yesText : noText, 
+            l.isSms ? yesText : noText, 
+            l.isWa ? yesText : noText, 
+            l.isGroup ? yesText : noText, 
+            l.isIndividual ? yesText : noText, 
+            l.isClass ? yesText : noText
+        ]);
         const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
@@ -231,26 +242,24 @@ export default function ScheduleEmailSmsLogPage() {
                         <Mail className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("schedule_email_sms_wa_logs")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("scheduled_message_queue")}</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("schedule_email_sms_wa_logs") || "Schedule Email / SMS / WhatsApp Logs"}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("scheduled_message_queue") || "Scheduled Message Queue"}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     {selectedIds.size > 0 && (
                         <Button
-                            variant="ghost"
                             onClick={() => setDeleteConfirm(true)}
-                            className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 gap-2 h-9 px-6 text-[10px] font-bold uppercase rounded-full border border-rose-100"
+                            className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white gap-2 h-9 px-5 text-[10px] font-bold uppercase rounded-lg shadow-md shadow-rose-200/50 border-none transition-all active:scale-95"
                         >
-                            <Trash2 className="h-4 w-4" /> {t("delete_selected")} ({selectedIds.size})
+                            <Trash2 className="h-4 w-4" /> {t("delete_selected") || "Delete Selected"} ({toLocaleNumber(selectedIds.size, language?.short_code)})
                         </Button>
                     )}
                     <Button
-                        variant="ghost"
                         onClick={() => setDeleteAllConfirm(true)}
-                        className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 gap-2 h-9 px-6 text-[10px] font-bold uppercase rounded-full border border-rose-100"
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] text-white gap-2 h-9 px-5 text-[10px] font-bold uppercase rounded-lg shadow-md shadow-indigo-200/50 border-none transition-all active:scale-95"
                     >
-                        <Trash2 className="h-4 w-4" /> {t("delete_all")}
+                        <Trash2 className="h-4 w-4" /> {t("delete_all") || "Delete All"}
                     </Button>
                 </div>
             </div>
@@ -262,7 +271,7 @@ export default function ScheduleEmailSmsLogPage() {
                         <div className="relative w-full md:w-64">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
-                                placeholder={t("search_logs")}
+                                placeholder={t("search_logs") || "Search logs..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-9 h-9 text-xs border-gray-100 bg-gray-50/30 focus-visible:ring-indigo-500 rounded-lg shadow-none"
@@ -280,37 +289,37 @@ export default function ScheduleEmailSmsLogPage() {
                                             : "text-gray-500 hover:text-gray-700"
                                     )}
                                 >
-                                    {channelLabel(type, t)}
+                                    {type === "all" ? (t("all") || "All") : type === "email" ? (t("email") || "Email") : type === "wa" ? (t("whatsapp") || "WhatsApp") : (t("sms") || "SMS")}
                                 </button>
                             ))}
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-400 font-medium">{t("per_page")}:</span>
+                            <span className="text-[10px] text-gray-400 font-medium">{t("per_page") || "Per Page"}:</span>
                             <Select value={String(perPage)} onValueChange={(v) => setPerPage(Number(v))}>
                                 <SelectTrigger className="h-7 w-16 text-[10px] border-gray-100 bg-gray-50/30 rounded-lg shadow-none px-2">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="20">20</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                    <SelectItem value="500">500</SelectItem>
+                                    <SelectItem value="20">{toLocaleNumber(20, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                                    <SelectItem value="500">{toLocaleNumber(500, language?.short_code)}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={handleCopy} title={t("copy")} className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={handleCopy} title={t("copy") || "Copy"} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <Copy className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("csv")} className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("csv") || "CSV"} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <FileSpreadsheet className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("excel")} className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={handleExportCSV} title={t("excel") || "Excel"} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <FileText className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => window.print()} title={t("print")} className="h-7 w-7 hover:bg-gray-100 rounded">
+                            <Button variant="ghost" size="icon" onClick={() => window.print()} title={t("print") || "Print"} className="h-7 w-7 hover:bg-gray-100 rounded">
                                 <Printer className="h-3.5 w-3.5 text-gray-500" />
                             </Button>
                         </div>
@@ -325,7 +334,7 @@ export default function ScheduleEmailSmsLogPage() {
                         className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
                     />
                     <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                        {selectedIds.size > 0 ? `${selectedIds.size} ${t("selected")}` : t("select_all")}
+                        {selectedIds.size > 0 ? `${toLocaleNumber(selectedIds.size, language?.short_code)} ${t("selected") || "Selected"}` : (t("select_all") || "Select All")}
                     </span>
                 </div>
 
@@ -336,8 +345,8 @@ export default function ScheduleEmailSmsLogPage() {
                     ) : filteredLogs.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                             <MessageSquare className="h-16 w-16 opacity-20" />
-                            <p className="text-sm font-bold text-gray-400 uppercase tracking-tight mt-4">{t("no_scheduled_logs_found")}</p>
-                            <p className="text-[10px] text-gray-400 mt-1">{t("no_scheduled_logs_recorded_yet")}</p>
+                            <p className="text-sm font-bold text-gray-400 uppercase tracking-tight mt-4">{t("no_scheduled_logs_found") || "No Scheduled Logs Found"}</p>
+                            <p className="text-[10px] text-gray-400 mt-1">{t("no_scheduled_logs_recorded_yet") || "No scheduled logs recorded yet"}</p>
                         </div>
                     ) : (
                         filteredLogs.map((log) => {
@@ -372,11 +381,11 @@ export default function ScheduleEmailSmsLogPage() {
                                                         "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
                                                         log.isEmail ? "bg-indigo-100 text-indigo-700" : log.isWa ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"
                                                     )}>
-                                                        {logBadgeLabel(log, t)}
+                                                        {log.isEmail ? (t("email") || "Email") : log.isWa ? (t("whatsapp") || "WhatsApp") : (t("sms") || "SMS")}
                                                     </span>
                                                     {log.hasAttachment && (
                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-semibold">
-                                                            <Paperclip className="h-3 w-3" /> {t("attachment")}
+                                                            <Paperclip className="h-3 w-3" /> {t("attachment") || "Attachment"}
                                                         </span>
                                                     )}
                                                 </div>
@@ -384,18 +393,18 @@ export default function ScheduleEmailSmsLogPage() {
                                                     {plainMessage.length > 200 ? plainMessage.slice(0, 200) + '...' : plainMessage}
                                                 </p>
                                                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-gray-400 font-medium">
-                                                    <span>{t("sent")}: {log.date}</span>
+                                                    <span>{t("sent") || "Sent"}: {log.date}</span>
                                                     {log.scheduleDate && log.scheduleDate !== '-' && (
-                                                        <span>{t("scheduled")}: {log.scheduleDate}</span>
+                                                        <span>{t("scheduled") || "Scheduled"}: {log.scheduleDate}</span>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                            <Button size="icon" variant="ghost" onClick={() => setViewLog(log)} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-all shadow-sm">
+                                            <Button size="icon" variant="ghost" onClick={() => setViewLog(log)} title={t("view") || "View"} className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-all shadow-sm">
                                                 <Eye className="h-3.5 w-3.5" />
                                             </Button>
-                                            <Button size="icon" variant="ghost" onClick={() => handleDelete(log.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-sm">
+                                            <Button size="icon" variant="ghost" onClick={() => handleDelete(log.id)} title={t("delete") || "Delete"} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-sm">
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -411,10 +420,10 @@ export default function ScheduleEmailSmsLogPage() {
                     <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                         <p className="text-[11px] text-gray-400 font-medium">
                             {t("showing_x_to_y_of_z", {
-                                from: (currentPage - 1) * perPage + 1,
-                                to: Math.min(currentPage * perPage, total),
-                                total: total,
-                            })}
+                                from: toLocaleNumber((currentPage - 1) * perPage + 1, language?.short_code),
+                                to: toLocaleNumber(Math.min(currentPage * perPage, total), language?.short_code),
+                                total: toLocaleNumber(total, language?.short_code),
+                            }) || `Showing ${(currentPage - 1) * perPage + 1} to ${Math.min(currentPage * perPage, total)} of ${total} entries`}
                         </p>
                         <div className="flex items-center gap-1.5">
                             <button
@@ -442,11 +451,11 @@ export default function ScheduleEmailSmsLogPage() {
                                         className={cn(
                                             "w-8 h-8 text-[11px] font-bold rounded-lg transition-all",
                                             pageNum === currentPage
-                                                ? "bg-indigo-500 text-white shadow-md"
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md"
                                                 : "border border-gray-200 text-gray-600 hover:bg-gray-50"
                                         )}
                                     >
-                                        {pageNum}
+                                        {toLocaleNumber(pageNum, language?.short_code)}
                                     </button>
                                 );
                             })}
@@ -462,7 +471,7 @@ export default function ScheduleEmailSmsLogPage() {
                 )}
                 {total <= perPage && total > 0 && (
                     <div className="flex items-center text-[11px] text-gray-400 font-medium pt-2 border-t border-gray-50">
-                        {t("showing_all_x_entries", { total: total })}
+                        {t("showing_all_x_entries", { total: toLocaleNumber(total, language?.short_code) }) || `Showing all ${total} entries`}
                     </div>
                 )}
             </div>
@@ -488,7 +497,7 @@ export default function ScheduleEmailSmsLogPage() {
                                     "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold",
                                     viewLog.isEmail ? "bg-indigo-100 text-indigo-700" : viewLog.isWa ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"
                                 )}>
-                                    {logBadgeLabel(viewLog, t)}
+                                    {viewLog.isEmail ? (t("email") || "Email") : viewLog.isWa ? (t("whatsapp") || "WhatsApp") : (t("sms") || "SMS")}
                                 </span>
                                 {viewLog.hasAttachment && viewLog.attachment && (
                                     <button
@@ -513,20 +522,20 @@ export default function ScheduleEmailSmsLogPage() {
                                         }}
                                         className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 text-xs font-semibold transition-colors cursor-pointer"
                                     >
-                                        <Paperclip className="h-3.5 w-3.5" /> {t("download_attachment")}
+                                        <Paperclip className="h-3.5 w-3.5" /> {t("download_attachment") || "Download Attachment"}
                                     </button>
                                 )}
                             </div>
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
-                                <span>{t("sent")}: {viewLog.date}</span>
+                                <span>{t("sent") || "Sent"}: {viewLog.date}</span>
                                 {viewLog.scheduleDate && viewLog.scheduleDate !== '-' && (
-                                    <span>{t("scheduled")}: {viewLog.scheduleDate}</span>
+                                    <span>{t("scheduled") || "Scheduled"}: {viewLog.scheduleDate}</span>
                                 )}
                             </div>
 
                             {viewLog.recipients && viewLog.recipients.length > 0 && (
                                 <div className="space-y-2">
-                                    <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("receivers")}</h4>
+                                    <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{t("receivers") || "Receivers"}</h4>
                                     <div className="flex flex-wrap gap-1.5">
                                         {viewLog.recipients.map((r, i) => (
                                             <span key={i} className="inline-flex items-center px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 text-xs font-medium">
@@ -539,7 +548,7 @@ export default function ScheduleEmailSmsLogPage() {
 
                             <div className="border-t border-gray-100 pt-6">
                                 <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-table:w-full prose-pre:overflow-x-auto"
-                                    dangerouslySetInnerHTML={{ __html: viewLog.message }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewLog.message) }}
                                 />
                             </div>
                         </div>
@@ -547,7 +556,7 @@ export default function ScheduleEmailSmsLogPage() {
                     <div className="p-6 bg-gray-50/50 border-t border-gray-100">
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setViewLog(null)} className="h-10 text-[10px] uppercase font-bold rounded-full px-8 bg-white border-gray-200">
-                                {t("close")}
+                                {t("close") || "Close"}
                             </Button>
                         </DialogFooter>
                     </div>
@@ -558,15 +567,15 @@ export default function ScheduleEmailSmsLogPage() {
             <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_selected_scheduled_logs")}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_selected_scheduled_logs") || "Delete Selected Scheduled Logs"}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            {t("delete_selected_scheduled_logs_confirm", { count: selectedIds.size })}
+                            {t("delete_selected_scheduled_logs_confirm", { count: toLocaleNumber(selectedIds.size, language?.short_code) }) || `Are you sure you want to delete ${selectedIds.size} selected scheduled logs?`}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel") || "Cancel"}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteSelected} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            {t("yes_delete")}
+                            {t("yes_delete") || "Yes, Delete"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -576,15 +585,15 @@ export default function ScheduleEmailSmsLogPage() {
             <AlertDialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
                 <AlertDialogContent className="rounded-lg border-0 shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800 text-red-500">{t("clear_all_scheduled_logs")}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold text-gray-800 text-red-500">{t("clear_all_scheduled_logs") || "Clear All Scheduled Logs"}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            {t("clear_all_scheduled_logs_confirm")}
+                            {t("clear_all_scheduled_logs_confirm") || "Are you sure you want to clear all scheduled logs? This action cannot be undone."}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogCancel className="h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel") || "Cancel"}</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteAll} className="bg-red-500 hover:bg-red-600 h-10 rounded-lg text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
-                            {t("yes_clear_all")}
+                            {t("yes_clear_all") || "Yes, Clear All"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

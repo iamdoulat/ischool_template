@@ -60,7 +60,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateClassName,
+    translateSectionName,
+    translateRoleName,
+    translateCourseCategory,
+} from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
@@ -139,8 +146,15 @@ interface Course {
 }
 
 export default function OnlineCoursePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const { symbol, formatCurrency } = useCurrencyFormatter();
+
+    const formatPrice = (amount: number | string) => {
+        const val = typeof amount === "string" ? parseFloat(amount) : amount;
+        if (isNaN(val)) return `${symbol}${toLocaleNumber("0.00", shortCode)}`;
+        return `${symbol}${toLocaleNumber(val.toFixed(2), shortCode)}`;
+    };
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -391,7 +405,7 @@ export default function OnlineCoursePage() {
                     </span>
                     <div>
                         <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("online_courses")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("x_courses_in_your_catalog", { count: total })}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("x_courses_in_your_catalog", { count: toLocaleNumber(total, shortCode) })}</p>
                     </div>
                 </div>
                 <Button onClick={handleOpenAdd} className={cn("h-9 px-5 text-xs font-bold rounded-full shadow-md flex items-center gap-2", activeGradient)}>
@@ -415,13 +429,15 @@ export default function OnlineCoursePage() {
                         <span>{t("show")}</span>
                         <Select value={String(perPage)} onValueChange={(v) => { setPerPage(Number(v)); setCurrentPage(1); }}>
                             <SelectTrigger className="h-7 text-xs w-16 border-gray-200">
-                                <SelectValue />
+                                <SelectValue placeholder={toLocaleNumber(String(perPage), shortCode)}>
+                                    {toLocaleNumber(String(perPage), shortCode)}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="20">20</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                                <SelectItem value="500">500</SelectItem>
+                                <SelectItem value="20">{toLocaleNumber("20", shortCode)}</SelectItem>
+                                <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
+                                <SelectItem value="500">{toLocaleNumber("500", shortCode)}</SelectItem>
                             </SelectContent>
                         </Select>
                         <span>{t("entries")}</span>
@@ -466,7 +482,7 @@ export default function OnlineCoursePage() {
                         <TableBody>
                             {courses.length === 0 && !loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="h-40 text-center text-gray-400 text-sm">
+                                    <TableCell colSpan={7} className="h-40 text-center text-gray-400 text-sm">
                                         <BookOpen className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         <p className="font-medium">{t("no_courses_found")}</p>
                                         <p className="text-xs mt-1">{t("click_add_course_to_create_one")}</p>
@@ -490,11 +506,11 @@ export default function OnlineCoursePage() {
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-gray-600 py-3.5 align-middle capitalize">{course.category || "-"}</TableCell>
-                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.school_class?.name || course.class_name || "-"}</TableCell>
-                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.section?.name || "-"}</TableCell>
-                                        <TableCell className="text-gray-600 py-3.5 align-middle">{course.instructor?.name || "-"}</TableCell>
-                                        <TableCell className="text-right py-3.5 align-middle font-medium text-gray-800">{formatCurrency(course.price)}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle capitalize">{translateCourseCategory(course.category, shortCode) || "-"}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle">{translateClassName(course.school_class?.name || course.class_name, shortCode) || "-"}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle">{translateSectionName(course.section?.name, shortCode) || "-"}</TableCell>
+                                        <TableCell className="text-gray-600 py-3.5 align-middle">{translateRoleName(course.instructor?.name, shortCode) || course.instructor?.name || "-"}</TableCell>
+                                        <TableCell className="text-right py-3.5 align-middle font-medium text-gray-800">{formatPrice(course.price)}</TableCell>
                                         <TableCell className="text-right py-3.5 align-middle">
                                             <div className="flex items-center justify-end gap-1">
                                                 <Button onClick={() => handleOpenView(course)} size="icon" variant="ghost" className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded shadow-sm">
@@ -518,15 +534,31 @@ export default function OnlineCoursePage() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between text-xs text-gray-500 font-medium px-4 py-3 border-t border-gray-100">
                     <div className="flex items-center gap-1.5">
-                        <span>{t("showing_x_to_y_of_z", { from, to, total })}</span>
+                        <span>
+                            {t("showing_x_to_y_of_z", {
+                                from: toLocaleNumber(from, shortCode),
+                                to: toLocaleNumber(to, shortCode),
+                                total: toLocaleNumber(total, shortCode),
+                            })}
+                        </span>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex items-center gap-1">
                         <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-gray-200" disabled={currentPage === 1} onClick={() => fetchCourses(currentPage - 1)}>
                             <ChevronLeft className="h-3.5 w-3.5" />
                         </Button>
                         {Array.from({ length: lastPage }, (_, i) => i + 1).map((page) => (
-                            <Button key={page} variant={currentPage === page ? "default" : "outline"} size="sm" className={`h-7 w-7 p-0 border-gray-200 ${currentPage === page ? activeGradient : "hover:bg-indigo-50 hover:text-indigo-600"}`} onClick={() => fetchCourses(page)}>
-                                {page}
+                            <Button
+                                key={page}
+                                size="sm"
+                                onClick={() => fetchCourses(page)}
+                                className={cn(
+                                    "h-7 w-7 p-0 rounded-lg text-xs font-bold shadow-sm transition-all cursor-pointer",
+                                    currentPage === page
+                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md shadow-indigo-500/25 border-0"
+                                        : "bg-white dark:bg-card text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                                )}
+                            >
+                                {toLocaleNumber(page, shortCode)}
                             </Button>
                         ))}
                         <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-gray-200" disabled={currentPage === lastPage} onClick={() => fetchCourses(currentPage + 1)}>
@@ -611,7 +643,7 @@ export default function OnlineCoursePage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {classes.map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                                            <SelectItem key={c.id} value={String(c.id)}>{translateClassName(c.name, shortCode)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -624,7 +656,7 @@ export default function OnlineCoursePage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {formFilteredSections.map((s) => (
-                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                            <SelectItem key={s.id} value={String(s.id)}>{translateSectionName(s.name, shortCode)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -811,8 +843,8 @@ export default function OnlineCoursePage() {
                                         <p className="text-[12px] font-medium text-indigo-500">{viewCourse.subtitle}</p>
                                     )}
                                     <div className="flex flex-wrap gap-2">
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600">{viewCourse.category}</span>
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">{viewCourse.class_name}</span>
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600">{translateCourseCategory(viewCourse.category, shortCode)}</span>
+                                        <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">{translateClassName(viewCourse.class_name, shortCode)}</span>
                                     </div>
                                     <p className="text-sm text-gray-600 leading-relaxed">{viewCourse.description}</p>
                                 </div>
@@ -821,23 +853,23 @@ export default function OnlineCoursePage() {
                             {/* Stats */}
                             <div className="grid grid-cols-5 gap-2">
                                 <div className="bg-indigo-50 rounded-lg py-2 px-2 text-center border border-indigo-100">
-                                    <p className="text-sm font-black text-indigo-600">{viewCourse.total_lessons || 0}</p>
+                                    <p className="text-sm font-black text-indigo-600">{toLocaleNumber(viewCourse.total_lessons || 0, shortCode)}</p>
                                     <p className="text-[9px] font-bold uppercase tracking-wider text-indigo-400">{t("lessons")}</p>
                                 </div>
                                 <div className="bg-emerald-50 rounded-lg py-2 px-2 text-center border border-emerald-100">
-                                    <p className="text-[11px] font-black text-emerald-600">{viewCourse.total_hours || "0"}</p>
+                                    <p className="text-[11px] font-black text-emerald-600">{toLocaleNumber(viewCourse.total_hours || "0", shortCode)}</p>
                                     <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">{t("hours")}</p>
                                 </div>
                                 <div className="bg-amber-50 rounded-lg py-2 px-2 text-center border border-amber-100">
-                                    <p className="text-sm font-black text-amber-600">{viewCourse.total_exams || 0}</p>
+                                    <p className="text-sm font-black text-amber-600">{toLocaleNumber(viewCourse.total_exams || 0, shortCode)}</p>
                                     <p className="text-[9px] font-bold uppercase tracking-wider text-amber-400">{t("exams")}</p>
                                 </div>
                                 <div className="bg-cyan-50 rounded-lg py-2 px-2 text-center border border-cyan-100">
-                                    <p className="text-sm font-black text-cyan-600">0</p>
+                                    <p className="text-sm font-black text-cyan-600">{toLocaleNumber(0, shortCode)}</p>
                                     <p className="text-[9px] font-bold uppercase tracking-wider text-cyan-400">{t("live_class")}</p>
                                 </div>
                                 <div className="bg-rose-50 rounded-lg py-2 px-2 text-center border border-rose-100">
-                                    <p className="text-sm font-black text-rose-600">{viewCourse.total_quizzes || 0}</p>
+                                    <p className="text-sm font-black text-rose-600">{toLocaleNumber(viewCourse.total_quizzes || 0, shortCode)}</p>
                                     <p className="text-[9px] font-bold uppercase tracking-wider text-rose-400">{t("quizzes")}</p>
                                 </div>
                             </div>
@@ -847,15 +879,15 @@ export default function OnlineCoursePage() {
                                 <div className="flex-1 bg-gradient-to-br from-sky-50 to-blue-50 rounded-lg py-2.5 px-3 text-center border border-sky-100">
                                     <p className="text-[8px] font-bold uppercase tracking-widest text-sky-400">{t("pricing")}</p>
                                     <div className="flex items-center justify-center gap-1.5">
-                                        <span className="text-base font-black text-gray-800">{formatCurrency(viewCourse.price)}</span>
+                                        <span className="text-base font-black text-gray-800">{formatPrice(viewCourse.price)}</span>
                                         {viewCourse.original_price > 0 && (
-                                            <span className="text-[10px] font-semibold text-gray-400 line-through">{formatCurrency(viewCourse.original_price)}</span>
+                                            <span className="text-[10px] font-semibold text-gray-400 line-through">{formatPrice(viewCourse.original_price)}</span>
                                         )}
                                     </div>
                                 </div>
                                 <div className="flex-1 bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-lg py-2.5 px-3 text-center border border-purple-100">
                                     <p className="text-[8px] font-bold uppercase tracking-widest text-purple-400">{t("instructor")}</p>
-                                    <p className="text-xs font-bold text-gray-700 truncate">{viewCourse.instructor?.name || t("n_a")}</p>
+                                    <p className="text-xs font-bold text-gray-700 truncate">{translateRoleName(viewCourse.instructor?.name, shortCode) || viewCourse.instructor?.name || t("n_a")}</p>
                                 </div>
                             </div>
 

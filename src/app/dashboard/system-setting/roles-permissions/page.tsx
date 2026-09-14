@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -15,8 +15,6 @@ import {
 import {
     Card,
     CardContent,
-    CardHeader,
-    CardTitle,
     CardFooter
 } from "@/components/ui/card";
 import {
@@ -26,7 +24,6 @@ import {
     Printer,
     Columns,
     Search,
-    Pencil,
     Trash2,
     ChevronLeft,
     ChevronRight,
@@ -42,6 +39,7 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
+import { toLocaleNumber, translateRoleName } from "@/lib/utils";
 import { portalMenuPermissions } from "@/lib/portal-menu-permissions";
 import {
     Popover,
@@ -513,14 +511,14 @@ const submenuFeatureOverride: Record<string, Record<string, string[]>> = {
     },
     qr_code_attendance: {},
     system_setting: {
-        backup_restore: ["Backup"],
+        backup_restore: ["Backup", "Restore"],
         users: ["User Status"],
-        roles_permissions: [],
-        addons: [],
-        captcha_setting: [],
-        student_profile_setting: ["Student Profile Update"],
-        file_types: [],
-        system_update: [],
+        roles_permissions: ["Roles Permissions", "Roles & Permissions"],
+        addons: ["Addons", "Modules"],
+        captcha_setting: ["Captcha Setting"],
+        student_profile_setting: ["Student Profile Update", "Student Profile Setting"],
+        file_types: ["File Types"],
+        system_update: ["System Update"],
     },
 };
 
@@ -539,7 +537,7 @@ const Tooltip = ({ children, content }: { children: React.ReactNode; content: st
 };
 
 export default function RolesPermissionsPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const [roles, setRoles] = useState<any[]>([]);
     const [paginationMeta, setPaginationMeta] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -646,7 +644,7 @@ export default function RolesPermissionsPage() {
 
     const buildSubmenuPermNames = useCallback((modKey: string, subName: string): string[] => {
         const override = submenuFeatureOverride[modKey]?.[subName];
-        const featureLabels = override ?? (() => {
+        const featureLabels = (override && override.length > 0) ? override : (() => {
             const label = subName
                 .split('_')
                 .map(w => w.charAt(0).toUpperCase() + w.slice(1))
@@ -660,7 +658,7 @@ export default function RolesPermissionsPage() {
             const features = permissionsMatrix[permModule];
             if (!features) continue;
             for (const [featureKey, perms] of Object.entries(features)) {
-                if (featureLabels.some(fl => featureKey.toLowerCase() === fl.toLowerCase())) {
+                if (featureLabels.some(fl => featureKey.toLowerCase().replace(/[^a-z0-9]/g, '') === fl.toLowerCase().replace(/[^a-z0-9]/g, ''))) {
                     for (const p of perms as any) {
                         names.push(p.name);
                     }
@@ -669,12 +667,14 @@ export default function RolesPermissionsPage() {
         }
         if (names.length === 0) {
             const subSlug = subName.replace(/_/g, '.');
+            const cleanSub = subName.replace(/_/g, '');
             for (const permModule of permModuleNames) {
                 const features = permissionsMatrix[permModule];
                 if (features) {
                     for (const perms of Object.values(features) as any[]) {
                         for (const p of perms as any) {
-                            if (p.name && p.name.includes(subSlug)) {
+                            const cleanPerm = (p.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                            if (p.name && (p.name.includes(subSlug) || cleanPerm.includes(cleanSub))) {
                                 names.push(p.name);
                             }
                         }
@@ -737,16 +737,19 @@ export default function RolesPermissionsPage() {
         try {
             if (editingRole) {
                 await api.patch(`/roles/${editingRole.id}`, { name: roleName });
+                toast.success(t("role_updated_successfully"));
             } else {
                 const res = await api.post("/roles", {
                     name: roleName,
                     is_system: false
                 });
+                toast.success(t("role_added_successfully"));
                 setEditingRole({ id: res.data.data.id, name: roleName, is_system: false });
             }
             fetchRoles();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to save role:", error);
+            toast.error(error.response?.data?.message || t("failed_to_save_role"));
         } finally {
             setSubmitting(false);
         }
@@ -765,10 +768,10 @@ export default function RolesPermissionsPage() {
                     widgets: [...checkedWidgets]
                 }),
             ]);
-            toast.success(permRes.data?.message || t("updated_successfully"));
+            toast.success(permRes.data?.message || t("permissions_updated_successfully"));
             handleCancel();
         } catch (error: any) {
-            const msg = error.response?.data?.message || error.message || t("failed_to_save");
+            const msg = error.response?.data?.message || error.message || t("failed_to_update_permissions");
             toast.error(msg);
         } finally {
             setSavingPermissions(false);
@@ -882,7 +885,13 @@ export default function RolesPermissionsPage() {
         setCheckedPermNames(prev => {
             const next = new Set(prev);
             const allChecked = names.every(n => next.has(n));
-            for (const n of names) allChecked ? next.delete(n) : next.add(n);
+            for (const n of names) {
+                if (allChecked) {
+                    next.delete(n);
+                } else {
+                    next.add(n);
+                }
+            }
             return next;
         });
     };
@@ -904,8 +913,11 @@ export default function RolesPermissionsPage() {
     };
 
     const getExportData = () => {
-        const headers = ["Role", "Type"];
-        const rows = roles.map(r => [r.name, r.is_system ? "System" : "Custom"]);
+        const headers = [t("role"), t("type")];
+        const rows = roles.map(r => [
+            translateRoleName(r.name, language?.short_code) || r.name,
+            r.is_system ? t("system") : t("custom")
+        ]);
         return { headers, rows };
     };
 
@@ -931,7 +943,7 @@ export default function RolesPermissionsPage() {
         const html = `
             <html>
                 <head>
-                    <title>Role List</title>
+                    <title>${t("role_list")}</title>
                     <style>
                         body { font-family: sans-serif; padding: 40px; color: #333; }
                         table { width: 100%; border-collapse: collapse; margin-top: 20px; }
@@ -942,7 +954,7 @@ export default function RolesPermissionsPage() {
                     </style>
                 </head>
                 <body>
-                    <h1>Role List</h1>
+                    <h1>${t("role_list")}</h1>
                     <table>
                         <thead>
                             <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
@@ -951,7 +963,7 @@ export default function RolesPermissionsPage() {
                             ${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
                         </tbody>
                     </table>
-                    <div class="footer">Generated on ${new Date().toLocaleDateString()}</div>
+                    <div class="footer">${new Date().toLocaleDateString()}</div>
                 </body>
             </html>
         `;
@@ -973,507 +985,538 @@ export default function RolesPermissionsPage() {
     const isPortalRole = ["Student", "Parent"].includes(editingRole?.name ?? "");
 
     return (
-        <div className="p-4 grid grid-cols-1 lg:grid-cols-4 gap-6 bg-gray-50/10 min-h-screen font-sans">
-
-            {/* Left Panel - Role Form + Module Tree */}
-            <div className="lg:col-span-1 space-y-4">
-                <Card className="border-none shadow-sm pt-0 overflow-hidden">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <ShieldCheck className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{editingRole ? t("edit_role") : t("new_role")}</h1>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("manage_roles_and_access_permissions")}</p>
-                            </div>
-                        </div>
-                        {editingRole && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleCancel}
-                                className="h-6 w-6 text-gray-400 hover:text-red-500"
-                            >
-                                <X className="h-3.5 w-3.5" />
-                            </Button>
-                        )}
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* Top Header Banner */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <ShieldCheck className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("roles_permissions")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("manage_roles_and_access_permissions")}</p>
                     </div>
-                    <form onSubmit={handleChange}>
-                        <CardContent className="pt-4 space-y-3">
-                            <div className="space-y-2">
-                                <label className="text-[11px] font-medium text-gray-500">{t("role_name")} <span className="text-red-500">*</span></label>
-                                <Input
-                                    value={roleName}
-                                    onChange={(e) => setRoleName(e.target.value)}
-                                    placeholder={t("enter_role_name")}
-                                    className="h-9 text-[12px] border-gray-200 focus:ring-1 focus:ring-indigo-500"
-                                />
-                            </div>
-                        </CardContent>
-                        <CardFooter className="flex justify-end pt-2 pb-4 px-6">
-                            <Button
-                                type="submit"
-                                disabled={submitting}
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[12px] px-8 h-9 rounded-full shadow-md transition-all"
-                            >
-                                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("update") : t("create")}
-                            </Button>
-                        </CardFooter>
-                    </form>
-                </Card>
+                </div>
+            </div>
 
-                {permissionRoleId && (
-                    <Card className="border-none shadow-sm">
-                        <CardHeader className="pb-3 border-b border-gray-50">
-                            <CardTitle className="text-sm font-medium text-gray-700">
-                                {t("module_permissions")}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-4 space-y-1 max-h-[500px] overflow-y-auto">
-                            {!permissionsLoading && (
-                                <div className="px-1 py-1 mb-2">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <LayoutDashboard className="h-3.5 w-3.5 text-indigo-500" />
-                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("dashboard_cards")}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        {dashboardWidgets.filter(w => !w.section).map((w) => (
-                                            <div key={w.key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50/50 rounded-md transition-colors">
-                                                <Checkbox
-                                                    checked={checkedWidgets.has(w.key)}
-                                                    onCheckedChange={() => toggleWidget(w.key)}
-                                                    className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
-                                                />
-                                                <span className="text-[11px] text-gray-600">{w.title}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="border-t border-gray-100 my-2" />
-                                    <div className="space-y-1">
-                                        {dashboardWidgets.filter(w => w.section).map((w) => (
-                                            <div key={w.key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50/50 rounded-md transition-colors">
-                                                <Checkbox
-                                                    checked={checkedWidgets.has(w.key)}
-                                                    onCheckedChange={() => toggleWidget(w.key)}
-                                                    className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
-                                                />
-                                                <span className="text-[11px] font-medium text-indigo-600">{w.title}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="border-t border-gray-100 my-2" />
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 px-3 py-1.5">
-                                            <Checkbox
-                                                checked={summaryCardWidgets.every(c => checkedWidgets.has(c.key))}
-                                                onCheckedChange={() => {
-                                                    const allChecked = summaryCardWidgets.every(c => checkedWidgets.has(c.key));
-                                                    setCheckedWidgets(prev => {
-                                                        const next = new Set(prev);
-                                                        for (const c of summaryCardWidgets) {
-                                                            if (allChecked) next.delete(c.key);
-                                                            else next.add(c.key);
-                                                        }
-                                                        return next;
-                                                    });
-                                                }}
-                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
-                                            />
-                                            <span className="text-[11px] font-medium text-indigo-600">{t("summary_cards")}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                {/* Left Panel - Role Form + Module Tree (1/3) */}
+                <div className="lg:col-span-1 space-y-4">
+                    <Card className="border-none shadow-sm overflow-hidden bg-white">
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4 text-indigo-600" />
+                                <h2 className="text-sm font-semibold text-gray-800">
+                                    {editingRole ? t("edit_role") : t("new_role")}
+                                </h2>
+                            </div>
+                            {editingRole && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleCancel}
+                                    className="h-6 w-6 text-gray-400 hover:text-red-500"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                        </div>
+                        <form onSubmit={handleChange}>
+                            <CardContent className="pt-4 space-y-3">
+                                <div className="space-y-2">
+                                    <label className="text-[11px] font-medium text-gray-500">
+                                        {t("role_name")} <span className="text-red-500">*</span>
+                                    </label>
+                                    <Input
+                                        value={roleName}
+                                        onChange={(e) => setRoleName(e.target.value)}
+                                        placeholder={t("enter_role_name")}
+                                        className="h-9 text-[12px] border-gray-200 focus:ring-1 focus:ring-indigo-500"
+                                    />
+                                </div>
+                            </CardContent>
+                            <CardFooter className="flex justify-end pt-2 pb-4 px-6">
+                                <Button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#4f46e5] text-white text-[12px] px-8 h-9 rounded-full shadow-md transition-all font-semibold"
+                                >
+                                    {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingRole ? t("update") : t("create")}
+                                </Button>
+                            </CardFooter>
+                        </form>
+                    </Card>
+
+                    {permissionRoleId && (
+                        <Card className="border-none shadow-sm overflow-hidden bg-white">
+                            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                                <div className="flex items-center gap-2">
+                                    <LayoutDashboard className="h-4 w-4 text-indigo-600" />
+                                    <h2 className="text-sm font-semibold text-gray-800">
+                                        {t("module_permissions")} {editingRole?.name ? `(${translateRoleName(editingRole.name, language?.short_code) || editingRole.name})` : ""}
+                                    </h2>
+                                </div>
+                            </div>
+                            <CardContent className="pt-4 space-y-1 max-h-[500px] overflow-y-auto">
+                                {!permissionsLoading && (
+                                    <div className="px-1 py-1 mb-2">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <LayoutDashboard className="h-3.5 w-3.5 text-indigo-500" />
+                                            <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("dashboard_cards")}</span>
                                         </div>
-                                        <div className="ml-6 space-y-0.5 border-l-2 border-indigo-100 pl-3">
-                                            {summaryCardWidgets.map((c) => (
-                                                <div key={c.key} className="flex items-center gap-2 py-0.5">
-                                                    <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                        <div className="space-y-1">
+                                            {dashboardWidgets.filter(w => !w.section).map((w) => (
+                                                <div key={w.key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50/50 rounded-md transition-colors">
                                                     <Checkbox
-                                                        checked={checkedWidgets.has(c.key)}
-                                                        onCheckedChange={() => toggleWidget(c.key)}
-                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                        checked={checkedWidgets.has(w.key)}
+                                                        onCheckedChange={() => toggleWidget(w.key)}
+                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
                                                     />
-                                                    <span className={`text-[11px] ${checkedWidgets.has(c.key) ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{c.title}</span>
+                                                    <span className="text-[11px] text-gray-600">{t(w.key) !== w.key ? t(w.key) : w.title}</span>
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
-                                </div>
-                            )}
-                            {permissionsLoading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
-                                    <span className="ml-2 text-xs text-gray-400">{t("loading_permissions")}</span>
-                                </div>
-                            ) : isPortalRole ? (
-                                <>
-                                    <div className="flex items-center gap-2 px-1 mb-2">
-                                        <Monitor className="h-3.5 w-3.5 text-indigo-500" />
-                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("student_portal_menus")}</span>
-                                    </div>
-                                    {portalMenuPermissions.map((menu) => {
-                                        const subs = menu.submenus || [];
-                                        const hasSubs = subs.length > 0;
-                                        const checkState = getPortalMenuCheckState(menu.name);
-                                        const expanded = expandedModules.has(menu.name);
-                                        const hasPartial = hasSubs && subs.some(s => checkedPermNames.has(s.permission));
-                                        const showExpanded = expanded || hasPartial;
-
-                                        return (
-                                            <div key={menu.name} className="border border-gray-100 rounded-md mb-1">
-                                                <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
-                                                    {hasSubs && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleExpand(menu.name)}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                                                        >
-                                                            {showExpanded ? (
-                                                                <ChevronDown className="h-3.5 w-3.5" />
-                                                            ) : (
-                                                                <ChevronRightIcon className="h-3.5 w-3.5" />
-                                                            )}
-                                                        </button>
-                                                    )}
-                                                    {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
+                                        <div className="border-t border-gray-100 my-2" />
+                                        <div className="space-y-1">
+                                            {dashboardWidgets.filter(w => w.section).map((w) => (
+                                                <div key={w.key} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50/50 rounded-md transition-colors">
                                                     <Checkbox
-                                                        checked={checkState}
-                                                        onCheckedChange={() => togglePortalMenu(menu.name)}
+                                                        checked={checkedWidgets.has(w.key)}
+                                                        onCheckedChange={() => toggleWidget(w.key)}
                                                         className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
                                                     />
-                                                    <span className="text-[12px] font-medium text-gray-700">{menu.label}</span>
+                                                    <span className="text-[11px] font-medium text-indigo-600">{t(w.key) !== w.key ? t(w.key) : w.title}</span>
                                                 </div>
-
-                                                {hasSubs && showExpanded && (
-                                                    <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
-                                                        {subs.map((sub) => {
-                                                            const subChecked = checkedPermNames.has(sub.permission);
-                                                            return (
-                                                                <div key={sub.name} className="flex items-center gap-2 py-0.5">
-                                                                    <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
-                                                                    <Checkbox
-                                                                        checked={subChecked}
-                                                                        onCheckedChange={() => togglePortalSubmenu(sub.permission)}
-                                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
-                                                                    />
-                                                                    <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{sub.label}</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
+                                            ))}
+                                        </div>
+                                        <div className="border-t border-gray-100 my-2" />
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2 px-3 py-1.5">
+                                                <Checkbox
+                                                    checked={summaryCardWidgets.every(c => checkedWidgets.has(c.key))}
+                                                    onCheckedChange={() => {
+                                                        const allChecked = summaryCardWidgets.every(c => checkedWidgets.has(c.key));
+                                                        setCheckedWidgets(prev => {
+                                                            const next = new Set(prev);
+                                                            for (const c of summaryCardWidgets) {
+                                                                if (allChecked) next.delete(c.key);
+                                                                else next.add(c.key);
+                                                            }
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                />
+                                                <span className="text-[11px] font-medium text-indigo-600">{t("summary_cards")}</span>
                                             </div>
-                                        );
-                                    })}
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex items-center gap-2 px-1 mb-2">
-                                        <LayoutDashboard className="h-3.5 w-3.5 text-indigo-500" />
-                                        <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("admin_panel_modules")}</span>
-                                    </div>
-                                    {moduleKeys.map((modKey) => {
-                                        const subs = moduleSubmenus[modKey] || [];
-                                        const label = sidebarModuleLabels[modKey] || modKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-                                        const checkState = getModuleCheckState(modKey);
-                                        const hasSubs = subs.length > 0;
-                                        const expanded = expandedModules.has(modKey);
-                                        const hasPartial = hasSubs && subs.some(s => {
-                                            const pn = buildSubmenuPermNames(modKey, s.name);
-                                            return pn.length > 0 && pn.some(n => checkedPermNames.has(n));
-                                        });
-                                        const showExpanded = expanded || hasPartial;
-
-                                        return (
-                                            <div key={modKey} className="border border-gray-100 rounded-md mb-1">
-                                                <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
-                                                    {hasSubs && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleExpand(modKey)}
-                                                            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                                                        >
-                                                            {showExpanded ? (
-                                                                <ChevronDown className="h-3.5 w-3.5" />
-                                                            ) : (
-                                                                <ChevronRightIcon className="h-3.5 w-3.5" />
-                                                            )}
-                                                        </button>
-                                                    )}
-                                                    {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
-                                                    <Checkbox
-                                                        checked={checkState}
-                                                        onCheckedChange={() => toggleModule(modKey)}
-                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
-                                                    />
-                                                    <span className="text-[12px] font-medium text-gray-700">{label}</span>
-                                                </div>
-
-                                                {hasSubs && showExpanded && (
-                                                    <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
-                                                        {subs.map((sub) => {
-                                                            const subChecked = isSubmenuChecked(modKey, sub.name);
-                                                            return (
-                                                                <div key={sub.name} className="flex items-center gap-2 py-0.5">
-                                                                    <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
-                                                                    <Checkbox
-                                                                        checked={subChecked}
-                                                                        onCheckedChange={() => toggleSubmenu(modKey, sub.name)}
-                                                                        className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
-                                                                    />
-                                                                    <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{sub.label}</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </>
-                            )}
-
-                        </CardContent>
-                        <CardFooter className="flex justify-end pt-2 pb-4 px-6 border-t border-gray-50">
-                            <Button
-                                onClick={handleSavePermissions}
-                                disabled={savingPermissions}
-                                className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white text-[12px] px-8 h-9 rounded-full shadow-md transition-all gap-2"
-                            >
-                                {savingPermissions ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Save className="h-3.5 w-3.5" />
-                                )}
-                                {t("save_permissions")}
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                )}
-            </div>
-
-            {/* Right Panel - Role List */}
-            <div className="lg:col-span-3">
-                <Card className="border-none shadow-sm pt-0 min-h-[500px] flex flex-col overflow-hidden">
-                    <div className="flex items-center gap-2.5 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <LayoutDashboard className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("role_list")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("all_system_and_custom_roles")}</p>
-                        </div>
-                    </div>
-
-                    <div className="p-3 pb-0 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="relative w-full md:w-64">
-                            <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-gray-400" />
-                            <Input
-                                placeholder={t("search")}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="h-8 text-[11px] pl-8 border-gray-200 shadow-none rounded bg-gray-50/50 focus:bg-white transition-colors"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <Select value={limit} onValueChange={setLimit}>
-                                <SelectTrigger className="h-8 w-[70px] text-[11px] border-gray-200 bg-gray-50/50 shadow-none focus:ring-0 focus:ring-offset-0">
-                                    <SelectValue placeholder="50" />
-                                </SelectTrigger>
-                                <SelectContent className="min-w-[70px]">
-                                    <SelectItem value="50" className="text-[11px]">50</SelectItem>
-                                    <SelectItem value="100" className="text-[11px]">100</SelectItem>
-                                    <SelectItem value="200" className="text-[11px]">200</SelectItem>
-                                    <SelectItem value="500" className="text-[11px]">500</SelectItem>
-                                    <SelectItem value="All" className="text-[11px]">All</SelectItem>
-                                </SelectContent>
-                            </Select>
-
-                            <div className="flex items-center gap-1">
-                                <Tooltip content={t("copy")}>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handleCopy}
-                                        className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                                    >
-                                        <Copy className="h-3.5 w-3.5" />
-                                    </Button>
-                                </Tooltip>
-                                <Tooltip content={t("excel")}>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handleExportCSV}
-                                        className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                                    >
-                                        <FileSpreadsheet className="h-3.5 w-3.5" />
-                                    </Button>
-                                </Tooltip>
-                                <Tooltip content={t("pdf")}>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handlePrint}
-                                        className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                                    >
-                                        <FileText className="h-3.5 w-3.5" />
-                                    </Button>
-                                </Tooltip>
-                                <Tooltip content={t("print")}>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handlePrint}
-                                        className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
-                                    >
-                                        <Printer className="h-3.5 w-3.5" />
-                                    </Button>
-                                </Tooltip>
-                                <Tooltip content={t("column")}>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50 outline-none">
-                                                <Columns className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-32 p-1" align="end">
-                                            <div className="space-y-0.5">
-                                                {([
-                                                    { id: 'role', label: t("role") },
-                                                    { id: 'type', label: t("type") },
-                                                    { id: 'action', label: t("action") }
-                                                ] as const).map((col) => (
-                                                    <div
-                                                        key={col.id}
-                                                        className="flex items-center justify-between px-3 py-1.5 hover:bg-gray-50 rounded cursor-pointer transition-colors"
-                                                        onClick={() => toggleColumn(col.id)}
-                                                    >
-                                                        <span className="text-[12px] text-gray-700">{col.label}</span>
-                                                        {visibleColumns[col.id] && (
-                                                            <Check className="h-3.5 w-3.5 text-indigo-500" />
-                                                        )}
+                                            <div className="ml-6 space-y-0.5 border-l-2 border-indigo-100 pl-3">
+                                                {summaryCardWidgets.map((c) => (
+                                                    <div key={c.key} className="flex items-center gap-2 py-0.5">
+                                                        <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                        <Checkbox
+                                                            checked={checkedWidgets.has(c.key)}
+                                                            onCheckedChange={() => toggleWidget(c.key)}
+                                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                        />
+                                                        <span className={`text-[11px] ${checkedWidgets.has(c.key) ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>
+                                                            {t(c.key) !== c.key ? t(c.key) : c.title}
+                                                        </span>
                                                     </div>
                                                 ))}
                                             </div>
-                                        </PopoverContent>
-                                    </Popover>
-                                </Tooltip>
+                                        </div>
+                                    </div>
+                                )}
+                                {permissionsLoading ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <Loader2 className="h-5 w-5 animate-spin text-indigo-500" />
+                                        <span className="ml-2 text-xs text-gray-400">{t("loading_permissions")}</span>
+                                    </div>
+                                ) : isPortalRole ? (
+                                    <>
+                                        <div className="flex items-center gap-2 px-1 mb-2">
+                                            <Monitor className="h-3.5 w-3.5 text-indigo-500" />
+                                            <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("student_portal_menus")}</span>
+                                        </div>
+                                        {portalMenuPermissions.map((menu) => {
+                                            const subs = menu.submenus || [];
+                                            const hasSubs = subs.length > 0;
+                                            const checkState = getPortalMenuCheckState(menu.name);
+                                            const expanded = expandedModules.has(menu.name);
+                                            const hasPartial = hasSubs && subs.some(s => checkedPermNames.has(s.permission));
+                                            const showExpanded = expanded || hasPartial;
+                                            const menuLabel = t(menu.name) !== menu.name ? t(menu.name) : menu.label;
+
+                                            return (
+                                                <div key={menu.name} className="border border-gray-100 rounded-md mb-1">
+                                                    <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                                                        {hasSubs && (
+                                                          <button
+                                                              type="button"
+                                                              onClick={() => toggleExpand(menu.name)}
+                                                              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                                                          >
+                                                              {showExpanded ? (
+                                                                  <ChevronDown className="h-3.5 w-3.5" />
+                                                              ) : (
+                                                                  <ChevronRightIcon className="h-3.5 w-3.5" />
+                                                              )}
+                                                          </button>
+                                                        )}
+                                                        {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
+                                                        <Checkbox
+                                                            checked={checkState}
+                                                            onCheckedChange={() => togglePortalMenu(menu.name)}
+                                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                        />
+                                                        <span className="text-[12px] font-medium text-gray-700">{menuLabel}</span>
+                                                    </div>
+
+                                                    {hasSubs && showExpanded && (
+                                                        <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
+                                                            {subs.map((sub) => {
+                                                                const subChecked = checkedPermNames.has(sub.permission);
+                                                                const subLabel = t(sub.name) !== sub.name ? t(sub.name) : sub.label;
+                                                                return (
+                                                                    <div key={sub.name} className="flex items-center gap-2 py-0.5">
+                                                                        <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                                        <Checkbox
+                                                                            checked={subChecked}
+                                                                            onCheckedChange={() => togglePortalSubmenu(sub.permission)}
+                                                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                                        />
+                                                                        <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{subLabel}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-2 px-1 mb-2">
+                                            <LayoutDashboard className="h-3.5 w-3.5 text-indigo-500" />
+                                            <span className="text-[12px] font-semibold text-gray-700 uppercase tracking-wide">{t("admin_panel_modules")}</span>
+                                        </div>
+                                        {moduleKeys.map((modKey) => {
+                                            const subs = moduleSubmenus[modKey] || [];
+                                            const modLabel = t(modKey) !== modKey ? t(modKey) : (sidebarModuleLabels[modKey] || modKey.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()));
+                                            const checkState = getModuleCheckState(modKey);
+                                            const hasSubs = subs.length > 0;
+                                            const expanded = expandedModules.has(modKey);
+                                            const hasPartial = hasSubs && subs.some(s => {
+                                                const pn = buildSubmenuPermNames(modKey, s.name);
+                                                return pn.length > 0 && pn.some(n => checkedPermNames.has(n));
+                                            });
+                                            const showExpanded = expanded || hasPartial;
+
+                                            return (
+                                                <div key={modKey} className="border border-gray-100 rounded-md mb-1">
+                                                    <div className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                                                        {hasSubs && (
+                                                          <button
+                                                              type="button"
+                                                              onClick={() => toggleExpand(modKey)}
+                                                              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                                                          >
+                                                              {showExpanded ? (
+                                                                  <ChevronDown className="h-3.5 w-3.5" />
+                                                              ) : (
+                                                                  <ChevronRightIcon className="h-3.5 w-3.5" />
+                                                              )}
+                                                          </button>
+                                                        )}
+                                                        {!hasSubs && <div className="w-3.5 flex-shrink-0" />}
+                                                        <Checkbox
+                                                            checked={checkState}
+                                                            onCheckedChange={() => toggleModule(modKey)}
+                                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-4 w-4 rounded"
+                                                        />
+                                                        <span className="text-[12px] font-medium text-gray-700">{modLabel}</span>
+                                                    </div>
+
+                                                    {hasSubs && showExpanded && (
+                                                        <div className="ml-8 pb-2 space-y-0.5 border-l-2 border-indigo-100 pl-3">
+                                                            {subs.map((sub) => {
+                                                                const subChecked = isSubmenuChecked(modKey, sub.name);
+                                                                const subLabel = t(sub.name) !== sub.name ? t(sub.name) : sub.label;
+                                                                return (
+                                                                    <div key={sub.name} className="flex items-center gap-2 py-0.5">
+                                                                        <div className="w-2 h-[1px] bg-indigo-200 flex-shrink-0" />
+                                                                        <Checkbox
+                                                                            checked={subChecked}
+                                                                            onCheckedChange={() => toggleSubmenu(modKey, sub.name)}
+                                                                            className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 h-3.5 w-3.5 rounded"
+                                                                        />
+                                                                        <span className={`text-[11px] ${subChecked ? 'text-indigo-600 font-medium' : 'text-gray-500'}`}>{subLabel}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </>
+                                )}
+
+                            </CardContent>
+                            <CardFooter className="flex justify-end pt-2 pb-4 px-6 border-t border-gray-50">
+                                <Button
+                                    onClick={handleSavePermissions}
+                                    disabled={savingPermissions}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#4f46e5] text-white text-[12px] px-8 h-9 rounded-full shadow-md transition-all gap-2 font-semibold"
+                                >
+                                    {savingPermissions ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Save className="h-3.5 w-3.5" />
+                                    )}
+                                    {savingPermissions ? t("saving_permissions") : t("save_permissions")}
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )}
+                </div>
+
+                {/* Right Panel - Role List (2/3) */}
+                <div className="lg:col-span-2">
+                    <Card className="border-none shadow-sm min-h-[500px] flex flex-col overflow-hidden bg-white">
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 bg-gray-50/50">
+                            <div className="flex items-center gap-2">
+                                <LayoutDashboard className="h-4 w-4 text-indigo-600" />
+                                <div>
+                                    <h2 className="text-sm font-semibold text-gray-800 leading-none">{t("role_list")}</h2>
+                                    <p className="text-[11px] text-gray-500 mt-0.5">{t("all_system_and_custom_roles")}</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="flex-1 overflow-x-hidden">
-                        <Table className="table-fixed w-full border-collapse">
-                            <TableHeader className="bg-gray-50/40">
-                                <TableRow className="border-b border-gray-100 hover:bg-transparent text-[11px]">
-                                    {visibleColumns.role && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-auto">{t("role")}</TableHead>}
-                                    {visibleColumns.type && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-[100px]">{t("type")}</TableHead>}
-                                    {visibleColumns.action && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase text-right w-[140px]">{t("action")}</TableHead>}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {loading ? (
-                                    Array.from({ length: 6 }).map((_, i) => (
-                                        <TableRow key={`sk-${i}`} className="border-b border-gray-50 h-11">
-                                            {visibleColumns.role && (
-                                                <TableCell className="py-2 px-3"><div className="h-3 rounded bg-gray-200/60 animate-pulse" style={{ width: `${55 + ((i * 7) % 30)}%` }} /></TableCell>
-                                            )}
-                                            {visibleColumns.type && (
-                                                <TableCell className="py-2 px-3"><div className="h-3 w-14 rounded bg-gray-200/60 animate-pulse" /></TableCell>
-                                            )}
-                                            {visibleColumns.action && (
-                                                <TableCell className="py-2 px-3">
-                                                    <div className="flex justify-end gap-1">
-                                                        <div className="h-6 w-6 rounded bg-gray-200/60 animate-pulse" />
-                                                        <div className="h-6 w-6 rounded bg-gray-200/60 animate-pulse" />
-                                                    </div>
-                                                </TableCell>
-                                            )}
-                                        </TableRow>
-                                    ))
-                                ) : roles.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={visibleColumns.role ? (visibleColumns.type ? (visibleColumns.action ? 3 : 2) : (visibleColumns.action ? 2 : 1)) : (visibleColumns.type ? (visibleColumns.action ? 2 : 1) : 1)} className="h-32 text-center text-gray-400 text-xs">{t("no_records_found")}</TableCell>
-                                    </TableRow>
-                                ) : (
-                                    roles.map((role) => (
-                                        <TableRow key={role.id} className={`border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer h-11 group ${editingRole?.id === role.id ? 'bg-indigo-50/30' : ''}`}>
-                                            {visibleColumns.role && (
-                                                <TableCell className="py-2 px-3 text-[12px] text-gray-600 font-medium truncate max-w-0" title={role.name}>
-                                                    {role.name}
-                                                </TableCell>
-                                            )}
-                                            {visibleColumns.type && <TableCell className="py-2 px-3 text-[12px] text-gray-400 truncate">{role.is_system ? t("system") : t("custom")}</TableCell>}
-                                            {visibleColumns.action && (
-                                                <TableCell className="py-2 px-3 text-right">
-                                                    <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                        <Tooltip content={editingRole?.id === role.id ? t("currently_editing") : t("edit_and_assign_permissions")}>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => handleEdit(role)}
-                                                                disabled={role.name === 'Super Admin'}
-                                                                className={`h-7 w-7 ${role.name === 'Super Admin' ? 'bg-gray-100 text-gray-400' : editingRole?.id === role.id ? 'bg-indigo-500 text-white' : 'bg-[#6366f1] text-white hover:bg-[#5558dd] shadow-sm'} rounded-lg`}
-                                                            >
-                                                                <ShieldCheck className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </Tooltip>
-                                                        <Tooltip content={t("delete_role")}>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => promptDelete(role.id)}
-                                                                disabled={role.name === 'Super Admin'}
-                                                                className={`h-7 w-7 ${role.name === 'Super Admin' ? 'bg-gray-100 text-gray-400' : 'bg-red-500 text-white hover:bg-red-600 shadow-sm'} rounded-lg`}
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </Tooltip>
-                                                    </div>
-                                                </TableCell>
-                                            )}
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {paginationMeta && (
-                        <CardFooter className="py-3 items-center justify-between border-t border-gray-50">
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                                {t("showing")} {paginationMeta.from || 0} {t("to")} {paginationMeta.to || 0} {t("of")} {paginationMeta.total || 0} {t("entries")}
-                            </p>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    disabled={!paginationMeta.prev_page_url}
-                                    onClick={() => fetchRoles(paginationMeta.current_page - 1)}
-                                    className="h-8 w-8 rounded-lg border border-gray-100 bg-white hover:bg-gray-50 text-gray-600 disabled:opacity-50"
-                                >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 rounded-lg bg-gradient-to-r from-orange-400 to-indigo-500 text-white shadow-md hover:from-orange-500 hover:to-indigo-600 font-bold text-xs pointer-events-none"
-                                >
-                                    {paginationMeta.current_page}
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    disabled={!paginationMeta.next_page_url}
-                                    onClick={() => fetchRoles(paginationMeta.current_page + 1)}
-                                    className="h-8 w-8 rounded-lg border border-gray-100 bg-white hover:bg-gray-50 text-gray-600 disabled:opacity-50"
-                                >
-                                    <ChevronRight className="h-4 w-4" />
-                                </Button>
+                        <div className="p-3 pb-0 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input
+                                    placeholder={t("search")}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="h-8 text-[11px] pl-8 border-gray-200 shadow-none rounded bg-gray-50/50 focus:bg-white transition-colors"
+                                />
                             </div>
-                        </CardFooter>
-                    )}
-                </Card>
+
+                            <div className="flex items-center gap-2">
+                                <Select value={limit} onValueChange={setLimit}>
+                                    <SelectTrigger className="h-8 min-w-[70px] text-[11px] border-gray-200 bg-gray-50/50 shadow-none focus:ring-0 focus:ring-offset-0">
+                                        <SelectValue placeholder={toLocaleNumber(50, language?.short_code)} />
+                                    </SelectTrigger>
+                                    <SelectContent className="min-w-[70px]">
+                                        <SelectItem value="50" className="text-[11px]">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                        <SelectItem value="100" className="text-[11px]">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                                        <SelectItem value="200" className="text-[11px]">{toLocaleNumber(200, language?.short_code)}</SelectItem>
+                                        <SelectItem value="500" className="text-[11px]">{toLocaleNumber(500, language?.short_code)}</SelectItem>
+                                        <SelectItem value="All" className="text-[11px]">{t("all") || "All"}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                <div className="flex items-center gap-1">
+                                    <Tooltip content={t("copy")}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleCopy}
+                                            className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                                        >
+                                            <Copy className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </Tooltip>
+                                    <Tooltip content={t("excel")}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleExportCSV}
+                                            className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                                        >
+                                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </Tooltip>
+                                    <Tooltip content={t("pdf")}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handlePrint}
+                                            className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </Tooltip>
+                                    <Tooltip content={t("print")}>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handlePrint}
+                                            className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+                                        >
+                                            <Printer className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </Tooltip>
+                                    <Tooltip content={t("columns") || t("column")}>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-gray-600 hover:bg-gray-50 outline-none">
+                                                    <Columns className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-32 p-1" align="end">
+                                                <div className="space-y-0.5">
+                                                    {([
+                                                        { id: 'role', label: t("role") },
+                                                        { id: 'type', label: t("type") },
+                                                        { id: 'action', label: t("action") }
+                                                    ] as const).map((col) => (
+                                                        <div
+                                                            key={col.id}
+                                                            className="flex items-center justify-between px-3 py-1.5 hover:bg-gray-50 rounded cursor-pointer transition-colors"
+                                                            onClick={() => toggleColumn(col.id)}
+                                                        >
+                                                            <span className="text-[12px] text-gray-700">{col.label}</span>
+                                                            {visibleColumns[col.id] && (
+                                                                <Check className="h-3.5 w-3.5 text-indigo-500" />
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                    </Tooltip>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-x-hidden">
+                            <Table className="table-fixed w-full border-collapse">
+                                <TableHeader className="bg-gray-50/40">
+                                    <TableRow className="border-b border-gray-100 hover:bg-transparent text-[11px]">
+                                        {visibleColumns.role && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-auto">{t("role")}</TableHead>}
+                                        {visibleColumns.type && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase w-[100px]">{t("type")}</TableHead>}
+                                        {visibleColumns.action && <TableHead className="h-10 px-3 font-bold text-gray-600 uppercase text-right w-[140px]">{t("action")}</TableHead>}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {loading ? (
+                                        Array.from({ length: 6 }).map((_, i) => (
+                                            <TableRow key={`sk-${i}`} className="border-b border-gray-50 h-11">
+                                                {visibleColumns.role && (
+                                                    <TableCell className="py-2 px-3"><div className="h-3 rounded bg-gray-200/60 animate-pulse" style={{ width: `${55 + ((i * 7) % 30)}%` }} /></TableCell>
+                                                )}
+                                                {visibleColumns.type && (
+                                                    <TableCell className="py-2 px-3"><div className="h-3 w-14 rounded bg-gray-200/60 animate-pulse" /></TableCell>
+                                                )}
+                                                {visibleColumns.action && (
+                                                    <TableCell className="py-2 px-3">
+                                                        <div className="flex justify-end gap-1">
+                                                            <div className="h-6 w-6 rounded bg-gray-200/60 animate-pulse" />
+                                                            <div className="h-6 w-6 rounded bg-gray-200/60 animate-pulse" />
+                                                        </div>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                        ))
+                                    ) : roles.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={visibleColumns.role ? (visibleColumns.type ? (visibleColumns.action ? 3 : 2) : (visibleColumns.action ? 2 : 1)) : (visibleColumns.type ? (visibleColumns.action ? 2 : 1) : 1)} className="h-32 text-center text-gray-400 text-xs">{t("no_records_found")}</TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        roles.map((role) => (
+                                            <TableRow key={role.id} className={`border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer h-11 group ${editingRole?.id === role.id ? 'bg-indigo-50/30' : ''}`}>
+                                                {visibleColumns.role && (
+                                                    <TableCell className="py-2 px-3 text-[12px] text-gray-600 font-medium truncate max-w-0" title={role.name}>
+                                                        {translateRoleName(role.name, language?.short_code) || role.name}
+                                                    </TableCell>
+                                                )}
+                                                {visibleColumns.type && <TableCell className="py-2 px-3 text-[12px] text-gray-400 truncate">{role.is_system ? t("system") : t("custom")}</TableCell>}
+                                                {visibleColumns.action && (
+                                                    <TableCell className="py-2 px-3 text-right">
+                                                        <div className="flex justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                            <Tooltip content={editingRole?.id === role.id ? t("currently_editing") : t("edit_and_assign_permissions")}>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleEdit(role)}
+                                                                    disabled={role.name === 'Super Admin'}
+                                                                    className={`h-7 w-7 ${
+                                                                        role.name === 'Super Admin'
+                                                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                            : editingRole?.id === role.id
+                                                                            ? 'bg-gradient-to-r from-indigo-500 to-indigo-700 text-white shadow-xs ring-2 ring-indigo-300'
+                                                                            : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-xs active:scale-95'
+                                                                    } rounded-lg transition-all`}
+                                                                >
+                                                                    <ShieldCheck className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </Tooltip>
+                                                            <Tooltip content={t("delete_role")}>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => promptDelete(role.id)}
+                                                                    disabled={role.name === 'Super Admin'}
+                                                                    className={`h-7 w-7 ${
+                                                                        role.name === 'Super Admin'
+                                                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                            : 'bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95'
+                                                                    } rounded-lg transition-all`}
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </Tooltip>
+                                                        </div>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {paginationMeta && (
+                            <CardFooter className="py-3 items-center justify-between border-t border-gray-50">
+                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                                    {t("showing")} {toLocaleNumber(paginationMeta.from || 0, language?.short_code)} {t("to")} {toLocaleNumber(paginationMeta.to || 0, language?.short_code)} {t("of")} {toLocaleNumber(paginationMeta.total || 0, language?.short_code)} {t("entries")}
+                                </p>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={!paginationMeta.prev_page_url}
+                                        onClick={() => fetchRoles(paginationMeta.current_page - 1)}
+                                        className="h-8 w-8 rounded-lg border border-gray-100 bg-white hover:bg-gray-50 text-gray-600 disabled:opacity-50"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md hover:from-[#f59e0b] hover:to-[#4f46e5] font-bold text-xs pointer-events-none"
+                                    >
+                                        {toLocaleNumber(paginationMeta.current_page, language?.short_code)}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={!paginationMeta.next_page_url}
+                                        onClick={() => fetchRoles(paginationMeta.current_page + 1)}
+                                        className="h-8 w-8 rounded-lg border border-gray-100 bg-white hover:bg-gray-50 text-gray-600 disabled:opacity-50"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </CardFooter>
+                        )}
+                    </Card>
+                </div>
             </div>
 
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -1501,9 +1544,9 @@ export default function RolesPermissionsPage() {
                     .lg\\:col-span-1 {
                         display: none !important;
                     }
-                    .lg\\:col-span-3 {
+                    .lg\\:col-span-2 {
                         width: 100% !important;
-                        grid-column: span 3 / span 3 !important;
+                        grid-column: span 2 / span 2 !important;
                     }
                     .Card {
                         border: none !important;

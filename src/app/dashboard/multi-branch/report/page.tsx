@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
-import { useTranslation } from "@/hooks/use-translation";
-import { useTranslateToast } from "@/hooks/use-translate-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/components/providers/language-provider";
+import { useCurrency } from "@/components/providers/currency-provider";
+import { toLocaleNumber, cn } from "@/lib/utils";
 import {
     Table,
     TableBody,
@@ -17,11 +17,26 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-    Search, FileText, Wallet, Users, BarChart, Activity,
-    Copy, FileSpreadsheet, Printer, PieChart,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Search,
+    FileText,
+    Wallet,
+    Users,
+    BarChart,
+    Activity,
+    Copy,
+    FileSpreadsheet,
+    Printer,
+    PieChart,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useCurrency } from "@/components/providers/currency-provider";
 
 interface ReportItem {
     id: string;
@@ -36,21 +51,24 @@ interface ReportItem {
 const REPORT_TYPES = [
     { id: "daily", label: "daily_collection", icon: FileText },
     { id: "expense", label: "expenses", icon: Wallet },
-    { id: "payroll", label: "payroll", icon: Users },
+    { id: "payroll", label: "staff_payroll", icon: Users },
     { id: "income", label: "income", icon: BarChart },
     { id: "userlog", label: "system_activity", icon: Activity },
 ];
 
 const TABLE_COLS = 6;
 
-function SkeletonRows({ rows = 6 }: { rows?: number }) {
+function SkeletonRows({ rows = 5 }: { rows?: number }) {
     return (
         <>
             {Array.from({ length: rows }).map((_, i) => (
                 <TableRow key={i} className="border-b border-gray-50">
                     {Array.from({ length: TABLE_COLS }).map((_, j) => (
-                        <TableCell key={j} className="py-3">
-                            <div className="h-3 rounded bg-gray-200/70 animate-pulse" style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }} />
+                        <TableCell key={j} className="py-3.5">
+                            <div
+                                className="h-3.5 rounded bg-gray-200/70 animate-pulse"
+                                style={{ width: `${55 + ((i * 3 + j * 7) % 40)}%` }}
+                            />
                         </TableCell>
                     ))}
                 </TableRow>
@@ -61,10 +79,10 @@ function SkeletonRows({ rows = 6 }: { rows?: number }) {
 
 export default function ReportPage() {
     const { toast } = useToast();
-    const { t } = useTranslation();
-    const tt = useTranslateToast();
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
     const { selectedCurrency } = useCurrency();
-    const cur = selectedCurrency?.symbol || "$";
+    const cur = selectedCurrency?.symbol || "৳";
 
     const [activeReport, setActiveReport] = useState("expense");
     const [searchTerm, setSearchTerm] = useState("");
@@ -72,34 +90,57 @@ export default function ReportPage() {
     const [loading, setLoading] = useState(false);
     const [grandTotal, setGrandTotal] = useState(0);
 
-    const fetchReport = async () => {
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState("50");
+
+    const fetchReport = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await api.get("/multi-branch/reports", { params: { type: activeReport, search: searchTerm } });
+            const response = await api.get("/multi-branch/reports", {
+                params: { type: activeReport, search: searchTerm },
+            });
             setReportData(response.data.data || []);
             setGrandTotal(response.data.grand_total || 0);
-        } catch {
-            tt.toast("error", "failed_to_fetch_report");
+            setCurrentPage(1);
+        } catch (error) {
+            console.error("Error fetching report data:", error);
+            toast({
+                title: t("error"),
+                description: t("failed_to_fetch_data") || "Failed to fetch report data",
+                variant: "destructive",
+            });
         } finally {
             setLoading(false);
         }
-    };
+    }, [activeReport, searchTerm, t, toast]);
 
     useEffect(() => {
         fetchReport();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeReport]);
+    }, [fetchReport]);
 
-    const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmt = (n: number) =>
+        n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(reportData.map((r) => `${r.branch}\t${r.name}\t${r.invoice}\t${r.head}\t${r.date}\t${r.amount}`).join("\n"));
-        toast({ title: t("copied"), description: t("data_copied_to_clipboard") });
+        const text = reportData
+            .map((r) => `${r.branch}\t${r.name}\t${r.invoice}\t${r.head}\t${r.date}\t${r.amount}`)
+            .join("\n");
+        navigator.clipboard.writeText(text);
+        toast({
+            title: t("copied"),
+            description: t("copied_to_clipboard") || "Data copied to clipboard",
+        });
     };
+
     const handleExportCSV = () => {
-        const rows = [["Branch", "Name", "Invoice", "Head", "Date", "Amount"],
-            ...reportData.map((r) => [r.branch, r.name, r.invoice, r.head, r.date, String(r.amount)])];
-        const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], { type: "text/csv;charset=utf-8;" });
+        const rows = [
+            ["Branch", "Name", "Invoice", "Head", "Date", "Amount"],
+            ...reportData.map((r) => [r.branch, r.name, r.invoice, r.head, r.date, String(r.amount)]),
+        ];
+        const blob = new Blob([rows.map((r) => r.join(",")).join("\n")], {
+            type: "text/csv;charset=utf-8;",
+        });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
         link.download = `multi_branch_${activeReport}_report.csv`;
@@ -113,11 +154,23 @@ export default function ReportPage() {
         { Icon: Printer, onClick: () => window.print(), title: t("print") },
     ];
 
-    const activeLabel = t(REPORT_TYPES.find((r) => r.id === activeReport)?.label || activeReport);
+    const activeType = REPORT_TYPES.find((r) => r.id === activeReport);
+    const activeLabel = activeType ? t(activeType.label) : activeReport;
+
+    // Client-side pagination calculations
+    const numericPageSize = Number(pageSize) || 50;
+    const totalRecords = reportData.length;
+    const totalPages = Math.ceil(totalRecords / numericPageSize) || 1;
+    const startIndex = (currentPage - 1) * numericPageSize;
+    const endIndex = Math.min(startIndex + numericPageSize, totalRecords);
+
+    const paginatedRecords = useMemo(() => {
+        return reportData.slice(startIndex, endIndex);
+    }, [reportData, startIndex, endIndex]);
 
     return (
         <div className="space-y-6">
-            {/* Report type selector */}
+            {/* Report Type Selector Tabs */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {REPORT_TYPES.map((report) => {
                     const Icon = report.icon;
@@ -125,21 +178,34 @@ export default function ReportPage() {
                     return (
                         <button
                             key={report.id}
-                            onClick={() => setActiveReport(report.id)}
+                            type="button"
+                            onClick={() => {
+                                setActiveReport(report.id);
+                                setCurrentPage(1);
+                            }}
                             className={cn(
-                                "flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all duration-200",
+                                "flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95",
                                 isActive
-                                    ? "border-transparent bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] shadow-md ring-1 ring-[#6366F1]/30"
-                                    : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                                    ? "border-indigo-200/80 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] shadow-sm ring-1 ring-[#6366F1]/30"
+                                    : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-2xs text-gray-600"
                             )}
                         >
-                            <span className={cn(
-                                "h-10 w-10 rounded-lg flex items-center justify-center transition-all",
-                                isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm" : "bg-gray-100 text-gray-500"
-                            )}>
+                            <span
+                                className={cn(
+                                    "h-10 w-10 rounded-xl flex items-center justify-center transition-all",
+                                    isActive
+                                        ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm"
+                                        : "bg-gray-100 text-gray-500"
+                                )}
+                            >
                                 <Icon className="h-5 w-5" />
                             </span>
-                            <span className={cn("text-[10px] font-bold uppercase tracking-wide text-center", isActive ? "text-slate-800" : "text-gray-500")}>
+                            <span
+                                className={cn(
+                                    "text-xs font-bold tracking-tight text-center leading-tight line-clamp-1",
+                                    isActive ? "text-gray-900" : "text-gray-600"
+                                )}
+                            >
                                 {t(report.label)}
                             </span>
                         </button>
@@ -147,84 +213,271 @@ export default function ReportPage() {
                 })}
             </div>
 
-            {/* Report table */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                        <PieChart className="h-5 w-5" />
+            {/* Report Card & Table */}
+            <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs overflow-hidden">
+                {/* Header Banner - Flush with card border */}
+                <div className="flex flex-row items-center gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                        <PieChart className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                        <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{activeLabel} {t("report")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("cross_branch_aggregated_records")}</p>
+                        <h2 className="text-sm font-bold text-gray-800 tracking-tight leading-none">
+                            {activeLabel} {t("report")}
+                        </h2>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("cross_branch_aggregated_records")}
+                        </p>
                     </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                </div>
+
+                <div className="p-5 space-y-4">
                     {/* Toolbar */}
-                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
-                        <form onSubmit={(e) => { e.preventDefault(); fetchReport(); }} className="flex items-center gap-2 w-full md:w-auto">
-                            <Input placeholder={t("search_records")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-3 h-9 text-xs w-full md:w-64" />
-                            <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
-                                <Search className="h-4 w-4" /> {t("search")}
+                    <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                fetchReport();
+                            }}
+                            className="flex items-center gap-2 w-full md:w-auto"
+                        >
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                                <Input
+                                    placeholder={t("search_records")}
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-9 h-9 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/60"
+                                />
+                            </div>
+                            <Button
+                                type="submit"
+                                className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer shrink-0"
+                            >
+                                <Search className="h-3.5 w-3.5" /> {t("search")}
                             </Button>
                         </form>
-                        <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500 self-end md:self-auto">
-                            {toolbarActions.map((a, i) => (
-                                <Button key={i} variant="ghost" size="icon" onClick={a.onClick} title={a.title} className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"><a.Icon className="h-4 w-4" /></Button>
-                            ))}
+
+                        <div className="flex items-center gap-2 self-end md:self-auto">
+                            {/* Limit Selector */}
+                            <div className="flex items-center gap-1.5">
+                                <Select
+                                    value={pageSize}
+                                    onValueChange={(val) => {
+                                        setPageSize(val);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="h-8 w-20 text-xs border-gray-200 bg-white shadow-2xs rounded-lg px-2 font-medium">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {["10", "25", "50", "100"].map((n) => (
+                                            <SelectItem key={n} value={n} className="text-xs">
+                                                {toLocaleNumber(Number(n), langCode)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Export Actions */}
+                            <div className="flex items-center border border-gray-200/80 rounded-lg p-0.5 bg-gray-50/80 text-gray-500">
+                                {toolbarActions.map((a, i) => (
+                                    <Button
+                                        key={i}
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={a.onClick}
+                                        title={a.title}
+                                        className="h-7 w-7 text-gray-500 hover:text-gray-800 hover:bg-white rounded-md transition-all shadow-none"
+                                    >
+                                        <a.Icon className="h-3.5 w-3.5" />
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="rounded-md border overflow-x-auto custom-scrollbar">
+                    {/* Table */}
+                    <div className="rounded-xl border border-gray-100 overflow-x-auto custom-scrollbar bg-white shadow-2xs">
                         <Table className="min-w-[820px]">
-                            <TableHeader className="bg-gray-50 text-xs uppercase">
-                                <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                    <TableHead className="font-semibold text-gray-600">{t("branch")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("name")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("invoice")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600">{t("head")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-center">{t("date")}</TableHead>
-                                    <TableHead className="font-semibold text-gray-600 text-right">{t("amount")} ({cur})</TableHead>
+                            <TableHeader className="bg-gray-50/80 text-xs">
+                                <TableRow className="border-b border-gray-100 whitespace-nowrap">
+                                    <TableHead className="font-bold text-gray-600 py-3 pl-4">
+                                        {t("branch")}
+                                    </TableHead>
+                                    <TableHead className="font-bold text-gray-600 py-3">
+                                        {t("name")}
+                                    </TableHead>
+                                    <TableHead className="font-bold text-gray-600 py-3">
+                                        {t("invoice")}
+                                    </TableHead>
+                                    <TableHead className="font-bold text-gray-600 py-3">
+                                        {t("head")}
+                                    </TableHead>
+                                    <TableHead className="font-bold text-gray-600 py-3 text-center">
+                                        {t("date")}
+                                    </TableHead>
+                                    <TableHead className="font-bold text-gray-600 py-3 pr-4 text-right">
+                                        {t("amount")} ({cur})
+                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {loading ? (
                                     <SkeletonRows />
-                                ) : reportData.length === 0 ? (
-                                    <TableRow><TableCell colSpan={TABLE_COLS} className="py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">{t("no_records_found")}</TableCell></TableRow>
-                                ) : reportData.map((row) => (
-                                    <TableRow key={row.id} className="text-xs hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                        <TableCell className="py-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500 font-bold text-[10px]">{row.branch?.[0]}</span>
-                                                <span className="font-medium text-gray-700">{row.branch}</span>
+                                ) : totalRecords === 0 ? (
+                                    <TableRow>
+                                        <TableCell
+                                            colSpan={TABLE_COLS}
+                                            className="py-12 text-center text-xs font-semibold text-gray-400"
+                                        >
+                                            <div className="flex flex-col items-center justify-center gap-1">
+                                                <span>{t("no_records_found") || t("no_data")}</span>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="py-3 text-gray-600">{row.name}</TableCell>
-                                        <TableCell className="py-3"><span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium text-[10px] border border-gray-200">{row.invoice}</span></TableCell>
-                                        <TableCell className="py-3 text-gray-500">{row.head}</TableCell>
-                                        <TableCell className="py-3 text-center text-gray-500">{row.date}</TableCell>
-                                        <TableCell className="py-3 text-right font-bold text-gray-800 tabular-nums">{cur}{fmt(row.amount)}</TableCell>
                                     </TableRow>
-                                ))}
+                                ) : (
+                                    paginatedRecords.map((row) => (
+                                        <TableRow
+                                            key={row.id}
+                                            className="text-xs border-b border-gray-50 hover:bg-indigo-50/30 transition-colors whitespace-nowrap"
+                                        >
+                                            <TableCell className="py-3 pl-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="h-7 w-7 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-[10px]">
+                                                        {row.branch?.[0] || "B"}
+                                                    </span>
+                                                    <span className="font-semibold text-gray-800">
+                                                        {row.branch}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-gray-700 font-medium">
+                                                {row.name}
+                                            </TableCell>
+                                            <TableCell className="py-3">
+                                                <span className="bg-gray-100/80 text-gray-700 px-2 py-0.5 rounded-md font-mono text-[11px] border border-gray-200/60">
+                                                    {toLocaleNumber(row.invoice, langCode)}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-gray-600 font-medium">
+                                                {row.head}
+                                            </TableCell>
+                                            <TableCell className="py-3 text-center text-gray-600 font-medium">
+                                                {toLocaleNumber(row.date, langCode)}
+                                            </TableCell>
+                                            <TableCell className="py-3 pr-4 text-right font-bold text-gray-900">
+                                                {cur}
+                                                {toLocaleNumber(fmt(row.amount), langCode)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
                             </TableBody>
                         </Table>
                     </div>
 
-                    {/* Footer */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
-                        <div>{t("showing")} {reportData.length} {reportData.length === 1 ? t("entry") : t("entries")}</div>
+                    {/* Footer / Pagination & Grand Total */}
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500 font-medium pt-2 border-t border-gray-100">
+                        {/* Summary Counter */}
+                        <div>
+                            {totalRecords > 0
+                                ? t("showing_x_to_y_of_z", {
+                                      from: toLocaleNumber(startIndex + 1, langCode),
+                                      to: toLocaleNumber(endIndex, langCode),
+                                      total: toLocaleNumber(totalRecords, langCode),
+                                  })
+                                : t("showing_x_entries", { count: toLocaleNumber(0, langCode) })}
+                        </div>
+
+                        {/* Pagination Controls */}
                         <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">{t("grand_total")}:</span>
-                            <span className={cn(
-                                "px-4 py-1.5 rounded-[10px] font-bold text-sm tabular-nums shadow-sm",
-                                activeReport === "income" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"
-                            )}>
-                                {cur}{fmt(grandTotal)}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={currentPage <= 1 || loading}
+                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1 cursor-pointer disabled:opacity-40"
+                            >
+                                <ChevronLeft className="h-3.5 w-3.5" /> {t("previous")}
+                            </Button>
+
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages }).map((_, i) => {
+                                    const pageNum = i + 1;
+                                    const isActive = currentPage === pageNum;
+                                    // Show first, last, current, and adjacent pages if many pages
+                                    if (
+                                        totalPages > 7 &&
+                                        pageNum !== 1 &&
+                                        pageNum !== totalPages &&
+                                        Math.abs(pageNum - currentPage) > 1
+                                    ) {
+                                        if (
+                                            pageNum === 2 ||
+                                            pageNum === totalPages - 1
+                                        ) {
+                                            return (
+                                                <span
+                                                    key={pageNum}
+                                                    className="px-1 text-gray-400"
+                                                >
+                                                    ...
+                                                </span>
+                                            );
+                                        }
+                                        return null;
+                                    }
+                                    return (
+                                        <Button
+                                            key={pageNum}
+                                            size="sm"
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={cn(
+                                                "h-8 w-8 p-0 text-xs font-bold rounded-full transition-all cursor-pointer",
+                                                isActive
+                                                    ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                            )}
+                                        >
+                                            {toLocaleNumber(pageNum, langCode)}
+                                        </Button>
+                                    );
+                                })}
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={currentPage >= totalPages || loading}
+                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1 cursor-pointer disabled:opacity-40"
+                            >
+                                {t("next")} <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
+                        </div>
+
+                        {/* Grand Total Badge */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                {t("grand_total")}:
+                            </span>
+                            <span
+                                className={cn(
+                                    "px-4 py-1.5 rounded-xl font-bold text-xs shadow-2xs",
+                                    activeReport === "income"
+                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                        : "bg-rose-50 text-rose-700 border border-rose-200"
+                                )}
+                            >
+                                {cur}
+                                {toLocaleNumber(fmt(grandTotal), langCode)}
                             </span>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
         </div>
     );
 }

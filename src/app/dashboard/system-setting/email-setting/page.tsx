@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { Loader2, Mail, Send, RefreshCw, Server, Sliders, Clock, Save } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -61,7 +61,8 @@ function FormSkeleton() {
 }
 
 export default function EmailSettingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code;
     const { toast } = useToast();
 
     const [activeTab, setActiveTab] = useState<string>("smtp_1");
@@ -79,6 +80,12 @@ export default function EmailSettingPage() {
         fixed: 1,
     });
     const [savingInterval, setSavingInterval] = useState<boolean>(false);
+
+    const getGatewayLabel = (gwKey: string, fallbackName: string) => {
+        const key = `gw_${gwKey}`;
+        const translated = t(key);
+        return translated && translated !== key ? translated : fallbackName;
+    };
 
     useEffect(() => {
         fetchEmailGateways();
@@ -153,7 +160,7 @@ export default function EmailSettingPage() {
             }
         } catch (error) {
             console.error("Failed to fetch email gateways:", error);
-            sonnerToast.error("Failed to load email gateways");
+            sonnerToast.error(t("failed_load_email_gateways") || "Failed to load email gateways");
         } finally {
             setLoading(false);
         }
@@ -170,7 +177,7 @@ export default function EmailSettingPage() {
             };
             const res = await api.post('/system-setting/email-gateways/interval', payload);
             if (res.data?.status === 'success') {
-                sonnerToast.success(res.data.message || "Email interval settings saved successfully");
+                sonnerToast.success(res.data.message || t("interval_settings_saved_success") || "Email interval settings saved successfully");
                 if (res.data.data) {
                     setIntervalConfig({
                         mode: res.data.data.mode || "random",
@@ -180,10 +187,10 @@ export default function EmailSettingPage() {
                     });
                 }
             } else {
-                sonnerToast.error(res.data?.message || "Failed to save interval settings");
+                sonnerToast.error(res.data?.message || t("failed_save_interval_settings") || "Failed to save interval settings");
             }
         } catch {
-            sonnerToast.error("Failed to save interval settings");
+            sonnerToast.error(t("failed_save_interval_settings") || "Failed to save interval settings");
         } finally {
             setSavingInterval(false);
         }
@@ -207,6 +214,8 @@ export default function EmailSettingPage() {
         status: false,
         sent_count: 0,
     };
+
+    const currentItemName = getGatewayLabel(currentItem.gateway, currentItem.config.name || currentItem.name);
 
     const handleFieldChange = (field: keyof GatewayConfig, value: string | number | boolean) => {
         setGatewaysData(prev => ({
@@ -233,10 +242,11 @@ export default function EmailSettingPage() {
 
             const res = await api.post("/system-setting/email-gateways", payload);
             if (res.data?.status === "success") {
-                sonnerToast.success(`${currentItem.name} configuration saved successfully!`);
+                const successMsg = t("gateway_config_saved_success", { name: currentItemName }) || `${currentItemName} configuration saved successfully!`;
+                sonnerToast.success(successMsg);
                 toast({
-                    title: t("success_title"),
-                    description: `${currentItem.name} configuration saved successfully`,
+                    title: t("success_title") || "Success",
+                    description: successMsg,
                 });
                 if (res.data.data) {
                     setGatewaysData(prev => ({
@@ -251,11 +261,12 @@ export default function EmailSettingPage() {
             }
         } catch (error: unknown) {
             const errRes = error as { response?: { data?: { message?: string } } };
-            sonnerToast.error(`Failed to save ${currentItem.name} configuration`);
+            const errMsg = t("failed_save_gateway_config", { name: currentItemName }) || `Failed to save ${currentItemName} configuration`;
+            sonnerToast.error(errMsg);
             toast({
                 variant: "destructive",
-                title: t("error"),
-                description: errRes.response?.data?.message || `Failed to save ${currentItem.name}`,
+                title: t("error") || "Error",
+                description: errRes.response?.data?.message || errMsg,
             });
         } finally {
             setSavingTab(false);
@@ -264,6 +275,7 @@ export default function EmailSettingPage() {
 
     const handleToggleGateway = async (gatewayKey: string) => {
         const item = gatewaysData[gatewayKey];
+        const label = getGatewayLabel(gatewayKey, item?.name || gatewayKey);
         try {
             const res = await api.post(`/system-setting/email-gateways/${gatewayKey}/toggle`);
             if (res.data?.status === "success") {
@@ -277,13 +289,13 @@ export default function EmailSettingPage() {
                 }));
 
                 if (newStatus) {
-                    sonnerToast.success(`${item.name} activated`);
+                    sonnerToast.success(t("gateway_activated", { name: label }) || `${label} activated`);
                 } else {
-                    sonnerToast.info(`${item.name} deactivated`);
+                    sonnerToast.info(t("gateway_deactivated", { name: label }) || `${label} deactivated`);
                 }
             }
         } catch {
-            sonnerToast.error(`Failed to toggle ${item?.name || gatewayKey}`);
+            sonnerToast.error(t("failed_toggle_gateway", { name: label }) || `Failed to toggle ${label}`);
         }
     };
 
@@ -294,19 +306,19 @@ export default function EmailSettingPage() {
                 const newStatus = res.data.data.round_robin_enabled;
                 setRoundRobinEnabled(newStatus);
                 if (newStatus) {
-                    sonnerToast.success("Round Robin load balancing activated!");
+                    sonnerToast.success(t("round_robin_activated") || "Round Robin load balancing activated!");
                 } else {
-                    sonnerToast.info("Round Robin load balancing deactivated");
+                    sonnerToast.info(t("round_robin_deactivated") || "Round Robin load balancing deactivated");
                 }
             }
         } catch {
-            sonnerToast.error("Failed to toggle Round Robin load balancing");
+            sonnerToast.error(t("failed_toggle_round_robin") || "Failed to toggle Round Robin load balancing");
         }
     };
 
     const handleTestEmail = async () => {
         if (!testEmail) {
-            sonnerToast.error("Please enter a test email address");
+            sonnerToast.error(t("please_enter_test_email") || "Please enter a test email address");
             return;
         }
 
@@ -319,19 +331,21 @@ export default function EmailSettingPage() {
             });
 
             if (res.data?.status === "Success" || res.data?.status === "success") {
-                sonnerToast.success(`Test email sent successfully via ${currentItem.name} to ${testEmail}`);
+                const successMsg = t("test_email_sent_success", { name: currentItemName, email: testEmail }) || `Test email sent successfully via ${currentItemName} to ${testEmail}`;
+                sonnerToast.success(successMsg);
                 toast({
-                    title: t("success_title"),
-                    description: `Test email sent successfully to ${testEmail}`,
+                    title: t("success_title") || "Success",
+                    description: successMsg,
                 });
             }
         } catch (error: unknown) {
             const errRes = error as { response?: { data?: { message?: string } } };
-            sonnerToast.error(errRes.response?.data?.message || `Failed to send test email via ${currentItem.name}`);
+            const errMsg = errRes.response?.data?.message || t("failed_send_test_email", { name: currentItemName }) || `Failed to send test email via ${currentItemName}`;
+            sonnerToast.error(errMsg);
             toast({
                 variant: "destructive",
-                title: t("error"),
-                description: errRes.response?.data?.message || "Failed to send test email",
+                title: t("error") || "Error",
+                description: errMsg,
             });
         } finally {
             setTestingEmail(false);
@@ -341,525 +355,532 @@ export default function EmailSettingPage() {
     const activeCount = Object.values(gatewaysData).filter(g => g.status).length;
 
     return (
-        <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6 bg-gray-50/10 min-h-screen font-sans flex flex-col lg:flex-row gap-4 sm:gap-6">
+        <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6 bg-gray-50/10 min-h-screen font-sans">
             
-            {/* Left Column: Main Gateway Configuration Area */}
-            <div className="flex-1 min-w-0 space-y-4">
-                <Card className="pt-0 overflow-hidden">
-                    {/* Main Header Banner */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
+            {/* Standalone Edge-to-Edge Page Header Banner */}
+            <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Mail className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-sm sm:text-base font-bold text-gray-800 tracking-tight leading-none">
+                            {t("email_settings_and_multiple_gateways") || t("email_setting") || "Email Settings & Multiple SMTP Gateways"}
+                        </h1>
+                        <p className="text-[10px] sm:text-[11px] text-gray-500 mt-1">
+                            {t("configure_smtp_gateways_desc") || "Configure SMTP gateways & enable Round Robin load balancing"}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+                {/* Left Column: Main Gateway Configuration Area */}
+                <div className="flex-1 min-w-0 space-y-4">
+                    <Card className="pt-0 overflow-hidden border border-gray-100 shadow-sm">
+                        <CardContent className="p-0 min-h-[400px] sm:min-h-[500px]">
+                            {/* Gateway Tabs Header */}
+                            <div className="border-b border-gray-100 bg-white">
+                                {/* Mobile Select */}
+                                <div className="sm:hidden px-3 py-2">
+                                    <Select value={activeTab} onValueChange={setActiveTab}>
+                                        <SelectTrigger className="h-9 text-[12px] border-gray-200 shadow-none rounded">
+                                            <SelectValue placeholder={t("select_email_gateway") || "Select Email Gateway"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {defaultGatewaysList.map((gt) => (
+                                                <SelectItem key={gt.gateway} value={gt.gateway} className="text-[12px]">
+                                                    {getGatewayLabel(gt.gateway, gatewaysData[gt.gateway]?.name || gt.name)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Desktop Scrollable Horizontal Tabs */}
+                                <div className="hidden sm:block overflow-x-auto">
+                                    <div className="flex pb-1 pt-1 px-1">
+                                        {defaultGatewaysList.map((gt) => {
+                                            const isTabActive = activeTab === gt.gateway;
+                                            const isEnabled = gatewaysData[gt.gateway]?.status || false;
+                                            const label = getGatewayLabel(gt.gateway, gatewaysData[gt.gateway]?.name || gt.name);
+
+                                            return (
+                                                <button
+                                                    key={gt.gateway}
+                                                    onClick={() => setActiveTab(gt.gateway)}
+                                                    className={cn(
+                                                        "px-3 xl:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 mx-0.5 sm:mx-1 flex items-center gap-1.5",
+                                                        isTabActive
+                                                            ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
+                                                            : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
+                                                    )}
+                                                >
+                                                    <Server className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                                                    <span>{label}</span>
+                                                    {isEnabled && (
+                                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Configuration Form */}
+                            <div className="p-4 sm:p-5 md:p-6">
+                                {loading ? (
+                                    <FormSkeleton />
+                                ) : (
+                                    <div className="flex flex-col xl:flex-row gap-6 xl:gap-12 animate-in fade-in duration-300">
+                                        <div className="flex-1 min-w-0 space-y-4 sm:space-y-5">
+
+                                            {/* Gateway Name Field */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("gateway_display_name") || "Gateway Display Name"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Input
+                                                        value={currentItem.config.name}
+                                                        onChange={(e) => handleFieldChange("name", e.target.value)}
+                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                        placeholder={t("gateway_display_name_placeholder") || "e.g. SMTP 1 (Primary)"}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Mail Engine */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("email_engine") || "Engine"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Select
+                                                        value={currentItem.config.mail_mailer || "smtp"}
+                                                        onValueChange={(val) => handleFieldChange("mail_mailer", val)}
+                                                    >
+                                                        <SelectTrigger className="h-8 sm:h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="smtp">{t("smtp") || "SMTP"}</SelectItem>
+                                                            <SelectItem value="sendmail">{t("sendmail") || "SendMail"}</SelectItem>
+                                                            <SelectItem value="phpmail">{t("phpmail") || "PHPMail"}</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            {/* Sender Email (From Address) */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("sender_email") || t("email") || "Sender Email"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Input
+                                                        type="email"
+                                                        value={currentItem.config.mail_from_address}
+                                                        onChange={(e) => handleFieldChange("mail_from_address", e.target.value)}
+                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                        placeholder={t("sender_email_placeholder") || "noreply@yourdomain.com"}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Sender Name */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("from_name") || "From Name"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Input
+                                                        value={currentItem.config.mail_from_name}
+                                                        onChange={(e) => handleFieldChange("mail_from_name", e.target.value)}
+                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                        placeholder={t("from_name_placeholder") || "iSchool School System"}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SMTP Server Host */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("smtp_server_host") || t("smtp_server") || "SMTP Server Host"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Input
+                                                        value={currentItem.config.mail_host}
+                                                        onChange={(e) => handleFieldChange("mail_host", e.target.value)}
+                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                        placeholder={t("smtp_host_placeholder") || "smtp.gmail.com or mail.yourdomain.com"}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SMTP Port */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("smtp_port") || "SMTP Port"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Input
+                                                        value={currentItem.config.mail_port}
+                                                        onChange={(e) => handleFieldChange("mail_port", e.target.value)}
+                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded w-full sm:w-40"
+                                                        placeholder={t("smtp_port_placeholder") || "587 / 465 / 25"}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SMTP Username */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("smtp_username") || "SMTP Username"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Input
+                                                        value={currentItem.config.mail_username}
+                                                        onChange={(e) => handleFieldChange("mail_username", e.target.value)}
+                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                        placeholder={t("smtp_username_placeholder") || "username@domain.com or API Key"}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SMTP Password */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("smtp_password") || "SMTP Password"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Input
+                                                        type="password"
+                                                        value={currentItem.config.mail_password}
+                                                        onChange={(e) => handleFieldChange("mail_password", e.target.value)}
+                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                        placeholder={t("smtp_password_placeholder") || "••••••••••••"}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* SMTP Encryption */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
+                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                    {t("smtp_security") || "Encryption"} <span className="text-red-500">*</span>
+                                                </Label>
+                                                <div className="sm:col-span-3">
+                                                    <Select
+                                                        value={currentItem.config.mail_encryption || "tls"}
+                                                        onValueChange={(val) => handleFieldChange("mail_encryption", val)}
+                                                    >
+                                                        <SelectTrigger className="h-8 sm:h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="tls">{t("encryption_tls") || "TLS (Port 587 / 2525)"}</SelectItem>
+                                                            <SelectItem value="ssl">{t("encryption_ssl") || "SSL (Port 465)"}</SelectItem>
+                                                            <SelectItem value="none">{t("encryption_none") || "None (Plain text)"}</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            {/* Round Robin Send Limit per Batch */}
+                                            <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4 pt-2 border-t border-dashed border-gray-200">
+                                                <Label className="text-[11px] font-bold text-indigo-700 sm:text-right uppercase flex items-center gap-1 justify-end">
+                                                    <RefreshCw className="h-3 w-3 text-indigo-600" />
+                                                    {t("send_limit_per_round") || "Send Limit per Round"}
+                                                </Label>
+                                                <div className="sm:col-span-3 space-y-1">
+                                                    <Input
+                                                        type="number"
+                                                        min={1}
+                                                        max={10000}
+                                                        value={currentItem.config.email_limit || 100}
+                                                        onChange={(e) => handleFieldChange("email_limit", Math.max(1, Number(e.target.value)))}
+                                                        className="h-8 sm:h-9 text-[11px] border-indigo-200 focus:ring-indigo-500 shadow-none rounded w-full sm:w-44"
+                                                        placeholder={t("emails_limit_placeholder") || "100 emails"}
+                                                    />
+                                                    <p className="text-[10px] text-gray-400">
+                                                        {t("send_limit_per_round_help") || "Number of emails sent via this gateway before Round Robin rotates to the next active gateway."}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Test Email Row */}
+                                            <div className="pt-4 border-t border-gray-100">
+                                                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3">
+                                                    <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
+                                                        {t("test_gateway_email") || "Test Gateway Email"}
+                                                    </Label>
+                                                    <div className="sm:col-span-3 flex gap-2">
+                                                        <Input
+                                                            type="email"
+                                                            placeholder={t("enter_test_email_placeholder") || "Enter destination email to send test message"}
+                                                            value={testEmail}
+                                                            onChange={(e) => setTestEmail(e.target.value)}
+                                                            className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded flex-1"
+                                                        />
+                                                        <Button
+                                                            onClick={handleTestEmail}
+                                                            disabled={testingEmail || !testEmail}
+                                                            variant="outline"
+                                                            className="h-8 sm:h-9 border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-[11px] font-bold uppercase shrink-0 px-3"
+                                                        >
+                                                            {testingEmail ? (
+                                                                <><Loader2 className="h-3 w-3 animate-spin mr-1.5" /> {t("testing_dots") || "Testing..."}</>
+                                                            ) : (
+                                                                <><Send className="h-3 w-3 mr-1.5 text-indigo-600" /> {t("send_test") || "Send Test"}</>
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                        {/* Right Side Gateway Branding Box */}
+                                        <div className="hidden xl:flex flex-col items-center justify-center space-y-6 xl:border-l border-gray-100 xl:pl-8 min-h-[220px]">
+                                            <div className="h-20 w-20 sm:h-24 sm:w-24 bg-gradient-to-br from-indigo-50 to-orange-50 border border-gray-100 rounded-full flex items-center justify-center shadow-sm">
+                                                <Server className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-500" />
+                                            </div>
+                                            <div className="text-center space-y-1">
+                                                <p className="text-[11px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">
+                                                    {t("configure_gateway_title", { name: currentItemName }) || `Configure ${currentItemName}`}
+                                                </p>
+                                                <span className={cn(
+                                                    "text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block",
+                                                    currentItem.status ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
+                                                )}>
+                                                    {currentItem.status ? (t("active_gateway_badge") || "● Active Gateway") : (t("disabled_badge") || "○ Disabled")}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer Save Action */}
+                            <div className="border-t border-gray-50 p-4 sm:p-5 md:p-6 bg-white flex justify-center">
+                                <Button
+                                    onClick={handleSaveGateway}
+                                    disabled={savingTab}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 sm:px-10 h-9 sm:h-10 text-[11px] sm:text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 w-full sm:w-auto"
+                                >
+                                    {savingTab ? <><Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" /> {t("saving") || "Saving..."}</> : (t("save") || "Save")}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Column: Active Gateways & Round Robin Sidebar */}
+                <div className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4">
+                    
+                    {/* Round Robin Master Card */}
+                    <Card className="pt-0 overflow-hidden border-indigo-100 shadow-sm">
+                        <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#EFF0FD] to-[#FFF5E7] border-b border-gray-100">
+                            <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#6366F1] to-[#FF9800] text-white shadow-sm">
+                                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </span>
-                            <div>
-                                <h1 className="text-[13px] sm:text-[15px] font-bold text-gray-800 tracking-tight leading-none">
-                                    {t("email_setting") || "Email Settings & Multiple SMTP Gateways"}
-                                </h1>
-                                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 sm:mt-1">
-                                    {t("configure_smtp_and_outgoing_mail_settings") || "Configure SMTP gateways & enable Round Robin load balancing"}
+                            <div className="min-w-0">
+                                <h2 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">
+                                    {t("round_robin_balancer") || "Round Robin Balancer"}
+                                </h2>
+                                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
+                                    {t("auto_rotate_active_gateways") || "Auto rotate across active gateways"}
                                 </p>
                             </div>
                         </div>
-                    </div>
 
-                    <CardContent className="p-0 min-h-[400px] sm:min-h-[500px]">
-                        {/* Gateway Tabs Header */}
-                        <div className="border-b border-gray-100 bg-white">
-                            {/* Mobile Select */}
-                            <div className="sm:hidden px-3 py-2">
-                                <Select value={activeTab} onValueChange={setActiveTab}>
-                                    <SelectTrigger className="h-9 text-[12px] border-gray-200 shadow-none rounded">
-                                        <SelectValue placeholder="Select Email Gateway" />
+                        <CardContent className="p-3.5 sm:p-4 space-y-3">
+                            <div className="flex items-center justify-between py-1 bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100">
+                                <div className="space-y-0.5">
+                                    <Label className="text-[11px] font-bold text-gray-700 block">
+                                        {t("round_robin_mode") || "Round Robin Mode"}
+                                    </Label>
+                                    <span className={cn(
+                                        "text-[10px] font-semibold block",
+                                        roundRobinEnabled ? "text-indigo-600" : "text-gray-400"
+                                    )}>
+                                        {roundRobinEnabled 
+                                            ? (t("active_gateways_count", { count: toLocaleNumber(activeCount, shortCode) }) || `Active (${toLocaleNumber(activeCount, shortCode)} Gateways)`) 
+                                            : (t("disabled") || "Disabled")}
+                                    </span>
+                                </div>
+                                <Switch
+                                    checked={roundRobinEnabled}
+                                    onCheckedChange={handleToggleRoundRobin}
+                                    className="data-[state=checked]:bg-indigo-600"
+                                />
+                            </div>
+
+                            <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 p-2.5 rounded border border-gray-100">
+                                {t("round_robin_explanation") || "💡 When enabled, outgoing emails will rotate across all active gateways. Each gateway sends up to its configured limit before looping to the next."}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    {/* Queue Sending Interval Control Card */}
+                    <Card className="pt-0 overflow-hidden border-emerald-100 shadow-sm">
+                        <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 bg-gradient-to-r from-[#ECFDF5] to-[#EFF6FF] border-b border-gray-100">
+                            <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-indigo-600 text-white shadow-sm">
+                                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </span>
+                            <div className="min-w-0">
+                                <h2 className="text-[12px] sm:text-[13px] font-bold text-gray-800 tracking-tight leading-none">
+                                    {t("sending_interval_rate_limiter") || "Sending Interval & Rate Limiter"}
+                                </h2>
+                                <p className="text-[10px] text-gray-500 mt-0.5">
+                                    {t("queue_delay_between_messages") || "Queue delay between messages"}
+                                </p>
+                            </div>
+                        </div>
+
+                        <CardContent className="p-3.5 sm:p-4 space-y-3">
+                            <div className="space-y-1">
+                                <Label className="text-[11px] font-bold text-gray-700">{t("interval_mode") || "Interval Mode"}</Label>
+                                <Select 
+                                    value={intervalConfig.mode || "random"} 
+                                    onValueChange={(val) => setIntervalConfig(prev => ({ ...prev, mode: val }))}
+                                >
+                                    <SelectTrigger className="h-8 text-[11px] border-gray-200">
+                                        <SelectValue placeholder={t("select_interval_mode") || "Select interval mode"} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {defaultGatewaysList.map((gt) => (
-                                            <SelectItem key={gt.gateway} value={gt.gateway} className="text-[12px]">
-                                                {gatewaysData[gt.gateway]?.name || gt.name}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value="random" className="text-[11px]">{t("random_delay_anti_ban") || "Random Delay (Anti-Ban)"}</SelectItem>
+                                        <SelectItem value="fixed" className="text-[11px]">{t("fixed_interval") || "Fixed Interval"}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
-                            {/* Desktop Scrollable Horizontal Tabs */}
-                            <div className="hidden sm:block overflow-x-auto">
-                                <div className="flex pb-1 pt-1 px-1">
+                            {(intervalConfig.mode || "random") === "random" ? (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-gray-600">{t("from_seconds") || "From (Sec)"}</Label>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            max={300}
+                                            value={intervalConfig.min ?? ""}
+                                            onChange={(e) => {
+                                                const val = e.target.value === "" ? 1 : parseInt(e.target.value, 10);
+                                                setIntervalConfig(prev => ({ ...prev, min: isNaN(val) ? 1 : val }));
+                                            }}
+                                            className="h-8 text-[11px]"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label className="text-[10px] font-bold text-gray-600">{t("to_seconds") || "To (Sec)"}</Label>
+                                        <Input
+                                            type="number"
+                                            min={1}
+                                            max={300}
+                                            value={intervalConfig.max ?? ""}
+                                            onChange={(e) => {
+                                                const val = e.target.value === "" ? 10 : parseInt(e.target.value, 10);
+                                                setIntervalConfig(prev => ({ ...prev, max: isNaN(val) ? 10 : val }));
+                                            }}
+                                            className="h-8 text-[11px]"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    <Label className="text-[10px] font-bold text-gray-600">{t("interval_seconds") || "Interval (Seconds)"}</Label>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={300}
+                                        value={intervalConfig.fixed ?? ""}
+                                        onChange={(e) => {
+                                            const val = e.target.value === "" ? 1 : parseInt(e.target.value, 10);
+                                            setIntervalConfig(prev => ({ ...prev, fixed: isNaN(val) ? 1 : val }));
+                                        }}
+                                        className="h-8 text-[11px]"
+                                    />
+                                </div>
+                            )}
+
+                            <Button
+                                size="sm"
+                                onClick={handleSaveInterval}
+                                disabled={savingInterval}
+                                className="w-full h-8 text-[11px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white"
+                            >
+                                {savingInterval ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                {savingInterval ? (t("saving") || "Saving...") : (t("save_interval") || "Save Interval")}
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* Live Queue Monitor & Emergency Cancellation */}
+                    <QueueMonitorCard channelFilter="email" title={t("email_queue_emergency_stop") || "Email Queue & Emergency Stop"} />
+
+                    {/* Active Gateways Toggle List Sidebar */}
+                    <Card className="pt-0 overflow-hidden border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                            <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <Sliders className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </span>
+                            <div className="min-w-0">
+                                <h2 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">
+                                    {t("active_gateways") || "Active Gateways"}
+                                </h2>
+                                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
+                                    {t("toggle_enable_disable") || "Toggle to enable or disable"}
+                                </p>
+                            </div>
+                        </div>
+
+                        <CardContent className="p-3 sm:p-4">
+                            <div className="overflow-y-auto max-h-[45vh] sm:max-h-[55vh] pr-1">
+                                <div className="space-y-2">
                                     {defaultGatewaysList.map((gt) => {
-                                        const isTabActive = activeTab === gt.gateway;
-                                        const isEnabled = gatewaysData[gt.gateway]?.status || false;
+                                        const item = gatewaysData[gt.gateway];
+                                        const isEnabled = item?.status || false;
+                                        const isSelected = activeTab === gt.gateway;
+                                        const label = getGatewayLabel(gt.gateway, item?.name || gt.name);
+                                        const limitVal = toLocaleNumber(item?.config?.email_limit || 100, shortCode);
 
                                         return (
-                                            <button
-                                                key={gt.gateway}
-                                                onClick={() => setActiveTab(gt.gateway)}
+                                            <div
+                                                key={`side-${gt.gateway}`}
                                                 className={cn(
-                                                    "px-3 xl:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 mx-0.5 sm:mx-1 flex items-center gap-1.5",
-                                                    isTabActive
-                                                        ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
-                                                        : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
+                                                    "flex items-center justify-between p-2 rounded-lg transition-all border",
+                                                    isSelected
+                                                        ? "bg-indigo-50/40 border-indigo-200"
+                                                        : "border-gray-100 hover:bg-gray-50"
                                                 )}
                                             >
-                                                <Server className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                                <span>{gatewaysData[gt.gateway]?.name || gt.name}</span>
-                                                {isEnabled && (
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-0.5" />
-                                                )}
-                                            </button>
+                                                <div
+                                                    className="min-w-0 cursor-pointer flex-1 mr-2"
+                                                    onClick={() => setActiveTab(gt.gateway)}
+                                                >
+                                                    <Label className="text-[11px] font-bold text-gray-700 cursor-pointer block truncate hover:text-indigo-600">
+                                                        {label}
+                                                    </Label>
+                                                    <span className="text-[9px] text-gray-400 block truncate">
+                                                        {isEnabled ? (t("limit_per_round_text", { count: limitVal }) || `Limit: ${limitVal} / round`) : (t("inactive") || "Inactive")}
+                                                    </span>
+                                                </div>
+
+                                                <Switch
+                                                    checked={isEnabled}
+                                                    onCheckedChange={() => handleToggleGateway(gt.gateway)}
+                                                    className="data-[state=checked]:bg-indigo-600 h-4 w-7 sm:h-5 sm:w-9"
+                                                />
+                                            </div>
                                         );
                                     })}
                                 </div>
                             </div>
-                        </div>
+                        </CardContent>
+                    </Card>
 
-                        {/* Configuration Form */}
-                        <div className="p-4 sm:p-5 md:p-6">
-                            {loading ? (
-                                <FormSkeleton />
-                            ) : (
-                                <div className="flex flex-col xl:flex-row gap-6 xl:gap-12 animate-in fade-in duration-300">
-                                    <div className="flex-1 min-w-0 space-y-4 sm:space-y-5">
-
-                                        {/* Gateway Name Field */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                Gateway Display Name <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Input
-                                                    value={currentItem.config.name}
-                                                    onChange={(e) => handleFieldChange("name", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                    placeholder="e.g. SMTP 1 (Primary)"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Mail Engine */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("email_engine") || "Engine"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Select
-                                                    value={currentItem.config.mail_mailer || "smtp"}
-                                                    onValueChange={(val) => handleFieldChange("mail_mailer", val)}
-                                                >
-                                                    <SelectTrigger className="h-8 sm:h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="smtp">SMTP</SelectItem>
-                                                        <SelectItem value="sendmail">SendMail</SelectItem>
-                                                        <SelectItem value="phpmail">PHPMail</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        {/* Sender Email (From Address) */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("email") || "Sender Email"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Input
-                                                    type="email"
-                                                    value={currentItem.config.mail_from_address}
-                                                    onChange={(e) => handleFieldChange("mail_from_address", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                    placeholder="noreply@yourdomain.com"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Sender Name */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("from_name") || "From Name"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Input
-                                                    value={currentItem.config.mail_from_name}
-                                                    onChange={(e) => handleFieldChange("mail_from_name", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                    placeholder="iSchool School System"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* SMTP Server Host */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("smtp_server") || "SMTP Server Host"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Input
-                                                    value={currentItem.config.mail_host}
-                                                    onChange={(e) => handleFieldChange("mail_host", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                    placeholder="smtp.gmail.com or mail.yourdomain.com"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* SMTP Port */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("smtp_port") || "SMTP Port"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Input
-                                                    value={currentItem.config.mail_port}
-                                                    onChange={(e) => handleFieldChange("mail_port", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded w-full sm:w-40"
-                                                    placeholder="587 / 465 / 25"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* SMTP Username */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("smtp_username") || "SMTP Username"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Input
-                                                    value={currentItem.config.mail_username}
-                                                    onChange={(e) => handleFieldChange("mail_username", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                    placeholder="username@domain.com or API Key"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* SMTP Password */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("smtp_password") || "SMTP Password"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Input
-                                                    type="password"
-                                                    value={currentItem.config.mail_password}
-                                                    onChange={(e) => handleFieldChange("mail_password", e.target.value)}
-                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                    placeholder="••••••••••••"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* SMTP Encryption */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4">
-                                            <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                {t("smtp_security") || "Encryption"} <span className="text-red-500">*</span>
-                                            </Label>
-                                            <div className="sm:col-span-3">
-                                                <Select
-                                                    value={currentItem.config.mail_encryption || "tls"}
-                                                    onValueChange={(val) => handleFieldChange("mail_encryption", val)}
-                                                >
-                                                    <SelectTrigger className="h-8 sm:h-9 text-[11px] border-gray-200 shadow-none rounded text-gray-700">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="tls">TLS (Port 587 / 2525)</SelectItem>
-                                                        <SelectItem value="ssl">SSL (Port 465)</SelectItem>
-                                                        <SelectItem value="none">None (Plain text)</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-
-                                        {/* Round Robin Send Limit per Batch */}
-                                        <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-4 sm:items-center sm:gap-4 pt-2 border-t border-dashed border-gray-200">
-                                            <Label className="text-[11px] font-bold text-indigo-700 sm:text-right uppercase flex items-center gap-1 justify-end">
-                                                <RefreshCw className="h-3 w-3 text-indigo-600" />
-                                                Send Limit per Round
-                                            </Label>
-                                            <div className="sm:col-span-3 space-y-1">
-                                                <Input
-                                                    type="number"
-                                                    min={1}
-                                                    max={10000}
-                                                    value={currentItem.config.email_limit || 100}
-                                                    onChange={(e) => handleFieldChange("email_limit", Math.max(1, Number(e.target.value)))}
-                                                    className="h-8 sm:h-9 text-[11px] border-indigo-200 focus:ring-indigo-500 shadow-none rounded w-full sm:w-44"
-                                                    placeholder="100 emails"
-                                                />
-                                                <p className="text-[10px] text-gray-400">
-                                                    Number of emails sent via this gateway before Round Robin rotates to the next active gateway.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Test Email Row */}
-                                        <div className="pt-4 border-t border-gray-100">
-                                            <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3">
-                                                <Label className="text-[11px] font-bold text-gray-500 sm:text-right uppercase">
-                                                    Test Gateway Email
-                                                </Label>
-                                                <div className="sm:col-span-3 flex gap-2">
-                                                    <Input
-                                                        type="email"
-                                                        placeholder="Enter destination email to send test message"
-                                                        value={testEmail}
-                                                        onChange={(e) => setTestEmail(e.target.value)}
-                                                        className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded flex-1"
-                                                    />
-                                                    <Button
-                                                        onClick={handleTestEmail}
-                                                        disabled={testingEmail || !testEmail}
-                                                        variant="outline"
-                                                        className="h-8 sm:h-9 border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-[11px] font-bold uppercase shrink-0 px-3"
-                                                    >
-                                                        {testingEmail ? (
-                                                            <><Loader2 className="h-3 w-3 animate-spin mr-1.5" /> Testing...</>
-                                                        ) : (
-                                                            <><Send className="h-3 w-3 mr-1.5 text-indigo-600" /> Send Test</>
-                                                        )}
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-
-                                    {/* Right Side Gateway Branding Box */}
-                                    <div className="hidden xl:flex flex-col items-center justify-center space-y-6 xl:border-l border-gray-100 xl:pl-8 min-h-[220px]">
-                                        <div className="h-20 w-20 sm:h-24 sm:w-24 bg-gradient-to-br from-indigo-50 to-orange-50 border border-gray-100 rounded-full flex items-center justify-center shadow-sm">
-                                            <Server className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-500" />
-                                        </div>
-                                        <div className="text-center space-y-1">
-                                            <p className="text-[11px] sm:text-xs text-gray-500 font-bold uppercase tracking-wider">
-                                                Configure {currentItem.name}
-                                            </p>
-                                            <span className={cn(
-                                                "text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-block",
-                                                currentItem.status ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-                                            )}>
-                                                {currentItem.status ? "● Active Gateway" : "○ Disabled"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer Save Action */}
-                        <div className="border-t border-gray-50 p-4 sm:p-5 md:p-6 bg-white flex justify-center">
-                            <Button
-                                onClick={handleSaveGateway}
-                                disabled={savingTab}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 sm:px-10 h-9 sm:h-10 text-[11px] sm:text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 w-full sm:w-auto"
-                            >
-                                {savingTab ? <><Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" /> {t("saving")}</> : t("save")}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Right Column: Active Gateways & Round Robin Sidebar */}
-            <div className="w-full lg:w-64 xl:w-72 shrink-0 space-y-4">
-                
-                {/* Round Robin Master Card */}
-                <Card className="pt-0 overflow-hidden border-indigo-100 shadow-sm">
-                    <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#EFF0FD] to-[#FFF5E7] border-b border-gray-100">
-                        <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#6366F1] to-[#FF9800] text-white shadow-sm">
-                            <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </span>
-                        <div className="min-w-0">
-                            <h2 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">
-                                Round Robin Balancer
-                            </h2>
-                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
-                                Auto rotate across active gateways
-                            </p>
-                        </div>
-                    </div>
-
-                    <CardContent className="p-3.5 sm:p-4 space-y-3">
-                        <div className="flex items-center justify-between py-1 bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100">
-                            <div className="space-y-0.5">
-                                <Label className="text-[11px] font-bold text-gray-700 block">
-                                    Round Robin Mode
-                                </Label>
-                                <span className={cn(
-                                    "text-[10px] font-semibold block",
-                                    roundRobinEnabled ? "text-indigo-600" : "text-gray-400"
-                                )}>
-                                    {roundRobinEnabled ? `Active (${activeCount} Gateways)` : "Disabled"}
-                                </span>
-                            </div>
-                            <Switch
-                                checked={roundRobinEnabled}
-                                onCheckedChange={handleToggleRoundRobin}
-                                className="data-[state=checked]:bg-indigo-600"
-                            />
-                        </div>
-
-                        <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 p-2.5 rounded border border-gray-100">
-                            💡 When enabled, outgoing emails will rotate across all active gateways. Each gateway sends up to its configured limit before looping to the next.
-                        </p>
-                    </CardContent>
-                </Card>
-
-                {/* Queue Sending Interval Control Card */}
-                <Card className="pt-0 overflow-hidden border-emerald-100 shadow-sm">
-                    <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-3.5 bg-gradient-to-r from-[#ECFDF5] to-[#EFF6FF] border-b border-gray-100">
-                        <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-indigo-600 text-white shadow-sm">
-                            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </span>
-                        <div className="min-w-0">
-                            <h2 className="text-[12px] sm:text-[13px] font-bold text-gray-800 tracking-tight leading-none">
-                                Sending Interval & Rate Limiter
-                            </h2>
-                            <p className="text-[10px] text-gray-500 mt-0.5">
-                                Queue delay between messages
-                            </p>
-                        </div>
-                    </div>
-
-                    <CardContent className="p-3.5 sm:p-4 space-y-3">
-                        <div className="space-y-1">
-                            <Label className="text-[11px] font-bold text-gray-700">Interval Mode</Label>
-                            <Select 
-                                value={intervalConfig.mode || "random"} 
-                                onValueChange={(val) => setIntervalConfig(prev => ({ ...prev, mode: val }))}
-                            >
-                                <SelectTrigger className="h-8 text-[11px] border-gray-200">
-                                    <SelectValue placeholder="Select interval mode" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="random" className="text-[11px]">Random Delay (Anti-Ban)</SelectItem>
-                                    <SelectItem value="fixed" className="text-[11px]">Fixed Interval</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {(intervalConfig.mode || "random") === "random" ? (
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] font-bold text-gray-600">From (Sec)</Label>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        max={300}
-                                        value={intervalConfig.min ?? ""}
-                                        onChange={(e) => {
-                                            const val = e.target.value === "" ? 1 : parseInt(e.target.value, 10);
-                                            setIntervalConfig(prev => ({ ...prev, min: isNaN(val) ? 1 : val }));
-                                        }}
-                                        className="h-8 text-[11px]"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-[10px] font-bold text-gray-600">To (Sec)</Label>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        max={300}
-                                        value={intervalConfig.max ?? ""}
-                                        onChange={(e) => {
-                                            const val = e.target.value === "" ? 10 : parseInt(e.target.value, 10);
-                                            setIntervalConfig(prev => ({ ...prev, max: isNaN(val) ? 10 : val }));
-                                        }}
-                                        className="h-8 text-[11px]"
-                                    />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-1">
-                                <Label className="text-[10px] font-bold text-gray-600">Interval (Seconds)</Label>
-                                <Input
-                                    type="number"
-                                    min={1}
-                                    max={300}
-                                    value={intervalConfig.fixed ?? ""}
-                                    onChange={(e) => {
-                                        const val = e.target.value === "" ? 1 : parseInt(e.target.value, 10);
-                                        setIntervalConfig(prev => ({ ...prev, fixed: isNaN(val) ? 1 : val }));
-                                    }}
-                                    className="h-8 text-[11px]"
-                                />
-                            </div>
-                        )}
-
-                        <Button
-                            size="sm"
-                            onClick={handleSaveInterval}
-                            disabled={savingInterval}
-                            className="w-full h-8 text-[11px] font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white"
-                        >
-                            {savingInterval ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
-                            Save Interval
-                        </Button>
-                    </CardContent>
-                </Card>
-
-                {/* Live Queue Monitor & Emergency Cancellation */}
-                <QueueMonitorCard channelFilter="email" title="Email Queue & Emergency Stop" />
-
-                {/* Active Gateways Toggle List Sidebar */}
-                <Card className="pt-0 overflow-hidden">
-                    <div className="flex items-center gap-2.5 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <Sliders className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </span>
-                        <div className="min-w-0">
-                            <h2 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">
-                                Active Gateways
-                            </h2>
-                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
-                                Toggle to enable or disable
-                            </p>
-                        </div>
-                    </div>
-
-                    <CardContent className="p-3 sm:p-4">
-                        <div className="overflow-y-auto max-h-[45vh] sm:max-h-[55vh] pr-1">
-                            <div className="space-y-2">
-                                {defaultGatewaysList.map((gt) => {
-                                    const item = gatewaysData[gt.gateway];
-                                    const isEnabled = item?.status || false;
-                                    const isSelected = activeTab === gt.gateway;
-
-                                    return (
-                                        <div
-                                            key={`side-${gt.gateway}`}
-                                            className={cn(
-                                                "flex items-center justify-between p-2 rounded-lg transition-all border",
-                                                isSelected
-                                                    ? "bg-indigo-50/40 border-indigo-200"
-                                                    : "border-gray-100 hover:bg-gray-50"
-                                            )}
-                                        >
-                                            <div
-                                                className="min-w-0 cursor-pointer flex-1 mr-2"
-                                                onClick={() => setActiveTab(gt.gateway)}
-                                            >
-                                                <Label className="text-[11px] font-bold text-gray-700 cursor-pointer block truncate hover:text-indigo-600">
-                                                    {item?.name || gt.name}
-                                                </Label>
-                                                <span className="text-[9px] text-gray-400 block truncate">
-                                                    {isEnabled ? `Limit: ${item?.config?.email_limit || 100} / round` : "Inactive"}
-                                                </span>
-                                            </div>
-
-                                            <Switch
-                                                checked={isEnabled}
-                                                onCheckedChange={() => handleToggleGateway(gt.gateway)}
-                                                className="data-[state=checked]:bg-indigo-600 h-4 w-7 sm:h-5 sm:w-9"
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
+                </div>
             </div>
         </div>
     );

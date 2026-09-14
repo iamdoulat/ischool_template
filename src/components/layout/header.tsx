@@ -15,6 +15,7 @@ import {
     LogOut,
     User as UserIcon,
     Settings,
+    RotateCw,
     Check,
     Trash2,
     Loader2,
@@ -25,6 +26,8 @@ import {
     ChevronLeft,
     ChevronRight
 } from "lucide-react";
+import { toast } from "sonner";
+import { tokenManager } from "@/lib/token-manager";
 import { CurrencySwitcher } from "./currency-switcher";
 import { BranchSwitcher } from "./branch-switcher";
 import { HeaderShortcutsPopover } from "./header-shortcuts-popover";
@@ -358,7 +361,7 @@ function HeaderStudentSearch({ user }: { user?: any }) {
                             handleExecuteSearch();
                         }
                     }}
-                    placeholder={isStudentUser ? "Search my portal (fees, exams, attendance...)" : t("search_student")}
+                    placeholder={isStudentUser ? (t("search_student_portal") || "Search my portal (fees, exams, attendance...)") : t("search_student")}
                     className="pl-10 pr-9 h-10 w-full bg-muted/30 border-muted/50 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all rounded-2xl shadow-sm group-hover:bg-muted/50 text-xs"
                 />
                 {loading ? (
@@ -694,19 +697,125 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
         fetchAvailableLanguages();
     }, []);
 
+    const [isClearingCache, setIsClearingCache] = useState(false);
+
+    const handleClearCache = async () => {
+        try {
+            setIsClearingCache(true);
+            toast.loading(t("clearing_cache") || "Clearing cache & reloading...", { id: "clear-cache-toast" });
+
+            // 1. Unregister all active service workers (PWA & mock service workers)
+            if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                    }
+                } catch (e) {
+                    console.warn("ServiceWorker unregister failed:", e);
+                }
+            }
+
+            // 2. Clear browser CacheStorage (PWA caches, MSW, static caches)
+            if (typeof window !== "undefined" && "caches" in window) {
+                try {
+                    const keys = await window.caches.keys();
+                    await Promise.all(keys.map((key) => window.caches.delete(key)));
+                } catch (e) {
+                    console.warn("CacheStorage delete failed:", e);
+                }
+            }
+
+            // 3. Clear sessionStorage
+            if (typeof window !== "undefined" && window.sessionStorage) {
+                try {
+                    window.sessionStorage.clear();
+                } catch (e) {}
+            }
+
+            // 4. Clean localStorage while preserving auth tokens, user roles, language & theme preferences
+            if (typeof window !== "undefined" && window.localStorage) {
+                try {
+                    const preservedKeys = [
+                        "auth_token",
+                        "admin_auth_token",
+                        "user_role",
+                        "is_impersonating",
+                        "theme",
+                        "selected_language",
+                        "ischool_enable_chat",
+                    ];
+                    const savedItems: Record<string, string> = {};
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (
+                            key &&
+                            (preservedKeys.includes(key) ||
+                                key.startsWith("app_language_") ||
+                                key.startsWith("currency_") ||
+                                key.startsWith("ischool_lang_"))
+                        ) {
+                            const val = localStorage.getItem(key);
+                            if (val !== null) savedItems[key] = val;
+                        }
+                    }
+                    localStorage.clear();
+                    for (const [k, v] of Object.entries(savedItems)) {
+                        localStorage.setItem(k, v);
+                    }
+                } catch (e) {
+                    console.warn("LocalStorage clear failed:", e);
+                }
+            }
+
+            toast.success(t("cache_cleared_success") || "Cache cleared! Reloading freshly...", { id: "clear-cache-toast" });
+
+            // 5. Force fresh reload with timestamp cache-buster parameter
+            setTimeout(() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set("_t", Date.now().toString());
+                window.location.replace(url.toString());
+            }, 400);
+        } catch (err) {
+            console.error("Failed to clear cache:", err);
+            toast.error("Failed to clear cache. Reloading...", { id: "clear-cache-toast" });
+            window.location.reload();
+        }
+    };
+
     const handleLogout = async () => {
+        let loginUrl = "/login";
+        if (typeof window !== 'undefined') {
+            const pathname = window.location.pathname;
+            const branchMatch = pathname.match(/^\/br\/([^\/]+)/);
+            if (branchMatch && branchMatch[1] !== "main") {
+                loginUrl = `/br/${branchMatch[1]}/login`;
+            } else {
+                const storedBranchSlug = localStorage.getItem("active_branch_slug");
+                const userBranchSlug = user?.branch_slug || user?.branch?.slug;
+                const effectiveSlug = userBranchSlug || storedBranchSlug;
+                if (effectiveSlug && effectiveSlug !== "main") {
+                    loginUrl = `/br/${effectiveSlug}/login`;
+                }
+            }
+        }
+
         try {
             await api.post("/logout");
         } catch (error) {
             console.error("Logout failed:", error);
         } finally {
-            localStorage.removeItem("auth_token");
+            await tokenManager.clearToken();
             localStorage.removeItem("user_role");
             localStorage.removeItem("pwa_start_url");
             document.cookie = "pwa_start_url=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             setUserContext(null);
-            router.push("/login");
+            if (typeof window !== 'undefined') {
+                window.location.href = loginUrl;
+            } else {
+                router.push(loginUrl);
+            }
         }
     };
 
@@ -857,18 +966,14 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
             <div className="flex items-center justify-end gap-2 sm:gap-4 shrink-0">
                 <HeaderStudentSearch user={user} />
 
-                {mounted && typeof window !== "undefined" && localStorage.getItem("admin_auth_token") && (
+                {mounted && typeof window !== "undefined" && (tokenManager.isImpersonating() || localStorage.getItem("admin_auth_token")) && (
                     <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => {
-                            const adminToken = localStorage.getItem("admin_auth_token");
-                            if (adminToken) {
-                                localStorage.setItem("auth_token", adminToken);
-                                localStorage.removeItem("admin_auth_token");
-                                localStorage.removeItem("is_impersonating");
-                                window.location.href = "/dashboard/student-information/student-details";
-                            }
+                        onClick={async () => {
+                            await tokenManager.restoreAdminSession();
+                            localStorage.removeItem("is_impersonating");
+                            window.location.href = "/dashboard/student-information/student-details";
                         }}
                         className="h-8 text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white gap-1.5 rounded-xl shadow-md shrink-0 animate-pulse"
                         title="Exit impersonation and return to Admin portal"
@@ -977,8 +1082,17 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                                 </Button>
                                 <Button
                                     variant="ghost"
+                                    onClick={handleClearCache}
+                                    disabled={isClearingCache}
+                                    className="w-full justify-start gap-3 h-10 text-sm font-medium rounded-xl text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-300 transition-all"
+                                >
+                                    <RotateCw className={cn("h-4 w-4 text-amber-600 dark:text-amber-400", isClearingCache && "animate-spin")} />
+                                    {isClearingCache ? (t("clearing_cache") || "Clearing Cache...") : (t("clear_cache") || "Clear Cache")}
+                                </Button>
+                                <Button
+                                    variant="ghost"
                                     onClick={handleLogout}
-                                    className="w-full justify-start gap-3 h-10 text-sm font-semibold rounded-xl text-destructive hover:bg-destructive/10 transition-all mt-2"
+                                    className="w-full justify-start gap-3 h-10 text-sm font-semibold rounded-xl text-destructive hover:bg-destructive/10 transition-all mt-1"
                                 >
                                     <LogOut className="h-4 w-4" />
                                     {t("sign_out")}

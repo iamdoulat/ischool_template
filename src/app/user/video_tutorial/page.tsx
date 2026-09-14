@@ -16,7 +16,7 @@ import {
     Loader2, Search, X, ExternalLink, Video as VideoIcon,
 } from "lucide-react";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
 
@@ -64,6 +64,8 @@ function thumbFor(video: Video): string | null {
 }
 
 export default function UserVideoTutorialPage() {
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [videos, setVideos] = useState<Video[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -72,7 +74,6 @@ export default function UserVideoTutorialPage() {
     const [totalEntries, setTotalEntries] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [active, setActive] = useState<Video | null>(null);
-    const { t } = useTranslation();
 
     const fetchData = useCallback(async (page = 1) => {
         setLoading(true);
@@ -87,8 +88,7 @@ export default function UserVideoTutorialPage() {
             setTotalEntries(res.total || dataArr.length);
             setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
             setCurrentPage(res.current_page || page);
-        } catch (error) {
-            console.error("Error fetching video tutorials:", error);
+        } catch {
             toast.error(t("failed_to_load_video_tutorials"));
         } finally {
             setLoading(false);
@@ -139,7 +139,12 @@ export default function UserVideoTutorialPage() {
                         <div className="min-w-0">
                             <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("video_tutorial")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? t("loading") : `${totalEntries} video${totalEntries === 1 ? "" : "s"} available`}
+                                {loading
+                                    ? t("loading")
+                                    : (totalEntries === 1
+                                        ? (t("video_available_count") || `${toLocaleNumber(totalEntries, langCode)} ${t("video_available") || "video available"}`)
+                                        : (t("videos_available_count") || `${toLocaleNumber(totalEntries, langCode)} ${t("videos_available") || "videos available"}`)
+                                    ).replace("{count}", toLocaleNumber(totalEntries, langCode))}
                             </p>
                         </div>
                     </div>
@@ -162,12 +167,14 @@ export default function UserVideoTutorialPage() {
                         <div className="flex items-center gap-2">
                             <span className="text-[12px] text-gray-500 hidden sm:inline">{t("show")}</span>
                             <Select value={itemsPerPage} onValueChange={setItemsPerPage}>
-                                <SelectTrigger className="h-9 w-[72px] text-[12px] border border-gray-200 bg-white rounded-[10px]">
-                                    <SelectValue placeholder="12" />
+                                <SelectTrigger className="h-9 min-w-[72px] px-2.5 text-[12px] border border-gray-200 bg-white rounded-[10px] font-semibold text-gray-700">
+                                    <SelectValue placeholder={toLocaleNumber(12, langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {PAGE_SIZES.map((s) => (
-                                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                                        <SelectItem key={s} value={s}>{toLocaleNumber(s, langCode)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -243,11 +250,12 @@ export default function UserVideoTutorialPage() {
                     )}
 
                     {/* Footer Pagination */}
-                    {!loading && videos.length > 0 && (
+                    {!loading && (
                         <div className="flex items-center justify-between mt-5 gap-3 flex-wrap">
                             <span className="text-[12px] text-gray-500">
-                                {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                                {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
+                                {totalEntries === 0
+                                    ? t("no_entries")
+                                    : `${t("showing")} ${toLocaleNumber(startIndex + 1, langCode)} ${t("to")} ${toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode)} ${t("of")} ${toLocaleNumber(totalEntries, langCode)} ${t("entries")}`}
                             </span>
 
                             {totalPages > 1 && (
@@ -275,7 +283,7 @@ export default function UserVideoTutorialPage() {
                                                         : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                                                 )}
                                             >
-                                                {p}
+                                                {toLocaleNumber(p, langCode)}
                                             </Button>
                                         )
                                     )}

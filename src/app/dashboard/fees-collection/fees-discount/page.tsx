@@ -20,8 +20,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { cn, translateFeeItemName, toLocaleNumber, formatDate } from "@/lib/utils";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -64,7 +65,7 @@ export default function FeesDiscountPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const { symbol, formatCurrency } = useCurrencyFormatter();
 
@@ -88,21 +89,22 @@ export default function FeesDiscountPage() {
         description: "",
     });
 
-    useEffect(() => {
-        fetchDiscounts();
-    }, []);
-
-    const fetchDiscounts = async () => {
+    const fetchDiscounts = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get("/fee-discounts");
             setDiscounts(res.data.data || []);
         } catch (error) {
+            console.error("Error fetching discounts:", error);
             tt.error("failed_to_fetch_discounts");
         } finally {
             setLoading(false);
         }
-    };
+    }, [tt]);
+
+    useEffect(() => {
+        fetchDiscounts();
+    }, [fetchDiscounts]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -149,6 +151,7 @@ export default function FeesDiscountPage() {
             tt.success("discount_deleted_successfully");
             fetchDiscounts();
         } catch (error) {
+            console.error("Error deleting discount:", error);
             tt.error("failed_to_delete_discount");
         }
     };
@@ -188,7 +191,7 @@ export default function FeesDiscountPage() {
         Percentage: d.type === 'percentage' ? `${d.percentage}%` : '-',
         Amount: d.type === 'fix' ? formatCurrency(d.amount || 0) : '-',
         'Use Count': d.use_count,
-        'Expiry Date': d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '-',
+        'Expiry Date': d.expiry_date ? formatDate(d.expiry_date) : '-',
         Description: d.description || '-'
     }));
 
@@ -224,7 +227,7 @@ export default function FeesDiscountPage() {
                 d.type === 'percentage' ? `${d.percentage}%` : '-',
                 d.type === 'fix' ? formatCurrency(d.amount || 0) : '-',
                 d.use_count.toString(),
-                d.expiry_date ? new Date(d.expiry_date).toLocaleDateString() : '-'
+                d.expiry_date ? formatDate(d.expiry_date) : '-'
             ]),
             startY: 20,
         });
@@ -238,7 +241,7 @@ export default function FeesDiscountPage() {
     };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-700 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-700 p-6 pb-20">
             {/* Left Column: Add/Edit Fees Discount Form */}
             <div className="lg:col-span-1">
                 <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
@@ -257,7 +260,7 @@ export default function FeesDiscountPage() {
                             </div>
                         </div>
                         {editingId && (
-                            <Button variant="ghost" size="icon" onClick={resetForm} className="h-8 w-8 rounded-full">
+                            <Button variant="ghost" size="icon" onClick={resetForm} className="h-8 w-8 rounded-full cursor-pointer">
                                 <X className="h-4 w-4" />
                             </Button>
                         )}
@@ -290,7 +293,7 @@ export default function FeesDiscountPage() {
                                     onChange={handleInputChange}
                                     placeholder={t("enter_discount_code")}
                                     required
-                                    className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium font-mono uppercase"
                                 />
                             </div>
 
@@ -318,7 +321,7 @@ export default function FeesDiscountPage() {
                                                 name="discountType"
                                                 checked={formData.type === type.id}
                                                 onChange={() => handleTypeChange(type.id as "percentage" | "fix")}
-                                                className="w-4 h-4 text-primary bg-muted border-muted focus:ring-primary/20"
+                                                className="w-4 h-4 text-primary bg-muted border-muted focus:ring-primary/20 cursor-pointer"
                                             />
                                             <span className={cn(
                                                 "text-xs font-bold transition-colors",
@@ -384,12 +387,11 @@ export default function FeesDiscountPage() {
                                     <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
                                         {t("expiry_date")}
                                     </label>
-                                    <Input
-                                        name="expiry_date"
-                                        type="date"
+                                    <DatePicker
                                         value={formData.expiry_date || ""}
-                                        onChange={handleInputChange}
-                                        className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                        onChange={(val) => setFormData(prev => ({ ...prev, expiry_date: val || null }))}
+                                        placeholder="DD/MM/YYYY"
+                                        className="h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium text-xs shadow-none"
                                     />
                                 </div>
                             </div>
@@ -397,7 +399,7 @@ export default function FeesDiscountPage() {
                             {/* Description */}
                             <div className="space-y-2 group">
                                 <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
-                                        {t("description")}
+                                    {t("description")}
                                 </label>
                                 <Textarea
                                     name="description"
@@ -410,15 +412,15 @@ export default function FeesDiscountPage() {
 
                             <div className="pt-4 flex justify-end gap-2">
                                 {editingId && (
-                                    <Button type="button" variant="outline" className="h-10 px-6 rounded-lg font-bold text-xs active:scale-95 transition-all" onClick={resetForm}>
-                                            {t("cancel")}
+                                    <Button type="button" variant="outline" className="h-10 px-6 rounded-lg font-bold text-xs active:scale-95 transition-all cursor-pointer" onClick={resetForm}>
+                                        {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
                                     type="submit"
                                     variant="gradient"
                                     disabled={saving}
-                                    className="h-10 px-8 rounded-lg font-bold text-xs tracking-tight shadow-lg shadow-primary/25 active:scale-95 transition-all flex items-center gap-2"
+                                    className="h-10 px-8 rounded-lg font-bold text-xs tracking-tight shadow-lg shadow-primary/25 active:scale-95 transition-all flex items-center gap-2 cursor-pointer border-none bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white"
                                 >
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                                     {saving ? t("processing") : editingId ? t("update_discount") : t("save_discount")}
@@ -439,7 +441,7 @@ export default function FeesDiscountPage() {
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("fees_discount_list")}</CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {discounts.length} {t("total_entries")}
+                                {t("x_total_entries", { count: toLocaleNumber(discounts.length, language?.short_code) })}
                             </p>
                         </div>
                     </CardHeader>
@@ -467,8 +469,8 @@ export default function FeesDiscountPage() {
                                     }}
                                     className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
                                 >
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
+                                    <option value="50">{toLocaleNumber(50, language?.short_code)}</option>
+                                    <option value="100">{toLocaleNumber(100, language?.short_code)}</option>
                                     <option value="All">{t("all")}</option>
                                 </select>
                                 <div className="h-8 w-px bg-muted/50 mx-2" />
@@ -491,14 +493,14 @@ export default function FeesDiscountPage() {
                                             {(() => {
                                                 const headerKeys = ["name", "discount_code", "percentage", "amount", "use_count", "expiry_date", "action"];
                                                 const centerAlignKeys = ["percentage", "amount", "use_count", "expiry_date"];
-                                                return headerKeys.map((key, i) => (
-                                                <th key={key} className={cn(
-                                                    "px-4 py-3 text-[10px] font-bold uppercase text-gray-600 border-b border-muted/20 whitespace-nowrap",
-                                                    key === "action" ? "text-center w-36" : "",
-                                                    centerAlignKeys.includes(key) ? "text-center" : ""
-                                                )}>
-                                                    {t(key)}
-                                                </th>
+                                                return headerKeys.map((key) => (
+                                                    <th key={key} className={cn(
+                                                        "px-4 py-3 text-[10px] font-bold uppercase text-gray-600 border-b border-muted/20 whitespace-nowrap",
+                                                        key === "action" ? "text-center w-36" : "",
+                                                        centerAlignKeys.includes(key) ? "text-center" : ""
+                                                    )}>
+                                                        {t(key)}
+                                                    </th>
                                                 ));
                                             })()}
                                         </tr>
@@ -519,41 +521,43 @@ export default function FeesDiscountPage() {
                                                                 <LayoutGrid className="h-4 w-4 text-primary" />
                                                             </div>
                                                             <div className="flex flex-col">
-                                                                <span className="text-xs font-bold text-foreground">{discount.name}</span>
+                                                                <span className="text-xs font-bold text-foreground">{translateFeeItemName(discount.name, language?.short_code)}</span>
                                                                 {discount.description && <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{discount.description}</span>}
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <span className="px-2 py-1 rounded bg-muted text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                                        <span className="px-2 py-1 rounded bg-muted text-[10px] font-black uppercase tracking-widest text-muted-foreground font-mono">
                                                             {discount.code}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-xs font-bold text-primary text-center">
-                                                        {discount.type === "percentage" ? `${discount.percentage}%` : "-"}
+                                                        {discount.type === "percentage" ? `${toLocaleNumber(discount.percentage ?? 0, language?.short_code)}%` : "-"}
                                                     </td>
                                                     <td className="px-6 py-4 text-xs font-bold text-primary text-center">
-                                                        {discount.type === "fix" ? formatCurrency(discount.amount || 0) : "-"}
+                                                        {discount.type === "fix" ? toLocaleNumber(formatCurrency(discount.amount || 0), language?.short_code) : "-"}
                                                     </td>
                                                     <td className="px-6 py-4 text-xs font-bold text-center">
-                                                        {discount.use_count}
+                                                        {toLocaleNumber(discount.use_count, language?.short_code)}
                                                     </td>
                                                     <td className="px-6 py-4 text-xs font-bold text-muted-foreground text-center">
-                                                        {discount.expiry_date ? new Date(discount.expiry_date).toLocaleDateString() : "-"}
+                                                        {discount.expiry_date ? toLocaleNumber(formatDate(discount.expiry_date), language?.short_code) : "-"}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => handleEdit(discount)}
-                                                                className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-md active:scale-90"
+                                                                title={t("edit")}
+                                                                className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-md active:scale-90 cursor-pointer"
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => handleDelete(discount.id!)}
-                                                                className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-md active:scale-90"
+                                                                title={t("delete")}
+                                                                className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-md active:scale-90 cursor-pointer"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -570,7 +574,7 @@ export default function FeesDiscountPage() {
                         {filteredDiscounts.length > 0 && (
                             <div className="flex items-center justify-between pt-4 border-t border-muted/20">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] italic">
-                                    {t("showing_x_to_y_of_z", { from: Math.min((currentPage - 1) * pageSize + 1, filteredDiscounts.length), to: Math.min(currentPage * pageSize, filteredDiscounts.length), total: filteredDiscounts.length })}
+                                    {t("showing_x_to_y_of_z", { from: toLocaleNumber(Math.min((currentPage - 1) * pageSize + 1, filteredDiscounts.length), language?.short_code), to: toLocaleNumber(Math.min(currentPage * pageSize, filteredDiscounts.length), language?.short_code), total: toLocaleNumber(filteredDiscounts.length, language?.short_code) })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -578,19 +582,19 @@ export default function FeesDiscountPage() {
                                         size="icon"
                                         disabled={currentPage === 1}
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all cursor-pointer"
                                     >
                                         <ChevronDown className="h-4 w-4 rotate-90" />
                                     </Button>
                                     <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                                        {currentPage}
+                                        {toLocaleNumber(currentPage, language?.short_code)}
                                     </Button>
                                     <Button
                                         variant="outline"
                                         size="icon"
                                         disabled={currentPage >= totalPages}
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all cursor-pointer"
                                     >
                                         <ChevronDown className="h-4 w-4 -rotate-90" />
                                     </Button>
@@ -611,9 +615,10 @@ function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, o
             type="button"
             onClick={onClick}
             title={title}
-            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95"
+            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95 cursor-pointer"
         >
             <Icon className="h-4 w-4" />
         </button>
     );
 }
+

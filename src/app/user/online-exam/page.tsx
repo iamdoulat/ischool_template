@@ -25,7 +25,7 @@ import {
     FileBox, Printer, Eye, CheckSquare, AlertCircle, Loader2,
     ClipboardList, CalendarClock, Clock, FileText, Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
@@ -58,8 +58,39 @@ interface OnlineExam {
     isResultPublished: boolean;
 }
 
+interface ExamAttempt {
+    id: number;
+    completed_at: string;
+    earned_marks: number;
+    total_marks: number;
+}
+
+interface ExamQuestion {
+    id: number;
+    question: string;
+    question_type: string;
+    marks: number;
+    options?: string | string[];
+}
+
+interface ExamDetails {
+    title: string;
+    is_quiz?: boolean;
+    duration?: string;
+    passing_percentage?: number;
+    attempt: number;
+    attempted: number;
+    description?: string;
+    is_closed?: boolean;
+    is_exhausted?: boolean;
+    is_result_published?: boolean;
+    questions?: ExamQuestion[];
+    attempts?: ExamAttempt[];
+}
+
 export default function UserOnlineExamPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [exams, setExams] = useState<OnlineExam[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"upcoming" | "closed">("upcoming");
@@ -71,14 +102,48 @@ export default function UserOnlineExamPage() {
 
     // Exam Attempt / Taking states
     const [selectedExam, setSelectedExam] = useState<OnlineExam | null>(null);
-    const [examDetails, setExamDetails] = useState<any>(null);
+    const [examDetails, setExamDetails] = useState<ExamDetails | null>(null);
     const [isTakeExamDialogOpen, setIsTakeExamDialogOpen] = useState(false);
     const [loadingDetails, setLoadingDetails] = useState(false);
     const [startedExam, setStartedExam] = useState(false);
     const [startedAt, setStartedAt] = useState<string | null>(null);
-    const [answers, setAnswers] = useState<{ [questionId: number]: any }>({});
+    const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
     const [timeLeft, setTimeLeft] = useState<number>(0);
     const [submittingAttempt, setSubmittingAttempt] = useState(false);
+
+    const fetchData = useCallback(async (page = 1) => {
+        setLoading(true);
+        try {
+            const perPage = parseInt(itemsPerPage, 10) || 50;
+            const response = await api.get("/user/online-exams", {
+                params: {
+                    page,
+                    per_page: perPage,
+                    status: activeTab,
+                    search: searchTerm || undefined,
+                },
+            });
+            const res = response.data?.data || response.data || {};
+            const dataArr = Array.isArray(res) ? res : (res.data || []);
+            setExams(dataArr);
+            setTotalEntries(res.total || dataArr.length);
+            setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
+            setCurrentPage(res.current_page || page);
+        } catch {
+            toast.error(t("failed_to_load_online_exams"));
+        } finally {
+            setLoading(false);
+        }
+    }, [itemsPerPage, activeTab, searchTerm, t]);
+
+    useEffect(() => {
+        fetchData(1);
+    }, [fetchData]);
+
+    const handleSearch = () => {
+        setCurrentPage(1);
+        fetchData(1);
+    };
 
     const handleViewExam = async (exam: OnlineExam) => {
         setSelectedExam(exam);
@@ -94,8 +159,7 @@ export default function UserOnlineExamPage() {
             } else {
                 toast.error(res.data?.message || t("failed_to_load_exam_details"));
             }
-        } catch (error) {
-            console.error("Error loading exam details:", error);
+        } catch {
             toast.error(t("failed_to_load_exam_details"));
         } finally {
             setLoadingDetails(false);
@@ -147,13 +211,12 @@ export default function UserOnlineExamPage() {
             } else {
                 toast.error(res.data?.message || t("failed_to_submit_exam"));
             }
-        } catch (error) {
-            console.error("Error submitting exam:", error);
+        } catch {
             toast.error(t("failed_to_submit_exam"));
         } finally {
             setSubmittingAttempt(false);
         }
-    }, [selectedExam, examDetails, answers, startedAt, currentPage, t]);
+    }, [selectedExam, examDetails, answers, startedAt, currentPage, t, fetchData]);
 
     useEffect(() => {
         if (!startedExam || timeLeft <= 0) {
@@ -177,41 +240,6 @@ export default function UserOnlineExamPage() {
         return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const fetchData = useCallback(async (page = 1) => {
-        setLoading(true);
-        try {
-            const perPage = parseInt(itemsPerPage, 10) || 50;
-            const response = await api.get("/user/online-exams", {
-                params: {
-                    page,
-                    per_page: perPage,
-                    status: activeTab,
-                    search: searchTerm || undefined,
-                },
-            });
-            const res = response.data?.data || response.data || {};
-            const dataArr = Array.isArray(res) ? res : (res.data || []);
-            setExams(dataArr);
-            setTotalEntries(res.total || dataArr.length);
-            setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
-            setCurrentPage(res.current_page || page);
-        } catch (error) {
-            console.error("Error fetching online exams:", error);
-            toast.error(t("failed_to_load_online_exams"));
-        } finally {
-            setLoading(false);
-        }
-    }, [itemsPerPage, activeTab, searchTerm]);
-
-    useEffect(() => {
-        fetchData(1);
-    }, [itemsPerPage, activeTab]);
-
-    const handleSearch = () => {
-        setCurrentPage(1);
-        fetchData(1);
-    };
-
     const sizeNum = parseInt(itemsPerPage, 10) || 50;
     const safePage = Math.min(currentPage, totalPages);
     const startIndex = (safePage - 1) * sizeNum;
@@ -228,9 +256,20 @@ export default function UserOnlineExamPage() {
         }
     };
 
+    const getStatusLabel = (status: string) => {
+        switch (status?.toLowerCase()) {
+            case "available": return t("available");
+            case "submitted": return t("submitted");
+            case "passed":    return t("passed");
+            case "failed":    return t("failed");
+            case "closed":    return t("closed");
+            default:          return status ? t(status.toLowerCase()) || status : "";
+        }
+    };
+
     const StatusBadge = ({ status }: { status: string }) => (
         <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm", getStatusStyle(status))}>
-            {status}
+            {getStatusLabel(status)}
         </span>
     );
 
@@ -255,10 +294,12 @@ export default function UserOnlineExamPage() {
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <ClipboardList className="h-5 w-5" />
                     </span>
-                    <div>
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("online_exam")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                            {totalEntries} {activeTab === "upcoming" ? t("upcoming") : t("closed")} exam{totalEntries === 1 ? "" : "s"}
+                    <div className="space-y-0.5">
+                        <h1 className="text-[16px] font-bold text-gray-800 leading-snug">{t("online_exam")}</h1>
+                        <p className="text-[11px] text-gray-500">
+                            {activeTab === "upcoming"
+                                ? t("upcoming_exams_count", { count: toLocaleNumber(totalEntries, langCode) })
+                                : t("completed_exams_count", { count: toLocaleNumber(totalEntries, langCode) })}
                         </p>
                     </div>
                 </div>
@@ -268,17 +309,17 @@ export default function UserOnlineExamPage() {
                     {[
                         { key: "upcoming", label: t("upcoming_exams") },
                         { key: "closed", label: t("completed_exams") },
-                    ].map((t) => (
+                    ].map((tabItem) => (
                         <button
-                            key={t.key}
-                            onClick={() => { setActiveTab(t.key as "upcoming" | "closed"); setCurrentPage(1); }}
+                            key={tabItem.key}
+                            onClick={() => { setActiveTab(tabItem.key as "upcoming" | "closed"); setCurrentPage(1); }}
                             className={cn(
                                 "relative px-4 sm:px-6 py-3 text-[13px] font-semibold transition-colors",
-                                activeTab === t.key ? "text-[#6366f1]" : "text-gray-500 hover:text-gray-700"
+                                activeTab === tabItem.key ? "text-[#6366f1]" : "text-gray-500 hover:text-gray-700"
                             )}
                         >
-                            {t.label}
-                            {activeTab === t.key && (
+                            {tabItem.label}
+                            {activeTab === tabItem.key && (
                                 <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1]" />
                             )}
                         </button>
@@ -301,15 +342,18 @@ export default function UserOnlineExamPage() {
                         </div>
 
                         <div className="flex items-center justify-between md:justify-end gap-2">
-                            <Select value={itemsPerPage} onValueChange={(val) => setItemsPerPage(val)}>
+                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
                                 <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber(50, langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    {["10", "25", "50", "100"].map((n) => (
+                                        <SelectItem key={n} value={n}>
+                                            {toLocaleNumber(n, langCode)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
@@ -373,11 +417,11 @@ export default function UserOnlineExamPage() {
                                         <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/30 transition-colors whitespace-nowrap text-gray-600">
                                             <TableCell className="py-3 px-4 font-semibold text-gray-800">{item.exam}</TableCell>
                                             <TableCell className="py-3 px-4"><QuizBadge isQuiz={item.isQuiz} /></TableCell>
-                                            <TableCell className="py-3 px-4">{item.dateFrom}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.dateTo}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.duration}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">{item.totalAttempt}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">{item.attempted}</TableCell>
+                                            <TableCell className="py-3 px-4">{toLocaleNumber(item.dateFrom, langCode)}</TableCell>
+                                            <TableCell className="py-3 px-4">{toLocaleNumber(item.dateTo, langCode)}</TableCell>
+                                            <TableCell className="py-3 px-4">{toLocaleNumber(item.duration, langCode)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.totalAttempt, langCode)}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.attempted, langCode)}</TableCell>
                                             <TableCell className="py-3 px-4 text-center"><StatusBadge status={item.status} /></TableCell>
                                             <TableCell className="py-3 px-4 text-right">
                                                 <Button
@@ -420,11 +464,11 @@ export default function UserOnlineExamPage() {
 
                                         {/* Meta grid */}
                                         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600 border-t border-gray-100 pt-2.5">
-                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("from")}: {item.dateFrom}</span>
-                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("to")}: {item.dateTo}</span>
-                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.duration}</span>
-                                            <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("attempts")}: {item.totalAttempt}</span>
-                                            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("attempted")}: {item.attempted}</span>
+                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("from")}: {toLocaleNumber(item.dateFrom, langCode)}</span>
+                                            <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("to")}: {toLocaleNumber(item.dateTo, langCode)}</span>
+                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{toLocaleNumber(item.duration, langCode)}</span>
+                                            <span className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("attempts")}: {toLocaleNumber(item.totalAttempt, langCode)}</span>
+                                            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{t("attempted")}: {toLocaleNumber(item.attempted, langCode)}</span>
                                         </div>
 
                                         <Button
@@ -443,8 +487,8 @@ export default function UserOnlineExamPage() {
                     {/* ── Pagination ── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
+                            {t("showing")} {toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, langCode)} {t("to")}{" "}
+                            {toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode)} {t("of")} {toLocaleNumber(totalEntries, langCode)} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -468,7 +512,7 @@ export default function UserOnlineExamPage() {
                                                 : "bg-white text-gray-500 border border-gray-200 hover:shadow-sm active:scale-95"
                                         )}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, langCode)}
                                     </button>
                                 ))}
 
@@ -488,7 +532,7 @@ export default function UserOnlineExamPage() {
             {/* Take / View Exam Dialog */}
             <Dialog open={isTakeExamDialogOpen} onOpenChange={(open) => {
                 if (!open) {
-                    if (startedExam && !confirm("Are you sure you want to leave the exam? Your progress will be lost.")) return;
+                    if (startedExam && !confirm(t("confirm_leave_exam"))) return;
                     setIsTakeExamDialogOpen(false);
                     setStartedExam(false);
                 }
@@ -534,20 +578,20 @@ export default function UserOnlineExamPage() {
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
                                                 <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("duration")}</span>
-                                                <span className="text-xs font-black text-gray-800">{examDetails.duration || "N/A"}</span>
+                                                <span className="text-xs font-black text-gray-800">{examDetails.duration ? toLocaleNumber(examDetails.duration, langCode) : "—"}</span>
                                             </div>
                                             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
                                                 <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("total_questions")}</span>
-                                                <span className="text-xs font-black text-gray-800">{examDetails.questions?.length || 0}</span>
+                                                <span className="text-xs font-black text-gray-800">{toLocaleNumber(examDetails.questions?.length || 0, langCode)}</span>
                                             </div>
                                             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
                                                 <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("passing_score")}</span>
-                                                <span className="text-xs font-black text-gray-800">{examDetails.passing_percentage}%</span>
+                                                <span className="text-xs font-black text-gray-800">{toLocaleNumber(examDetails.passing_percentage, langCode)}%</span>
                                             </div>
                                             <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm text-center space-y-1">
                                                 <span className="text-[10px] text-gray-400 font-bold uppercase block">{t("attempts_left")}</span>
                                                 <span className="text-xs font-black text-gray-800">
-                                                    {examDetails.attempt > 0 ? (examDetails.attempt - examDetails.attempted) : "Unlimited"}
+                                                    {examDetails.attempt > 0 ? toLocaleNumber(examDetails.attempt - examDetails.attempted, langCode) : t("unlimited")}
                                                 </span>
                                             </div>
                                         </div>
@@ -561,32 +605,32 @@ export default function UserOnlineExamPage() {
 
                                         {examDetails.attempts && examDetails.attempts.length > 0 && (
                                             <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
-                                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">Your Attempts History</h3>
+                                                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-800">{t("your_attempts_history")}</h3>
                                                 <div className="space-y-3">
-                                                    {examDetails.attempts.map((att: any, attIdx: number) => {
+                                                    {examDetails.attempts.map((att: ExamAttempt, attIdx: number) => {
                                                         const scorePercent = att.total_marks > 0 ? (att.earned_marks / att.total_marks) * 100 : 0;
                                                         const isPassed = scorePercent >= (examDetails.passing_percentage || 33);
                                                         return (
                                                             <div key={att.id} className="flex justify-between items-center p-3 rounded-lg bg-gray-50/50 border border-gray-50 text-xs">
                                                                 <div className="space-y-1">
-                                                                    <p className="font-bold text-gray-700">Attempt #{attIdx + 1}</p>
-                                                                    <p className="text-[10px] text-gray-400">Date: {new Date(att.completed_at).toLocaleString()}</p>
+                                                                    <p className="font-bold text-gray-700">{t("attempt_number", { number: toLocaleNumber(attIdx + 1, langCode) })}</p>
+                                                                    <p className="text-[10px] text-gray-400">{t("date")}: {toLocaleNumber(new Date(att.completed_at).toLocaleDateString(), langCode)}</p>
                                                                 </div>
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="text-right">
-                                                                        <span className="font-black text-gray-800">{att.earned_marks}</span>
-                                                                        <span className="text-gray-400"> / {att.total_marks} Marks</span>
+                                                                        <span className="font-black text-gray-800">{toLocaleNumber(att.earned_marks, langCode)}</span>
+                                                                        <span className="text-gray-400"> / {toLocaleNumber(att.total_marks, langCode)} {t("marks_label")}</span>
                                                                     </div>
                                                                     {examDetails.is_result_published ? (
                                                                         <span className={cn(
                                                                             "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider text-white",
                                                                             isPassed ? "bg-emerald-500" : "bg-rose-500"
                                                                         )}>
-                                                                            {isPassed ? "Passed" : "Failed"}
+                                                                            {isPassed ? t("passed") : t("failed")}
                                                                         </span>
                                                                     ) : (
                                                                         <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-500 text-white">
-                                                                            Submitted
+                                                                            {t("submitted")}
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -616,7 +660,7 @@ export default function UserOnlineExamPage() {
                                                 <div className="space-y-1 text-xs">
                                                     <p className="font-bold">{t("ready_to_start")}</p>
                                                     <p className="opacity-90 leading-normal">
-                                                        Once you click "Start Exam", the timer will begin. Closing this window or disconnecting will result in automatic submission.
+                                                        {t("ready_to_start_warning")}
                                                     </p>
                                                 </div>
                                             </div>
@@ -625,7 +669,7 @@ export default function UserOnlineExamPage() {
                                 ) : (
                                     // Exam Taking View (Questions List)
                                     <div className="space-y-6">
-                                        {examDetails.questions?.map((q: any, index: number) => {
+                                        {examDetails.questions?.map((q: ExamQuestion, index: number) => {
                                             const isSingleChoice = q.question_type === "Single Choice" || q.question_type === "True/False";
                                             const isMultipleChoice = q.question_type === "Multiple Choice";
                                             const isDescriptive = q.question_type === "Descriptive";
@@ -634,7 +678,7 @@ export default function UserOnlineExamPage() {
                                             let opts = [];
                                             try {
                                                 opts = typeof q.options === 'string' ? JSON.parse(q.options) : (q.options || []);
-                                            } catch (e) {
+                                            } catch {
                                                 opts = [];
                                             }
 
@@ -642,10 +686,10 @@ export default function UserOnlineExamPage() {
                                                 <div key={q.id} className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
                                                     <div className="flex justify-between items-start border-b border-gray-50 pb-2">
                                                         <span className="text-xs font-bold text-gray-800">
-                                                            Question {index + 1}
+                                                            {t("question")} {toLocaleNumber(index + 1, langCode)}
                                                         </span>
                                                         <span className="text-[10px] bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-                                                            {q.marks} Marks
+                                                            {toLocaleNumber(q.marks, langCode)} {t("marks_label")}
                                                         </span>
                                                     </div>
 
@@ -717,7 +761,7 @@ export default function UserOnlineExamPage() {
                                                             <textarea
                                                                 value={answers[q.id] || ""}
                                                                 onChange={(e) => setAnswers({...answers, [q.id]: e.target.value})}
-                                                                placeholder="Type your answer here..."
+                                                                placeholder={t("type_answer_here")}
                                                                 rows={4}
                                                                 className="w-full text-xs p-3 rounded-lg border border-gray-200 focus:outline-indigo-500 focus:ring-1 focus:ring-indigo-500 bg-gray-50/30"
                                                             />
@@ -754,7 +798,7 @@ export default function UserOnlineExamPage() {
                                     <>
                                         <Button 
                                             onClick={() => {
-                                                if (confirm("Are you sure you want to cancel the exam? Your progress will be lost.")) {
+                                                if (confirm(t("confirm_leave_exam"))) {
                                                     setIsTakeExamDialogOpen(false);
                                                     setStartedExam(false);
                                                 }

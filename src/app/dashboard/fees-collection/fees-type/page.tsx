@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-    Plus,
     Search,
     FileSpreadsheet,
     FileText,
     FileCode,
     Printer,
-
     Pencil,
     Trash2,
     LayoutGrid,
@@ -20,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { cn, translateFeeItemName, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -72,7 +70,7 @@ const mockFeesTypes: FeeType[] = [
 ];
 
 export default function FeesTypePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const [feesTypes, setFeesTypes] = useState<FeeType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -119,7 +117,7 @@ export default function FeesTypePage() {
         } finally {
             setLoading(false);
         }
-    }, [searchQuery]);
+    }, [searchQuery, tt]);
 
     useEffect(() => {
         fetchFeesTypes();
@@ -334,11 +332,11 @@ export default function FeesTypePage() {
 
                             <div className="pt-4 flex justify-end gap-2">
                                 {isEdit && (
-                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold" onClick={resetForm}>
+                                    <Button type="button" variant="outline" className="h-11 px-6 rounded-lg font-bold cursor-pointer" onClick={resetForm}>
                                         {t("cancel")}
                                     </Button>
                                 )}
-                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25">
+                                <Button type="submit" variant="gradient" className="h-11 px-10 rounded-lg font-bold tracking-tight shadow-lg shadow-primary/25 cursor-pointer border-none bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white">
                                     {isEdit ? t("update_fees_type") : t("save_fees_type")}
                                 </Button>
                             </div>
@@ -356,7 +354,7 @@ export default function FeesTypePage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("fees_type_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_total_entries", { count: feesTypes.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_total_entries", { count: toLocaleNumber(feesTypes.length, language?.short_code) })}</p>
                         </div>
                     </CardHeader>
 
@@ -383,17 +381,17 @@ export default function FeesTypePage() {
                                     }}
                                     className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
                                 >
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
-                                    <option value="All">All</option>
+                                    <option value="50">{toLocaleNumber(50, language?.short_code)}</option>
+                                    <option value="100">{toLocaleNumber(100, language?.short_code)}</option>
+                                    <option value="All">{t("all")}</option>
                                 </select>
                                 <div className="h-8 w-px bg-muted/50 mx-2" />
                                 <div className="flex gap-1">
-                                    <IconButton icon={CopyIcon} onClick={handleCopy} />
-                                    <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} />
-                                    <IconButton icon={FileText} onClick={handleExportCSV} />
-                                    <IconButton icon={FileCode} onClick={handleExportPDF} />
-                                    <IconButton icon={Printer} onClick={handlePrint} />
+                                    <IconButton icon={CopyIcon} onClick={handleCopy} title={t("copy")} />
+                                    <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title={t("excel")} />
+                                    <IconButton icon={FileText} onClick={handleExportCSV} title={t("csv")} />
+                                    <IconButton icon={FileCode} onClick={handleExportPDF} title={t("pdf")} />
+                                    <IconButton icon={Printer} onClick={handlePrint} title={t("print")} />
                                 </div>
                             </div>
                         </div>
@@ -421,7 +419,7 @@ export default function FeesTypePage() {
                                                     {selectedIds.length > 0 ? (
                                                         <button
                                                             onClick={() => setIsBulkDeleteDialogOpen(true)}
-                                                            className="bg-red-500 hover:bg-red-600 p-1.5 rounded transition-colors flex items-center gap-1 text-white px-2"
+                                                            className="bg-red-500 hover:bg-red-600 p-1.5 rounded transition-colors flex items-center gap-1 text-white px-2 cursor-pointer"
                                                         >
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                             <span className="text-xs font-bold leading-none translate-y-[1px]">{t("delete")}</span>
@@ -457,7 +455,7 @@ export default function FeesTypePage() {
                                                             <div className="p-1.5 bg-primary/10 rounded-lg group-hover/row:bg-primary/20 transition-colors">
                                                                 <LayoutGrid className="h-3.5 w-3.5 text-primary" />
                                                             </div>
-                                                            {type.name}
+                                                            {translateFeeItemName(type.name, language?.short_code)}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-xs font-medium text-muted-foreground uppercase tracking-tight">
@@ -465,18 +463,19 @@ export default function FeesTypePage() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center justify-end gap-1.5 pr-2">
-
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => startEdit(type)}
-                                                                className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all"
+                                                                title={t("edit")}
+                                                                className="h-8 w-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/20 active:scale-90 transition-all cursor-pointer"
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
                                                             <Button
                                                                 size="icon"
                                                                 onClick={() => { setDeleteId(type.id); setIsDeleteDialogOpen(true); }}
-                                                                className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all"
+                                                                title={t("delete")}
+                                                                className="h-8 w-8 rounded-lg bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20 active:scale-90 transition-all cursor-pointer"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -493,25 +492,25 @@ export default function FeesTypePage() {
                         {feesTypes.length > 0 && (
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    {t("showing_x_to_y_of_z", { from: Math.min((currentPage - 1) * pageSize + 1, feesTypes.length), to: Math.min(currentPage * pageSize, feesTypes.length), total: feesTypes.length })}
+                                    {t("showing_x_to_y_of_z", { from: toLocaleNumber(Math.min((currentPage - 1) * pageSize + 1, feesTypes.length), language?.short_code), to: toLocaleNumber(Math.min(currentPage * pageSize, feesTypes.length), language?.short_code), total: toLocaleNumber(feesTypes.length, language?.short_code) })}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
                                         size="icon"
                                         disabled={currentPage === 1}
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all cursor-pointer"
                                     >
                                         <ChevronDown className="h-4 w-4 rotate-90" />
                                     </Button>
                                     <Button className="h-8 w-8 rounded-[10px] border-none p-0 text-white font-bold active:scale-95 transition-all shadow-md shadow-orange-500/10 bg-gradient-to-r from-[#FF9800] to-[#6366F1]">
-                                        {currentPage}
+                                        {toLocaleNumber(currentPage, language?.short_code)}
                                     </Button>
                                     <Button
                                         size="icon"
                                         disabled={currentPage >= totalPages}
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all"
+                                        className="h-8 w-8 rounded-[10px] bg-white border border-gray-200 text-gray-600 hover:bg-card active:scale-95 transition-all cursor-pointer"
                                     >
                                         <ChevronDown className="h-4 w-4 -rotate-90" />
                                     </Button>
@@ -532,8 +531,8 @@ export default function FeesTypePage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }}>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">{t("delete")}</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => { setDeleteId(null); setIsDeleteDialogOpen(false); }} className="cursor-pointer">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform cursor-pointer">{t("delete")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -544,12 +543,12 @@ export default function FeesTypePage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("bulk_delete_entries")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t("delete_selected_fees_types_confirmation", { count: selectedIds.length })}
+                            {t("delete_selected_fees_types_confirmation", { count: toLocaleNumber(selectedIds.length, language?.short_code) })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform">{t("delete_selected")}</AlertDialogAction>
+                        <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)} className="cursor-pointer">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 font-bold active:scale-95 transition-transform cursor-pointer">{t("delete_selected")}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
@@ -558,12 +557,13 @@ export default function FeesTypePage() {
 }
 
 // Helper component for icon buttons
-function IconButton({ icon: Icon, onClick }: { icon: React.ElementType, onClick?: () => void }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType, onClick?: () => void, title?: string }) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95"
+            title={title}
+            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95 cursor-pointer"
         >
             <Icon className="h-4 w-4" />
         </button>

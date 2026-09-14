@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     GraduationCap, User, Users, Home, Phone, Calendar, Info,
     CheckCircle2, ChevronRight, ChevronLeft, Camera, Upload,
-    CreditCard, ShieldCheck, Sparkles, Loader2, Search, Download, MessageSquare
+    CreditCard, ShieldCheck, Sparkles, Loader2, Search, Download, MessageSquare,
+    Building2, MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { downloadAdmissionFormPdf } from "@/lib/pdf-utils";
@@ -20,6 +21,8 @@ import { toast } from "@/components/ui/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useSettings } from "@/components/providers/settings-provider";
+import { useTranslation } from "@/hooks/use-translation";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 // Types
 interface OnlineAdmissionField {
@@ -62,6 +65,7 @@ const STEPS = [
 
 export default function OnlineAdmissionPage() {
     const { settings: globalSettings } = useSettings();
+    const { t } = useTranslation();
     const schoolName = globalSettings?.school_name || globalSettings?.app_name || "iSchool";
 
     // State
@@ -71,6 +75,9 @@ export default function OnlineAdmissionPage() {
     const [classes, setClasses] = useState<AcademicClass[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [sessions, setSessions] = useState<any[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
+    const [showBranchModal, setShowBranchModal] = useState(false);
+    const [isBranchLocked, setIsBranchLocked] = useState(false);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [successData, setSuccessData] = useState<any>(null);
@@ -89,6 +96,7 @@ export default function OnlineAdmissionPage() {
     const [tracking, setTracking] = useState(false);
 
     const [formData, setFormData] = useState<any>({
+        branch_id: "1",
         first_name: "",
         middle_name: "",
         last_name: "",
@@ -139,6 +147,22 @@ export default function OnlineAdmissionPage() {
         medical_history: "",
     });
 
+    const hasMultipleBranches = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        return list.length > 1;
+    }, [branches]);
+
+    const branchOptions = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        if (list.length === 0) {
+            return [{ label: "Main", value: "1" }];
+        }
+        return list.map((b: any) => ({
+            label: b.branch_name,
+            value: b.id.toString(),
+        }));
+    }, [branches]);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // ── fetch field settings only (called on visibility change + polling) ──
@@ -157,11 +181,12 @@ export default function OnlineAdmissionPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [settingsRes, classesRes, categoriesRes, sessionsRes] = await Promise.all([
+                const [settingsRes, classesRes, categoriesRes, sessionsRes, branchesRes] = await Promise.all([
                     api.get("/system-setting/online-admission"),
                     api.get("/academics/classes?no_paginate=true"),
                     api.get("/student-categories"),
                     api.get("/system-setting/sessions"),
+                    api.get("/multi-branch/branches?all=true"),
                 ]);
 
                 setSettings(settingsRes.data.data.settings);
@@ -169,6 +194,39 @@ export default function OnlineAdmissionPage() {
                 setClasses(classesRes.data.data?.data || classesRes.data.data || []);
                 setCategories(categoriesRes.data.data?.data || categoriesRes.data.data || []);
                 setSessions(sessionsRes.data.data || []);
+                const bList = branchesRes.data?.data?.data || branchesRes.data?.data || branchesRes.data || [];
+                const validBranches = Array.isArray(bList) ? bList : [];
+                setBranches(validBranches);
+
+                // Auto pre-select branch if URL has branch context or prompt popup
+                if (typeof window !== "undefined") {
+                    const params = new URLSearchParams(window.location.search);
+                    const branchParam = params.get("branch") || params.get("branch_id");
+                    const pathnameMatch = window.location.pathname.match(/^\/br\/([^\/]+)/);
+                    const urlSlug = branchParam || (pathnameMatch ? pathnameMatch[1] : null);
+
+                    let matched: any = null;
+                    if (urlSlug && urlSlug !== "main") {
+                        matched = validBranches.find((b: any) =>
+                            b.id?.toString() === urlSlug ||
+                            (b.slug && b.slug.toLowerCase() === urlSlug.toLowerCase()) ||
+                            (b.branch_code && b.branch_code.toLowerCase() === urlSlug.toLowerCase()) ||
+                            (b.branch_name && b.branch_name.toLowerCase().replace(/\s+/g, '-') === urlSlug.toLowerCase())
+                        );
+                    }
+
+                    if (matched) {
+                        setFormData((prev: any) => ({ ...prev, branch_id: matched.id.toString() }));
+                        setIsBranchLocked(true);
+                        setShowBranchModal(false);
+                    } else if (validBranches.length > 1) {
+                        // Multiple branches and no locked branch in URL -> Open branch selection popup
+                        setShowBranchModal(true);
+                    } else if (validBranches.length === 1) {
+                        setFormData((prev: any) => ({ ...prev, branch_id: validBranches[0].id.toString() }));
+                        setIsBranchLocked(true);
+                    }
+                }
             } catch (error) {
                 console.error("Failed to fetch admission data:", error);
                 toast({
@@ -466,7 +524,7 @@ export default function OnlineAdmissionPage() {
                             </div>
                             <div 
                                 className="prose prose-indigo max-w-none dark:prose-invert prose-p:text-slate-600 dark:prose-p:text-slate-400 prose-li:text-slate-600 dark:prose-li:text-slate-400" 
-                                dangerouslySetInnerHTML={{ __html: settings.instructions }} 
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.instructions) }} 
                             />
                         </div>
                         
@@ -487,6 +545,36 @@ export default function OnlineAdmissionPage() {
                         animate={{ opacity: 1, scale: 1 }} 
                         className="grid grid-cols-1 md:grid-cols-2 gap-8"
                     >
+                        {/* Campus Branch Selection */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">
+                                    {t("campus_branch") || t("branch") || "Campus Branch"}
+                                </Label>
+                                {isBranchLocked && (
+                                    <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800">
+                                        {t("selected_and_locked") || "Selected & Locked"}
+                                    </span>
+                                )}
+                            </div>
+                            <Select 
+                                disabled={isBranchLocked || !hasMultipleBranches} 
+                                onValueChange={(val) => handleSelectChange("branch_id", val)} 
+                                value={formData.branch_id || (branches[0]?.id?.toString() ?? "1")}
+                            >
+                                <SelectTrigger className="h-14 rounded-2xl border-slate-200 dark:border-slate-800 focus:ring-indigo-500 text-base font-medium bg-white dark:bg-slate-900 disabled:opacity-80 disabled:cursor-not-allowed">
+                                    <SelectValue placeholder={t("select_campus_branch") || "Select Campus Branch"} />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-2xl">
+                                    {branchOptions.map((b: any) => (
+                                        <SelectItem key={b.value} value={b.value} className="h-12 rounded-lg">
+                                            {b.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className="space-y-3">
                             <Label className="text-sm font-bold uppercase tracking-wider text-slate-500">Session Year <span className="text-red-500">*</span></Label>
                             <Select onValueChange={(val) => handleSelectChange("academic_session_id", val)} value={formData.academic_session_id}>
@@ -1290,7 +1378,7 @@ export default function OnlineAdmissionPage() {
                                     return (
                                         <div 
                                             className="prose prose-indigo max-w-none dark:prose-invert prose-p:text-slate-600 dark:prose-p:text-slate-400 text-sm leading-relaxed" 
-                                            dangerouslySetInnerHTML={{ __html: settings.help_center_content }} 
+                                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.help_center_content) }} 
                                         />
                                     );
                                 }
@@ -1431,7 +1519,7 @@ export default function OnlineAdmissionPage() {
                                     return (
                                         <div 
                                             className="prose prose-indigo max-w-none dark:prose-invert prose-p:text-slate-600 dark:prose-p:text-slate-400 text-sm leading-relaxed" 
-                                            dangerouslySetInnerHTML={{ __html: settings.fee_structure_content }} 
+                                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(settings.fee_structure_content) }} 
                                         />
                                     );
                                 }
@@ -1589,6 +1677,117 @@ export default function OnlineAdmissionPage() {
                                 </div>
                             </div>
                         )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Branch Selection Modal */}
+            <Dialog 
+                open={showBranchModal} 
+                onOpenChange={(open) => {
+                    if (formData.branch_id || !hasMultipleBranches) {
+                        setShowBranchModal(open);
+                    }
+                }}
+            >
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-900">
+                    <DialogHeader className="text-center sm:text-left space-y-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
+                                <Building2 className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                                    {t("select_campus_branch") || "Select Campus Branch"}
+                                </DialogTitle>
+                                <DialogDescription className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                                    {t("select_branch_to_proceed_admission") || "Please select the campus branch you want to apply for."}
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-4 max-h-[55vh] overflow-y-auto pr-1">
+                        {branches.map((b: any) => {
+                            const isSelected = String(formData.branch_id) === String(b.id);
+                            return (
+                                <div
+                                    key={b.id}
+                                    onClick={() => {
+                                        setFormData((prev: any) => ({ ...prev, branch_id: b.id.toString() }));
+                                        setIsBranchLocked(true);
+                                        setShowBranchModal(false);
+                                        toast({
+                                            title: t("campus_branch") || "Campus Branch",
+                                            description: `${b.branch_name}`,
+                                        });
+                                    }}
+                                    className={cn(
+                                        "relative p-4 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-3 group hover:scale-[1.02] active:scale-[0.98]",
+                                        isSelected
+                                            ? "border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-md shadow-indigo-500/10"
+                                            : "border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 bg-slate-50/50 dark:bg-slate-800/40"
+                                    )}
+                                >
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={cn(
+                                                "w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm",
+                                                isSelected 
+                                                    ? "bg-indigo-600 text-white shadow-sm" 
+                                                    : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-indigo-600"
+                                            )}>
+                                                <Building2 className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-sm text-slate-900 dark:text-white leading-snug">
+                                                    {b.branch_name}
+                                                </h4>
+                                                {b.branch_code && (
+                                                    <span className="text-[10px] font-mono text-slate-400">
+                                                        {b.branch_code}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {b.is_main && (
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 whitespace-nowrap">
+                                                Main
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {(b.address || b.city || b.phone) && (
+                                        <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-0.5 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                                            {(b.address || b.city) && (
+                                                <p className="truncate flex items-center gap-1">
+                                                    <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
+                                                    <span>{[b.address, b.city].filter(Boolean).join(", ")}</span>
+                                                </p>
+                                            )}
+                                            {b.phone && (
+                                                <p className="truncate flex items-center gap-1">
+                                                    <Phone className="w-3 h-3 shrink-0 text-slate-400" />
+                                                    <span>{b.phone}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between pt-1">
+                                        <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 group-hover:underline flex items-center gap-1">
+                                            {isSelected ? (
+                                                <>
+                                                    <CheckCircle2 className="w-4 h-4 text-indigo-600" /> {t("selected_and_locked") || "Selected"}
+                                                </>
+                                            ) : (
+                                                <>{t("proceed_with_branch") || "Select & Proceed"} &rarr;</>
+                                            )}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </DialogContent>
             </Dialog>

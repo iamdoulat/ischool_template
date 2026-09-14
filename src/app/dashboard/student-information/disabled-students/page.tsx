@@ -6,7 +6,6 @@ import {
     FileText,
     Table as TableIcon,
     Printer,
-    FileDown,
     ChevronDown,
     LayoutList,
     LayoutGrid,
@@ -18,9 +17,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Copy,
-    Check,
     Pencil,
-    Trash2,
     Eye,
     RotateCcw,
     X,
@@ -36,7 +33,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
@@ -54,7 +51,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useImageUrl } from "@/lib/image-url";
 
 interface IDisabledStudent {
@@ -72,19 +68,19 @@ interface IDisabledStudent {
     gender: string;
     phone: string;
     active: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
-const formatDate = (dateString?: string) => {
+const formatDate = (dateString?: string, langCode: string = "en") => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear());
+    const formatted = `${day}/${month}/${year}`;
+    return toLocaleNumber(formatted, langCode);
 };
-
-
 
 export default function DisabledStudentsPage() {
     const getImageUrl = useImageUrl();
@@ -95,12 +91,12 @@ export default function DisabledStudentsPage() {
     const [disableReasons, setDisableReasons] = useState<{ id: number; reason: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
-    const [editingStudent, setEditingStudent] = useState<any | null>(null);
+    const [selectedStudent, setSelectedStudent] = useState<IDisabledStudent | null>(null);
+    const [editingStudent, setEditingStudent] = useState<IDisabledStudent | null>(null);
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const tt = useTranslateToast();
-    const { t } = useTranslation();
+    const { t, language, isRtl } = useTranslation();
     const router = useRouter();
 
     // Pagination state
@@ -270,7 +266,7 @@ export default function DisabledStudentsPage() {
             await api.post(`/students/${id}/toggle-status`, { active: true });
             tt.success("student_enabled_successfully");
             fetchStudents(currentPage);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_restore_student");
         }
     };
@@ -303,9 +299,10 @@ export default function DisabledStudentsPage() {
             tt.success("student_information_updated_successfully");
             setEditDialogOpen(false);
             fetchStudents(currentPage);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error updating student:", error);
-            tt.error(error.response?.data?.message || t("failed_to_update_student_information"));
+            const errObj = error as { response?: { data?: { message?: string } } };
+            tt.error(errObj.response?.data?.message || t("failed_to_update_student_information"));
         } finally {
             setLoading(false);
         }
@@ -333,63 +330,63 @@ export default function DisabledStudentsPage() {
                                 {t("class")} <span className="text-destructive">*</span>
                             </label>
                              <div className="relative">
-                                 <select
-                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
-                                     value={selectedClassId}
-                                     onChange={(e) => {
-                                         const val = e.target.value;
-                                         setSelectedClassId(val);
-                                         setSelectedSectionId("");
-                                         fetchSections(val);
-                                     }}
-                                 >
-                                     <option value="">{t("select")}</option>
-                                     {classes.map(c => (
-                                         <option key={c.id} value={c.id}>{c.name}</option>
-                                     ))}
-                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
+                                    <select
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                        value={selectedClassId}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setSelectedClassId(val);
+                                            setSelectedSectionId("");
+                                            fetchSections(val);
+                                        }}
+                                    >
+                                        <option value="">{t("select")}</option>
+                                        {classes.map(c => (
+                                            <option key={c.id} value={c.id}>{translateClassName(c.name, language?.short_code)}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="md:col-span-3 space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                {t("section")}
-                            </label>
-                             <div className="relative">
-                                 <select
-                                     className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
-                                     value={selectedSectionId}
-                                     onChange={(e) => setSelectedSectionId(e.target.value)}
-                                 >
-                                     <option value="">{t("select")}</option>
-                                     {sections.map(s => (
-                                         <option key={s.id} value={s.id}>{s.name}</option>
-                                     ))}
-                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
+                            <div className="md:col-span-3 space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                    {t("section")}
+                                </label>
+                                <div className="relative">
+                                    <select
+                                        className="flex h-11 w-full rounded-lg border border-muted/50 bg-muted/30 px-4 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:bg-card focus-visible:border-primary transition-all appearance-none cursor-pointer"
+                                        value={selectedSectionId}
+                                        onChange={(e) => setSelectedSectionId(e.target.value)}
+                                    >
+                                        <option value="">{t("select")}</option>
+                                        {sections.map(s => (
+                                            <option key={s.id} value={s.id}>{translateSectionName(s.name, language?.short_code)}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="md:col-span-6 space-y-2 group">
-                            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
-                                {t("search_by_keyword")}
-                            </label>
-                            <div className="flex gap-2">
-                                <Input
-                                    placeholder={t("search_by_student_name_roll_number_etc")}
-                                    className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                                <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => fetchStudents(1)}>
-                                    <Search className="h-4 w-4" /> {t("search")}
-                                </Button>
+                            <div className="md:col-span-6 space-y-2 group">
+                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1 group-focus-within:text-primary transition-colors">
+                                    {t("search_by_keyword")}
+                                </label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder={t("search_by_student_name_roll_number_etc")}
+                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                    <Button variant="gradient" className="h-11 px-8 rounded-lg" onClick={() => fetchStudents(1)}>
+                                        <Search className="h-4 w-4" /> {t("search")}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
 
             {/* View Selection & Table Section */}
             <div className="space-y-4">
@@ -434,7 +431,7 @@ export default function DisabledStudentsPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center gap-1.5 mr-4">
-                                    <span className="text-sm font-semibold text-muted-foreground">50</span>
+                                    <span className="text-sm font-semibold text-muted-foreground">{toLocaleNumber(50, language?.short_code)}</span>
                                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                 </div>
                                 <div className="flex gap-1">
@@ -459,7 +456,7 @@ export default function DisabledStudentsPage() {
                             {activeTab === "list" ? (
                                 <div className="overflow-x-auto rounded-lg border border-muted/50 text-slate-700">
                                     <table className="w-full text-left border-collapse">
-                                        <thead className="bg-muted/50 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        <thead className="bg-muted/50 text-xs font-bold tracking-wider text-muted-foreground">
                                             <tr>
                                                 <Th>{t("admission_no")}</Th>
                                                 <Th>{t("roll_no")}</Th>
@@ -476,15 +473,18 @@ export default function DisabledStudentsPage() {
                                         <tbody className="divide-y divide-muted/30">
                                             {students.map((student) => (
                                                 <tr key={student.id} className="hover:bg-muted/10 transition-colors">
-                                                    <Td><span className="font-semibold text-primary/80">{student.admission_no}</span></Td>
-                                                    <Td>{student.roll_no || "-"}</Td>
+                                                    <Td><span className="font-semibold text-primary/80">{toLocaleNumber(student.admission_no, language?.short_code)}</span></Td>
+                                                    <Td>{student.roll_no ? toLocaleNumber(student.roll_no, language?.short_code) : "-"}</Td>
                                                     <Td className="font-semibold">{student.name} {student.last_name}</Td>
-                                                    <Td>{student.school_class?.name || ""}({student.section?.name || ""})</Td>
+                                                    <Td>
+                                                        {student.school_class?.name ? translateClassName(student.school_class.name, language?.short_code) : ""}
+                                                        {student.section?.name ? ` (${translateSectionName(student.section.name, language?.short_code)})` : ""}
+                                                    </Td>
                                                     <Td>{student.father_name}</Td>
-                                                    <Td>{formatDate(student.disable_date)}</Td>
+                                                    <Td>{formatDate(student.disable_date, language?.short_code)}</Td>
                                                     <Td>{student.reason?.reason || student.disable_reason || "-"}</Td>
                                                     <Td>{student.gender}</Td>
-                                                    <Td>{student.phone}</Td>
+                                                    <Td>{student.phone ? toLocaleNumber(student.phone, language?.short_code) : "-"}</Td>
                                                     <Td className="text-right print:hidden">
                                                         <div className="flex justify-end gap-1">
                                                             <ActionBtn icon={RotateCcw} onClick={() => handleRestore(student.id)} className="bg-green-500 hover:bg-green-600" title={t("enable")} />
@@ -523,10 +523,10 @@ export default function DisabledStudentsPage() {
                                                     </Avatar>
                                                     <div className="flex flex-col items-end gap-2">
                                                         <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black tracking-tighter">
-                                                            {student.admission_no}
+                                                            {toLocaleNumber(student.admission_no, language?.short_code)}
                                                         </Badge>
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted/30 px-2 py-0.5 rounded-full">
-                                                            {t("roll")}: {student.roll_no || "-"}
+                                                            {t("roll")}: {student.roll_no ? toLocaleNumber(student.roll_no, language?.short_code) : "-"}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -537,7 +537,8 @@ export default function DisabledStudentsPage() {
                                                     </h3>
                                                     <p className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
                                                         <GraduationCap className="h-3 w-3" />
-                                                        {student.school_class?.name || ""}({student.section?.name || ""})
+                                                        {student.school_class?.name ? translateClassName(student.school_class.name, language?.short_code) : ""}
+                                                        {student.section?.name ? ` (${translateSectionName(student.section.name, language?.short_code)})` : ""}
                                                     </p>
                                                 </div>
 
@@ -548,7 +549,7 @@ export default function DisabledStudentsPage() {
                                                     </div>
                                                     <div className="space-y-1">
                                                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t("date")}</span>
-                                                        <p className="text-xs font-bold text-slate-700">{formatDate(student.disable_date)}</p>
+                                                        <p className="text-xs font-bold text-slate-700">{formatDate(student.disable_date, language?.short_code)}</p>
                                                     </div>
                                                 </div>
 
@@ -591,7 +592,13 @@ export default function DisabledStudentsPage() {
                         </div>
 
                         <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium print:hidden">
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{t("showing_x_to_y_of_z", { from, to, total })}</p>
+                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
+                                {t("showing_x_to_y_of_z", {
+                                    from: toLocaleNumber(from, language?.short_code),
+                                    to: toLocaleNumber(to, language?.short_code),
+                                    total: toLocaleNumber(total, language?.short_code)
+                                })}
+                            </p>
                             <div className="flex items-center gap-2">
                                 <Button
                                     variant="outline"
@@ -600,7 +607,7 @@ export default function DisabledStudentsPage() {
                                     onClick={() => currentPage > 1 && fetchStudents(currentPage - 1)}
                                     disabled={currentPage === 1}
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    {isRtl ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                                 </Button>
 
                                 {Array.from({ length: lastPage || 1 }, (_, i) => i + 1).map((page) => (
@@ -614,7 +621,7 @@ export default function DisabledStudentsPage() {
                                         )}
                                         onClick={() => fetchStudents(page)}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, language?.short_code)}
                                     </Button>
                                 ))}
 
@@ -625,7 +632,7 @@ export default function DisabledStudentsPage() {
                                     onClick={() => currentPage < lastPage && fetchStudents(currentPage + 1)}
                                     disabled={currentPage === lastPage}
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    {isRtl ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                 </Button>
                             </div>
                         </div>
@@ -663,11 +670,12 @@ export default function DisabledStudentsPage() {
                                         <div className="flex flex-wrap justify-center md:justify-start gap-4">
                                             <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                                 <BadgeCheck className="h-4 w-4 text-primary" />
-                                                {t("adm")}: {selectedStudent?.admission_no}
+                                                {t("adm")}: {selectedStudent?.admission_no ? toLocaleNumber(selectedStudent.admission_no, language?.short_code) : "-"}
                                             </div>
                                             <div className="flex items-center gap-2 text-muted-foreground font-bold text-sm bg-white/50 px-3 py-1.5 rounded-lg border border-muted/50">
                                                 <GraduationCap className="h-4 w-4 text-indigo-500" />
-                                                {selectedStudent?.school_class?.name} ({selectedStudent?.section?.name})
+                                                {selectedStudent?.school_class?.name ? translateClassName(selectedStudent.school_class.name, language?.short_code) : ""}
+                                                {selectedStudent?.section?.name ? ` (${translateSectionName(selectedStudent.section.name, language?.short_code)})` : ""}
                                             </div>
                                         </div>
                                     </div>
@@ -680,7 +688,7 @@ export default function DisabledStudentsPage() {
                                     <div className="space-y-6">
                                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 px-1">{t("personal_details")}</h4>
                                         <div className="grid grid-cols-1 gap-4">
-                                            <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob)} icon={Calendar} />
+                                            <InfoField label={t("date_of_birth")} value={formatDate(selectedStudent?.dob, language?.short_code)} icon={Calendar} />
                                             <InfoField label={t("gender")} value={selectedStudent?.gender} icon={User} />
                                             <InfoField label={t("blood_group")} value={selectedStudent?.blood_group || "-"} icon={BadgeCheck} />
                                             <InfoField label={t("religion")} value={selectedStudent?.religion || "-"} icon={BadgeCheck} />
@@ -691,7 +699,7 @@ export default function DisabledStudentsPage() {
                                     <div className="space-y-6">
                                         <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-500/60 px-1">{t("contact_and_guardian")}</h4>
                                         <div className="grid grid-cols-1 gap-4">
-                                            <InfoField label={t("mobile_number")} value={selectedStudent?.phone} icon={Phone} />
+                                            <InfoField label={t("mobile_number")} value={selectedStudent?.phone ? toLocaleNumber(selectedStudent.phone, language?.short_code) : "-"} icon={Phone} />
                                             <InfoField label={t("email_address")} value={selectedStudent?.email || "-"} icon={Mail} />
                                             <InfoField label={t("father_name")} value={selectedStudent?.father_name} icon={User} />
                                             <InfoField label={t("category")} value={selectedStudent?.student_category?.category_name || selectedStudent?.category || "-"} icon={BadgeCheck} />
@@ -712,7 +720,7 @@ export default function DisabledStudentsPage() {
                                                 </div>
                                             </div>
                                             <InfoField label={t("disable_reason")} value={selectedStudent?.reason?.reason || selectedStudent?.disable_reason} icon={FileText} />
-                                            <InfoField label={t("disable_date")} value={formatDate(selectedStudent?.disable_date)} icon={Calendar} />
+                                            <InfoField label={t("disable_date")} value={formatDate(selectedStudent?.disable_date, language?.short_code)} icon={Calendar} />
                                         </div>
                                     </div>
                                 </div>
@@ -867,7 +875,7 @@ function Td({ children, className }: { children: React.ReactNode, className?: st
     return <td className={cn("px-4 py-4 text-sm font-medium text-slate-600", className)}>{children}</td>;
 }
 
-function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () => void, title?: string }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ComponentType<{ className?: string }>, onClick?: () => void, title?: string }) {
     return (
         <button
             onClick={onClick}
@@ -879,7 +887,7 @@ function IconButton({ icon: Icon, onClick, title }: { icon: any, onClick?: () =>
     );
 }
 
-function ActionBtn({ icon: Icon, className, onClick, title }: { icon: any, className?: string, onClick?: () => void, title?: string }) {
+function ActionBtn({ icon: Icon, className, onClick, title }: { icon: React.ComponentType<{ className?: string }>, className?: string, onClick?: () => void, title?: string }) {
     return (
         <button
             onClick={onClick}
@@ -891,7 +899,7 @@ function ActionBtn({ icon: Icon, className, onClick, title }: { icon: any, class
     );
 }
 
-function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: any }) {
+function InfoField({ label, value, icon: Icon }: { label: string, value?: string, icon: React.ComponentType<{ className?: string }> }) {
     return (
         <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/10 border border-muted/50 group hover:bg-white hover:shadow-md transition-all duration-300">
             <div className="p-2.5 bg-white rounded-lg shadow-sm border border-muted group-hover:scale-110 transition-transform">

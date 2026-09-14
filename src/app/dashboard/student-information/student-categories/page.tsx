@@ -7,7 +7,6 @@ import {
     FileText,
     FileSpreadsheet,
     Copy,
-    Columns,
     ChevronLeft,
     ChevronRight,
     Pencil,
@@ -16,7 +15,9 @@ import {
     Tag,
     Sparkles,
     CheckCircle2,
-    Bookmark
+    Bookmark,
+    Plus,
+    Check
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { cn, translateStudentCategory, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -44,14 +45,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const CATEGORY_PRESETS = [
-    "General",
-    "OBC",
-    "SC",
-    "ST",
-    "Scholarship / Merit",
-    "Special Needs / Quota",
-    "Staff Ward / Child",
-    "Foreign Student"
+    { key: "preset_general", fallback: "General" },
+    { key: "preset_obc", fallback: "OBC" },
+    { key: "preset_sc", fallback: "SC" },
+    { key: "preset_st", fallback: "ST" },
+    { key: "preset_scholarship", fallback: "Scholarship / Merit" },
+    { key: "preset_special_needs", fallback: "Special Needs / Quota" },
+    { key: "preset_staff_child", fallback: "Staff Ward / Child" },
+    { key: "preset_foreign", fallback: "Foreign Student" }
 ];
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
@@ -60,9 +61,11 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
             {Array.from({ length: rows }).map((_, i) => (
                 <tr key={i} className="border-b border-muted/30">
                     {Array.from({ length: cols }).map((_, j) => (
-                        <td key={j} className="px-4 py-3">
-                            <div className="h-4 rounded-md bg-muted/60 animate-pulse"
-                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }} />
+                        <td key={j} className="px-4 py-3.5">
+                            <div
+                                className="h-4 rounded-md bg-muted/60 animate-pulse"
+                                style={{ width: `${60 + ((i * 3 + j * 7) % 35)}%` }}
+                            />
                         </td>
                     ))}
                 </tr>
@@ -94,7 +97,7 @@ export default function StudentCategoriesPage() {
     const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
 
     const tt = useTranslateToast();
-    const { t } = useTranslation();
+    const { t, language, isRtl } = useTranslation();
 
     const fetchCategories = useCallback(async () => {
         setLoading(true);
@@ -135,18 +138,18 @@ export default function StudentCategoriesPage() {
             setNewCategoryName("");
             setEditingCategory(null);
             await fetchCategories();
-        } catch (error: any) {
-            console.error("Error saving category:", error);
-            if (error.response?.status === 422) {
-                const validationErrors = error.response?.data?.errors;
+        } catch (error: unknown) {
+            const err = error as { response?: { status?: number; data?: { errors?: Record<string, string[]>; message?: string } }; message?: string };
+            if (err.response?.status === 422) {
+                const validationErrors = err.response?.data?.errors;
                 if (validationErrors) {
                     const firstError = Object.values(validationErrors)[0];
                     tt.error(Array.isArray(firstError) ? firstError[0] : firstError);
                 } else {
-                    tt.error(error.response?.data?.message || "Validation failed");
+                    tt.error(err.response?.data?.message || "Validation failed");
                 }
             } else {
-                const message = error.response?.data?.message || error.message || "Failed to save category.";
+                const message = err.response?.data?.message || err.message || "Failed to save category.";
                 tt.error(message);
             }
         } finally {
@@ -166,7 +169,7 @@ export default function StudentCategoriesPage() {
             await api.delete(`/student-categories/${idToDelete}`);
             tt.success("category_deleted_successfully");
             fetchCategories();
-        } catch (error) {
+        } catch {
             tt.error("failed_to_delete_category");
         } finally {
             setDeleting(false);
@@ -183,7 +186,7 @@ export default function StudentCategoriesPage() {
             await api.post("/student-categories/bulk-delete", { ids: Array.from(selectedIds) });
             tt.success("selected_categories_deleted_successfully");
             fetchCategories();
-        } catch (error) {
+        } catch {
             tt.error("failed_to_delete_selected_categories");
         } finally {
             setDeleting(false);
@@ -223,16 +226,24 @@ export default function StudentCategoriesPage() {
     // Export functions
     const exportToCopy = () => {
         if (categories.length === 0) return;
-        const text = ["#\tCategory Name\tCategory ID\tStatus", ...filteredCategories.map((c, idx) => `${idx + 1}\t${c.category_name}\t${c.id}\tActive`)].join("\n");
+        const text = [
+            `#\t${t("category")}\t${t("category_id")}\t${t("status")}`,
+            ...filteredCategories.map((c, idx) => `${idx + 1}\t${translateStudentCategory(c.category_name, language?.short_code)}\t${c.id}\t${t("active")}`)
+        ].join("\n");
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
     };
 
     const exportToExcel = () => {
         if (categories.length === 0) return;
-        const worksheet = XLSX.utils.json_to_sheet(filteredCategories.map((c, idx) => ({ "#": idx + 1, "Category Name": c.category_name, "Category ID": c.id, "Status": "Active" })));
+        const worksheet = XLSX.utils.json_to_sheet(filteredCategories.map((c, idx) => ({
+            "#": idx + 1,
+            [t("category")]: translateStudentCategory(c.category_name, language?.short_code),
+            [t("category_id")]: `#${c.id}`,
+            [t("status")]: t("active")
+        })));
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Categories");
+        XLSX.utils.book_append_sheet(workbook, worksheet, t("categories") || "Categories");
         XLSX.writeFile(workbook, "student_categories.xlsx");
         tt.success("excel_file_downloaded");
     };
@@ -240,10 +251,15 @@ export default function StudentCategoriesPage() {
     const exportToPDF = () => {
         if (categories.length === 0) return;
         const doc = new jsPDF();
-        doc.text("Student Category List", 14, 15);
+        doc.text(t("student_categories") || "Student Category List", 14, 15);
         autoTable(doc, {
-            head: [["#", "Category Name", "Category ID", "Status"]],
-            body: filteredCategories.map((c, idx) => [idx + 1, c.category_name, `#${c.id}`, "Active"]),
+            head: [["#", t("category"), t("category_id"), t("status")]],
+            body: filteredCategories.map((c, idx) => [
+                idx + 1,
+                translateStudentCategory(c.category_name, language?.short_code),
+                `#${c.id}`,
+                t("active")
+            ]),
             startY: 20
         });
         doc.save("student_categories.pdf");
@@ -251,349 +267,350 @@ export default function StudentCategoriesPage() {
     };
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 font-sans p-3 sm:p-5 bg-gray-50/10 min-h-screen">
-            {/* Left Column: Create Category Form */}
-            <form onSubmit={handleSave} className="w-full lg:w-1/3">
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0 sticky top-6">
-                    <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <Tag className="h-5 w-5" />
-                        </span>
-                        <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                {editingCategory ? t("edit_category") : t("create_category")}
-                            </CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">
-                                {editingCategory ? t("update_category_details") : t("add_new_student_category")}
-                            </p>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="px-5 pb-5 space-y-4">
-                        {/* Category Name Input */}
-                        <div className="space-y-1.5">
-                            <Label htmlFor="category" className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                                {t("category")} <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                                id="category"
-                                className="h-10 border-gray-200 bg-gray-50/30 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
-                                value={newCategoryName}
-                                onChange={(e) => setNewCategoryName(e.target.value)}
-                                placeholder="e.g. General, OBC, Scholarship..."
-                                required
-                            />
-                        </div>
+        <div className="p-3 sm:p-5 pt-1 sm:pt-2 space-y-4 max-w-[1600px] mx-auto animate-in fade-in duration-300 pb-20">
+            {/* Top Page Header Banner with Signature Gradient */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden no-print">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Tag className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">
+                            {t("student_categories")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("manage_student_categories_and_quotas")}
+                        </p>
+                    </div>
+                </div>
+            </div>
 
-                        {/* Quick Category Presets */}
-                        <div className="space-y-1.5 pt-1 border-t border-gray-100 dark:border-gray-800">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                                <Sparkles className="h-3 w-3 text-amber-500" /> Quick Category Presets
-                            </Label>
-                            <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1">
-                                {CATEGORY_PRESETS.map((preset) => (
-                                    <button
-                                        key={preset}
-                                        type="button"
-                                        onClick={() => setNewCategoryName(preset)}
-                                        className={cn(
-                                            "px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer text-left",
-                                            newCategoryName === preset
-                                                ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
-                                                : "bg-gray-50 hover:bg-indigo-50 text-gray-600 hover:text-indigo-600 border-gray-200"
-                                        )}
-                                    >
-                                        {preset}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
-                            {editingCategory && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="h-9 px-4 rounded-full text-xs font-bold uppercase border-gray-200"
-                                    onClick={() => { setEditingCategory(null); setNewCategoryName(""); }}
-                                >
-                                    {t("cancel")}
-                                </Button>
-                            )}
-                            <Button
-                                type="submit"
-                                disabled={saving || loading}
-                                className="btn-gradient text-white px-8 h-9 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50 transition-all rounded-full flex items-center gap-2"
-                            >
-                                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                                {editingCategory ? t("update") : t("save")}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </form>
-
-            {/* Right Column: Category List Table */}
-            <div className="w-full lg:w-2/3">
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
-                    <CardHeader className="flex flex-row items-center justify-between gap-2.5 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                        <div className="flex items-center gap-2.5">
+            {/* 2-Column Responsive Layout: Left Form (1/3) + Right List (2/3) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                {/* Left Column: Create / Edit Category Form */}
+                <form onSubmit={handleSave} className="lg:col-span-4">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card overflow-hidden pt-0 sticky top-4">
+                        <CardHeader className="flex flex-row items-center gap-3 space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70">
                             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Tag className="h-5 w-5" />
+                                <Tag className="h-4 w-4" />
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
-                                    {t("category_list")}
+                                    {editingCategory ? t("edit_category") : t("create_category")}
                                 </CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                    {t("count_categories", { count: categories.length })}
+                                <p className="text-xs text-slate-500 font-medium mt-1">
+                                    {editingCategory ? t("update_category_details") : t("add_new_student_category")}
                                 </p>
                             </div>
-                        </div>
+                        </CardHeader>
 
-                        {/* Export Toolbar */}
-                        <div className="flex items-center gap-1 text-gray-400">
-                            {selectedIds.size > 0 && (
-                                <Button
-                                    onClick={() => setIsBulkDeleteDialogOpen(true)}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 px-2.5 text-xs text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg flex items-center gap-1 font-bold mr-1 cursor-pointer"
-                                    title={t("delete_selected")}
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    Delete ({selectedIds.size})
-                                </Button>
-                            )}
-                            <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Copy">
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export Excel">
-                                <FileSpreadsheet className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Export PDF">
-                                <FileText className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => window.print()} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Print">
-                                <Printer className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Columns">
-                                <Columns className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </CardHeader>
-
-                    <CardContent className="px-5 pb-5 space-y-4">
-                        {/* Search Bar & Summary Tag */}
-                        <div className="flex justify-between items-center gap-4">
-                            <div className="relative w-full md:w-72">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                        <CardContent className="p-5 space-y-4">
+                            {/* Category Name Input */}
+                            <div className="space-y-1.5 group">
+                                <Label htmlFor="category" className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    {t("category")} <span className="text-destructive">*</span>
+                                </Label>
                                 <Input
-                                    placeholder="Search categories..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
+                                    id="category"
+                                    className="h-10 rounded-xl bg-background border-border/80 text-xs font-medium focus:ring-2 focus:ring-primary/20"
+                                    value={newCategoryName}
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    placeholder={t("category_name_placeholder") || "e.g. General, OBC, Scholarship..."}
+                                    required
                                 />
                             </div>
 
-                            {categories.length > 0 && (
-                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
-                                    <Bookmark className="h-3 w-3 mr-1" />
-                                    {categories.length} Total Categories
-                                </Badge>
-                            )}
-                        </div>
-
-                        {/* Enhanced Table */}
-                        <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-xs">
-                            <Table>
-                                <TableHeader className="bg-gray-50/90 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300">
-                                    <TableRow className="hover:bg-transparent border-gray-200 dark:border-gray-700">
-                                        <TableHead className="w-[45px] pl-4">
-                                            <Checkbox
-                                                checked={filteredCategories.length > 0 && selectedIds.size === filteredCategories.length}
-                                                onCheckedChange={handleSelectAll}
-                                                className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600 shadow-2xs"
-                                            />
-                                        </TableHead>
-                                        <TableHead className="py-3 px-3 w-[60px]">#</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[220px]">{t("category")}</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[140px]">{t("category_id")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[120px]">Status</TableHead>
-                                        <TableHead className="py-3 px-4 text-right w-[100px]">{t("action")}</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {loading ? (
-                                        <TableSkeleton rows={4} cols={6} />
-                                    ) : filteredCategories.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="px-4 py-16 text-center text-xs font-bold uppercase tracking-widest text-gray-400">
-                                                {t("no_data_found")}
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredCategories.map((cat, idx) => {
-                                            const isSelected = selectedIds.has(cat.id);
-                                            return (
-                                                <TableRow
-                                                    key={cat.id}
-                                                    className={cn(
-                                                        "text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 transition-colors group align-middle",
-                                                        isSelected ? "bg-indigo-50/40 dark:bg-indigo-950/20" : "hover:bg-indigo-50/20"
-                                                    )}
-                                                >
-                                                    <TableCell className="pl-4 py-3.5">
-                                                        <Checkbox
-                                                            checked={isSelected}
-                                                            onCheckedChange={() => handleSelectOne(cat.id)}
-                                                            className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-600 shadow-2xs"
-                                                        />
-                                                    </TableCell>
-
-                                                    {/* Serial Number */}
-                                                    <TableCell className="py-3.5 px-3 font-bold text-gray-400 text-xs">
-                                                        {idx + 1}
-                                                    </TableCell>
-
-                                                    {/* Category Name & Avatar */}
-                                                    <TableCell className="py-3.5 px-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0">
-                                                                <Tag className="h-4 w-4" />
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                                                                    {cat.category_name}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </TableCell>
-
-                                                    {/* Category ID Monospace Tag */}
-                                                    <TableCell className="py-3.5 px-4">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-gray-100 dark:bg-gray-800 font-mono text-xs font-bold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700">
-                                                            ID: {cat.id}
-                                                        </span>
-                                                    </TableCell>
-
-                                                    {/* Status */}
-                                                    <TableCell className="py-3.5 px-4">
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
-                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                            Active
-                                                        </span>
-                                                    </TableCell>
-
-                                                    {/* Action Buttons */}
-                                                    <TableCell className="py-3.5 px-4 text-right">
-                                                        <div className="flex items-center justify-end gap-1.5">
-                                                            <Button
-                                                                onClick={() => handleEdit(cat)}
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
-                                                                title="Edit Category"
-                                                            >
-                                                                <Pencil className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button
-                                                                onClick={() => confirmDelete(cat.id)}
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
-                                                                title="Delete Category"
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-
-                        {/* Pagination Footer */}
-                        {filteredCategories.length > 0 && (
-                            <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
-                                <div>
-                                    {t("showing_x_to_y_of_z", { from: 1, to: filteredCategories.length, total: filteredCategories.length })}
-                                </div>
-                                <div className="flex gap-1.5">
-                                    <Button
-                                        size="sm"
-                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40"
-                                        disabled
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm font-black"
-                                    >
-                                        1
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        className="h-8 w-8 p-0 bg-white border border-gray-200 text-gray-600 rounded-[10px] shadow-sm disabled:opacity-40"
-                                        disabled
-                                    >
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
+                            {/* Quick Category Presets */}
+                            <div className="space-y-2 pt-2 border-t border-border/70">
+                                <Label className="text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                                    {t("quick_category_presets")}
+                                </Label>
+                                <div className="flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto pr-1">
+                                    {CATEGORY_PRESETS.map((preset) => {
+                                        const label = t(preset.key) || preset.fallback;
+                                        return (
+                                            <button
+                                                key={preset.key}
+                                                type="button"
+                                                onClick={() => setNewCategoryName(label)}
+                                                className={cn(
+                                                    "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer text-left",
+                                                    newCategoryName === label
+                                                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                                                        : "bg-muted/40 hover:bg-indigo-50 text-foreground hover:text-indigo-600 border-border/80"
+                                                )}
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/70">
+                                {editingCategory && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="h-9 px-4 rounded-xl text-xs font-bold cursor-pointer"
+                                        onClick={() => { setEditingCategory(null); setNewCategoryName(""); }}
+                                    >
+                                        {t("cancel")}
+                                    </Button>
+                                )}
+                                <Button
+                                    type="submit"
+                                    disabled={saving || loading}
+                                    className="h-9 px-6 rounded-xl font-bold text-xs bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white shadow-md shadow-indigo-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                                >
+                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                                    <span>{editingCategory ? t("update") : t("save")}</span>
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </form>
+
+                {/* Right Column: Category List Table */}
+                <div className="lg:col-span-8">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card overflow-hidden pt-0">
+                        <CardHeader className="flex flex-row items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70">
+                            <div className="flex items-center gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <Tag className="h-4 w-4" />
+                                </span>
+                                <div>
+                                    <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">
+                                        {t("category_list")}
+                                    </CardTitle>
+                                    <p className="text-xs text-slate-500 font-medium mt-1">
+                                        {t("count_categories", { count: toLocaleNumber(categories.length, language?.short_code) })}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Export Toolbar */}
+                            <div className="flex items-center gap-1">
+                                {selectedIds.size > 0 && (
+                                    <Button
+                                        onClick={() => setIsBulkDeleteDialogOpen(true)}
+                                        size="sm"
+                                        className="h-8 px-2.5 text-xs text-white bg-rose-600 hover:bg-rose-700 rounded-lg flex items-center gap-1 font-bold mr-1 cursor-pointer border-none"
+                                        title={t("delete_selected")}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        <span>{t("delete")} ({toLocaleNumber(selectedIds.size, language?.short_code)})</span>
+                                    </Button>
+                                )}
+                                <Button onClick={exportToCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("copy") || "Copy"}>
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button onClick={exportToExcel} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_excel") || "Export Excel"}>
+                                    <FileSpreadsheet className="h-4 w-4" />
+                                </Button>
+                                <Button onClick={exportToPDF} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("export_pdf") || "Export PDF"}>
+                                    <FileText className="h-4 w-4" />
+                                </Button>
+                                <Button onClick={() => window.print()} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("print") || "Print"}>
+                                    <Printer className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </CardHeader>
+
+                        <CardContent className="p-0">
+                            {/* Search Bar & Summary Tag */}
+                            <div className="p-4 sm:p-5 border-b border-border/70 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                                <div className="relative w-full sm:w-72">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Input
+                                        placeholder={t("search_categories")}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-8.5 h-9 text-xs rounded-xl bg-background border-border/80"
+                                    />
+                                </div>
+
+                                {categories.length > 0 && (
+                                    <Badge variant="outline" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 text-xs font-bold py-1 px-3 self-start sm:self-auto">
+                                        <Bookmark className="h-3 w-3 mr-1" />
+                                        {t("total_categories")} ({toLocaleNumber(categories.length, language?.short_code)})
+                                    </Badge>
+                                )}
+                            </div>
+
+                            {/* Categories Table */}
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/40 border-b border-border/70 hover:bg-muted/40 text-xs font-bold">
+                                            <TableHead className="w-12 pl-5">
+                                                <Checkbox
+                                                    checked={filteredCategories.length > 0 && selectedIds.size === filteredCategories.length}
+                                                    onCheckedChange={handleSelectAll}
+                                                    className="h-4 w-4 rounded-sm data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                />
+                                            </TableHead>
+                                            <TableHead className="py-3 px-3 w-14">#</TableHead>
+                                            <TableHead className="py-3 px-4 min-w-[200px]">{t("category")}</TableHead>
+                                            <TableHead className="py-3 px-4 min-w-[140px]">{t("category_id")}</TableHead>
+                                            <TableHead className="py-3 px-4 w-[120px]">{t("status")}</TableHead>
+                                            <TableHead className="py-3 px-4 text-right pr-6 w-[110px]">{t("action")}</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody className="divide-y divide-border/50 text-xs">
+                                        {loading ? (
+                                            <TableSkeleton rows={4} cols={6} />
+                                        ) : filteredCategories.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="px-4 py-16 text-center text-xs font-bold text-muted-foreground">
+                                                    {t("no_data_found")}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            filteredCategories.map((cat, idx) => {
+                                                const isSelected = selectedIds.has(cat.id);
+                                                return (
+                                                    <TableRow
+                                                        key={cat.id}
+                                                        className={cn(
+                                                            "hover:bg-muted/20 transition-colors",
+                                                            isSelected && "bg-indigo-50/40 dark:bg-indigo-950/20"
+                                                        )}
+                                                    >
+                                                        <TableCell className="pl-5 py-3.5">
+                                                            <Checkbox
+                                                                checked={isSelected}
+                                                                onCheckedChange={() => handleSelectOne(cat.id)}
+                                                                className="h-4 w-4 rounded-sm data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                                            />
+                                                        </TableCell>
+
+                                                        {/* Serial Number */}
+                                                        <TableCell className="py-3.5 px-3 font-bold text-muted-foreground text-xs">
+                                                            {toLocaleNumber(idx + 1, language?.short_code)}
+                                                        </TableCell>
+
+                                                        {/* Category Name & Icon Badge */}
+                                                        <TableCell className="py-3.5 px-4">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                                                    <Tag className="h-4 w-4" />
+                                                                </div>
+                                                                <span className="font-bold text-foreground text-sm">
+                                                                    {translateStudentCategory(cat.category_name, language?.short_code)}
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+
+                                                        {/* Category ID Tag */}
+                                                        <TableCell className="py-3.5 px-4">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-muted/60 font-mono text-xs font-bold text-foreground border border-border/80">
+                                                                ID: #{toLocaleNumber(cat.id, language?.short_code)}
+                                                            </span>
+                                                        </TableCell>
+
+                                                        {/* Status */}
+                                                        <TableCell className="py-3.5 px-4">
+                                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold uppercase">
+                                                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                                                {t("active")}
+                                                            </span>
+                                                        </TableCell>
+
+                                                        {/* Action Buttons with Gradient Styling */}
+                                                        <TableCell className="py-3.5 px-4 text-right pr-6">
+                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                <Button
+                                                                    onClick={() => handleEdit(cat)}
+                                                                    size="icon"
+                                                                    className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-white shadow-xs shadow-amber-500/20 active:scale-95 transition-all cursor-pointer border-none"
+                                                                    title={t("edit")}
+                                                                >
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button
+                                                                    onClick={() => confirmDelete(cat.id)}
+                                                                    size="icon"
+                                                                    className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 hover:opacity-95 text-white shadow-xs shadow-rose-500/20 active:scale-95 transition-all cursor-pointer border-none"
+                                                                    title={t("delete")}
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            {/* Table Footer */}
+                            {filteredCategories.length > 0 && (
+                                <div className="p-4 sm:p-5 border-t border-border/70 bg-muted/10 flex items-center justify-between text-xs text-muted-foreground font-semibold">
+                                    <div>
+                                        {t("showing_x_to_y_of_z", {
+                                            from: toLocaleNumber(1, language?.short_code),
+                                            to: toLocaleNumber(filteredCategories.length, language?.short_code),
+                                            total: toLocaleNumber(filteredCategories.length, language?.short_code)
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
 
-            {/* Delete Confirmation Dialogs */}
+            {/* Single Delete Confirmation Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-2xl border border-border shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("are_you_sure")}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
+                        <AlertDialogTitle className="text-lg font-bold text-foreground">{t("are_you_sure")}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed mt-2">
                             {t("permanently_delete_category", { name: categories.find(c => c.id === idToDelete)?.category_name || "" })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel disabled={deleting} className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel disabled={deleting} className="h-9 rounded-xl text-xs font-bold">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={(e) => {
                                 e.preventDefault();
                                 handleDelete();
                             }}
-                            className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md"
+                            className="bg-rose-600 hover:bg-rose-700 text-white h-9 rounded-xl text-xs font-bold border-none"
                             disabled={deleting}
                         >
-                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
                             {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
 
+            {/* Bulk Delete Confirmation Dialog */}
             <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
-                <AlertDialogContent className="rounded-2xl border-0 shadow-2xl">
+                <AlertDialogContent className="rounded-2xl border border-border shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("are_you_absolutely_sure")}</AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            {t("permanently_delete_selected_categories", { count: selectedIds.size })}
+                        <AlertDialogTitle className="text-lg font-bold text-foreground">{t("are_you_absolutely_sure")}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed mt-2">
+                            {t("permanently_delete_selected_categories", { count: toLocaleNumber(selectedIds.size, language?.short_code) })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel disabled={deleting} className="h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel disabled={deleting} className="h-9 rounded-xl text-xs font-bold">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={(e) => {
                                 e.preventDefault();
                                 handleBulkDelete();
                             }}
-                            className="bg-rose-500 hover:bg-rose-600 h-9 rounded-full text-[11px] font-bold uppercase tracking-wider border-0 shadow-md"
+                            className="bg-rose-600 hover:bg-rose-700 text-white h-9 rounded-xl text-xs font-bold border-none"
                             disabled={deleting}
                         >
-                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
                             {t("delete_all")}
                         </AlertDialogAction>
                     </AlertDialogFooter>

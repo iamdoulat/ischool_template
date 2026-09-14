@@ -29,6 +29,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { StaffCsvImportDialog } from "@/components/attendance/StaffCsvImportDialog";
 import * as XLSX from "xlsx";
+import Link from "next/link";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -67,7 +68,8 @@ interface StaffRole {
 const today = new Date().toISOString().split("T")[0];
 
 export default function StaffAttendancePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [role, setRole] = useState("all");
     const [date, setDate] = useState(today);
@@ -79,6 +81,39 @@ export default function StaffAttendancePage() {
     const [roles, setRoles] = useState<StaffRole[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(20);
+
+    const getLocalizedRoleName = (roleName?: string) => {
+        if (!roleName) return "";
+        const key = roleName.toLowerCase().replace(/[\s-]+/g, "_");
+        const trans = t(key);
+        if (trans && trans !== key) return trans;
+        const roleMapBn: Record<string, string> = {
+            super_admin: "সুপার অ্যাডমিন",
+            superadmin: "সুপার অ্যাডমিন",
+            admin: "অ্যাডমিন",
+            teacher: "শিক্ষক",
+            accountant: "হিসাবরক্ষক",
+            librarian: "গ্রন্থাগারিক",
+            receptionist: "রিসেপশনিস্ট",
+            driver: "ড্রাইভার",
+            staff: "স্টাফ",
+            branch_admin: "ব্রাঞ্চ অ্যাডমিন",
+            principal: "অধ্যক্ষ",
+            vice_principal: "উপাধ্যক্ষ",
+            headmaster: "প্রধান শিক্ষক",
+            head_master: "প্রধান শিক্ষক",
+            assistant_teacher: "সহকারী শিক্ষক",
+            security_guard: "নিরাপত্তা প্রহরী",
+            cleaner: "পরিচ্ছন্নতাকর্মী",
+            clerk: "অফিস সহকারী",
+            student: "শিক্ষার্থী",
+            parent: "অভিভাবক",
+        };
+        if (shortCode === "bn" && roleMapBn[key]) {
+            return roleMapBn[key];
+        }
+        return trans || roleName;
+    };
 
     const attendanceOptions = [
         { label: "present", value: "present", color: "text-green-600", bg: "bg-green-600" },
@@ -225,19 +260,32 @@ export default function StaffAttendancePage() {
     const paginatedData = attendanceData.slice(startIndex, startIndex + itemsPerPage);
 
     return (
-        <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
-            <div className="flex justify-between items-center">
-                <h1 className="text-xl font-medium text-gray-800 flex items-center gap-2">
-                    <ClipboardCheck className="h-5 w-5 text-indigo-600" /> {t("staff_attendance")}
-                </h1>
-                <Button
-                    onClick={() => window.history.back()}
-                    variant="outline"
-                    className="gap-2 h-9 px-6 text-[11px] font-bold uppercase rounded-lg border-gray-200 hover:bg-white shadow-sm flex items-center"
-                >
-                    <History className="h-4 w-4" /> {t("attendance_report")}
-                </Button>
-            </div>
+        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
+            {/* Header Card with Gradient Background & Gradient Button */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] overflow-hidden py-0 gap-0">
+                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0 px-4 py-2.5 bg-transparent border-0">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <ClipboardCheck className="h-4.5 w-4.5" />
+                        </span>
+                        <div>
+                            <CardTitle className="text-sm font-bold tracking-tight text-slate-800 leading-none">
+                                {t("staff_attendance")}
+                            </CardTitle>
+                            <p className="text-[10.5px] text-gray-500 mt-0.5">
+                                {shortCode === "bn" ? "স্টাফদের দৈনিক উপস্থিতি চিহ্নিত ও পরিচালনা করুন" : "Mark and manage daily staff attendance"}
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/dashboard/reports/human-resource">
+                        <Button
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white gap-2 h-8 px-5 text-[10.5px] font-bold uppercase rounded-full shadow-md active:scale-95 transition-all cursor-pointer border-0"
+                        >
+                            <History className="h-3.5 w-3.5" /> {t("attendance_report")}
+                        </Button>
+                    </Link>
+                </CardHeader>
+            </Card>
 
             {/* Select Criteria */}
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
@@ -255,13 +303,17 @@ export default function StaffAttendancePage() {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">{t("role")} <span className="text-red-500">*</span></Label>
                             <Select value={role} onValueChange={setRole}>
-                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none">
-                                    <SelectValue placeholder={t("all_roles")} />
+                                <SelectTrigger className="h-10 border-gray-100 text-xs focus:ring-indigo-500 bg-white rounded-lg shadow-none cursor-pointer">
+                                    <SelectValue placeholder={t("all_roles")}>
+                                        {role === "all" ? t("all_roles") : getLocalizedRoleName(role)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-lg border-gray-100">
-                                    <SelectItem value="all">{t("all_roles")}</SelectItem>
+                                    <SelectItem value="all" className="cursor-pointer">{t("all_roles")}</SelectItem>
                                     {roles.map((r, idx) => (
-                                        <SelectItem key={r.id || idx} value={r.name}>{r.name}</SelectItem>
+                                        <SelectItem key={r.id || idx} value={r.name} className="cursor-pointer">
+                                            {getLocalizedRoleName(r.name)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -393,19 +445,19 @@ export default function StaffAttendancePage() {
 
                         {/* Table */}
                         <div className="px-4 pb-4">
-                            <div className="rounded-lg border border-gray-200/50 overflow-hidden shadow-sm">
-                                <Table>
-                                    <TableHeader className="bg-gray-100">
-                                        <TableRow className="hover:bg-transparent border-gray-100">
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600 w-12 pl-4 text-center">#</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("staff_info")}</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("role")}</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600 min-w-[320px]">{t("attendance_status")}</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("entry_exit")}</TableHead>
-                                            <TableHead className="text-[10px] font-bold uppercase text-gray-600">{t("notes")}</TableHead>
+                            <div className="rounded-lg border border-gray-200 overflow-x-auto custom-scrollbar shadow-xs bg-white">
+                                <Table className="min-w-[950px]">
+                                    <TableHeader className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
+                                        <TableRow className="hover:bg-transparent border-b border-gray-200">
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 w-12 pl-4 text-center">#</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 whitespace-nowrap">{t("staff_info")}</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 whitespace-nowrap">{t("role")}</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 min-w-[320px] whitespace-nowrap">{t("attendance_status")}</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 whitespace-nowrap">{t("entry_exit")}</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 whitespace-nowrap">{t("notes")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
-                                    <TableBody>
+                                    <TableBody className="bg-white divide-y divide-gray-100">
                                         {searching ? (
                                             <TableSkeleton rows={5} cols={6} />
                                         ) : attendanceData.length === 0 ? (
@@ -418,17 +470,17 @@ export default function StaffAttendancePage() {
                                                 </TableCell>
                                             </TableRow>
                                         ) : paginatedData.map((staff, idx) => (
-                                            <TableRow key={staff.id} className="border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
+                                            <TableRow key={staff.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs relative transition-all duration-200 cursor-pointer bg-white">
                                                 <TableCell className="py-4 pl-4 text-center text-gray-400 font-mono text-[10px]">{startIndex + idx + 1}</TableCell>
-                                                <TableCell className="py-4">
+                                                <TableCell className="py-4 whitespace-nowrap">
                                                     <div className="flex flex-col">
                                                         <span className="text-[11px] font-bold text-gray-800 uppercase tracking-tight">{staff.name}</span>
                                                         <span className="text-[9px] text-gray-400 font-mono">{staff.staff_id}</span>
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="py-4">
+                                                <TableCell className="py-4 whitespace-nowrap">
                                                     <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold uppercase tracking-tighter border border-indigo-100">
-                                                        {staff.role}
+                                                        {getLocalizedRoleName(staff.role)}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="py-4">

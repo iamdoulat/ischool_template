@@ -32,7 +32,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useSettings } from "@/components/providers/settings-provider";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateExamName, translateSubjectName } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -95,7 +95,7 @@ type ExamResult = {
 };
 
 export default function UserExaminationsResultPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const [results, setResults] = useState<ExamResult[]>([]);
     const [studentProfile, setStudentProfile] = useState<StudentInfo | null>(null);
     const [loading, setLoading] = useState(true);
@@ -590,8 +590,7 @@ export default function UserExaminationsResultPage() {
                 title: t("success") || "Downloaded",
                 description: `${exam.exam_name} marksheet PDF downloaded successfully.`,
             });
-        } catch (err) {
-            console.error("PDF Download error:", err);
+        } catch {
             toast({
                 variant: "destructive",
                 title: t("error"),
@@ -628,8 +627,7 @@ export default function UserExaminationsResultPage() {
                 window.open(blobUrl, "_blank");
                 setPrintingId(null);
             }
-        } catch (err) {
-            console.error("PDF Print error:", err);
+        } catch {
             toast({
                 variant: "destructive",
                 title: t("error"),
@@ -670,7 +668,7 @@ export default function UserExaminationsResultPage() {
                             <p className="text-[11px] sm:text-[12px] text-gray-500 dark:text-gray-400 mt-1">
                                 {loading
                                     ? t("loading_results")
-                                    : `${results.length} published result${results.length === 1 ? "" : "s"}`}
+                                    : `${toLocaleNumber(results.length, language?.short_code)} ${results.length === 1 ? t("published_result") || "published result" : t("published_results") || "published results"}`}
                             </p>
                         </div>
                     </div>
@@ -696,7 +694,7 @@ export default function UserExaminationsResultPage() {
                                 {
                                     icon: Percent,
                                     label: t("percentage"),
-                                    value: `${exam.summary.percentage}%`,
+                                    value: `${toLocaleNumber(exam.summary.percentage, language?.short_code)}%`,
                                     color: "text-emerald-600",
                                 },
                                 {
@@ -713,20 +711,20 @@ export default function UserExaminationsResultPage() {
                                 },
                                 {
                                     icon: Star,
-                                    label: "GPA / Point",
-                                    value: exam.summary.grade_point || (exam.summary.grade ? "—" : "—"),
+                                    label: t("gpa") || "GPA",
+                                    value: exam.summary.grade_point ? toLocaleNumber(exam.summary.grade_point, language?.short_code) : (exam.summary.grade ? "—" : "—"),
                                     color: "text-amber-600",
                                 },
                                 {
                                     icon: Sigma,
                                     label: t("grand_total"),
-                                    value: exam.summary.grand_total,
+                                    value: toLocaleNumber(exam.summary.grand_total, language?.short_code),
                                     color: "text-indigo-600",
                                 },
                                 {
                                     icon: Trophy,
                                     label: t("obtained"),
-                                    value: exam.summary.total_obtained,
+                                    value: toLocaleNumber(exam.summary.total_obtained, language?.short_code),
                                     color: "text-violet-600",
                                 },
                             ];
@@ -746,11 +744,11 @@ export default function UserExaminationsResultPage() {
                                             <Award className="h-5 w-5 shrink-0 text-white/90" />
                                             <div className="min-w-0">
                                                 <span className="font-bold text-[13.5px] sm:text-[15px] block truncate">
-                                                    {exam.exam_name}
+                                                    {translateExamName(exam.exam_name, language?.short_code)}
                                                 </span>
                                                 {exam.session && (
                                                     <span className="text-white/80 font-medium text-[11px] block sm:inline sm:ml-2">
-                                                        ({exam.session})
+                                                        ({toLocaleNumber(exam.session, language?.short_code)})
                                                     </span>
                                                 )}
                                             </div>
@@ -772,9 +770,9 @@ export default function UserExaminationsResultPage() {
                                                     <Download className="h-3.5 w-3.5" />
                                                 )}
                                                 <span className="hidden sm:inline">
-                                                    {isDownloading ? "Generating..." : "Download Marksheet"}
+                                                    {isDownloading ? (t("generating") || "Generating...") : (t("download_marksheet") || "Download Marksheet")}
                                                 </span>
-                                                <span className="sm:hidden">Marksheet</span>
+                                                <span className="sm:hidden">{t("marksheet") || "Marksheet"}</span>
                                             </Button>
 
                                             {/* Print Button */}
@@ -790,7 +788,7 @@ export default function UserExaminationsResultPage() {
                                                 ) : (
                                                     <Printer className="h-3.5 w-3.5" />
                                                 )}
-                                                <span className="hidden sm:inline">Print</span>
+                                                <span className="hidden sm:inline">{t("print") || "Print"}</span>
                                             </Button>
                                         </div>
                                     </div>
@@ -816,7 +814,7 @@ export default function UserExaminationsResultPage() {
                                                         {t("grade") || "Grade"}
                                                     </TableHead>
                                                     <TableHead className="text-center text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300 py-3">
-                                                        GPA
+                                                        {t("gpa") || "GPA"}
                                                     </TableHead>
                                                     <TableHead className="text-center text-[11px] uppercase font-bold text-gray-600 dark:text-gray-300 py-3">
                                                         {t("result")}
@@ -833,13 +831,13 @@ export default function UserExaminationsResultPage() {
                                                         className="hover:bg-indigo-50/30 dark:hover:bg-indigo-950/20 transition-colors border-b border-gray-100 dark:border-gray-800"
                                                     >
                                                         <TableCell className="text-[13px] text-gray-800 dark:text-gray-200 py-3.5 font-semibold">
-                                                            {s.name}
+                                                            {translateSubjectName(s.name, language?.short_code)}
                                                         </TableCell>
                                                         <TableCell className="text-center text-[13px] text-gray-600 dark:text-gray-400 py-3.5">
-                                                            {s.max}
+                                                            {toLocaleNumber(s.max, language?.short_code)}
                                                         </TableCell>
                                                         <TableCell className="text-center text-[13px] text-gray-600 dark:text-gray-400 py-3.5">
-                                                            {s.min}
+                                                            {toLocaleNumber(s.min, language?.short_code)}
                                                         </TableCell>
                                                         <TableCell
                                                             className={cn(
@@ -849,13 +847,13 @@ export default function UserExaminationsResultPage() {
                                                                     : "text-gray-900 dark:text-gray-100"
                                                             )}
                                                         >
-                                                            {s.obtained}
+                                                            {s.obtained === "Absent" ? t("absent") || "Absent" : toLocaleNumber(s.obtained, language?.short_code)}
                                                         </TableCell>
                                                         <TableCell className="text-center text-[13px] py-3.5 font-bold text-orange-600 dark:text-orange-400">
                                                             {s.grade || "—"}
                                                         </TableCell>
                                                         <TableCell className="text-center text-[13px] py-3.5 font-semibold text-gray-700 dark:text-gray-300">
-                                                            {s.grade_point || "—"}
+                                                            {s.grade_point ? toLocaleNumber(s.grade_point, language?.short_code) : "—"}
                                                         </TableCell>
                                                         <TableCell className="text-center text-[13px] py-3.5">
                                                             <ResultPill result={s.result} />
@@ -875,12 +873,12 @@ export default function UserExaminationsResultPage() {
                                             <div key={s.id} className="p-3.5 sm:p-4 space-y-2.5">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="text-[13.5px] font-bold text-gray-800 dark:text-gray-200">
-                                                        {s.name}
+                                                        {translateSubjectName(s.name, language?.short_code)}
                                                     </span>
                                                     <div className="flex items-center gap-1.5">
                                                         {s.grade && (
                                                             <span className="text-[11.5px] font-bold text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 rounded-full px-2 py-0.5">
-                                                                Grade: {s.grade}
+                                                                {t("grade") || "Grade"}: {s.grade}
                                                             </span>
                                                         )}
                                                         <ResultPill result={s.result} />
@@ -891,18 +889,18 @@ export default function UserExaminationsResultPage() {
                                                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[12px]">
                                                         <div className="flex items-center justify-between py-0.5">
                                                             <span className="text-gray-500 dark:text-gray-400">{t("max")}</span>
-                                                            <span className="font-semibold text-gray-700 dark:text-gray-200">{s.max}</span>
+                                                            <span className="font-semibold text-gray-700 dark:text-gray-200">{toLocaleNumber(s.max, language?.short_code)}</span>
                                                         </div>
                                                         <div className="flex items-center justify-between py-0.5">
                                                             <span className="text-gray-500 dark:text-gray-400">{t("min")}</span>
-                                                            <span className="font-semibold text-gray-700 dark:text-gray-200">{s.min}</span>
+                                                            <span className="font-semibold text-gray-700 dark:text-gray-200">{toLocaleNumber(s.min, language?.short_code)}</span>
                                                         </div>
                                                         <div className="flex items-center justify-between py-0.5">
-                                                            <span className="text-gray-500 dark:text-gray-400">GPA</span>
-                                                            <span className="font-semibold text-gray-700 dark:text-gray-200">{s.grade_point || "—"}</span>
+                                                            <span className="text-gray-500 dark:text-gray-400">{t("gpa") || "GPA"}</span>
+                                                            <span className="font-semibold text-gray-700 dark:text-gray-200">{s.grade_point ? toLocaleNumber(s.grade_point, language?.short_code) : "—"}</span>
                                                         </div>
                                                         <div className="flex items-center justify-between py-0.5">
-                                                            <span className="text-gray-700 dark:text-gray-300 font-semibold">{t("obtained")}</span>
+                                                            <span className="text-gray-500 dark:text-gray-400">{t("marks_obtained")}</span>
                                                             <span
                                                                 className={cn(
                                                                     "font-bold text-[13px]",
@@ -911,7 +909,7 @@ export default function UserExaminationsResultPage() {
                                                                         : "text-indigo-600 dark:text-indigo-400"
                                                                 )}
                                                             >
-                                                                {s.obtained}
+                                                                {s.obtained === "Absent" ? t("absent") || "Absent" : toLocaleNumber(s.obtained, language?.short_code)}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -974,11 +972,11 @@ export default function UserExaminationsResultPage() {
                                                     <div className="flex items-center gap-2">
                                                         <GraduationCap className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                                                         <span className="text-[12px] font-bold text-indigo-900 dark:text-indigo-200">
-                                                            Grading System & Scale Reference
+                                                            {t("grading_system_scale_reference") || "Grading System & Scale Reference"}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-                                                        <span>{isGradingOpen ? "Hide" : "View Scale"}</span>
+                                                        <span>{isGradingOpen ? (t("hide") || "Hide") : (t("view_scale") || "View Scale")}</span>
                                                         {isGradingOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                                                     </div>
                                                 </button>
@@ -989,10 +987,10 @@ export default function UserExaminationsResultPage() {
                                                             <table className="w-full text-left text-[11px]">
                                                                 <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-gray-700">
                                                                     <tr>
-                                                                        <th className="py-2 px-3">Grade</th>
-                                                                        <th className="py-2 px-3">Marks Range (%)</th>
-                                                                        <th className="py-2 px-3 text-center">Grade Point (GPA)</th>
-                                                                        <th className="py-2 px-3 text-right">Remarks</th>
+                                                                        <th className="py-2 px-3">{t("grade") || "Grade"}</th>
+                                                                        <th className="py-2 px-3">{t("marks_range") || "Marks Range (%)"}</th>
+                                                                        <th className="py-2 px-3 text-center">{t("gpa") || "Grade Point (GPA)"}</th>
+                                                                        <th className="py-2 px-3 text-right">{t("remarks") || "Remarks"}</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1002,10 +1000,10 @@ export default function UserExaminationsResultPage() {
                                                                                 {scale.name}
                                                                             </td>
                                                                             <td className="py-2 px-3 text-gray-700 dark:text-gray-300">
-                                                                                {scale.percent_from}% — {scale.percent_upto}%
+                                                                                {toLocaleNumber(scale.percent_from, language?.short_code)}% — {toLocaleNumber(scale.percent_upto, language?.short_code)}%
                                                                             </td>
                                                                             <td className="py-2 px-3 text-center font-bold text-gray-800 dark:text-gray-200">
-                                                                                {scale.grade_point.toFixed(2)}
+                                                                                {toLocaleNumber(scale.grade_point.toFixed(2), language?.short_code)}
                                                                             </td>
                                                                             <td className="py-2 px-3 text-right text-gray-500 dark:text-gray-400">
                                                                                 {scale.description || "—"}

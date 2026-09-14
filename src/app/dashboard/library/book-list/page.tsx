@@ -16,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toLocaleNumber, cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -54,7 +54,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/providers/currency-provider";
 import {
     AlertDialog,
@@ -113,7 +112,7 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 }
 
 export default function BookListPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const { selectedCurrency } = useCurrency();
     const currencySymbol = selectedCurrency?.symbol || "$";
@@ -224,7 +223,7 @@ export default function BookListPage() {
             }
             setIsDialogOpen(false);
             fetchBooks();
-        } catch (error) {
+        } catch {
             tt.error("failed_to_save_book");
         } finally {
             setSaving(false);
@@ -271,11 +270,11 @@ export default function BookListPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") || "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") || "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") || "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") || "Print" },
+        { Icon: Columns, onClick: () => {}, title: t("columns") || "Columns" },
     ];
 
     return (
@@ -285,9 +284,9 @@ export default function BookListPage() {
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Library className="h-5 w-5" />
                     </span>
-                    <div className="min-w-0">
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("book_list")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("books_in_library_count", { count: pagination?.total ?? books.length })}</p>
+                    <div className="min-w-0 py-0.5">
+                        <h1 className="text-[16px] font-bold text-gray-800 leading-snug">{t("book_list")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{t("books_in_library_count")}: {toLocaleNumber(pagination?.total ?? books.length, language?.short_code)}</p>
                     </div>
                     <Button
                         onClick={handleAddClick}
@@ -316,13 +315,15 @@ export default function BookListPage() {
                         <div className="flex items-center gap-2">
                             <Select value={limit} onValueChange={setLimit}>
                                 <SelectTrigger className="w-[70px] h-9 text-xs">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber(50, language?.short_code)}>
+                                        {toLocaleNumber(limit, language?.short_code)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
@@ -397,7 +398,7 @@ export default function BookListPage() {
                                         {/* Book Number */}
                                         <TableCell className="py-3 px-3">
                                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-mono font-bold text-[11px] border border-slate-200/70">
-                                                #{book.book_number}
+                                                #{book.book_number ? toLocaleNumber(book.book_number, language?.short_code) : ""}
                                             </span>
                                         </TableCell>
 
@@ -442,7 +443,7 @@ export default function BookListPage() {
                                             {book.rack_number ? (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-mono font-semibold text-[10px] border border-amber-200/60">
                                                     <MapPin className="h-2.5 w-2.5 text-amber-600" />
-                                                    Rack {book.rack_number}
+                                                    {t("rack") || "Rack"} {toLocaleNumber(book.rack_number, language?.short_code)}
                                                 </span>
                                             ) : (
                                                 <span className="text-gray-300">—</span>
@@ -451,7 +452,7 @@ export default function BookListPage() {
 
                                         {/* Quantity */}
                                         <TableCell className="py-3 px-3 text-center font-bold text-gray-700">
-                                            {book.qty}
+                                            {toLocaleNumber(book.qty, language?.short_code)}
                                         </TableCell>
 
                                         {/* Available */}
@@ -459,18 +460,18 @@ export default function BookListPage() {
                                             {book.available > 0 ? (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200/70 shadow-2xs">
                                                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                                    {book.available} Available
+                                                    {toLocaleNumber(book.available, language?.short_code)} {t("available") || "Available"}
                                                 </span>
                                             ) : (
                                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 font-bold text-[10px] border border-rose-200/70">
-                                                    Out of Stock
+                                                    {t("out_of_stock") || "Out of Stock"}
                                                 </span>
                                             )}
                                         </TableCell>
 
                                         {/* Book Price */}
                                         <TableCell className="py-3 px-3 font-bold text-gray-800">
-                                            {book.price ? `${currencySymbol}${book.price}` : <span className="text-gray-300 font-normal font-sans">—</span>}
+                                            {book.price ? `${currencySymbol}${toLocaleNumber(book.price, language?.short_code)}` : <span className="text-gray-300 font-normal font-sans">—</span>}
                                         </TableCell>
 
                                         {/* Post Date */}
@@ -510,7 +511,11 @@ export default function BookListPage() {
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}
+                            {t("showing_x_to_y_of_z", {
+                                from: toLocaleNumber(pagination?.from || 0, language?.short_code),
+                                to: toLocaleNumber(pagination?.to || 0, language?.short_code),
+                                total: toLocaleNumber(pagination?.total || 0, language?.short_code)
+                            })}
                         </div>
                         <div className="flex gap-1 items-center">
                             <Button
@@ -534,7 +539,7 @@ export default function BookListPage() {
                                             : "bg-white text-gray-600 border border-gray-200"
                                     )}
                                 >
-                                    {i + 1}
+                                    {toLocaleNumber(i + 1, language?.short_code)}
                                 </Button>
                             ))}
                             <Button

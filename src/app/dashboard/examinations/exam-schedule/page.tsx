@@ -13,9 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
     Copy, FileSpreadsheet, FileText, Printer, Search,
     CalendarDays, Clock, MapPin, Target, ShieldCheck,
-    CalendarClock, Filter, BookOpen, Layers, CheckCircle2,
-    Sparkles, AlertCircle
+    CalendarClock, Filter, BookOpen, Layers
 } from "lucide-react";
+import { toLocaleNumber, translateClassName, translateSectionName, translateSubjectName } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -64,7 +64,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function ExamSchedulePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
 
     // Criteria states
@@ -136,6 +137,19 @@ export default function ExamSchedulePage() {
         }
     };
 
+    // Localization Helpers
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        if (name.toLowerCase() === "general") return t("general") || "General";
+        return translateClassName(name, shortCode);
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        if (name.toLowerCase() === "all") return t("all") || "All";
+        return translateSectionName(name, shortCode);
+    };
+
     const filteredData = schedule.filter((item) =>
         (item.subject?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (item.subject?.code || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -173,12 +187,12 @@ export default function ExamSchedulePage() {
         if (filteredData.length === 0) return;
         const ws = XLSX.utils.json_to_sheet(filteredData.map(s => ({
             [t("subject")]: s.subject?.name || "",
-            [t("subject_code")]: s.subject?.code || "",
-            [t("class")]: s.class_name || "",
-            [t("section")]: s.section_name || "",
+            [t("code")]: s.subject?.code || "",
+            [t("class")]: getLocalizedClassName(s.class_name),
+            [t("section")]: getLocalizedSectionName(s.section_name),
             [t("date")]: s.date_from || "",
             [t("start_time")]: s.start_time || "",
-            [t("duration_min")]: s.duration || "",
+            [t("duration")]: `${s.duration || 0} ${t("mins") || "mins"}`,
             [t("room_no")]: s.room_no || "",
             [t("max_marks")]: s.max_marks || "",
             [t("min_marks")]: s.min_marks || ""
@@ -197,13 +211,13 @@ export default function ExamSchedulePage() {
         autoTable(doc, {
             head: [[t("subject"), t("code"), t("class"), t("section"), t("date"), t("start_time"), t("duration"), t("room_no"), t("max_marks"), t("min_marks")]],
             body: filteredData.map(s => [
-                s.subject?.name || "—",
+                translateSubjectName(s.subject?.name, shortCode) || "—",
                 s.subject?.code || "—",
-                s.class_name || "—",
-                s.section_name || "—",
+                getLocalizedClassName(s.class_name) || "—",
+                getLocalizedSectionName(s.section_name) || "—",
                 s.date_from || "—",
                 s.start_time || "—",
-                `${s.duration || 0} mins`,
+                `${s.duration || 0} ${t("mins") || "mins"}`,
                 s.room_no || "—",
                 s.max_marks || "0",
                 s.min_marks || "0"
@@ -217,7 +231,7 @@ export default function ExamSchedulePage() {
 
     const copyToClipboard = () => {
         if (filteredData.length === 0) return;
-        const text = filteredData.map(s => `${s.subject?.name || "—"}\t${s.subject?.code || "—"}\t${s.class_name || "—"}\t${s.section_name || "—"}\t${s.date_from || "—"}\t${s.start_time || "—"}\t${s.duration || 0} mins\t${s.room_no || "—"}\tMax: ${s.max_marks || 0}\tMin: ${s.min_marks || 0}`).join('\n');
+        const text = filteredData.map(s => `${translateSubjectName(s.subject?.name, shortCode) || "—"}\t${s.subject?.code || "—"}\t${getLocalizedClassName(s.class_name) || "—"}\t${getLocalizedSectionName(s.section_name) || "—"}\t${s.date_from || "—"}\t${s.start_time || "—"}\t${s.duration || 0} mins\t${s.room_no || "—"}\tMax: ${s.max_marks || 0}\tMin: ${s.min_marks || 0}`).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("data_copied_to_clipboard");
     };
@@ -239,7 +253,7 @@ export default function ExamSchedulePage() {
                     </span>
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                            {t("exam_schedule")}
+                            {t("exam_schedule") || "Exam Schedule"}
                         </h1>
                         <p className="text-xs text-gray-600 mt-0.5 font-medium">
                             {t("view_and_manage_examination_timetables_and_subject_schedules") || "View and manage examination timetables, subject dates, durations, and room allocations"}
@@ -256,7 +270,7 @@ export default function ExamSchedulePage() {
                     </span>
                     <div>
                         <CardTitle className="text-sm font-bold text-slate-800 tracking-tight leading-none">{t("select_criteria")}</CardTitle>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_exam_group_and_exam")}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("choose_exam_group_and_exam") || "Choose exam group and exam"}</p>
                     </div>
                 </CardHeader>
                 <CardContent className="p-5 md:p-6">
@@ -272,11 +286,11 @@ export default function ExamSchedulePage() {
                                 onValueChange={(val) => setSelectedCriteria(prev => ({ ...prev, exam_group_id: val }))}
                             >
                                 <SelectTrigger className="h-11 border-slate-200 bg-slate-50/50 hover:bg-slate-50 rounded-xl focus:ring-indigo-500 transition-all">
-                                    <SelectValue placeholder={t("select_group")} />
+                                    <SelectValue placeholder={t("select_group") || "Select Group"} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
                                     {examGroups.length === 0 ? (
-                                        <SelectItem value="empty" disabled>{t("no_exam_groups_found")}</SelectItem>
+                                        <SelectItem value="empty" disabled>{t("no_exam_groups_found") || "No exam groups found"}</SelectItem>
                                     ) : (
                                         examGroups.map(g => (
                                             <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>
@@ -298,11 +312,11 @@ export default function ExamSchedulePage() {
                                 disabled={!selectedCriteria.exam_group_id || exams.length === 0}
                             >
                                 <SelectTrigger className="h-11 border-slate-200 bg-slate-50/50 hover:bg-slate-50 rounded-xl focus:ring-indigo-500 transition-all disabled:opacity-60">
-                                    <SelectValue placeholder={!selectedCriteria.exam_group_id ? t("select_exam_group_first") : t("select_exam")} />
+                                    <SelectValue placeholder={!selectedCriteria.exam_group_id ? (t("select_exam_group_first") || "Select Exam Group first") : (t("select_exam") || "Select Exam")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
                                     {exams.length === 0 ? (
-                                        <SelectItem value="none" disabled>{t("no_exams_available")}</SelectItem>
+                                        <SelectItem value="none" disabled>{t("no_exams_available") || "No exams available"}</SelectItem>
                                     ) : (
                                         exams.map(e => (
                                             <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>
@@ -324,7 +338,7 @@ export default function ExamSchedulePage() {
                                 ) : (
                                     <Search className="h-4 w-4" />
                                 )}
-                                {t("retrieve_schedule")}
+                                {t("retrieve_schedule") || "Retrieve Schedule"}
                             </Button>
                         </div>
                     </div>
@@ -340,9 +354,9 @@ export default function ExamSchedulePage() {
                         </span>
                         <div>
                             <h2 className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                                {t("exam_schedule_list")}
+                                {t("exam_schedule_list") || "Exam Schedule List"}
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200/60">
-                                    {groupedSchedules.length} {t("classes_sections") || "Classes / Sections"}
+                                    {t("x_classes_sections", { count: toLocaleNumber(groupedSchedules.length, shortCode) })}
                                 </span>
                             </h2>
                             <p className="text-[11px] text-slate-500 mt-0.5">
@@ -362,7 +376,7 @@ export default function ExamSchedulePage() {
                         <div className="relative w-48 sm:w-60">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                             <Input
-                                placeholder={t("search_by_subject_or_room")}
+                                placeholder={t("search_by_subject_or_room") || "Search by subject or room..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8.5 h-8.5 text-xs rounded-lg border-slate-200 bg-white focus:bg-white focus:ring-indigo-500 transition-all shadow-2xs"
@@ -419,7 +433,7 @@ export default function ExamSchedulePage() {
                         </span>
                         <div>
                             <CardTitle className="text-sm font-bold text-slate-800 tracking-tight leading-none">
-                                {t("exam_schedule_list")}
+                                {t("exam_schedule_list") || "Exam Schedule List"}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
                                 {t("subject_dates_timings_and_room_allocations") || "Subject examination dates, start times, durations, and rooms"}
@@ -442,12 +456,12 @@ export default function ExamSchedulePage() {
                                         <CalendarClock className="h-7 w-7 opacity-80" />
                                     </div>
                                     <h3 className="text-sm font-bold text-slate-800">
-                                        {hasSearched ? t("no_schedule_found_for_this_exam") : t("please_select_an_exam")}
+                                        {hasSearched ? (t("no_schedule_found_for_this_exam") || "No schedule found for this exam") : (t("please_select_an_exam") || "Please select an exam")}
                                     </h3>
                                     <p className="text-xs text-slate-500 mt-1 text-center">
                                         {hasSearched
-                                            ? t("no_subject_schedules_created_yet_for_exam")
-                                            : t("select_exam_group_and_exam_above_to_retrieve")}
+                                            ? (t("no_subject_schedules_created_yet_for_exam") || "No subject schedules created yet for this exam.")
+                                            : (t("select_exam_group_and_exam_above_to_retrieve") || "Select exam group and exam above to retrieve schedule.")}
                                     </p>
                                 </div>
                             </div>
@@ -459,7 +473,7 @@ export default function ExamSchedulePage() {
             {/* Class & Section Wise Separate Cards */}
             {!searching && schedule.length > 0 && groupedSchedules.length === 0 && (
                 <Card className="border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-500 bg-white">
-                    {t("no_matching_subjects_found_for")} &ldquo;{searchTerm}&rdquo;
+                    {t("no_matching_subjects_found_for") || "No matching subjects found for"} &ldquo;{searchTerm}&rdquo;
                 </Card>
             )}
 
@@ -474,15 +488,19 @@ export default function ExamSchedulePage() {
                                 <CardTitle className="text-sm font-bold text-slate-800 tracking-tight flex items-center gap-2 flex-wrap">
                                     <span className="flex items-center gap-1.5">
                                         <span className="text-slate-500 font-medium">{t("class")}:</span>
-                                        <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">{group.className}</span>
+                                        <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                            {getLocalizedClassName(group.className)}
+                                        </span>
                                     </span>
                                     <span className="text-slate-300">•</span>
                                     <span className="flex items-center gap-1.5">
                                         <span className="text-slate-500 font-medium">{t("section")}:</span>
-                                        <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">{group.sectionName}</span>
+                                        <span className="font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                            {getLocalizedSectionName(group.sectionName)}
+                                        </span>
                                     </span>
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-white text-indigo-700 border border-indigo-200/80 shadow-2xs">
-                                        {group.items.length} {t("subjects")}
+                                        {t("x_subjects", { count: toLocaleNumber(group.items.length, shortCode) })}
                                     </span>
                                 </CardTitle>
                                 <p className="text-[11px] text-slate-500 mt-1">
@@ -505,10 +523,10 @@ export default function ExamSchedulePage() {
                                 <TableHeader className="bg-slate-50/90 text-[11px] uppercase font-bold text-slate-600 border-b border-slate-200">
                                     <TableRow className="hover:bg-transparent">
                                         <TableHead className="py-3.5 px-5 min-w-[200px]">{t("subject")}</TableHead>
-                                        <TableHead className="py-3.5 px-5 min-w-[160px]">{t("date_and_time")}</TableHead>
+                                        <TableHead className="py-3.5 px-5 min-w-[160px]">{t("date_and_time") || "Date & Time"}</TableHead>
                                         <TableHead className="py-3.5 px-5 min-w-[110px] text-center">{t("duration")}</TableHead>
                                         <TableHead className="py-3.5 px-5 min-w-[120px]">{t("room_no")}</TableHead>
-                                        <TableHead className="py-3.5 px-5 text-right min-w-[140px]">{t("marks_max_min")}</TableHead>
+                                        <TableHead className="py-3.5 px-5 text-right min-w-[140px]">{t("marks_max_min") || "Marks (Max / Min)"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -525,10 +543,10 @@ export default function ExamSchedulePage() {
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                                                            {item.subject?.name || "—"}
+                                                            {translateSubjectName(item.subject?.name, shortCode) || "—"}
                                                         </span>
                                                         <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">
-                                                            {t("code")}: {item.subject?.code || "—"}
+                                                            {t("code")}: {toLocaleNumber(item.subject?.code || "—", shortCode)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -539,11 +557,11 @@ export default function ExamSchedulePage() {
                                                 <div className="flex flex-col gap-1">
                                                     <span className="flex items-center gap-1.5 font-bold text-slate-800">
                                                         <CalendarDays className="h-3.5 w-3.5 text-indigo-500" />
-                                                        {item.date_from || "—"}
+                                                        {toLocaleNumber(item.date_from || "—", shortCode)}
                                                     </span>
                                                     <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
                                                         <Clock className="h-3 w-3 text-slate-400" />
-                                                        {item.start_time || "—"}
+                                                        {toLocaleNumber(item.start_time || "—", shortCode)}
                                                     </span>
                                                 </div>
                                             </TableCell>
@@ -551,7 +569,7 @@ export default function ExamSchedulePage() {
                                             {/* Duration */}
                                             <TableCell className="py-3.5 px-5 text-center">
                                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full font-bold text-[10.5px] bg-slate-100 text-slate-700 border border-slate-200/60">
-                                                    {item.duration || 0} {t("mins")}
+                                                    {toLocaleNumber(item.duration || 0, shortCode)} {t("mins") || "mins"}
                                                 </span>
                                             </TableCell>
 
@@ -559,7 +577,7 @@ export default function ExamSchedulePage() {
                                             <TableCell className="py-3.5 px-5">
                                                 <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
                                                     <MapPin className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                                    {item.room_no || <span className="text-slate-400 italic">{t("tba")}</span>}
+                                                    {item.room_no ? toLocaleNumber(item.room_no, shortCode) : <span className="text-slate-400 italic">{t("tba") || "TBA"}</span>}
                                                 </span>
                                             </TableCell>
 
@@ -568,11 +586,13 @@ export default function ExamSchedulePage() {
                                                 <div className="flex flex-col items-end gap-1">
                                                     <span className="inline-flex items-center gap-1 font-bold text-emerald-600 text-xs">
                                                         <Target className="h-3 w-3 text-emerald-500" />
-                                                        <span className="text-[10px] uppercase text-emerald-500/80 font-semibold">{t("max")}:</span> {item.max_marks ? parseFloat(item.max_marks).toFixed(2) : "0.00"}
+                                                        <span className="text-[10px] uppercase text-emerald-500/80 font-semibold">{t("max")}:</span>{" "}
+                                                        {item.max_marks ? toLocaleNumber(parseFloat(item.max_marks).toFixed(2), shortCode) : toLocaleNumber("0.00", shortCode)}
                                                     </span>
                                                     <span className="inline-flex items-center gap-1 font-bold text-rose-500 text-[11px]">
                                                         <ShieldCheck className="h-3 w-3 text-rose-400" />
-                                                        <span className="text-[10px] uppercase text-rose-400 font-semibold">{t("min")}:</span> {item.min_marks ? parseFloat(item.min_marks).toFixed(2) : "0.00"}
+                                                        <span className="text-[10px] uppercase text-rose-400 font-semibold">{t("min")}:</span>{" "}
+                                                        {item.min_marks ? toLocaleNumber(parseFloat(item.min_marks).toFixed(2), shortCode) : toLocaleNumber("0.00", shortCode)}
                                                     </span>
                                                 </div>
                                             </TableCell>
@@ -585,7 +605,10 @@ export default function ExamSchedulePage() {
                         {/* Table Footer: Showing entries on the left */}
                         <div className="flex items-center justify-between pt-1">
                             <div className="text-xs text-slate-500 font-medium">
-                                {t("showing")} <strong className="text-slate-800">{group.items.length}</strong> {t("of")} {group.items.length} {t("entries")}
+                                {t("showing_x_of_y_entries", {
+                                    count: toLocaleNumber(group.items.length, shortCode),
+                                    total: toLocaleNumber(group.items.length, shortCode)
+                                }) || `Showing ${group.items.length} of ${group.items.length} entries`}
                             </div>
                         </div>
                     </CardContent>

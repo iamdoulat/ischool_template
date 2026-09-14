@@ -1,11 +1,10 @@
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
     Select,
     SelectContent,
@@ -24,26 +23,34 @@ import {
 import { 
     Search, 
     FileText, 
-    BarChart3, 
     Trophy, 
     UserCheck, 
-    Plus, 
     Monitor, 
-    Eye, 
     Copy, 
     FileSpreadsheet, 
     Printer, 
     FileDown,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Eye,
+    Plus,
+    Filter
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { 
+    cn, 
+    toLocaleNumber, 
+    translateClassName, 
+    translateSectionName,
+    translateClassSection,
+    translateExamName
+} from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/components/providers/language-provider";
 
 function TableSkeleton({ cols }: { cols: number }) {
     return (
@@ -62,10 +69,10 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 const reportLinks = [
-    { name: "Result Report", icon: FileText },
-    { name: "Exams Report", icon: FileText },
-    { name: "Student Exams Attempt Report", icon: UserCheck },
-    { name: "Exams Rank Report", icon: Trophy },
+    { id: "Result Report", key: "result_report", icon: FileText },
+    { id: "Exams Report", key: "exams_report", icon: FileText },
+    { id: "Student Exams Attempt Report", key: "student_exams_attempt_report", icon: UserCheck },
+    { id: "Exams Rank Report", key: "exams_rank_report", icon: Trophy },
 ];
 
 const searchTypeOptions = [
@@ -91,6 +98,8 @@ interface SchoolClass {
 }
 
 export default function OnlineExaminationsReportPage() {
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
     const [activeTab, setActiveTab] = useState("Result Report");
     const [exams, setExams] = useState<OnlineExam[]>([]);
     const [classes, setClasses] = useState<SchoolClass[]>([]);
@@ -115,18 +124,18 @@ export default function OnlineExaminationsReportPage() {
     const fetchCriteria = async () => {
         try {
             const response = await api.get('/reports/online-examinations/criteria');
-            setExams(response.data.exams);
-            setClasses(response.data.classes);
+            setExams(response.data.exams || []);
+            setClasses(response.data.classes || []);
         } catch (error) {
             console.error("Failed to fetch criteria", error);
-            toast.error("Failed to fetch criteria data");
+            toast.error(t("failed_to_fetch_report") || "Failed to fetch criteria data");
         }
     };
 
     const handleSearch = async () => {
         if (activeTab === "Result Report" || activeTab === "Exams Rank Report") {
             if (!selectedExam || !selectedClass || !selectedSection) {
-                toast.error("Please select all required criteria fields");
+                toast.error(t("please_select_a_class") || "Please select all required criteria fields");
                 return;
             }
         }
@@ -167,14 +176,14 @@ export default function OnlineExaminationsReportPage() {
             }
             
             if (response) {
-                setReportData(response.data.data);
+                setReportData(response.data.data || []);
                 setIsSearched(true);
                 setCurrentPage(1); // reset to page 1 on new search
-                toast.success("Report data loaded successfully");
+                toast.success(t("report_results") || "Report data loaded successfully");
             }
         } catch (error) {
             console.error("Failed to fetch report", error);
-            toast.error("Failed to load report data");
+            toast.error(t("failed_to_fetch_report") || "Failed to load report data");
         } finally {
             setLoading(false);
         }
@@ -233,91 +242,95 @@ export default function OnlineExaminationsReportPage() {
     // Export functions
     const exportToCopy = () => {
         if (filteredData.length === 0) {
-            toast.error("No data available to copy");
+            toast.warning(t("no_data_available_in_table") || "No data available to copy");
             return;
         }
 
         let text = "";
         if (activeTab === "Result Report") {
-            text = ["Admission No\tStudent Name\tClass\tTotal Attempt\tRemaining Attempt\tExam Submitted", 
-                    ...filteredData.map(item => `${item.admission_no}\t${item.student_name}\t${item.class}\t${item.total_attempt}\t${item.remaining_attempt}\t${item.exam_submitted}`)
-                   ].join("\n");
+            text = [
+                `${t("admission_no")}\t${t("student_name")}\t${t("class")}\t${t("total_attempt")}\t${t("remaining_attempt")}\t${t("exam_submitted")}`, 
+                ...filteredData.map(item => `${item.admission_no}\t${item.student_name}\t${translateClassSection(item.class, langCode)}\t${toLocaleNumber(item.total_attempt, langCode)}\t${toLocaleNumber(item.remaining_attempt, langCode)}\t${item.exam_submitted === 'Yes' ? (t("yes") || "Yes") : (t("no") || "No")}`)
+            ].join("\n");
         } else if (activeTab === "Exams Report") {
-            text = ["Exam\tAttempt\tExam From\tExam To\tDuration\tTotal Students\tQuestions\tExam Published\tResult Published", 
-                    ...filteredData.map(item => `${item.exam}\t${item.attempt}\t${item.exam_from}\t${item.exam_to}\t${item.duration}\t${item.total_students}\t${item.questions}\t${item.exam_published ? 'Yes' : 'No'}\t${item.result_published ? 'Yes' : 'No'}`)
-                   ].join("\n");
+            text = [
+                `${t("exam")}\t${t("attempt")}\t${t("exam_from")}\t${t("exam_to")}\t${t("duration")}\t${t("total_students")}\t${t("questions")}\t${t("exam_published")}\t${t("result_published")}`, 
+                ...filteredData.map(item => `${translateExamName(item.exam, langCode)}\t${toLocaleNumber(item.attempt, langCode)}\t${item.exam_from}\t${item.exam_to}\t${toLocaleNumber(item.duration, langCode)}\t${toLocaleNumber(item.total_students, langCode)}\t${toLocaleNumber(item.questions, langCode)}\t${item.exam_published ? (t("yes") || 'Yes') : (t("no") || 'No')}\t${item.result_published ? (t("yes") || 'Yes') : (t("no") || 'No')}`)
+            ].join("\n");
         } else if (activeTab === "Student Exams Attempt Report") {
-            text = ["Admission No\tStudent\tClass\tSection\tExam\tExam From\tExam To\tDuration\tExam Published\tResult Published", 
-                    ...filteredData.map(item => `${item.admission_no}\t${item.student_name}\t${item.class}\t${item.section}\t${item.exam}\t${item.exam_from}\t${item.exam_to}\t${item.duration}\t${item.exam_published ? 'Yes' : 'No'}\t${item.result_published ? 'Yes' : 'No'}`)
-                   ].join("\n");
+            text = [
+                `${t("admission_no")}\t${t("student")}\t${t("class")}\t${t("section")}\t${t("exam")}\t${t("exam_from")}\t${t("exam_to")}\t${t("duration")}\t${t("exam_published")}\t${t("result_published")}`, 
+                ...filteredData.map(item => `${item.admission_no}\t${item.student_name}\t${translateClassName(item.class, langCode)}\t${translateSectionName(item.section, langCode)}\t${translateExamName(item.exam, langCode)}\t${item.exam_from}\t${item.exam_to}\t${toLocaleNumber(item.duration, langCode)}\t${item.exam_published ? (t("yes") || 'Yes') : (t("no") || 'No')}\t${item.result_published ? (t("yes") || 'Yes') : (t("no") || 'No')}`)
+            ].join("\n");
         } else if (activeTab === "Exams Rank Report") {
-            text = ["Rank\tAdmission No\tStudent Name\tClass\tFather Name\tExam Submitted\tTotal Questions\tDescriptive\tCorrect Answer\tWrong Answer\tNot Attempted\tTotal Exam Marks\tTotal Negative Marks\tTotal Scored Marks\tScore (%)", 
-                    ...filteredData.map(item => `${item.rank}\t${item.admission_no}\t${item.student_name}\t${item.class}\t${item.father_name}\t${item.exam_submitted}\t${item.total_questions}\t${item.descriptive}\t${item.correct_answer}\t${item.wrong_answer}\t${item.not_attempted}\t${item.total_exam_marks}\t${item.total_negative_marks}\t${item.total_scored_marks}\t${item.score_percentage}%`)
-                   ].join("\n");
+            text = [
+                `${t("rank")}\t${t("admission_no")}\t${t("student_name")}\t${t("class")}\t${t("father_name")}\t${t("exam_submitted")}\t${t("total_questions")}\t${t("descriptive")}\t${t("correct_answer")}\t${t("wrong_answer")}\t${t("not_attempted")}\t${t("total_exam_marks")}\t${t("total_negative_marks")}\t${t("total_scored_marks")}\t${t("score_percent")}`, 
+                ...filteredData.map(item => `${toLocaleNumber(item.rank, langCode)}\t${item.admission_no}\t${item.student_name}\t${translateClassSection(item.class, langCode)}\t${item.father_name}\t${item.exam_submitted === 'Yes' ? (t("yes") || 'Yes') : (t("no") || 'No')}\t${toLocaleNumber(item.total_questions, langCode)}\t${toLocaleNumber(item.descriptive, langCode)}\t${toLocaleNumber(item.correct_answer, langCode)}\t${toLocaleNumber(item.wrong_answer, langCode)}\t${toLocaleNumber(item.not_attempted, langCode)}\t${toLocaleNumber(item.total_exam_marks, langCode)}\t${toLocaleNumber(item.total_negative_marks, langCode)}\t${toLocaleNumber(item.total_scored_marks, langCode)}\t${toLocaleNumber(item.score_percentage, langCode)}%`)
+            ].join("\n");
         }
 
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
     };
 
     const exportToExcel = (isCsv = false) => {
         if (filteredData.length === 0) {
-            toast.error("No data available to export");
+            toast.warning(t("no_data_available_in_table") || "No data available to export");
             return;
         }
 
-        let mappedData = [];
+        let mappedData: any[] = [];
         if (activeTab === "Result Report") {
             mappedData = filteredData.map(item => ({
-                "Admission No": item.admission_no,
-                "Student Name": item.student_name,
-                "Class": item.class,
-                "Total Attempt": item.total_attempt,
-                "Remaining Attempt": item.remaining_attempt,
-                "Exam Submitted": item.exam_submitted,
+                [t("admission_no") || "Admission No"]: item.admission_no,
+                [t("student_name") || "Student Name"]: item.student_name,
+                [t("class") || "Class"]: translateClassSection(item.class, langCode),
+                [t("total_attempt") || "Total Attempt"]: toLocaleNumber(item.total_attempt, langCode),
+                [t("remaining_attempt") || "Remaining Attempt"]: toLocaleNumber(item.remaining_attempt, langCode),
+                [t("exam_submitted") || "Exam Submitted"]: item.exam_submitted === 'Yes' ? (t("yes") || "Yes") : (t("no") || "No"),
             }));
         } else if (activeTab === "Exams Report") {
             mappedData = filteredData.map(item => ({
-                "Exam": item.exam,
-                "Attempt": item.attempt,
-                "Exam From": item.exam_from,
-                "Exam To": item.exam_to,
-                "Duration": item.duration,
-                "Total Students": item.total_students,
-                "Questions": item.questions,
-                "Exam Published": item.exam_published ? "Yes" : "No",
-                "Result Published": item.result_published ? "Yes" : "No",
+                [t("exam") || "Exam"]: translateExamName(item.exam, langCode),
+                [t("attempt") || "Attempt"]: toLocaleNumber(item.attempt, langCode),
+                [t("exam_from") || "Exam From"]: item.exam_from,
+                [t("exam_to") || "Exam To"]: item.exam_to,
+                [t("duration") || "Duration"]: toLocaleNumber(item.duration, langCode),
+                [t("total_students") || "Total Students"]: toLocaleNumber(item.total_students, langCode),
+                [t("questions") || "Questions"]: toLocaleNumber(item.questions, langCode),
+                [t("exam_published") || "Exam Published"]: item.exam_published ? (t("yes") || "Yes") : (t("no") || "No"),
+                [t("result_published") || "Result Published"]: item.result_published ? (t("yes") || "Yes") : (t("no") || "No"),
             }));
         } else if (activeTab === "Student Exams Attempt Report") {
             mappedData = filteredData.map(item => ({
-                "Admission No": item.admission_no,
-                "Student": item.student_name,
-                "Class": item.class,
-                "Section": item.section,
-                "Exam": item.exam,
-                "Exam From": item.exam_from,
-                "Exam To": item.exam_to,
-                "Duration": item.duration,
-                "Exam Published": item.exam_published ? "Yes" : "No",
-                "Result Published": item.result_published ? "Yes" : "No",
+                [t("admission_no") || "Admission No"]: item.admission_no,
+                [t("student") || "Student"]: item.student_name,
+                [t("class") || "Class"]: translateClassName(item.class, langCode),
+                [t("section") || "Section"]: translateSectionName(item.section, langCode),
+                [t("exam") || "Exam"]: translateExamName(item.exam, langCode),
+                [t("exam_from") || "Exam From"]: item.exam_from,
+                [t("exam_to") || "Exam To"]: item.exam_to,
+                [t("duration") || "Duration"]: toLocaleNumber(item.duration, langCode),
+                [t("exam_published") || "Exam Published"]: item.exam_published ? (t("yes") || "Yes") : (t("no") || "No"),
+                [t("result_published") || "Result Published"]: item.result_published ? (t("yes") || "Yes") : (t("no") || "No"),
             }));
         } else if (activeTab === "Exams Rank Report") {
             mappedData = filteredData.map(item => ({
-                "Rank": item.rank,
-                "Admission No": item.admission_no,
-                "Student Name": item.student_name,
-                "Class": item.class,
-                "Father Name": item.father_name,
-                "Exam Submitted": item.exam_submitted,
-                "Total Questions": item.total_questions,
-                "Descriptive": item.descriptive,
-                "Correct Answer": item.correct_answer,
-                "Wrong Answer": item.wrong_answer,
-                "Not Attempted": item.not_attempted,
-                "Total Exam Marks": item.total_exam_marks,
-                "Total Negative Marks": item.total_negative_marks,
-                "Total Scored Marks": item.total_scored_marks,
-                "Score (%)": `${item.score_percentage}%`,
+                [t("rank") || "Rank"]: toLocaleNumber(item.rank, langCode),
+                [t("admission_no") || "Admission No"]: item.admission_no,
+                [t("student_name") || "Student Name"]: item.student_name,
+                [t("class") || "Class"]: translateClassSection(item.class, langCode),
+                [t("father_name") || "Father Name"]: item.father_name,
+                [t("exam_submitted") || "Exam Submitted"]: item.exam_submitted === 'Yes' ? (t("yes") || "Yes") : (t("no") || "No"),
+                [t("total_questions") || "Total Questions"]: toLocaleNumber(item.total_questions, langCode),
+                [t("descriptive") || "Descriptive"]: toLocaleNumber(item.descriptive, langCode),
+                [t("correct_answer") || "Correct Answer"]: toLocaleNumber(item.correct_answer, langCode),
+                [t("wrong_answer") || "Wrong Answer"]: toLocaleNumber(item.wrong_answer, langCode),
+                [t("not_attempted") || "Not Attempted"]: toLocaleNumber(item.not_attempted, langCode),
+                [t("total_exam_marks") || "Total Exam Marks"]: toLocaleNumber(item.total_exam_marks, langCode),
+                [t("total_negative_marks") || "Total Negative Marks"]: toLocaleNumber(item.total_negative_marks, langCode),
+                [t("total_scored_marks") || "Total Scored Marks"]: toLocaleNumber(item.total_scored_marks, langCode),
+                [t("score_percent") || "Score (%)"]: `${toLocaleNumber(item.score_percentage, langCode)}%`,
             }));
         }
 
@@ -327,35 +340,35 @@ export default function OnlineExaminationsReportPage() {
         
         if (isCsv) {
             XLSX.writeFile(workbook, `${activeTab.toLowerCase().replace(/ /g, "_")}.csv`, { bookType: "csv" });
-            toast.success("CSV file downloaded");
+            toast.success(t("csv_file_downloaded") || "CSV file downloaded");
         } else {
             XLSX.writeFile(workbook, `${activeTab.toLowerCase().replace(/ /g, "_")}.xlsx`);
-            toast.success("Excel file downloaded");
+            toast.success(t("excel_file_downloaded") || "Excel file downloaded");
         }
     };
 
     const exportToPDF = () => {
         if (filteredData.length === 0) {
-            toast.error("No data available to export");
+            toast.warning(t("no_data_available_in_table") || "No data available to export");
             return;
         }
 
         const doc = new jsPDF();
-        let head = [];
-        let body = [];
+        let head: any[] = [];
+        let body: any[] = [];
 
         if (activeTab === "Result Report") {
-            head = [["Admission No", "Student Name", "Class", "Total Attempt", "Remaining Attempt", "Exam Submitted"]];
-            body = filteredData.map(item => [item.admission_no, item.student_name, item.class, item.total_attempt, item.remaining_attempt, item.exam_submitted]);
+            head = [[t("admission_no") || "Admission No", t("student_name") || "Student Name", t("class") || "Class", t("total_attempt") || "Total Attempt", t("remaining_attempt") || "Remaining Attempt", t("exam_submitted") || "Exam Submitted"]];
+            body = filteredData.map(item => [item.admission_no, item.student_name, translateClassSection(item.class, langCode), toLocaleNumber(item.total_attempt, langCode), toLocaleNumber(item.remaining_attempt, langCode), item.exam_submitted === 'Yes' ? (t("yes") || "Yes") : (t("no") || "No")]);
         } else if (activeTab === "Exams Report") {
-            head = [["Exam", "Attempt", "Exam From", "Exam To", "Duration", "Total Students", "Questions", "Exam Published", "Result Published"]];
-            body = filteredData.map(item => [item.exam, item.attempt, item.exam_from, item.exam_to, item.duration, item.total_students, item.questions, item.exam_published ? 'Yes' : 'No', item.result_published ? 'Yes' : 'No']);
+            head = [[t("exam") || "Exam", t("attempt") || "Attempt", t("exam_from") || "Exam From", t("exam_to") || "Exam To", t("duration") || "Duration", t("total_students") || "Total Students", t("questions") || "Questions", t("exam_published") || "Exam Published", t("result_published") || "Result Published"]];
+            body = filteredData.map(item => [translateExamName(item.exam, langCode), toLocaleNumber(item.attempt, langCode), item.exam_from, item.exam_to, toLocaleNumber(item.duration, langCode), toLocaleNumber(item.total_students, langCode), toLocaleNumber(item.questions, langCode), item.exam_published ? (t("yes") || 'Yes') : (t("no") || 'No'), item.result_published ? (t("yes") || 'Yes') : (t("no") || 'No')]);
         } else if (activeTab === "Student Exams Attempt Report") {
-            head = [["Admission No", "Student", "Class", "Section", "Exam", "Exam From", "Exam To", "Duration", "Exam Published", "Result Published"]];
-            body = filteredData.map(item => [item.admission_no, item.student_name, item.class, item.section, item.exam, item.exam_from, item.exam_to, item.duration, item.exam_published ? 'Yes' : 'No', item.result_published ? 'Yes' : 'No']);
+            head = [[t("admission_no") || "Admission No", t("student") || "Student", t("class") || "Class", t("section") || "Section", t("exam") || "Exam", t("exam_from") || "Exam From", t("exam_to") || "Exam To", t("duration") || "Duration", t("exam_published") || "Exam Published", t("result_published") || "Result Published"]];
+            body = filteredData.map(item => [item.admission_no, item.student_name, translateClassName(item.class, langCode), translateSectionName(item.section, langCode), translateExamName(item.exam, langCode), item.exam_from, item.exam_to, toLocaleNumber(item.duration, langCode), item.exam_published ? (t("yes") || 'Yes') : (t("no") || 'No'), item.result_published ? (t("yes") || 'Yes') : (t("no") || 'No')]);
         } else if (activeTab === "Exams Rank Report") {
-            head = [["Rank", "Admission No", "Student", "Class", "Father Name", "Exam Submitted", "Total Questions", "Descriptive", "Correct", "Wrong", "Not Attempted", "Total Marks", "Negative Marks", "Scored Marks", "Score (%)"]];
-            body = filteredData.map(item => [item.rank, item.admission_no, item.student_name, item.class, item.father_name, item.exam_submitted, item.total_questions, item.descriptive, item.correct_answer, item.wrong_answer, item.not_attempted, item.total_exam_marks, item.total_negative_marks, item.total_scored_marks, `${item.score_percentage}%`]);
+            head = [[t("rank") || "Rank", t("admission_no") || "Admission No", t("student") || "Student", t("class") || "Class", t("father_name") || "Father Name", t("exam_submitted") || "Exam Submitted", t("total_questions") || "Total Questions", t("descriptive") || "Descriptive", t("correct_answer") || "Correct", t("wrong_answer") || "Wrong", t("not_attempted") || "Not Attempted", t("total_exam_marks") || "Total Marks", t("total_negative_marks") || "Negative Marks", t("total_scored_marks") || "Scored Marks", t("score_percent") || "Score (%)"]];
+            body = filteredData.map(item => [toLocaleNumber(item.rank, langCode), item.admission_no, item.student_name, translateClassSection(item.class, langCode), item.father_name, item.exam_submitted === 'Yes' ? (t("yes") || 'Yes') : (t("no") || 'No'), toLocaleNumber(item.total_questions, langCode), toLocaleNumber(item.descriptive, langCode), toLocaleNumber(item.correct_answer, langCode), toLocaleNumber(item.wrong_answer, langCode), toLocaleNumber(item.not_attempted, langCode), toLocaleNumber(item.total_exam_marks, langCode), toLocaleNumber(item.total_negative_marks, langCode), toLocaleNumber(item.total_scored_marks, langCode), `${toLocaleNumber(item.score_percentage, langCode)}%`]);
         }
 
         autoTable(doc, {
@@ -364,7 +377,7 @@ export default function OnlineExaminationsReportPage() {
         });
 
         doc.save(`${activeTab.toLowerCase().replace(/ /g, "_")}.pdf`);
-        toast.success("PDF file downloaded");
+        toast.success(t("pdf_file_downloaded") || "PDF file downloaded");
     };
 
     const handlePrint = () => {
@@ -372,451 +385,507 @@ export default function OnlineExaminationsReportPage() {
     };
 
     return (
-        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
-            {/* Gradient header card with report-type tabs inside */}
-            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Trophy className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Online Examinations Report</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Online exam results and rankings</p>
-                            </div>
-                        </div>
-                        <Link
-                            href="/user/online-exam"
-                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
-                        >
-                            <Monitor className="h-3.5 w-3.5" />
-                            Student Portal View
-                        </Link>
+        <div className="space-y-6 pb-20">
+            {/* Standalone Edge-to-Edge Gradient Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <Trophy className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("online_examinations_report") || "Online Examinations Report"}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("online_examinations_report_description") || "View student rankings, exam results, and subject marks report"}
+                        </p>
                     </div>
-                </CardHeader>
-                <CardContent className="p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {reportLinks.map((link) => {
-                            const isActive = activeTab === link.name;
-                            return (
-                                <div
-                                    key={link.name}
-                                    onClick={() => {
-                                        setActiveTab(link.name);
-                                        setReportData([]);
-                                        setIsSearched(false);
-                                        setSearchTerm("");
-                                        setCurrentPage(1);
-                                    }}
-                                    className={cn(
-                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
-                                        isActive
-                                            ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
-                                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "p-2 rounded-lg transition-all",
-                                        isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
-                                    )}>
-                                        <link.icon className="h-4 w-4" />
-                                    </div>
-                                    <span className={cn(
-                                        "text-[10px] font-bold uppercase tracking-tight",
-                                        isActive ? "text-indigo-700" : "text-gray-600"
-                                    )}>
-                                        {link.name}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
+                </div>
+                <Link
+                    href="/user/online-exam"
+                    className="flex items-center gap-1.5 h-8 px-4 rounded-full text-white text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] transition-all active:scale-95 shadow-md shrink-0"
+                >
+                    <Monitor className="h-3.5 w-3.5" />
+                    {t("student_portal_view") || "Student Portal View"}
+                </Link>
+            </div>
 
-            {/* Select Criteria Section */}
-            <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
+            {/* Navigation Grid of 4 Report Tabs */}
+            <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {reportLinks.map((link) => {
+                        const isActive = activeTab === link.id;
+                        return (
+                            <div
+                                key={link.id}
+                                onClick={() => {
+                                    setActiveTab(link.id);
+                                    setReportData([]);
+                                    setIsSearched(false);
+                                    setSearchTerm("");
+                                    setCurrentPage(1);
+                                }}
+                                className={cn(
+                                    "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all group",
+                                    isActive
+                                        ? "border-indigo-200 bg-indigo-50/50 shadow-xs ring-1 ring-indigo-200"
+                                        : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-xs"
+                                )}
+                            >
+                                <div className={cn(
+                                    "p-2 rounded-lg transition-all duration-300",
+                                    isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
+                                )}>
+                                    <link.icon className="h-4 w-4" />
+                                </div>
+                                <span className={cn(
+                                    "text-xs font-bold tracking-tight transition-colors duration-300",
+                                    isActive ? "text-[#6366f1]" : "text-gray-700"
+                                )}>
+                                    {t(link.key) || link.id}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Select Criteria Section with rearranged inline search button */}
+            <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                    <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                        <Filter className="h-4 w-4" />
+                    </span>
+                    <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        {t("select_criteria") || "Select Criteria"}
+                    </h2>
+                </div>
                 
                 {activeTab === "Result Report" || activeTab === "Exams Rank Report" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-end">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Exam <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {t("exam") || "Exam"} <span className="text-red-500">*</span>
+                            </Label>
                             <Select value={selectedExam} onValueChange={setSelectedExam}>
-                                <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                    <SelectValue placeholder={t("select") || "Select"}>
+                                        {selectedExam ? translateExamName(exams.find(e => e.id.toString() === selectedExam)?.title, langCode) : (t("select") || "Select")}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {exams.map(exam => (
-                                        <SelectItem key={exam.id} value={exam.id.toString()}>{exam.title}</SelectItem>
+                                        <SelectItem key={exam.id} value={exam.id.toString()}>
+                                            {translateExamName(exam.title, langCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
-                            <Select value={selectedClass} onValueChange={(val) => { setSelectedClass(val); setSelectedSection(""); }}>
-                                <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {t("class") || "Class"} <span className="text-red-500">*</span>
+                            </Label>
+                            <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                    <SelectValue placeholder={t("select_class") || "Select Class"}>
+                                        {selectedClass ? translateClassName(classes.find(c => c.id.toString() === selectedClass)?.name, langCode) : (t("select_class") || "Select Class")}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(cls => (
-                                        <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                        <SelectItem key={cls.id} value={cls.id.toString()}>
+                                            {translateClassName(cls.name, langCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {t("section")} <span className="text-red-500">*</span>
+                            </Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                    <SelectValue placeholder={t("select") || "Select"}>
+                                        {selectedSection === "all" ? (t("all_sections") || "All Sections") : (selectedSection ? translateSectionName(sections.find(s => s.id.toString() === selectedSection)?.name, langCode) : (t("select") || "Select"))}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="all">{t("all_sections") || "All Sections"}</SelectItem>
                                     {sections.map(sec => (
-                                        <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                        <SelectItem key={sec.id} value={sec.id.toString()}>
+                                            {translateSectionName(sec.name, langCode)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        <div className="flex items-end">
+                            <Button 
+                                onClick={handleSearch}
+                                disabled={loading}
+                                className="w-full h-9 px-6 text-xs font-bold rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider"
+                            >
+                                <Search className="h-3.5 w-3.5" />
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
+                            </Button>
                         </div>
                     </div>
                 ) : activeTab === "Exams Report" || activeTab === "Student Exams Attempt Report" ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 items-end">
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type <span className="text-red-500">*</span></Label>
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {t("search_type") || "Search Type"} <span className="text-red-500">*</span>
+                            </Label>
                             <Select value={searchType} onValueChange={setSearchType}>
-                                <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                    <SelectValue placeholder={t("select") || "Select"}>
+                                        {searchType ? (t(searchType) || searchTypeOptions.find(o => o.value === searchType)?.label) : (t("select") || "Select")}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                     {searchTypeOptions.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                            {t(opt.value) || opt.label}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date Type</Label>
+                            <Label className="text-[11px] font-semibold text-gray-600">
+                                {t("date_type") || "Date Type"}
+                            </Label>
                             <Select value={dateType} onValueChange={setDateType}>
-                                <SelectTrigger className="h-8 border-gray-200 text-[11px] shadow-none rounded focus:ring-indigo-500">
-                                    <SelectValue placeholder="Select" />
+                                <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                    <SelectValue placeholder={t("select") || "Select"}>
+                                        {dateType === "all" ? (t("all") || "All") : dateType === "exam_from" ? (t("exam_from") || "Exam From") : dateType === "exam_to" ? (t("exam_to") || "Exam To") : (t("select") || "Select")}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All</SelectItem>
-                                    <SelectItem value="exam_from">Exam From Date</SelectItem>
-                                    <SelectItem value="exam_to">Exam To Date</SelectItem>
+                                    <SelectItem value="all">{t("all") || "All"}</SelectItem>
+                                    <SelectItem value="exam_from">{t("exam_from") || "Exam From"}</SelectItem>
+                                    <SelectItem value="exam_to">{t("exam_to") || "Exam To"}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                    </div>
-                ) : (
-                    <div className="py-4 text-gray-400 italic">Criteria for this report coming soon...</div>
-                )}
 
-                {(activeTab === "Result Report" || activeTab === "Exams Report" || activeTab === "Student Exams Attempt Report" || activeTab === "Exams Rank Report") && (
-                    <div className="flex justify-end">
-                        <Button 
-                            onClick={handleSearch}
-                            disabled={loading}
-                            variant="gradient"
-                            className="text-white px-6 h-9 text-xs font-bold transition-all rounded-full shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2"
-                        >
-                            <Search className="h-4 w-4" />
-                            {loading ? "Searching..." : "Search"}
-                        </Button>
+                        <div className="flex items-end">
+                            <Button 
+                                onClick={handleSearch}
+                                disabled={loading}
+                                className="w-full h-9 px-6 text-xs font-bold rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2 uppercase tracking-wider"
+                            >
+                                <Search className="h-3.5 w-3.5" />
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
+                            </Button>
+                        </div>
                     </div>
-                )}
+                ) : null}
             </div>
 
-            {/* Report Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4 overflow-hidden min-h-[400px]">
-                
-                {/* Status message warning box for Exam Rank Report */}
-                {activeTab === "Exams Rank Report" && isSearched && reportData.length === 0 && (
-                    <div className="bg-sky-50 border border-sky-200/50 rounded-lg p-3 text-sky-700 text-xs font-semibold mb-4">
-                        Exam Rank Not Generated.
-                    </div>
-                )}
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="relative w-full md:w-64">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                        <input 
-                            type="text" 
-                            placeholder="Search..." 
-                            value={searchTerm}
-                            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                            className="w-full bg-white border border-gray-200 rounded-md py-1.5 pl-9 pr-4 text-[11px] focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all shadow-sm"
-                        />
-                    </div>
-                    
-                    <div className="flex items-center justify-between md:justify-end gap-3 flex-1">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Show</span>
-                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-7 w-16 border-gray-200 text-[11px] shadow-none rounded">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" title="Copy" onClick={exportToCopy} className="h-7 w-7 text-gray-400 hover:text-indigo-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
-                                <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="Excel" onClick={() => exportToExcel(false)} className="h-7 w-7 text-gray-400 hover:text-emerald-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
-                                <FileSpreadsheet className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 text-gray-400 hover:text-amber-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
-                                <FileText className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="PDF" onClick={exportToPDF} className="h-7 w-7 text-gray-400 hover:text-rose-600 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
-                                <FileDown className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" title="Print" onClick={handlePrint} className="h-7 w-7 text-gray-400 hover:text-gray-900 border border-gray-100 bg-gray-50/30 rounded shadow-sm">
-                                <Printer className="h-3.5 w-3.5" />
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="rounded border border-gray-50 overflow-x-auto custom-scrollbar">
-                    <Table className="min-w-full">
-                        <TableHeader className="bg-transparent">
-                            {activeTab === "Result Report" ? (
-                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4">Admission No</TableHead>
-                                    <TableHead className="py-3 px-4">Student Name</TableHead>
-                                    <TableHead className="py-3 px-4">Class</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Total Attempt</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Remaining Attempt</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Exam Submitted</TableHead>
-                                    <TableHead className="py-3 px-4 text-right">Action</TableHead>
-                                </TableRow>
-                            ) : activeTab === "Exams Report" ? (
-                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4">Exam</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Attempt</TableHead>
-                                    <TableHead className="py-3 px-4">Exam From</TableHead>
-                                    <TableHead className="py-3 px-4">Exam To</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Duration</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Total Students</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Questions</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Exam Published</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Result Published</TableHead>
-                                </TableRow>
-                            ) : activeTab === "Student Exams Attempt Report" ? (
-                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4">Admission No</TableHead>
-                                    <TableHead className="py-3 px-4">Student</TableHead>
-                                    <TableHead className="py-3 px-4">Class</TableHead>
-                                    <TableHead className="py-3 px-4">Section</TableHead>
-                                    <TableHead className="py-3 px-4">Exam</TableHead>
-                                    <TableHead className="py-3 px-4">Exam From</TableHead>
-                                    <TableHead className="py-3 px-4">Exam To</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Duration</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Exam Published</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Result Published</TableHead>
-                                </TableRow>
-                            ) : activeTab === "Exams Rank Report" ? (
-                                <TableRow className="hover:bg-transparent border-b border-gray-100 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
-                                    <TableHead className="py-3 px-4">Rank</TableHead>
-                                    <TableHead className="py-3 px-4">Admission No</TableHead>
-                                    <TableHead className="py-3 px-4">Student</TableHead>
-                                    <TableHead className="py-3 px-4">Class</TableHead>
-                                    <TableHead className="py-3 px-4">Father Name</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Exam Submitted</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Total Questions</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Descriptive</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Correct Answer</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Wrong Answer</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Not Attempted</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Total Exam Marks</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Total Negative Marks</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Total Scored Marks</TableHead>
-                                    <TableHead className="py-3 px-4 text-center">Score (%)</TableHead>
-                                </TableRow>
-                            ) : null}
-                        </TableHeader>
-                        <TableBody>
-                            {loading ? (
-                                <TableSkeleton cols={activeTab === "Result Report" ? 7 : (activeTab === "Exams Rank Report" ? 15 : (activeTab === "Student Exams Attempt Report" ? 10 : 9))} />
-                            ) : paginatedData.length > 0 ? (
-                                paginatedData.map((item, index) => (
-                                    <TableRow key={index} className="hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer border-b border-gray-100 text-[11px] text-gray-600">
-                                        {activeTab === "Result Report" ? (
-                                            <>
-                                                <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
-                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.class}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded font-bold text-gray-700">{item.total_attempt}</span>
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded font-bold text-gray-700">{item.remaining_attempt}</span>
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 rounded font-bold",
-                                                        item.exam_submitted === 'Yes' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                                                    )}>
-                                                        {item.exam_submitted}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-right">
-                                                    <Button size="icon" variant="ghost" className="h-6 w-6 bg-indigo-500 hover:bg-indigo-600 text-white rounded shadow-sm">
-                                                        <Eye className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </TableCell>
-                                            </>
-                                        ) : activeTab === "Exams Report" ? (
-                                            <>
-                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.exam}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.attempt}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.exam_from}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.exam_to}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.duration}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.total_students}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.questions}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        {item.exam_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        {item.result_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
-                                                    </div>
-                                                </TableCell>
-                                            </>
-                                        ) : activeTab === "Student Exams Attempt Report" ? (
-                                            <>
-                                                <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
-                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.class}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.section}</TableCell>
-                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.exam}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.exam_from}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.exam_to}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.duration}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        {item.exam_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <div className="flex justify-center">
-                                                        {item.result_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
-                                                    </div>
-                                                </TableCell>
-                                            </>
-                                        ) : activeTab === "Exams Rank Report" ? (
-                                            <>
-                                                <TableCell className="py-3 px-4 font-bold text-indigo-600">{item.rank}</TableCell>
-                                                <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
-                                                <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.class}</TableCell>
-                                                <TableCell className="py-3 px-4">{item.father_name}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 rounded font-bold text-[10px]",
-                                                        item.exam_submitted === 'Yes' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                                                    )}>
-                                                        {item.exam_submitted}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.total_questions}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">{item.descriptive}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-emerald-600 font-bold">{item.correct_answer}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-rose-600 font-bold">{item.wrong_answer}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-gray-400">{item.not_attempted}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center font-bold">{item.total_exam_marks}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-rose-600">{item.total_negative_marks}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center text-emerald-600 font-bold">{item.total_scored_marks}</TableCell>
-                                                <TableCell className="py-3 px-4 text-center">
-                                                    <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-extrabold">
-                                                        {item.score_percentage}%
-                                                    </span>
-                                                </TableCell>
-                                            </>
-                                        ) : null}
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow className="hover:bg-transparent h-64">
-                                    <TableCell colSpan={activeTab === "Result Report" ? 7 : (activeTab === "Exams Rank Report" ? 15 : (activeTab === "Student Exams Attempt Report" ? 10 : 9))} className="text-center py-12">
-                                        <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
-                                            <p className="text-red-400 font-bold mb-4 uppercase text-[10px] tracking-widest whitespace-nowrap">
-                                                {isSearched ? "No results found for selected criteria" : "No data available in table"}
-                                            </p>
-                                            <div className="relative">
-                                                <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
-                                                    <Monitor className="h-8 w-8 text-gray-200" />
-                                                </div>
-                                                <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full border border-indigo-50 flex items-center justify-center">
-                                                    <Plus className="h-3 w-3 text-indigo-300" />
-                                                </div>
-                                            </div>
-                                            <p className="text-emerald-500 font-bold text-[10px] flex items-center gap-1">
-                                                <span className="text-lg">←</span> Add new record or search with different criteria.
-                                            </p>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-semibold pt-4 border-t border-gray-50/50 mt-2">
-                    <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
-                        {searchTerm && ` (filtered from ${reportData.length} total entries)`}
-                    </div>
-                    {reportData.length > 0 && (
-                        <div className="flex items-center gap-1.5">
-                            <button 
-                                disabled={safeCurrentPage === 1}
-                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                className="h-8 w-8 bg-white hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
-                            >
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                <button
-                                    key={page}
-                                    onClick={() => setCurrentPage(page)}
-                                    className={cn(
-                                        "h-8 w-8 transition-all duration-300 text-xs flex items-center justify-center cursor-pointer border-none font-bold",
-                                        safeCurrentPage === page 
-                                            ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white font-extrabold shadow-lg shadow-indigo-500/25 rounded-xl hover:scale-105 active:scale-95" 
-                                            : "bg-white hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
-                                    )}
-                                >
-                                    {page}
-                                </button>
-                            ))}
-                            <button 
-                                disabled={safeCurrentPage === totalPages}
-                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                className="h-8 w-8 bg-white hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer text-gray-400 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 transition-all border border-gray-100 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
-                            >
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
+            {/* Report Table Card with flex layout pushing footer to bottom */}
+            <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden flex flex-col justify-between min-h-[480px]">
+                <div className="space-y-4">
+                    {/* Status message warning box for Exam Rank Report */}
+                    {activeTab === "Exams Rank Report" && isSearched && reportData.length === 0 && (
+                        <div className="bg-sky-50 border border-sky-200/50 rounded-lg p-3 text-sky-700 text-xs font-semibold">
+                            {t("exam_rank_not_generated") || "Exam Rank Not Generated."}
                         </div>
                     )}
+
+                    {/* Table Toolbar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                        <div className="relative w-full sm:w-64">
+                            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                            <input 
+                                type="text" 
+                                placeholder={t("search") || "Search..."} 
+                                value={searchTerm}
+                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                className="h-8 pl-8 pr-4 text-[11px] w-full rounded-lg border border-gray-200 shadow-none focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            />
+                        </div>
+                        
+                        <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">
+                                    {t("show") || "Show"}
+                                </span>
+                                <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
+                                    <SelectTrigger className="h-7 w-16 border-gray-200 text-[11px] shadow-none rounded-lg">
+                                        <SelectValue>
+                                            {toLocaleNumber(itemsPerPage, langCode)}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {["10", "25", "50", "100"].map((opt) => (
+                                            <SelectItem key={opt} value={opt}>
+                                                {toLocaleNumber(opt, langCode)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="flex items-center gap-1 text-gray-500">
+                                <Button variant="outline" size="icon" title={t("copy") || "Copy"} onClick={exportToCopy} className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50">
+                                    <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="outline" size="icon" title={t("excel") || "Excel"} onClick={() => exportToExcel(false)} className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50">
+                                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="outline" size="icon" title="CSV" onClick={() => exportToExcel(true)} className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50">
+                                    <FileText className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="outline" size="icon" title={t("pdf") || "PDF"} onClick={exportToPDF} className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50">
+                                    <FileDown className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="outline" size="icon" title={t("print") || "Print"} onClick={handlePrint} className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50">
+                                    <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="rounded-xl border border-gray-200/80 overflow-x-auto shadow-2xs">
+                        <Table className="min-w-full">
+                            <TableHeader className="bg-gray-50/75 text-xs uppercase">
+                                {activeTab === "Result Report" ? (
+                                    <TableRow className="hover:bg-transparent border-b border-gray-200 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                        <TableHead className="py-2.5 px-4">{t("admission_no") || "Admission No"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("student_name") || "Student Name"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("class") || "Class"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("total_attempt") || "Total Attempt"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("remaining_attempt") || "Remaining Attempt"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("exam_submitted") || "Exam Submitted"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-right">{t("action") || "Action"}</TableHead>
+                                    </TableRow>
+                                ) : activeTab === "Exams Report" ? (
+                                    <TableRow className="hover:bg-transparent border-b border-gray-200 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                        <TableHead className="py-2.5 px-4">{t("exam") || "Exam"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("attempt") || "Attempt"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("exam_from") || "Exam From"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("exam_to") || "Exam To"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("duration") || "Duration"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("total_students") || "Total Students"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("questions") || "Questions"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("exam_published") || "Exam Published"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("result_published") || "Result Published"}</TableHead>
+                                    </TableRow>
+                                ) : activeTab === "Student Exams Attempt Report" ? (
+                                    <TableRow className="hover:bg-transparent border-b border-gray-200 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                        <TableHead className="py-2.5 px-4">{t("admission_no") || "Admission No"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("student") || "Student"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("class") || "Class"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("section") || "Section"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("exam") || "Exam"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("exam_from") || "Exam From"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("exam_to") || "Exam To"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("duration") || "Duration"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("exam_published") || "Exam Published"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("result_published") || "Result Published"}</TableHead>
+                                    </TableRow>
+                                ) : activeTab === "Exams Rank Report" ? (
+                                    <TableRow className="hover:bg-transparent border-b border-gray-200 whitespace-nowrap text-[10px] font-bold uppercase text-gray-600">
+                                        <TableHead className="py-2.5 px-4">{t("rank") || "Rank"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("admission_no") || "Admission No"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("student") || "Student"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("class") || "Class"}</TableHead>
+                                        <TableHead className="py-2.5 px-4">{t("father_name") || "Father Name"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("exam_submitted") || "Exam Submitted"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("total_questions") || "Total Questions"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("descriptive") || "Descriptive"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("correct_answer") || "Correct Answer"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("wrong_answer") || "Wrong Answer"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("not_attempted") || "Not Attempted"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("total_exam_marks") || "Total Exam Marks"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("total_negative_marks") || "Total Negative Marks"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("total_scored_marks") || "Total Scored Marks"}</TableHead>
+                                        <TableHead className="py-2.5 px-4 text-center">{t("score_percent") || "Score (%)"}</TableHead>
+                                    </TableRow>
+                                ) : null}
+                            </TableHeader>
+                            <TableBody>
+                                {loading ? (
+                                    <TableSkeleton cols={activeTab === "Result Report" ? 7 : (activeTab === "Exams Rank Report" ? 15 : (activeTab === "Student Exams Attempt Report" ? 10 : 9))} />
+                                ) : paginatedData.length > 0 ? (
+                                    paginatedData.map((item, index) => (
+                                        <TableRow key={index} className="hover:bg-indigo-50/40 hover:shadow-xs transition-colors border-b border-gray-100 text-[11px] text-gray-600">
+                                            {activeTab === "Result Report" ? (
+                                                <>
+                                                    <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
+                                                    <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
+                                                    <TableCell className="py-3 px-4">{translateClassSection(item.class, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <span className="bg-gray-100 px-2 py-0.5 rounded font-bold text-gray-700">{toLocaleNumber(item.total_attempt, langCode)}</span>
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <span className="bg-gray-100 px-2 py-0.5 rounded font-bold text-gray-700">{toLocaleNumber(item.remaining_attempt, langCode)}</span>
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 rounded font-bold text-[10px] shadow-2xs",
+                                                            item.exam_submitted === 'Yes' ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-rose-50 text-rose-600 border border-rose-200"
+                                                        )}>
+                                                            {item.exam_submitted === 'Yes' ? (t("yes") || "Yes") : (t("no") || "No")}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-right">
+                                                        <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs active:scale-95 transition-all flex items-center justify-center cursor-pointer">
+                                                            <Eye className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </>
+                                            ) : activeTab === "Exams Report" ? (
+                                                <>
+                                                    <TableCell className="py-3 px-4 font-bold text-gray-800">{translateExamName(item.exam, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.attempt, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4">{item.exam_from}</TableCell>
+                                                    <TableCell className="py-3 px-4">{item.exam_to}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.duration, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.total_students, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.questions, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <div className="flex justify-center">
+                                                            {item.exam_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <div className="flex justify-center">
+                                                            {item.result_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
+                                                        </div>
+                                                    </TableCell>
+                                                </>
+                                            ) : activeTab === "Student Exams Attempt Report" ? (
+                                                <>
+                                                    <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
+                                                    <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
+                                                    <TableCell className="py-3 px-4">{translateClassName(item.class, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4">{translateSectionName(item.section, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 font-bold text-gray-800">{translateExamName(item.exam, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4">{item.exam_from}</TableCell>
+                                                    <TableCell className="py-3 px-4">{item.exam_to}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.duration, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <div className="flex justify-center">
+                                                            {item.exam_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <div className="flex justify-center">
+                                                            {item.result_published ? <UserCheck className="h-4 w-4 text-emerald-500" /> : <Plus className="h-4 w-4 text-gray-300 rotate-45" />}
+                                                        </div>
+                                                    </TableCell>
+                                                </>
+                                            ) : activeTab === "Exams Rank Report" ? (
+                                                <>
+                                                    <TableCell className="py-3 px-4 font-bold text-indigo-600">{toLocaleNumber(item.rank, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 font-medium">{item.admission_no}</TableCell>
+                                                    <TableCell className="py-3 px-4 font-bold text-gray-800">{item.student_name}</TableCell>
+                                                    <TableCell className="py-3 px-4">{translateClassSection(item.class, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4">{item.father_name}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 rounded font-bold text-[10px] shadow-2xs",
+                                                            item.exam_submitted === 'Yes' ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-rose-50 text-rose-600 border border-rose-200"
+                                                        )}>
+                                                            {item.exam_submitted === 'Yes' ? (t("yes") || "Yes") : (t("no") || "No")}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.total_questions, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.descriptive, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center text-emerald-600 font-bold">{toLocaleNumber(item.correct_answer, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center text-rose-600 font-bold">{toLocaleNumber(item.wrong_answer, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center text-gray-400">{toLocaleNumber(item.not_attempted, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center font-bold">{toLocaleNumber(item.total_exam_marks, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center text-rose-600">{toLocaleNumber(item.total_negative_marks, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center text-emerald-600 font-bold">{toLocaleNumber(item.total_scored_marks, langCode)}</TableCell>
+                                                    <TableCell className="py-3 px-4 text-center">
+                                                        <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded font-extrabold shadow-2xs">
+                                                            {toLocaleNumber(item.score_percentage, langCode)}%
+                                                        </span>
+                                                    </TableCell>
+                                                </>
+                                            ) : null}
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow className="hover:bg-transparent h-64">
+                                        <TableCell colSpan={activeTab === "Result Report" ? 7 : (activeTab === "Exams Rank Report" ? 15 : (activeTab === "Student Exams Attempt Report" ? 10 : 9))} className="text-center py-12">
+                                            <div className="flex flex-col items-center justify-center space-y-3 opacity-60">
+                                                <p className="text-rose-400 font-bold mb-4 uppercase text-[10px] tracking-widest whitespace-nowrap">
+                                                    {isSearched ? (t("no_results_found_for_selected_criteria") || "No results found for selected criteria") : (t("no_data_available_in_table") || "No data available in table")}
+                                                </p>
+                                                <div className="relative">
+                                                    <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center border-t border-l border-gray-100 shadow-inner">
+                                                        <Monitor className="h-8 w-8 text-gray-200" />
+                                                    </div>
+                                                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-white rounded-full border border-indigo-50 flex items-center justify-center">
+                                                        <Plus className="h-3 w-3 text-indigo-300" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-emerald-500 font-bold text-[10px] flex items-center gap-1">
+                                                    <span className="text-lg">←</span> {t("search_with_different_criteria") || "Add new record or search with different criteria."}
+                                                </p>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+
+                {/* Footer with clean pagination placed at the bottom edge */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-gray-100 text-[11px] text-gray-500 mt-6">
+                    <div>
+                        {t("showing_x_to_y_of_z", {
+                            from: toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, langCode),
+                            to: toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode),
+                            total: toLocaleNumber(totalEntries, langCode),
+                        })}
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-7 w-7 rounded-lg border-gray-200 disabled:opacity-40" 
+                            disabled={safeCurrentPage <= 1}
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                        </Button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                            <Button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={cn(
+                                    "h-7 px-2.5 text-[11px] font-bold rounded-lg transition-all",
+                                    safeCurrentPage === page 
+                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs" 
+                                        : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                                )}
+                            >
+                                {toLocaleNumber(page, langCode)}
+                            </Button>
+                        ))}
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-7 w-7 rounded-lg border-gray-200 disabled:opacity-40" 
+                            disabled={safeCurrentPage >= totalPages}
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
                 </div>
             </div>
         </div>

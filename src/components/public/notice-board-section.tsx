@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import api from "@/lib/api";
+import { sanitizeHtml } from "@/lib/sanitize";
 import {
     Calendar,
     Loader2,
@@ -22,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
-interface Notice {
+export interface Notice {
     id: number;
     title: string;
     message: string;
@@ -33,14 +34,23 @@ interface Notice {
     is_published?: boolean;
 }
 
-export function NoticeBoardSection() {
-    const [notices, setNotices] = useState<Notice[]>([]);
-    const [loading, setLoading] = useState(true);
+interface NoticeBoardSectionProps {
+    initialNotices?: Notice[];
+}
+
+export function NoticeBoardSection({ initialNotices }: NoticeBoardSectionProps = {}) {
+    const [notices, setNotices] = useState<Notice[]>(initialNotices || []);
+    const [loading, setLoading] = useState(!initialNotices);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<string>("all");
     const [viewNotice, setViewNotice] = useState<Notice | null>(null);
 
     useEffect(() => {
+        if (initialNotices !== undefined) {
+            setLoading(false);
+            return;
+        }
+
         const fetchNotices = async () => {
             try {
                 const response = await api.get("/communicate/notices");
@@ -53,7 +63,7 @@ export function NoticeBoardSection() {
             }
         };
         fetchNotices();
-    }, []);
+    }, [initialNotices]);
 
     // Filter notices
     const filteredNotices = useMemo(() => {
@@ -259,7 +269,7 @@ export function NoticeBoardSection() {
 
                             {/* Message Body */}
                             <div className="prose prose-indigo dark:prose-invert prose-sm sm:prose-base max-w-none leading-relaxed text-slate-700 dark:text-slate-300 break-words"
-                                dangerouslySetInnerHTML={{ __html: viewNotice.message }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewNotice.message) }}
                             />
                         </div>
                     )}

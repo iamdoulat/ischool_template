@@ -344,7 +344,7 @@ export default function VisitorBookPage() {
         if (visitors.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["Purpose", "Meeting With", "Visitor", "Phone", "Date", "In", "Out"]],
+            head: [[t("purpose"), t("meeting_with"), t("visitor_name"), t("phone"), t("date"), t("in_time"), t("out_time")]],
             body: visitors.map(v => [v.purpose, v.meeting_with, v.visitor_name, v.phone, v.date, v.in_time, v.out_time || "-"]),
         });
         doc.save("visitor_book.pdf");

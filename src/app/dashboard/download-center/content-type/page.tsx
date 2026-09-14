@@ -1,12 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
+import { useLanguage } from "@/components/providers/language-provider";
+import {
+    translateContentType,
+    toLocaleNumber,
+    cn,
+} from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -23,18 +30,27 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Search,
     Copy,
     FileSpreadsheet,
     FileText,
     Printer,
-    Columns,
     ChevronLeft,
     ChevronRight,
     Pencil,
     Trash2,
     Eye,
-    X,
+    Loader2,
 } from "lucide-react";
 import {
     Select,
@@ -43,7 +59,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 interface ContentType {
     id: number;
@@ -60,63 +75,101 @@ interface PaginationData {
 }
 
 export default function ContentTypePage() {
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
     const { toast } = useToast();
+
     const [searchTerm, setSearchTerm] = useState("");
     const [contentTypes, setContentTypes] = useState<ContentType[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [limit, setLimit] = useState("50");
     const [isEditing, setIsEditing] = useState<number | null>(null);
     const [viewType, setViewType] = useState<ContentType | null>(null);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
     const [formData, setFormData] = useState({
         name: "",
         description: "",
     });
 
-    useEffect(() => {
-        fetchContentTypes();
-    }, [searchTerm, limit]);
-
-    const fetchContentTypes = async (page = 1) => {
+    const fetchContentTypes = useCallback(async (page = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/download-center/content-types?page=${page}&limit=${limit}&search=${searchTerm}`);
-            setContentTypes(response.data.data);
+            const params = new URLSearchParams({
+                page: String(page),
+                limit: String(limit),
+            });
+            if (searchTerm.trim()) {
+                params.append("search", searchTerm.trim());
+            }
+
+            const response = await api.get(`/download-center/content-types?${params.toString()}`);
+            const data = response.data;
+            setContentTypes(data.data || []);
             setPagination({
-                current_page: response.data.current_page,
-                last_page: response.data.last_page,
-                total: response.data.total,
-                from: response.data.from,
-                to: response.data.to
+                current_page: data.current_page || 1,
+                last_page: data.last_page || 1,
+                total: data.total || 0,
+                from: data.from || 0,
+                to: data.to || 0,
             });
         } catch (error) {
             console.error("Error fetching content types:", error);
-            toast({ title: "Error", description: "Failed to fetch content types", variant: "destructive" });
+            toast({
+                title: t("error"),
+                description: t("failed_to_fetch_data") || "Failed to fetch content types",
+                variant: "destructive",
+            });
         } finally {
             setLoading(false);
         }
-    };
+    }, [limit, searchTerm, t, toast]);
+
+    useEffect(() => {
+        fetchContentTypes(1);
+    }, [fetchContentTypes]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!formData.name.trim()) {
+            toast({
+                title: t("error"),
+                description: t("please_fill_all_required_fields") || "Please enter a name",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setSaving(true);
         try {
             if (isEditing) {
                 await api.put(`/download-center/content-types/${isEditing}`, formData);
-                toast({ title: "Success", description: "Content Type updated successfully" });
+                toast({
+                    title: t("success"),
+                    description: t("content_type_updated_successfully"),
+                });
             } else {
-                await api.post('/download-center/content-types', formData);
-                toast({ title: "Success", description: "Content Type created successfully" });
+                await api.post("/download-center/content-types", formData);
+                toast({
+                    title: t("success"),
+                    description: t("content_type_created_successfully"),
+                });
             }
             setFormData({ name: "", description: "" });
             setIsEditing(null);
-            fetchContentTypes();
-        } catch (error: any) {
-            toast({ 
-                title: "Error", 
-                description: error.response?.data?.message || "Failed to save content type", 
-                variant: "destructive" 
+            fetchContentTypes(pagination?.current_page || 1);
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            toast({
+                title: t("error"),
+                description: err.response?.data?.message || t("failed_to_save_data") || "Failed to save content type",
+                variant: "destructive",
             });
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -125,153 +178,205 @@ export default function ContentTypePage() {
         setFormData({ name: type.name, description: type.description || "" });
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm("Are you sure you want to delete this content type?")) {
-            try {
-                await api.delete(`/download-center/content-types/${id}`);
-                toast({ title: "Success", description: "Content Type deleted successfully" });
-                fetchContentTypes();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to delete content type", variant: "destructive" });
-            }
+    const handleCancelEdit = () => {
+        setIsEditing(null);
+        setFormData({ name: "", description: "" });
+    };
+
+    const promptDelete = (id: number) => {
+        setDeleteId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.delete(`/download-center/content-types/${deleteId}`);
+            toast({
+                title: t("success"),
+                description: t("content_type_deleted_successfully"),
+            });
+            fetchContentTypes(pagination?.current_page || 1);
+        } catch (error) {
+            console.error("Error deleting content type:", error);
+            toast({
+                title: t("error"),
+                description: t("failed_to_delete_data") || "Failed to delete content type",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDeleteId(null);
         }
     };
 
     const handleCopy = () => {
-        const text = contentTypes.map(t => `${t.name}\t${t.description}`).join('\n');
+        const text = contentTypes.map((t) => `${t.name}\t${t.description || ""}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        toast({ title: t("copied"), description: t("copied_to_clipboard") || "Data copied to clipboard" });
     };
 
     const handleExportCSV = () => {
         const headers = ["Name", "Description"];
-        const rows = contentTypes.map(t => [t.name, t.description]);
-        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const rows = contentTypes.map((t) => [t.name, t.description || ""]);
+        const csvContent = [headers, ...rows].map((e) => e.join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
         link.setAttribute("download", "content_types.csv");
-        link.style.visibility = 'hidden';
+        link.style.visibility = "hidden";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
     ];
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+        <div className="space-y-6">
+            {/* Header Banner - Standalone edge-to-edge gradient */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <FileText className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Content Type</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">Manage download content categories</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("content_type")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("manage_download_content_categories")}
+                        </p>
                     </div>
                 </div>
             </div>
-            <div className="flex flex-col lg:flex-row gap-6">
-                {/* Left Section: Add Content Type */}
-                <div className="w-full lg:w-1/3 xl:w-1/4">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="p-4 border-b border-gray-100">
-                            <h2 className="text-sm font-medium text-gray-800">{isEditing ? "Edit" : "Add"} Content Type</h2>
+
+            {/* Standard 2-Column CRUD Layout: Left 1/3 Form + Right 2/3 Table (No extra cards) */}
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* Left Section: Add/Edit Content Type Form (1/3) */}
+                <div className="w-full lg:w-1/3">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-5">
+                        <div className="border-b border-gray-100 pb-3 mb-4">
+                            <h2 className="text-sm font-bold text-gray-800 tracking-tight">
+                                {isEditing ? t("edit_content_type") : t("add_content_type")}
+                            </h2>
                         </div>
-                        <form onSubmit={handleSave} className="p-4 space-y-4">
+                        <form onSubmit={handleSave} className="space-y-4">
+                            {/* Name */}
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Name <span className="text-red-500 font-bold">*</span>
+                                <Label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                                    {t("name")} <span className="text-rose-500 font-bold">*</span>
                                 </Label>
-                                <Input 
+                                <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     required
-                                    className="h-9 border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none" 
+                                    placeholder={t("enter_name") || "Enter content type name..."}
+                                    className="h-9 border-gray-200 focus-visible:ring-indigo-500 rounded-lg text-xs shadow-none bg-white"
                                 />
                             </div>
+
+                            {/* Description */}
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">
-                                    Description
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("description")}
                                 </Label>
                                 <Textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="min-h-[100px] border-gray-200 focus-visible:ring-indigo-500 rounded text-xs shadow-none resize-none"
-                                    placeholder=""
+                                    className="min-h-[110px] border-gray-200 focus-visible:ring-indigo-500 rounded-lg text-xs shadow-none resize-none bg-white"
+                                    placeholder={t("optional_description") || "Enter description..."}
                                 />
                             </div>
-                            <div className="flex justify-end pt-2 gap-2">
+
+                            {/* Form Actions */}
+                            <div className="flex items-center justify-end pt-2 gap-2">
                                 {isEditing && (
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        onClick={() => { setIsEditing(null); setFormData({ name: "", description: "" }); }}
-                                        className="h-8 text-[11px] font-bold uppercase rounded shadow-sm"
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleCancelEdit}
+                                        className="h-9 px-4 text-xs font-bold rounded-full"
                                     >
-                                        Cancel
+                                        {t("cancel")}
                                     </Button>
                                 )}
-                                <Button type="submit" className="btn-gradient text-white px-6 h-8 text-[11px] font-bold uppercase transition-all rounded shadow-sm">
-                                    {isEditing ? "Update" : "Save"}
+                                <Button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                                >
+                                    {saving ? (
+                                        <>
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("saving")}...
+                                        </>
+                                    ) : isEditing ? (
+                                        t("update")
+                                    ) : (
+                                        t("save")
+                                    )}
                                 </Button>
                             </div>
                         </form>
-                    </div>
+                    </Card>
                 </div>
 
-                {/* Right Section: Content Type List */}
-                <div className="flex-1">
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <h2 className="text-sm font-medium text-gray-800">Content Type List</h2>
+                {/* Right Section: Content Type List Table (2/3) */}
+                <div className="w-full lg:w-2/3">
+                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-4 space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-sm font-bold text-gray-800 tracking-tight">
+                                {t("content_type_list")}
+                            </h2>
                         </div>
 
-                        {/* Toolbar */}
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                            <div className="relative w-full md:w-64">
+                        {/* Search & Export Toolbar */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 border-b border-gray-100 pb-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                                 <Input
-                                    placeholder="Search content types..."
+                                    placeholder={t("search_content_types")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
+                                    className="pl-9 h-9 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/60"
                                 />
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1.5 mr-2">
+                            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                {/* Limit Selector */}
+                                <div className="flex items-center gap-1.5">
                                     <Select value={limit} onValueChange={setLimit}>
-                                        <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2">
+                                        <SelectTrigger className="h-8 w-20 text-xs border-gray-200 bg-white shadow-2xs rounded-lg px-2">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
+                                            {["10", "25", "50", "100"].map((n) => (
+                                                <SelectItem key={n} value={n} className="text-xs">
+                                                    {toLocaleNumber(Number(n), langCode)}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
-                                    <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                                 </div>
+
+                                {/* Export Tools */}
                                 <div className="flex items-center gap-1 text-gray-400">
                                     {toolbarActions.map((action, i) => (
-                                        <Button 
-                                            key={i} 
-                                            variant="ghost" 
-                                            size="icon" 
+                                        <Button
+                                            key={i}
+                                            variant="ghost"
+                                            size="icon"
                                             onClick={action.onClick}
                                             title={action.title}
-                                            className="h-7 w-7 hover:bg-gray-100 rounded"
+                                            className="h-8 w-8 hover:bg-gray-100 rounded-lg"
                                         >
-                                            <action.Icon className="h-3.5 w-3.5" />
+                                            <action.Icon className="h-4 w-4" />
                                         </Button>
                                     ))}
                                 </div>
@@ -279,52 +384,74 @@ export default function ContentTypePage() {
                         </div>
 
                         {/* Table */}
-                        <div className="rounded border border-gray-50 overflow-hidden">
+                        <div className="rounded-xl border border-gray-100 overflow-hidden bg-white shadow-2xs">
                             <Table>
-                                <TableHeader className="bg-gray-100">
-                                    <TableRow className="hover:bg-transparent border-b border-gray-100">
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Name</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Description</TableHead>
-                                        <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                <TableHeader className="bg-gray-50/80">
+                                    <TableRow className="border-b border-gray-100">
+                                        <TableHead className="text-xs font-bold text-gray-600 py-3 pl-4">
+                                            {t("name")}
+                                        </TableHead>
+                                        <TableHead className="text-xs font-bold text-gray-600 py-3">
+                                            {t("description")}
+                                        </TableHead>
+                                        <TableHead className="text-xs font-bold text-gray-600 py-3 pr-4 text-right">
+                                            {t("action")}
+                                        </TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {contentTypes.length === 0 ? (
+                                    {loading ? (
                                         <TableRow>
                                             <TableCell colSpan={3} className="h-32 text-center text-gray-400 text-xs">
-                                                No content types found.
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <Loader2 className="h-4 w-4 animate-spin text-[#6366f1]" />
+                                                    <span>{t("loading")}...</span>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : contentTypes.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="h-32 text-center text-gray-400 text-xs">
+                                                {t("no_content_types_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         contentTypes.map((type) => (
-                                            <TableRow key={type.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 whitespace-nowrap group cursor-pointer">
-                                                <TableCell className="py-3 text-gray-700 font-medium">{type.name}</TableCell>
-                                                <TableCell className="py-3 text-gray-500">{type.description || "-"}</TableCell>
-                                                <TableCell className="py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-1.5 pr-2">
-                                                        <Button 
-                                                            size="icon" 
+                                            <TableRow
+                                                key={type.id}
+                                                className="text-xs border-b border-gray-50 hover:bg-indigo-50/30 transition-colors"
+                                            >
+                                                <TableCell className="py-3 pl-4 font-semibold text-gray-800">
+                                                    {translateContentType(type.name, langCode)}
+                                                </TableCell>
+                                                <TableCell className="py-3 text-gray-500 max-w-xs truncate">
+                                                    {type.description || "-"}
+                                                </TableCell>
+                                                <TableCell className="py-3 pr-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <Button
+                                                            size="icon"
                                                             onClick={() => setViewType(type)}
-                                                            className="h-8 w-8 rounded-lg bg-[#00B578] hover:bg-[#00A068] text-white shadow-md shadow-[#00B578]/20 transition-all hover:scale-105 active:scale-95"
-                                                            title="View"
+                                                            className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs shadow-emerald-500/20 active:scale-95 transition-all"
+                                                            title={t("view")}
                                                         >
                                                             <Eye className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button 
-                                                            size="icon" 
+                                                        <Button
+                                                            size="icon"
                                                             onClick={() => handleEdit(type)}
-                                                            className="h-8 w-8 rounded-lg bg-[#FFA000] hover:bg-[#E69000] text-white shadow-md shadow-[#FFA000]/20 transition-all hover:scale-105 active:scale-95"
-                                                            title="Edit"
+                                                            className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-xs shadow-amber-500/20 active:scale-95 transition-all"
+                                                            title={t("edit")}
                                                         >
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button 
-                                                            size="icon" 
-                                                            onClick={() => handleDelete(type.id)}
-                                                            className="h-8 w-8 rounded-lg bg-[#FF3B30] hover:bg-[#E0342B] text-white shadow-md shadow-[#FF3B30]/20 transition-all hover:scale-105 active:scale-95"
-                                                            title="Delete"
+                                                        <Button
+                                                            size="icon"
+                                                            onClick={() => promptDelete(type.id)}
+                                                            className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white shadow-xs shadow-rose-500/20 active:scale-95 transition-all"
+                                                            title={t("delete")}
                                                         >
-                                                            <X className="h-3.5 w-3.5" />
+                                                            <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
@@ -335,88 +462,133 @@ export default function ContentTypePage() {
                             </Table>
                         </div>
 
-                        {/* Footer / Pagination */}
-                        <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
+                        {/* Pagination */}
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-3 border-t border-gray-100">
                             <div>
-                                Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                                {t("showing_x_to_y_of_z", {
+                                    from: toLocaleNumber(pagination?.from || 0, langCode),
+                                    to: toLocaleNumber(pagination?.to || 0, langCode),
+                                    total: toLocaleNumber(pagination?.total || 0, langCode),
+                                })}
                             </div>
                             <div className="flex gap-2 items-center">
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    disabled={pagination?.current_page === 1}
-                                    onClick={() => fetchContentTypes(pagination!.current_page - 1)}
-                                    className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!pagination || pagination.current_page <= 1}
+                                    onClick={() => fetchContentTypes((pagination?.current_page || 2) - 1)}
+                                    className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1"
                                 >
-                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                    <ChevronLeft className="h-3.5 w-3.5" /> {t("previous")}
                                 </Button>
-                                {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                                    <Button 
-                                        key={i + 1}
-                                        onClick={() => fetchContentTypes(i + 1)}
-                                        className={cn(
-                                            "h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300",
-                                            pagination?.current_page === i + 1 
-                                                ? "btn-gradient" 
-                                                : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
-                                        )}
-                                    >
-                                        {i + 1}
-                                    </Button>
-                                ))}
-                                <Button 
-                                    variant="outline" 
-                                    size="icon" 
-                                    disabled={pagination?.current_page === pagination?.last_page}
-                                    onClick={() => fetchContentTypes(pagination!.current_page + 1)}
-                                    className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: pagination?.last_page || 1 }).map((_, i) => {
+                                        const pageNum = i + 1;
+                                        const isActive = pagination?.current_page === pageNum;
+                                        return (
+                                            <Button
+                                                key={pageNum}
+                                                size="sm"
+                                                onClick={() => fetchContentTypes(pageNum)}
+                                                className={cn(
+                                                    "h-8 w-8 p-0 text-xs font-bold rounded-full transition-all",
+                                                    isActive
+                                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                                        : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                                )}
+                                            >
+                                                {toLocaleNumber(pageNum, langCode)}
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
+
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!pagination || pagination.current_page >= pagination.last_page}
+                                    onClick={() => fetchContentTypes((pagination?.current_page || 1) + 1)}
+                                    className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1"
                                 >
-                                    <ChevronRight className="h-3.5 w-3.5" />
+                                    {t("next")} <ChevronRight className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
                         </div>
-                    </div>
+                    </Card>
                 </div>
             </div>
 
             {/* View Dialog */}
             <Dialog open={!!viewType} onOpenChange={(open) => !open && setViewType(null)}>
-                <DialogContent className="max-w-md rounded-xl p-6 border-[0.5px] border-gray-200 bg-white shadow-2xl">
-                    <DialogHeader className="border-b border-muted pb-4 flex flex-row items-center gap-3 space-y-0">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
-                            <Eye className="h-5 w-5" />
+                <DialogContent className="max-w-md rounded-2xl p-0 overflow-hidden bg-white shadow-2xl border-none">
+                    <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100 flex flex-row items-center gap-3 space-y-0">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-sm">
+                            <Eye className="h-4 w-4" />
                         </span>
                         <div>
-                            <DialogTitle className="text-base font-bold text-slate-800 leading-none">
-                                View Content Type
+                            <DialogTitle className="text-base font-bold text-gray-800 leading-none">
+                                {t("view_content_type")}
                             </DialogTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">
-                                Detailed content type information
+                            <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                                {t("detailed_content_type_information")}
                             </p>
                         </div>
                     </DialogHeader>
-                    <div className="space-y-4 py-4 text-xs">
+                    <div className="space-y-4 px-6 py-5 text-xs">
                         <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Name</span>
-                            <span className="text-sm font-semibold text-foreground block bg-muted/20 p-2.5 rounded-lg border border-muted/50">{viewType?.name}</span>
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                {t("name")}
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900 block bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                {translateContentType(viewType?.name, langCode)}
+                            </span>
                         </div>
                         <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Description</span>
-                            <span className="text-sm font-medium text-foreground block bg-muted/20 p-2.5 rounded-lg border border-muted/50 whitespace-pre-wrap min-h-[80px]">
-                                {viewType?.description || "No description provided."}
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
+                                {t("description")}
+                            </span>
+                            <span className="text-xs font-medium text-gray-700 block bg-gray-50 p-2.5 rounded-lg border border-gray-100 whitespace-pre-wrap min-h-[80px]">
+                                {viewType?.description || "-"}
                             </span>
                         </div>
                     </div>
-                    <DialogFooter className="border-t border-muted pt-4">
-                        <Button 
-                            onClick={() => setViewType(null)} 
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold active:scale-95 transition-transform"
+                    <DialogFooter className="px-6 py-3 bg-gray-50/80 border-t border-gray-100">
+                        <Button
+                            onClick={() => setViewType(null)}
+                            variant="outline"
+                            className="h-9 px-5 text-xs font-bold rounded-full"
                         >
-                            Close
+                            {t("close")}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Confirmation Alert Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="rounded-2xl max-w-[400px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-base font-bold text-gray-900">
+                            {t("delete")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-gray-500">
+                            {t("delete_content_type_confirm")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full">
+                            {t("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="h-9 text-xs font-bold rounded-full bg-rose-600 hover:bg-rose-700 text-white"
+                        >
+                            {t("delete")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

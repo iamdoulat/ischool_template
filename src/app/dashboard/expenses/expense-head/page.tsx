@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Copy, FileSpreadsheet, FileText, Printer, Columns, Pencil, ChevronLeft, ChevronRight, Loader2, Save, Trash2, FileCode, Receipt } from "lucide-react";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -39,9 +40,11 @@ interface ExpenseHeadRecord {
 }
 
 export default function ExpenseHeadPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
+    const [currentPage, setCurrentPage] = useState(1);
     const [expenseHeads, setExpenseHeads] = useState<ExpenseHeadRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -134,20 +137,37 @@ export default function ExpenseHeadPage() {
         item.expense_head.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Compute paginated data
+    const itemsPerPage = parseInt(rowsPerPage, 10) || 50;
+    const totalRecords = filteredData.length;
+    const totalPages = Math.ceil(totalRecords / itemsPerPage) || 1;
+    const activePage = Math.min(currentPage, totalPages);
+    const startIndex = (activePage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalRecords);
+    const paginatedData = filteredData.slice(startIndex, endIndex);
+
     const exportData = filteredData.map(item => ({
         'Expense Head': item.expense_head,
         'Description': item.description
     }));
 
     const exportToExcel = () => {
+        if (filteredData.length === 0) {
+            toast.info(t("no_data_found") || "No data to export");
+            return;
+        }
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, t("expense_heads"));
         XLSX.writeFile(wb, "expense_heads.xlsx");
-        toast.success(t("exported_to_excel"));
+        toast.success(t("exported_to_excel") || "Exported to Excel");
     };
 
     const exportToCSV = () => {
+        if (filteredData.length === 0) {
+            toast.info(t("no_data_found") || "No data to export");
+            return;
+        }
         const ws = XLSX.utils.json_to_sheet(exportData);
         const csv = XLSX.utils.sheet_to_csv(ws);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -159,10 +179,14 @@ export default function ExpenseHeadPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success(t("exported_to_csv"));
+        toast.success(t("exported_to_csv") || "Exported to CSV");
     };
 
     const exportToPDF = () => {
+        if (filteredData.length === 0) {
+            toast.info(t("no_data_found") || "No data to export");
+            return;
+        }
         const doc = new jsPDF();
         doc.text(t("expense_head_list"), 14, 15);
         autoTable(doc, {
@@ -171,14 +195,18 @@ export default function ExpenseHeadPage() {
             startY: 20,
         });
         doc.save("expense_heads.pdf");
-        toast.success(t("exported_to_pdf"));
+        toast.success(t("exported_to_pdf") || "Exported to PDF");
     };
 
     const copyToClipboard = () => {
+        if (filteredData.length === 0) {
+            toast.info(t("no_data_found") || "No data to copy");
+            return;
+        }
         const text = exportData.map(d => Object.values(d).join('\t')).join('\n');
         const header = Object.keys(exportData[0] || {}).join('\t');
         navigator.clipboard.writeText(header + '\n' + text);
-        toast.success(t("copied_to_clipboard"));
+        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
     };
 
     return (
@@ -258,7 +286,7 @@ export default function ExpenseHeadPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("expense_head_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_expense_heads", { count: expenseHeads.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{t("x_expense_heads", { count: toLocaleNumber(expenseHeads.length, shortCode) })}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -268,56 +296,66 @@ export default function ExpenseHeadPage() {
                                     <Input
                                         placeholder={t("search") + "..."}
                                         value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                                         className="pl-3 pr-10"
                                     />
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
+                                <Select value={rowsPerPage} onValueChange={(val) => { setRowsPerPage(val); setCurrentPage(1); }}>
                                     <SelectTrigger className="w-[70px]">
-                                        <SelectValue placeholder="50" />
+                                        <SelectValue placeholder={toLocaleNumber("50", shortCode)}>
+                                            {toLocaleNumber(rowsPerPage, shortCode)}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="10">{toLocaleNumber("10", shortCode)}</SelectItem>
+                                        <SelectItem value="25">{toLocaleNumber("25", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
                                     <Button
                                         variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                                         onClick={copyToClipboard}
+                                        title={t("copy") || "Copy"}
                                     >
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                     <Button
                                         variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                                         onClick={exportToExcel}
+                                        title="Excel"
                                     >
                                         <FileSpreadsheet className="h-4 w-4" />
                                     </Button>
                                     <Button
                                         variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                                         onClick={exportToCSV}
+                                        title="CSV"
                                     >
                                         <FileText className="h-4 w-4" />
                                     </Button>
                                     <Button
                                         variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                                         onClick={exportToPDF}
+                                        title="PDF"
                                     >
                                         <FileCode className="h-4 w-4" />
                                     </Button>
                                     <Button
                                         variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
                                         onClick={() => window.print()}
+                                        title={t("print") || "Print"}
                                     >
                                         <Printer className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200">
+                                    <Button
+                                        variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                                        title={t("columns") || "Columns"}
+                                    >
                                         <Columns className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -336,14 +374,14 @@ export default function ExpenseHeadPage() {
                                 <TableBody>
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={3} />
-                                    ) : filteredData.length === 0 ? (
+                                    ) : paginatedData.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={3} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                                 {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredData.map((item) => (
+                                        paginatedData.map((item) => (
                                             <TableRow key={item.id} className="text-sm">
                                                 <TableCell className="font-medium text-gray-700 py-3">{item.expense_head}</TableCell>
                                                 <TableCell className="text-gray-600 text-center">{item.description}</TableCell>
@@ -374,12 +412,55 @@ export default function ExpenseHeadPage() {
 
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                {t("showing_x_to_y_of_z", { from: 1, to: filteredData.length, total: expenseHeads.length })}
+                                {t("showing_x_to_y_of_z", {
+                                    from: toLocaleNumber(totalRecords > 0 ? startIndex + 1 : 0, shortCode),
+                                    to: toLocaleNumber(endIndex, shortCode),
+                                    total: toLocaleNumber(totalRecords, shortCode)
+                                })}
                             </div>
-                            <div className="flex gap-1">
-                                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="default" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">1</Button>
-                                <Button variant="outline" size="sm" className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronRight className="h-4 w-4" /></Button>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                    disabled={activePage === 1}
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                {Array.from({ length: totalPages }).map((_, idx) => {
+                                    const pageNum = idx + 1;
+                                    if (totalPages > 5 && Math.abs(pageNum - activePage) > 1 && pageNum !== 1 && pageNum !== totalPages) {
+                                        if (pageNum === 2 || pageNum === totalPages - 1) {
+                                            return <span key={pageNum} className="px-1 text-gray-400">...</span>;
+                                        }
+                                        return null;
+                                    }
+                                    return (
+                                        <Button
+                                            key={pageNum}
+                                            size="sm"
+                                            className={cn(
+                                                "h-8 w-8 p-0 rounded-[10px] text-xs font-bold transition-all",
+                                                activePage === pageNum
+                                                    ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md"
+                                                    : "bg-white border border-gray-200 text-gray-600 shadow-sm hover:bg-gray-100"
+                                            )}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                        >
+                                            {toLocaleNumber(pageNum, shortCode)}
+                                        </Button>
+                                    );
+                                })}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 rounded-[10px] bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                    disabled={activePage === totalPages || totalPages === 0}
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     </CardContent>

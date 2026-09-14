@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import {
     BarChart,
     Bar,
-    LineChart,
-    Line,
     AreaChart,
     Area,
     XAxis,
@@ -17,27 +15,40 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
+import { toLocaleNumber } from "@/lib/utils";
 
 interface FinanceChartProps {
     title: string;
-    data: any[];
+    data: Array<Record<string, unknown>>;
     type: "bar" | "line";
 }
 
 export function FinanceChart({ title, data, type }: FinanceChartProps) {
     const [mounted, setMounted] = useState(false);
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+    const { settings } = useSettings();
     const isBar = type === "bar";
     const ChartComponent = isBar ? BarChart : AreaChart;
 
+    const rawSession = settings?.session_name || "2025-26";
+    const localizedSession = toLocaleNumber(rawSession, shortCode);
+    const sessionLabel = `${t("session") || "Session"} ${localizedSession}`;
+    const collectionsLabel = t("collections") || "Collections";
+    const expensesLabel = t("expenses") || "Expenses";
+
     useEffect(() => {
-        setMounted(true);
+        const id = setTimeout(() => setMounted(true), 0);
+        return () => clearTimeout(id);
     }, []);
 
     return (
         <Card className="group hover:shadow-2xl transition-all duration-300 ease-in-out border-none cursor-pointer hover:-translate-y-1 hover:scale-[1.005] h-full bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
                 <CardTitle className="text-sm font-bold text-foreground/80 uppercase tracking-widest">{title}</CardTitle>
-                <Badge variant="secondary" className="font-bold text-[10px] py-1 px-3 bg-primary/10 text-primary border-primary/20 uppercase tracking-tighter">Session 2025-26</Badge>
+                <Badge variant="secondary" className="font-bold text-[10px] py-1 px-3 bg-primary/10 text-primary border-primary/20 uppercase tracking-tighter">{sessionLabel}</Badge>
             </CardHeader>
             <CardContent className="pb-0">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0">
@@ -68,13 +79,21 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                                     axisLine={false}
                                     tickLine={false}
                                     tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))", fontWeight: 600 }}
+                                    tickFormatter={(value) => {
+                                        if (!isBar) {
+                                            const monthKey = String(value).toLowerCase();
+                                            const translated = t(monthKey);
+                                            return translated !== monthKey ? translated : value;
+                                        }
+                                        return toLocaleNumber(value, shortCode);
+                                    }}
                                     dy={10}
                                 />
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
                                     tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))", fontWeight: 600 }}
-                                    tickFormatter={(value) => value === 0 ? "0" : `${value / 1000}k`}
+                                    tickFormatter={(value) => value === 0 ? toLocaleNumber(0, shortCode) : `${toLocaleNumber(value / 1000, shortCode)}k`}
                                 />
                                 <Tooltip
                                     contentStyle={{
@@ -87,6 +106,7 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                                         border: "none"
                                     }}
                                     itemStyle={{ fontWeight: "bold" }}
+                                    formatter={(value: number | string | Array<number | string> | undefined) => [toLocaleNumber(String(value ?? 0), shortCode)]}
                                     cursor={{ stroke: "hsl(var(--primary) / 0.1)", strokeWidth: 2 }}
                                 />
                                 <Legend
@@ -98,7 +118,7 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                                 {isBar ? (
                                     <>
                                         <Bar
-                                            name="Collections"
+                                            name={collectionsLabel}
                                             dataKey="collections"
                                             fill="url(#barCollections)"
                                             radius={[4, 4, 0, 0]}
@@ -106,7 +126,7 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                                             animationDuration={1500}
                                         />
                                         <Bar
-                                            name="Expenses"
+                                            name={expensesLabel}
                                             dataKey="expenses"
                                             fill="url(#barExpenses)"
                                             radius={[4, 4, 0, 0]}
@@ -117,7 +137,7 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                                 ) : (
                                     <>
                                         <Area
-                                            name="Collections"
+                                            name={collectionsLabel}
                                             type="monotone"
                                             dataKey="collections"
                                             stroke="#84cc16"
@@ -129,7 +149,7 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
                                             animationDuration={2000}
                                         />
                                         <Area
-                                            name="Expenses"
+                                            name={expensesLabel}
                                             type="monotone"
                                             dataKey="expenses"
                                             stroke="#f43f5e"

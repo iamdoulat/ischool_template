@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Lock, Mail, GraduationCap, User, Users, Shield, Briefcase, Calculator, BookOpen, PhoneCall, Sparkles, BarChart3, Zap, ExternalLink, RefreshCw } from "lucide-react";
 import { useImageUrl } from "@/lib/image-url";
-import api from "@/lib/api";
+import api, { setCachedProfile } from "@/lib/api";
+import { tokenManager } from "@/lib/token-manager";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -46,6 +47,10 @@ export default function LoginPage() {
         setMounted(true);
         regenerateCaptcha();
 
+        // Prefetch dashboard destinations for instant client-side transition
+        router.prefetch("/dashboard");
+        router.prefetch("/user/dashboard");
+
         api.get("/system-setting/general-setting").then(r => {
             const data = r.data?.data || r.data || {};
             setSettings(data);
@@ -68,7 +73,7 @@ export default function LoginPage() {
             }
             setCaptchaModules(modulesMap);
         }).catch(() => { });
-    }, []);
+    }, [router]);
 
     const isUserLoginAllowed = mounted ? (Boolean(settings?.student_login ?? true) || Boolean(settings?.parent_login ?? true)) : true;
 
@@ -117,7 +122,33 @@ export default function LoginPage() {
 
             // Store token and role-based PWA configuration
             if (access_token) {
-                localStorage.setItem("auth_token", access_token);
+                await tokenManager.setToken(access_token);
+            }
+
+            const isMainBranch = Boolean(
+                !resData?.branch_id ||
+                resData.branch_id === 1 ||
+                String(resData.branch_id) === "1" ||
+                resData?.branch_slug === "main" ||
+                resData?.branch?.is_main
+            );
+
+            if (isMainBranch) {
+                localStorage.removeItem("active_branch_id");
+                localStorage.removeItem("active_branch_slug");
+                localStorage.removeItem("active_branch_name");
+                document.cookie = "active_branch_id=; path=/; max-age=0";
+            } else {
+                if (resData?.branch_id) {
+                    localStorage.setItem("active_branch_id", resData.branch_id.toString());
+                    document.cookie = `active_branch_id=${resData.branch_id}; path=/; max-age=2592000; SameSite=Lax`;
+                }
+                if (resData?.branch_slug) {
+                    localStorage.setItem("active_branch_slug", resData.branch_slug);
+                }
+                if (resData?.branch_name) {
+                    localStorage.setItem("active_branch_name", resData.branch_name);
+                }
             }
 
             // Redirect and configure PWA based on role
@@ -138,11 +169,13 @@ export default function LoginPage() {
             document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
             document.cookie = `user_role=${canonicalRole}; path=/; max-age=31536000; SameSite=Lax`;
 
-            if (isUserPortal) {
-                window.location.href = "/user/dashboard";
-            } else {
-                window.location.href = "/dashboard";
+            // Pre-seed the profile cache in memory for instantaneous dashboard rendering without extra API roundtrip
+            if (user) {
+                setCachedProfile(user);
             }
+
+            // Client-side instant transition
+            router.replace(targetStartUrl);
         } catch (err: unknown) {
             console.error("Login attempt failed:", err);
             const errorObj = err as { response?: { data?: { message?: string } }; message?: string };

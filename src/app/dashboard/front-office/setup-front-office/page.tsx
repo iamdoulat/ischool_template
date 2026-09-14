@@ -55,10 +55,10 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const tabs = [
-    { id: "purpose", label: "Purpose", endpoint: "/front-office-purposes", icon: Bookmark },
-    { id: "complaint-type", label: "Complaint Type", endpoint: "/complaint-types", icon: AlertCircle },
-    { id: "source", label: "Source", endpoint: "/front-office-sources", icon: Radio },
-    { id: "reference", label: "Reference", endpoint: "/front-office-references", icon: FileTextIcon },
+    { id: "purpose", key: "purpose", label: "Purpose", endpoint: "/front-office-purposes", icon: Bookmark },
+    { id: "complaint-type", key: "complaint_type", label: "Complaint Type", endpoint: "/complaint-types", icon: AlertCircle },
+    { id: "source", key: "source", label: "Source", endpoint: "/front-office-sources", icon: Radio },
+    { id: "reference", key: "reference", label: "Reference", endpoint: "/front-office-references", icon: FileTextIcon },
 ];
 
 interface TabItem {
@@ -96,7 +96,7 @@ export default function SetupFrontOfficePage() {
     });
 
     const activeTab = tabs.find(t => t.id === activeTabId)!;
-    const currentTabLabel = activeTab.label;
+    const currentTabLabel = t(activeTab.key) || activeTab.label;
 
     const fetchItems = useCallback(async () => {
         setLoading(true);
@@ -262,7 +262,7 @@ export default function SetupFrontOfficePage() {
         if (items.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [[currentTabLabel, "Description"]],
+            head: [[currentTabLabel, t("description")]],
             body: items.map(item => [item.name, item.description || "-"]),
         });
         doc.save(`${activeTabId}_list.pdf`);
@@ -317,7 +317,7 @@ export default function SetupFrontOfficePage() {
                                         )}
                                     >
                                         <TabIcon className={cn("h-4 w-4 shrink-0", isActive ? "text-white" : "text-gray-400")} />
-                                        <span>{tab.label}</span>
+                                        <span>{t(tab.key) || tab.label}</span>
                                     </button>
                                 );
                             })}
@@ -349,7 +349,7 @@ export default function SetupFrontOfficePage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder={`Enter ${currentTabLabel.toLowerCase()} name`}
+                                        placeholder={t("enter_name")}
                                         required
                                     />
                                 </div>
@@ -362,7 +362,7 @@ export default function SetupFrontOfficePage() {
                                         className="min-h-[100px] rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-medium text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none"
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        placeholder="Optional description"
+                                        placeholder={t("optional_description")}
                                     />
                                 </div>
 

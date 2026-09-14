@@ -14,49 +14,49 @@ export function PWAInit() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Register Service Worker only in production; unregister in development to prevent chunk collision
+    // Register Service Worker across all environments to meet Chromium PWA installability requirements
     if ("serviceWorker" in navigator) {
-      if (process.env.NODE_ENV === "production") {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/sw.js")
-            .then((reg) => {
-              console.log("PWA Service Worker registered with scope:", reg.scope);
-              reg.update();
-              if (reg.waiting) {
-                reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      const registerSW = () => {
+        navigator.serviceWorker
+          .register("/sw.js", { scope: "/" })
+          .then((reg) => {
+            reg.update().catch(() => {});
+            if (reg.waiting) {
+              reg.waiting.postMessage({ type: "SKIP_WAITING" });
+            }
+            reg.onupdatefound = () => {
+              const installingWorker = reg.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
+                    installingWorker.postMessage({ type: "SKIP_WAITING" });
+                  }
+                };
               }
-              reg.onupdatefound = () => {
-                const installingWorker = reg.installing;
-                if (installingWorker) {
-                  installingWorker.onstatechange = () => {
-                    if (installingWorker.state === "installed" && navigator.serviceWorker.controller) {
-                      installingWorker.postMessage({ type: "SKIP_WAITING" });
-                    }
-                  };
-                }
-              };
-            })
-            .catch((err) => {
-              console.log("PWA Service Worker registration failed:", err);
-            });
-        });
+            };
+          })
+          .catch((err) => {
+            console.log("PWA Service Worker registration note:", err);
+          });
+      };
+
+      if (document.readyState === "complete") {
+        registerSW();
       } else {
-        // In development, ensure no active service workers intercept webpack HMR chunks
-        navigator.serviceWorker.getRegistrations().then((registrations) => {
-          for (const registration of registrations) {
-            registration.unregister();
-          }
-        }).catch(() => {});
+        window.addEventListener("load", registerSW);
       }
     }
+
+    // Capture global PWA beforeinstallprompt event
+    const handleGlobalInstallPrompt = (e: Event) => {
+      // Store prompt event so address bar and UI buttons can trigger it
+      (window as unknown as { deferredPWAInstallPrompt?: Event }).deferredPWAInstallPrompt = e;
+    };
+    window.addEventListener("beforeinstallprompt", handleGlobalInstallPrompt);
 
     // Dynamic Head Tag Sync for iOS Safari, Browser Favicon & Android mobile app installation
     const localFavicon = localStorage.getItem("ischool_favicon");
     const localShortName = localStorage.getItem("ischool_pwa_app_short_name");
-    const localIcon192 = localStorage.getItem("ischool_pwa_icon_192");
-    const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
-    const localIconMaskable = localStorage.getItem("ischool_pwa_icon_maskable");
     const storedRole = (localStorage.getItem("user_role") || "").toLowerCase().trim();
     const storedStartUrl = localStorage.getItem("pwa_start_url")?.trim();
     const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
@@ -99,14 +99,12 @@ export function PWAInit() {
     }
 
     const appShortName = settings?.pwa_app_short_name || localShortName || "iSchool";
-    const rawFavicon = settings?.favicon || localFavicon || "/logo-admin-small.png";
-    const rawPwaIcon192 = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_maskable || localIconMaskable || "/logo-app.png";
-    const rawPwaIcon512 = settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_maskable || localIconMaskable || "/logo-app.png";
+    const rawFavicon = settings?.favicon || localFavicon || "/icons/icon-192x192.png";
     
-    const resolvedFaviconUrl = getImageUrl(rawFavicon) || "/logo-admin-small.png";
+    const resolvedFaviconUrl = getImageUrl(rawFavicon) || "/icons/icon-192x192.png";
     const faviconHref = `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
-    const appIcon = getImageUrl(rawPwaIcon192) || "/logo-app.png";
-    const appIcon512 = getImageUrl(rawPwaIcon512) || "/logo-app.png";
+    const appIcon = "/icons/icon-192x192.png";
+    const appIcon512 = "/icons/icon-512x512.png";
 
     // 1. Safely sync Browser Main Favicon, Apple Touch Icon and Dynamic Manifest link tags
     const syncLinkTag = (rel: string, href: string) => {

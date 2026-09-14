@@ -285,7 +285,7 @@ export default function PostalReceivePage() {
         if (receives.length === 0) return;
         const doc = new jsPDF();
         autoTable(doc, {
-            head: [["From Title", "Reference No", "To Title", "Date"]],
+            head: [[t("from_title"), t("reference_no"), t("to_title"), t("date")]],
             body: receives.map(d => [d.from_title, d.reference_no || "-", d.to_title || "-", d.date || "-"]),
         });
         doc.save("postal_receives.pdf");
@@ -340,7 +340,7 @@ export default function PostalReceivePage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.from_title || ""}
                                         onChange={(e) => setFormData({ ...formData, from_title: e.target.value })}
-                                        placeholder="Sender / From Title"
+                                        placeholder={t("enter_from_title")}
                                         required
                                     />
                                 </div>
@@ -353,7 +353,7 @@ export default function PostalReceivePage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.reference_no || ""}
                                         onChange={(e) => setFormData({ ...formData, reference_no: e.target.value })}
-                                        placeholder="Reference Number"
+                                        placeholder={t("enter_reference_no")}
                                     />
                                 </div>
 
@@ -365,7 +365,7 @@ export default function PostalReceivePage() {
                                         className="min-h-[70px] rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-medium text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none"
                                         value={formData.address || ""}
                                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                        placeholder="Sender Address"
+                                        placeholder={t("enter_address")}
                                     />
                                 </div>
 
@@ -377,7 +377,7 @@ export default function PostalReceivePage() {
                                         className="min-h-[70px] rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-medium text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 resize-none"
                                         value={formData.note || ""}
                                         onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                                        placeholder="Receive notes"
+                                        placeholder={t("receive_notes")}
                                     />
                                 </div>
 
@@ -389,7 +389,7 @@ export default function PostalReceivePage() {
                                         className="h-10 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-xs font-semibold text-gray-900 dark:text-gray-100 focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all"
                                         value={formData.to_title || ""}
                                         onChange={(e) => setFormData({ ...formData, to_title: e.target.value })}
-                                        placeholder="Recipient / To Title"
+                                        placeholder={t("enter_to_title")}
                                     />
                                 </div>
 
@@ -400,7 +400,7 @@ export default function PostalReceivePage() {
                                     <DatePicker
                                         value={formData.date || ""}
                                         onChange={(val) => setFormData({ ...formData, date: val })}
-                                        placeholder="Select Date"
+                                        placeholder={t("select_date")}
                                         className="h-10 bg-gray-50/40 border-gray-200"
                                     />
                                 </div>
@@ -411,7 +411,7 @@ export default function PostalReceivePage() {
                                     </label>
                                     <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-4 bg-gray-50/40 hover:bg-indigo-50/20 hover:border-indigo-400 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 group/upload">
                                         <CloudUpload className="h-6 w-6 text-gray-400 group-hover/upload:text-indigo-600 transition-colors" />
-                                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 group-hover/upload:text-indigo-600 transition-colors">{t("drag_and_drop_file") || "Upload Attachment"}</p>
+                                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 group-hover/upload:text-indigo-600 transition-colors">{t("upload_attachment")}</p>
                                     </div>
                                 </div>
 

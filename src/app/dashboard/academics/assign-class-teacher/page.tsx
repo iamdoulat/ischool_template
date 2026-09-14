@@ -47,7 +47,8 @@ import {
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
+import { useLanguage } from "@/components/providers/language-provider";
 
 function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
     return (
@@ -106,6 +107,7 @@ export default function AssignClassTeacherPage() {
     const { toast } = useToast();
     const { t } = useTranslation();
     const tt = useTranslateToast();
+    const { language } = useLanguage();
     const [searchTerm, setSearchTerm] = useState("");
     const [teacherFilterTerm, setTeacherFilterTerm] = useState("");
 
@@ -288,7 +290,7 @@ export default function AssignClassTeacherPage() {
     // Export functions
     const handleCopy = () => {
         const text = filteredAssignments.map((a, idx) =>
-            `${idx + 1}. ${a.class_name} (Section ${a.section_name}) - Teachers: ${a.teachers.map(t => `${t.name}${t.staff_id ? ` (${t.staff_id})` : ''}`).join(', ')}`
+            `${idx + 1}. ${translateClassName(a.class_name, language?.short_code)} (${t("section")} ${translateSectionName(a.section_name, language?.short_code)}) - ${t("class_teacher")}: ${a.teachers.map(t_ => `${t_.name}${t_.staff_id ? ` (${toLocaleNumber(t_.staff_id, language?.short_code)})` : ''}`).join(', ')}`
         ).join("\n");
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
@@ -297,10 +299,10 @@ export default function AssignClassTeacherPage() {
     const handleExportExcel = () => {
         const data = filteredAssignments.map((a, idx) => ({
             "#": idx + 1,
-            [t("class")]: a.class_name,
-            [t("section")]: `Section ${a.section_name}`,
-            [t("class_teacher")]: a.teachers.map(t => `${t.name}${t.staff_id ? ` (${t.staff_id})` : ''}`).join(', '),
-            "Status": "Active"
+            [t("class")]: translateClassName(a.class_name, language?.short_code),
+            [t("section")]: `${t("section")} ${translateSectionName(a.section_name, language?.short_code)}`,
+            [t("class_teacher")]: a.teachers.map(t_ => `${t_.name}${t_.staff_id ? ` (${toLocaleNumber(t_.staff_id, language?.short_code)})` : ''}`).join(', '),
+            [t("status")]: t("active") || "Active"
         }));
         const worksheet = XLSX.utils.json_to_sheet(data);
         const workbook = XLSX.utils.book_new();
@@ -310,15 +312,15 @@ export default function AssignClassTeacherPage() {
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        doc.text("Class Teacher Assignment List", 14, 15);
+        doc.text(t("class_teacher_list"), 14, 15);
         autoTable(doc, {
-            head: [["#", t("class"), t("section"), t("class_teacher"), "Status"]],
+            head: [["#", t("class"), t("section"), t("class_teacher"), t("status")]],
             body: filteredAssignments.map((a, idx) => [
                 idx + 1,
-                a.class_name,
-                `Section ${a.section_name}`,
-                a.teachers.map(t => `${t.name}${t.staff_id ? ` (${t.staff_id})` : ''}`).join(', '),
-                "Active"
+                translateClassName(a.class_name, language?.short_code),
+                `${t("section")} ${translateSectionName(a.section_name, language?.short_code)}`,
+                a.teachers.map(t_ => `${t_.name}${t_.staff_id ? ` (${toLocaleNumber(t_.staff_id, language?.short_code)})` : ''}`).join(', '),
+                t("active") || "Active"
             ]),
             startY: 20
         });
@@ -375,7 +377,7 @@ export default function AssignClassTeacherPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(c => (
-                                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                                        <SelectItem key={c.id} value={c.id.toString()}>{translateClassName(c.name, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -396,7 +398,7 @@ export default function AssignClassTeacherPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(s => (
-                                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                                        <SelectItem key={s.id} value={s.id.toString()}>{translateSectionName(s.name, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -412,9 +414,9 @@ export default function AssignClassTeacherPage() {
                                     <button
                                         type="button"
                                         onClick={handleSelectAllTeachers}
-                                        className="text-[10px] font-bold text-indigo-600 hover:underline"
+                                        className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                                     >
-                                        {selectedStaffIds.length === staffList.length ? "Deselect All" : "Select All"}
+                                        {selectedStaffIds.length === staffList.length ? (t("deselect_all") || "Deselect All") : (t("select_all") || "Select All")}
                                     </button>
                                 )}
                             </div>
@@ -423,7 +425,7 @@ export default function AssignClassTeacherPage() {
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
                                 <Input
-                                    placeholder="Search teacher by name / ID..."
+                                    placeholder={t("search_teacher_by_name_or_id") || "Search teacher by name / ID..."}
                                     value={teacherFilterTerm}
                                     onChange={(e) => setTeacherFilterTerm(e.target.value)}
                                     className="pl-8 h-8 text-[11px] border-gray-200 bg-gray-50/30 rounded-lg shadow-none"
@@ -473,7 +475,7 @@ export default function AssignClassTeacherPage() {
                                     type="button"
                                     onClick={resetForm}
                                     variant="outline"
-                                    className="h-9 px-4 rounded-full text-xs font-bold uppercase border-gray-200"
+                                    className="h-9 px-4 rounded-full text-xs font-bold uppercase border-gray-200 cursor-pointer"
                                 >
                                     {t("cancel")}
                                 </Button>
@@ -481,7 +483,7 @@ export default function AssignClassTeacherPage() {
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="btn-gradient text-white px-8 h-9 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50 transition-all rounded-full flex items-center gap-2"
+                                className="btn-gradient text-white px-8 h-9 text-[11px] font-bold uppercase shadow-lg shadow-orange-200/50 transition-all rounded-full flex items-center gap-2 cursor-pointer"
                             >
                                 {saving ? (
                                     <>
@@ -507,7 +509,7 @@ export default function AssignClassTeacherPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("class_teacher_list")}</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("total_entries_count", { count: filteredAssignments.length })}</p>
+                                <p className="text-[11px] text-gray-500 mt-1">{t(filteredAssignments.length === 0 ? "zero_assigned_sections" : filteredAssignments.length === 1 ? "one_assigned_section" : "x_assigned_sections", { count: toLocaleNumber(filteredAssignments.length, language?.short_code) })}</p>
                             </div>
                         </div>
 
@@ -521,7 +523,7 @@ export default function AssignClassTeacherPage() {
                                     title={t("delete_selected")}
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
-                                    Delete ({selectedKeys.length})
+                                    {t("delete")} ({toLocaleNumber(selectedKeys.length, language?.short_code)})
                                 </Button>
                             )}
                             <Button onClick={handleCopy} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("copy")}>
@@ -536,18 +538,18 @@ export default function AssignClassTeacherPage() {
                             <Button onClick={handlePrint} variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("print")}>
                                 <Printer className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title="Columns">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer" title={t("columns") || "Columns"}>
                                 <Columns className="h-4 w-4" />
                             </Button>
                         </div>
                     </CardHeader>
                     <CardContent className="px-5 pb-5 space-y-4">
                         {/* Search Bar */}
-                        <div className="flex justify-between items-center gap-4">
-                            <div className="relative w-full md:w-72">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                            <div className="relative w-full sm:w-80">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Search by class, section, teacher..."
+                                    placeholder={t("search_by_class_section_teacher") || "Search by class, section, teacher..."}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-9 h-9 text-xs border-gray-200 bg-gray-50/30 rounded-lg focus-visible:ring-indigo-500 shadow-none"
@@ -555,9 +557,9 @@ export default function AssignClassTeacherPage() {
                             </div>
 
                             {filteredAssignments.length > 0 && (
-                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10.5px] font-bold py-1 px-2.5">
-                                    <Users className="h-3 w-3 mr-1" />
-                                    {filteredAssignments.length} Assigned Sections
+                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[11px] font-bold py-1.5 px-3 rounded-lg">
+                                    <Users className="h-3.5 w-3.5 mr-1.5 text-indigo-600" />
+                                    {t(filteredAssignments.length === 0 ? "zero_assigned_sections" : filteredAssignments.length === 1 ? "one_assigned_section" : "x_assigned_sections", { count: toLocaleNumber(filteredAssignments.length, language?.short_code) })}
                                 </Badge>
                             )}
                         </div>
@@ -575,11 +577,11 @@ export default function AssignClassTeacherPage() {
                                             />
                                         </TableHead>
                                         <TableHead className="py-3 px-3 w-[60px]">#</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[140px]">{t("class")}</TableHead>
+                                        <TableHead className="py-3 px-4 min-w-[130px]">{t("class")}</TableHead>
                                         <TableHead className="py-3 px-4 min-w-[120px]">{t("section")}</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[260px]">{t("class_teacher")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[110px]">Status</TableHead>
-                                        <TableHead className="py-3 px-4 text-right w-[100px]">{t("action")}</TableHead>
+                                        <TableHead className="py-3 px-4 min-w-[240px]">{t("class_teacher")}</TableHead>
+                                        <TableHead className="py-3 px-4 w-[120px] whitespace-nowrap">{t("status")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-right w-[100px] whitespace-nowrap">{t("action")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -598,11 +600,11 @@ export default function AssignClassTeacherPage() {
                                                 <TableRow
                                                     key={assignment.id}
                                                     className={cn(
-                                                        "text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 transition-colors group align-top",
+                                                        "text-[13px] border-b last:border-0 border-gray-100 dark:border-gray-800 transition-colors group align-middle",
                                                         isSelected ? "bg-indigo-50/40 dark:bg-indigo-950/20" : "hover:bg-indigo-50/20"
                                                     )}
                                                 >
-                                                    <TableCell className="pl-4 py-3.5">
+                                                    <TableCell className="pl-4 py-3 align-middle">
                                                         <Checkbox
                                                             checked={isSelected}
                                                             onCheckedChange={() => toggleRowSelection(assignment.id)}
@@ -611,32 +613,32 @@ export default function AssignClassTeacherPage() {
                                                     </TableCell>
 
                                                     {/* Serial Number */}
-                                                    <TableCell className="py-3.5 px-3 font-bold text-gray-400 text-xs">
-                                                        {idx + 1}
+                                                    <TableCell className="py-3 px-3 font-bold text-gray-400 text-xs align-middle">
+                                                        {toLocaleNumber(idx + 1, language?.short_code)}
                                                     </TableCell>
 
                                                     {/* Class */}
-                                                    <TableCell className="py-3.5 px-4">
+                                                    <TableCell className="py-3 px-4 align-middle">
                                                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-100 dark:border-indigo-800 shadow-2xs">
                                                             <GraduationCap className="h-3.5 w-3.5 text-indigo-500" />
-                                                            {assignment.class_name}
+                                                            {translateClassName(assignment.class_name, language?.short_code)}
                                                         </span>
                                                     </TableCell>
 
                                                     {/* Section */}
-                                                    <TableCell className="py-3.5 px-4">
-                                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-[11px] border border-gray-200 dark:border-gray-700">
-                                                            Section {assignment.section_name}
+                                                    <TableCell className="py-3 px-4 align-middle">
+                                                        <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-[11px] border border-gray-200 dark:border-gray-700">
+                                                            {t("section")} {translateSectionName(assignment.section_name, language?.short_code)}
                                                         </span>
                                                     </TableCell>
 
                                                     {/* Class Teacher(s) */}
-                                                    <TableCell className="py-3.5 px-4">
-                                                        <div className="space-y-1.5">
+                                                    <TableCell className="py-3 px-4 align-middle">
+                                                        <div className="flex flex-wrap gap-1.5 py-0.5">
                                                             {assignment.teachers.map((teacher) => (
                                                                 <div
                                                                     key={teacher.id}
-                                                                    className="inline-flex items-center gap-2.5 px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-2xs mr-1.5 mb-1"
+                                                                    className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 shadow-2xs"
                                                                 >
                                                                     <Avatar className="h-6 w-6 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shrink-0">
                                                                         <AvatarImage
@@ -662,22 +664,22 @@ export default function AssignClassTeacherPage() {
                                                     </TableCell>
 
                                                     {/* Status */}
-                                                    <TableCell className="py-3.5 px-4">
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold">
+                                                    <TableCell className="py-3 px-4 align-middle whitespace-nowrap">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10.5px] font-bold">
                                                             <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                                            Assigned
+                                                            {t("assigned") || "Assigned"}
                                                         </span>
                                                     </TableCell>
 
                                                     {/* Actions */}
-                                                    <TableCell className="py-3.5 px-4 text-right">
+                                                    <TableCell className="py-3 px-4 text-right align-middle whitespace-nowrap">
                                                         <div className="flex items-center justify-end gap-1.5">
                                                             <Button
                                                                 onClick={() => handleEdit(assignment)}
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs"
-                                                                title="Edit Assignment"
+                                                                className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition-all shadow-xs cursor-pointer"
+                                                                title={t("edit")}
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
@@ -685,8 +687,8 @@ export default function AssignClassTeacherPage() {
                                                                 onClick={() => confirmDelete(assignment.id)}
                                                                 size="icon"
                                                                 variant="ghost"
-                                                                className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs"
-                                                                title="Delete Assignment"
+                                                                className="h-7 w-7 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-all shadow-xs cursor-pointer"
+                                                                title={t("delete_assignment")}
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -704,7 +706,7 @@ export default function AssignClassTeacherPage() {
                         {filteredAssignments.length > 0 && (
                             <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-2 uppercase tracking-tight">
                                 <div>
-                                    {t("showing_x_to_y_of_z", { from: 1, to: filteredAssignments.length, total: filteredAssignments.length })}
+                                    {t("showing_x_to_y_of_z", { from: toLocaleNumber(1, language?.short_code), to: toLocaleNumber(filteredAssignments.length, language?.short_code), total: toLocaleNumber(filteredAssignments.length, language?.short_code) })}
                                 </div>
                                 <div className="flex gap-1.5">
                                     <Button
@@ -718,7 +720,7 @@ export default function AssignClassTeacherPage() {
                                         size="sm"
                                         className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm font-black"
                                     >
-                                        1
+                                        {toLocaleNumber(1, language?.short_code)}
                                     </Button>
                                     <Button
                                         size="sm"
@@ -765,7 +767,7 @@ export default function AssignClassTeacherPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-bold text-gray-800">{t("delete_selected_assignments")}</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm text-gray-500 leading-relaxed mt-2">
-                            {t("delete_selected_assignments_confirm_message", { count: selectedKeys.length })}
+                            {t("delete_selected_assignments_confirm_message", { count: toLocaleNumber(selectedKeys.length, language?.short_code) })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">

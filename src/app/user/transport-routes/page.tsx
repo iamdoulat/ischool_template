@@ -8,7 +8,7 @@ import {
     Phone, IdCard, Route as RouteIcon, CheckCircle2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassScheduleTime } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 
 type PickupPoint = {
@@ -33,7 +33,7 @@ type TransportData = {
 };
 
 export default function TransportRoutesPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const [data, setData] = useState<TransportData | null>(null);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
@@ -101,12 +101,12 @@ export default function TransportRoutesPage() {
 
     const vehicleFields = data.vehicle
         ? [
-              { label: t("vehicle_number"), value: data.vehicle.vehicle_number, icon: Bus },
+              { label: t("vehicle_number"), value: toLocaleNumber(data.vehicle.vehicle_number, language?.short_code), icon: Bus },
               { label: t("vehicle_model"), value: data.vehicle.vehicle_model, icon: Bus },
-              { label: t("made_year"), value: data.vehicle.made || "N/A", icon: BadgeCheck },
+              { label: t("made_year"), value: toLocaleNumber(data.vehicle.made, language?.short_code) || "N/A", icon: BadgeCheck },
               { label: t("driver_name"), value: data.vehicle.driver_name, icon: User },
-              { label: t("driver_licence"), value: data.vehicle.driver_licence, icon: IdCard },
-              { label: t("driver_contact"), value: data.vehicle.driver_contact, icon: Phone },
+              { label: t("driver_licence"), value: toLocaleNumber(data.vehicle.driver_licence, language?.short_code), icon: IdCard },
+              { label: t("driver_contact"), value: toLocaleNumber(data.vehicle.driver_contact, language?.short_code), icon: Phone },
           ]
         : [];
 
@@ -124,7 +124,7 @@ export default function TransportRoutesPage() {
                         <div className="min-w-0">
                             <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("transport_route")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {points.length} {t("pickup_point")}{points.length === 1 ? "" : "s"} {t("on_your_route")}
+                                {toLocaleNumber(points.length, language?.short_code)} {t("pickup_point")}{points.length === 1 ? "" : t("s_plural") || "s"} {t("on_your_route")}
                             </p>
                         </div>
                     </div>
@@ -204,7 +204,7 @@ export default function TransportRoutesPage() {
                                                         {isAssigned ? (
                                                             <CheckCircle2 className="h-5 w-5 text-green-500" />
                                                         ) : (
-                                                            <span className="text-[11px] font-bold text-gray-500">{index + 1}</span>
+                                                            <span className="text-[11px] font-bold text-gray-500">{toLocaleNumber(index + 1, language?.short_code)}</span>
                                                         )}
                                                     </span>
                                                 </div>
@@ -229,11 +229,11 @@ export default function TransportRoutesPage() {
                                                     <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[12px] font-medium text-gray-600">
                                                         <span className="flex items-center gap-1.5">
                                                             <Navigation className="h-3.5 w-3.5 text-[#6366F1]" />
-                                                            {t("distance")}: <span className="text-gray-800">{point.distance || "0.0"} km</span>
+                                                            {t("distance")}: <span className="text-gray-800">{toLocaleNumber(point.distance || "0.0", language?.short_code)} {t("km") || "km"}</span>
                                                         </span>
                                                         <span className="flex items-center gap-1.5">
                                                             <Clock className="h-3.5 w-3.5 text-[#FF9800]" />
-                                                            {t("pickup")}: <span className="text-gray-800">{point.pickup_time || "N/A"}</span>
+                                                            {t("pickup")}: <span className="text-gray-800">{translateClassScheduleTime(point.pickup_time, language?.short_code) || "N/A"}</span>
                                                         </span>
                                                     </div>
                                                 </div>

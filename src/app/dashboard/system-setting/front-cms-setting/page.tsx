@@ -344,7 +344,7 @@ export default function FrontCmsSettingPage() {
                 <Button
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:from-orange-500 hover:to-indigo-600 text-white px-6 h-9 font-bold rounded-full shadow-md flex items-center gap-2"
+                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-9 font-bold rounded-full shadow-md flex items-center gap-2 transition-all"
                 >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     {t("save_all_changes")}
@@ -358,28 +358,28 @@ export default function FrontCmsSettingPage() {
                         className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <Globe size={15} className="stroke-[2.5px]" />
-                        <span>System</span>
+                        <span>{t("system_tab")}</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="social"
                         className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <Share2 size={15} className="stroke-[2.5px]" />
-                        <span>Social Links</span>
+                        <span>{t("social_links_tab")}</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="hero"
                         className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <ImageIcon size={15} className="stroke-[2.5px]" />
-                        <span>Hero</span>
+                        <span>{t("hero_tab")}</span>
                     </TabsTrigger>
                     <TabsTrigger
                         value="sections"
                         className="text-[11px] font-bold uppercase gap-2 px-6 !text-gray-700 dark:!text-gray-200 hover:!text-gray-900 dark:hover:!text-white hover:bg-gray-100/80 dark:hover:bg-gray-800/80 data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#FF9800] data-[state=active]:to-[#6366F1] data-[state=active]:!text-white data-[state=active]:shadow-sm rounded-lg transition-all duration-200 cursor-pointer"
                     >
                         <LayoutPanelLeft size={15} className="stroke-[2.5px]" />
-                        <span>Sections</span>
+                        <span>{t("sections_tab")}</span>
                     </TabsTrigger>
                 </TabsList>
 
@@ -444,7 +444,7 @@ export default function FrontCmsSettingPage() {
                                         >
                                             {settings.logo_preview ? (
                                                 <>
-                                                    <img src={settings.logo_preview} className="h-full w-full object-contain p-4 transition-transform group-hover:scale-105" alt="Logo" />
+                                                    <img src={settings.logo_preview} className="h-full w-full object-contain p-4 transition-transform group-hover:scale-105" alt={t("brand_logo")} />
                                                     <div className="absolute inset-0 bg-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                         <Pencil className="h-5 w-5 text-indigo-600" />
                                                     </div>
@@ -472,13 +472,13 @@ export default function FrontCmsSettingPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 pt-2">{t("google_analytics")}</Label>
                                     <div className="md:col-span-8">
-                                        <Textarea value={settings.google_analytics} onChange={(e) => setSettings({ ...settings, google_analytics: e.target.value })} className="min-h-[100px] text-[10px] font-mono border-gray-200 shadow-none rounded-lg bg-gray-50/50" placeholder="Paste script here..." />
+                                        <Textarea value={settings.google_analytics} onChange={(e) => setSettings({ ...settings, google_analytics: e.target.value })} className="min-h-[100px] text-[10px] font-mono border-gray-200 shadow-none rounded-lg bg-gray-50/50" placeholder={t("paste_script_here_placeholder")} />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-12 items-start gap-4">
                                     <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight md:col-span-4 pt-2">{t("cookie_consent")}</Label>
                                     <div className="md:col-span-8">
-                                        <Textarea value={settings.cookie_consent} onChange={(e) => setSettings({ ...settings, cookie_consent: e.target.value })} className="min-h-[70px] text-[11px] border-gray-200 shadow-none rounded-lg bg-gray-50/50" placeholder="Cookie usage policy text..." />
+                                        <Textarea value={settings.cookie_consent} onChange={(e) => setSettings({ ...settings, cookie_consent: e.target.value })} className="min-h-[70px] text-[11px] border-gray-200 shadow-none rounded-lg bg-gray-50/50" placeholder={t("cookie_usage_policy_placeholder")} />
                                     </div>
                                 </div>
                             </div>
@@ -566,8 +566,8 @@ export default function FrontCmsSettingPage() {
                                         </div>
                                         <div className={cn(
                                             "py-2 text-center text-[9px] font-bold uppercase tracking-tight",
-                                            settings.current_theme === theme.id ? "bg-gradient-to-r from-orange-400 to-indigo-500 text-white" : "bg-gray-50 text-gray-400"
-                                        )}>{theme.name}</div>
+                                            settings.current_theme === theme.id ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-50 text-gray-400"
+                                        )}>{t(`theme_${theme.id}`) || theme.name}</div>
                                     </div>
                                 ))}
                             </div>
@@ -579,13 +579,13 @@ export default function FrontCmsSettingPage() {
                 <TabsContent value="social" className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-8 space-y-6">
                         <div className="border-b border-gray-50 pb-4">
-                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Social Media Links</h2>
-                            <p className="text-[11px] text-gray-400">Configure institutional social media profile links displayed on public pages</p>
+                            <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">{t("social_media_links")}</h2>
+                            <p className="text-[11px] text-gray-400">{t("configure_social_media_links_desc")}</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {Object.keys(settings.social_media || {}).map((platform) => (
                                 <div key={platform} className="space-y-1.5">
-                                    <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">{platform.replace(/_/g, ' ')}</Label>
+                                    <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-tight">{t(platform) || platform.replace(/_/g, ' ')}</Label>
                                     <Input
                                         value={settings.social_media[platform] || ""}
                                         onChange={(e) => updateSocialField(platform, e.target.value)}
@@ -606,7 +606,7 @@ export default function FrontCmsSettingPage() {
                                 <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
                                     <ImageIcon size={18} className="stroke-[2.5px]" />
                                 </div>
-                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">Hero Banner & Main Title</h2>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">{t("hero_banner_main_title")}</h2>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.hero_enabled !== false ? t("enabled") : t("disabled")}</span>
@@ -633,34 +633,34 @@ export default function FrontCmsSettingPage() {
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("badge_text")}</Label>
-                                    <Input value={settings.header_footer_sections?.header_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, header_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Admissions Open for 2026-27" />
+                                    <Input value={settings.header_footer_sections?.header_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, header_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("admissions_open_sample_placeholder")} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("title_part_1_before_highlight")}</Label>
-                                    <Input value={settings.header_footer_sections?.hero_title_part1 || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_part1: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Empowering" />
+                                    <Input value={settings.header_footer_sections?.hero_title_part1 || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_part1: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("empowering_sample_placeholder")} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("title_highlighted_word")}</Label>
-                                    <Input value={settings.header_footer_sections?.hero_title_highlight || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_highlight: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Minds" />
+                                    <Input value={settings.header_footer_sections?.hero_title_highlight || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_highlight: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("minds_sample_placeholder")} />
                                 </div>
                             </div>
                             <div className="space-y-6">
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("title_part_2_after_highlight")}</Label>
-                                    <Input value={settings.header_footer_sections?.hero_title_part2 || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_part2: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Shaping" />
+                                    <Input value={settings.header_footer_sections?.hero_title_part2 || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_part2: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("shaping_sample_placeholder")} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("title_gradient_word")}</Label>
-                                    <Input value={settings.header_footer_sections?.hero_title_gradient || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_gradient: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Futures" />
+                                    <Input value={settings.header_footer_sections?.hero_title_gradient || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_title_gradient: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("futures_sample_placeholder")} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("subtitle_description")}</Label>
-                                    <Textarea value={settings.header_footer_sections?.hero_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_subtitle: e.target.value } })} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Hero description text..." />
+                                    <Textarea value={settings.header_footer_sections?.hero_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_subtitle: e.target.value } })} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder={t("hero_description_placeholder")} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 pt-2">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("button_1_text")}</Label>
-                                        <Input value={settings.header_footer_sections?.hero_btn1_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn1_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Apply for Admission" />
+                                        <Input value={settings.header_footer_sections?.hero_btn1_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn1_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("apply_for_admission_sample")} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("button_1_link")}</Label>
@@ -668,7 +668,7 @@ export default function FrontCmsSettingPage() {
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("button_2_text")}</Label>
-                                        <Input value={settings.header_footer_sections?.hero_btn2_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn2_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Take a Tour" />
+                                        <Input value={settings.header_footer_sections?.hero_btn2_text || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, hero_btn2_text: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("take_a_tour_sample")} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("button_2_link")}</Label>
@@ -691,7 +691,7 @@ export default function FrontCmsSettingPage() {
                                 <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
                                     <Info size={18} className="stroke-[2.5px]" />
                                 </div>
-                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">About Us Section Settings</h2>
+                                <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">{t("about_us_section_settings")}</h2>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{settings.header_footer_sections?.about_enabled !== false ? t("enabled") : t("disabled")}</span>
@@ -705,19 +705,19 @@ export default function FrontCmsSettingPage() {
                         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                             <div className="md:col-span-8 space-y-5">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Badge / Small Heading</Label>
-                                    <Input value={settings.about_us?.section_title || ""} onChange={(e) => updateNestedField("about_us", "section_title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="Welcome to Our School" />
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("section_badge_small_heading")}</Label>
+                                    <Input value={settings.about_us?.section_title || ""} onChange={(e) => updateNestedField("about_us", "section_title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder={t("welcome_to_school_placeholder")} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Main Headline Title</Label>
-                                    <Input value={settings.about_us?.title || ""} onChange={(e) => updateNestedField("about_us", "title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder="Empowering Minds, Inspiring Character, Shaping the Future." />
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("main_headline_title")}</Label>
+                                    <Input value={settings.about_us?.title || ""} onChange={(e) => updateNestedField("about_us", "title", e.target.value)} className="h-10 text-[12px] font-medium rounded-lg bg-gray-50/30" placeholder={t("empowering_minds_sample_placeholder")} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Description Narrative</Label>
-                                    <Textarea value={settings.about_us?.description || ""} onChange={(e) => updateNestedField("about_us", "description", e.target.value)} className="min-h-[140px] text-[11px] leading-relaxed rounded-lg bg-gray-50/30" placeholder="Main description content..." />
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("description_narrative")}</Label>
+                                    <Textarea value={settings.about_us?.description || ""} onChange={(e) => updateNestedField("about_us", "description", e.target.value)} className="min-h-[140px] text-[11px] leading-relaxed rounded-lg bg-gray-50/30" placeholder={t("main_description_placeholder")} />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Left Side Main Image URL</Label>
+                                    <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("left_side_main_image_url")}</Label>
                                     <div className="flex gap-3">
                                         <Input value={settings.about_us?.image_url || ""} onChange={(e) => updateNestedField("about_us", "image_url", e.target.value)} className="h-10 text-[11px] rounded-lg bg-gray-50/30 flex-1" placeholder="https://..." />
                                         {settings.about_us?.image_url && (
@@ -730,56 +730,56 @@ export default function FrontCmsSettingPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Experience Years Badge</Label>
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("experience_years_badge")}</Label>
                                         <Input value={settings.about_us?.experience_years || ""} onChange={(e) => updateNestedField("about_us", "experience_years", e.target.value)} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="25+" />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Experience Label</Label>
-                                        <Input value={settings.about_us?.experience_label || ""} onChange={(e) => updateNestedField("about_us", "experience_label", e.target.value)} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Years Of Educational Excellence" />
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("experience_label")}</Label>
+                                        <Input value={settings.about_us?.experience_label || ""} onChange={(e) => updateNestedField("about_us", "experience_label", e.target.value)} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("years_of_educational_excellence_placeholder")} />
                                     </div>
                                 </div>
 
                                 {/* Key Highlights / Bullet Points */}
                                 <div className="pt-4 border-t border-gray-100 space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Key Highlights / Bullet Points</h4>
-                                        <span className="text-[9px] text-gray-400 font-medium">Displayed with checkmarks beside main description</span>
+                                        <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t("key_highlights_bullet_points")}</h4>
+                                        <span className="text-[9px] text-gray-400 font-medium">{t("displayed_with_checkmarks_desc")}</span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 1</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("bullet_point_1")}</Label>
                                             <Input
                                                 value={settings.about_us?.bullet_point_1 ?? ""}
                                                 onChange={(e) => updateNestedField("about_us", "bullet_point_1", e.target.value)}
                                                 className="h-9 text-[11px] rounded-lg bg-gray-50/30"
-                                                placeholder="Innovative STEM Curriculum"
+                                                placeholder={t("innovative_stem_placeholder")}
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 2</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("bullet_point_2")}</Label>
                                             <Input
                                                 value={settings.about_us?.bullet_point_2 ?? ""}
                                                 onChange={(e) => updateNestedField("about_us", "bullet_point_2", e.target.value)}
                                                 className="h-9 text-[11px] rounded-lg bg-gray-50/30"
-                                                placeholder="Personalized Mentorship"
+                                                placeholder={t("personalized_mentorship_placeholder")}
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 3</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("bullet_point_3")}</Label>
                                             <Input
                                                 value={settings.about_us?.bullet_point_3 ?? ""}
                                                 onChange={(e) => updateNestedField("about_us", "bullet_point_3", e.target.value)}
                                                 className="h-9 text-[11px] rounded-lg bg-gray-50/30"
-                                                placeholder="Global Ethical Values"
+                                                placeholder={t("global_ethical_values_placeholder")}
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Bullet Point 4</Label>
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("bullet_point_4")}</Label>
                                             <Input
                                                 value={settings.about_us?.bullet_point_4 ?? ""}
                                                 onChange={(e) => updateNestedField("about_us", "bullet_point_4", e.target.value)}
                                                 className="h-9 text-[11px] rounded-lg bg-gray-50/30"
-                                                placeholder="Comprehensive Sports & Arts"
+                                                placeholder={t("comprehensive_sports_arts_placeholder")}
                                             />
                                         </div>
                                     </div>
@@ -787,22 +787,22 @@ export default function FrontCmsSettingPage() {
 
                                 {/* Mission, Vision, Core Values */}
                                 <div className="pt-4 border-t border-gray-100 space-y-4">
-                                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Mission, Vision & Values</h4>
+                                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t("mission_vision_values")}</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Mission Title & Text</Label>
-                                            <Input value={settings.about_us?.mission_title || ""} onChange={(e) => updateNestedField("about_us", "mission_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder="Our Mission" />
-                                            <Textarea value={settings.about_us?.mission_description || ""} onChange={(e) => updateNestedField("about_us", "mission_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Mission details..." />
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("mission_title_text")}</Label>
+                                            <Input value={settings.about_us?.mission_title || ""} onChange={(e) => updateNestedField("about_us", "mission_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder={t("our_mission_placeholder")} />
+                                            <Textarea value={settings.about_us?.mission_description || ""} onChange={(e) => updateNestedField("about_us", "mission_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder={t("mission_details_placeholder")} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Vision Title & Text</Label>
-                                            <Input value={settings.about_us?.vision_title || ""} onChange={(e) => updateNestedField("about_us", "vision_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder="Our Vision" />
-                                            <Textarea value={settings.about_us?.vision_description || ""} onChange={(e) => updateNestedField("about_us", "vision_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Vision details..." />
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("vision_title_text")}</Label>
+                                            <Input value={settings.about_us?.vision_title || ""} onChange={(e) => updateNestedField("about_us", "vision_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder={t("our_vision_placeholder")} />
+                                            <Textarea value={settings.about_us?.vision_description || ""} onChange={(e) => updateNestedField("about_us", "vision_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder={t("vision_details_placeholder")} />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Core Values Title & Text</Label>
-                                            <Input value={settings.about_us?.values_title || ""} onChange={(e) => updateNestedField("about_us", "values_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder="Our Core Values" />
-                                            <Textarea value={settings.about_us?.values_description || ""} onChange={(e) => updateNestedField("about_us", "values_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder="Values details..." />
+                                            <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("core_values_title_text")}</Label>
+                                            <Input value={settings.about_us?.values_title || ""} onChange={(e) => updateNestedField("about_us", "values_title", e.target.value)} className="h-8 text-[11px] font-bold rounded-lg bg-gray-50/30" placeholder={t("our_core_values_placeholder")} />
+                                            <Textarea value={settings.about_us?.values_description || ""} onChange={(e) => updateNestedField("about_us", "values_description", e.target.value)} className="min-h-[80px] text-[11px] rounded-lg bg-gray-50/30" placeholder={t("values_details_placeholder")} />
                                         </div>
                                     </div>
                                 </div>
@@ -810,12 +810,12 @@ export default function FrontCmsSettingPage() {
                                 {/* Accordion Items */}
                                 <div className="space-y-3 pt-4 border-t border-gray-100">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Educational Pillars (Accordion Items)</Label>
+                                        <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("educational_pillars_accordion")}</Label>
                                         <Button onClick={() => {
                                             const accordions = [...(settings.about_us?.accordions || [])];
                                             accordions.push({ id: Date.now(), title: "", content: "" });
                                             updateNestedField("about_us", "accordions", accordions);
-                                        }} className="bg-gradient-to-r from-orange-400 to-indigo-500 text-white h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1">
+                                        }} className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-7 text-[9px] font-bold rounded-full px-3 flex items-center gap-1 shadow-sm">
                                             <Plus size={12} /> {t("add_item")}
                                         </Button>
                                     </div>
@@ -832,12 +832,12 @@ export default function FrontCmsSettingPage() {
                                                     const accordions = [...(settings.about_us?.accordions || [])];
                                                     accordions[idx].title = e.target.value;
                                                     updateNestedField("about_us", "accordions", accordions);
-                                                }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder="Accordion title..." />
+                                                }} className="h-8 text-[11px] font-bold bg-white border-gray-100 rounded-lg" placeholder={t("accordion_title_placeholder")} />
                                                 <Textarea value={acc.content} onChange={(e) => {
                                                     const accordions = [...(settings.about_us?.accordions || [])];
                                                     accordions[idx].content = e.target.value;
                                                     updateNestedField("about_us", "accordions", accordions);
-                                                }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" placeholder="Accordion content..." />
+                                                }} className="min-h-[60px] text-[11px] bg-white border-gray-100 rounded-lg leading-relaxed" placeholder={t("accordion_content_placeholder")} />
                                             </div>
                                         </div>
                                     ))}
@@ -867,7 +867,7 @@ export default function FrontCmsSettingPage() {
                                 </div>
                                 <Button 
                                     onClick={openCoursePicker}
-                                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
                                 >
                                     <Plus size={14} className="stroke-[3px]" /> {t("browse_courses")}
                                 </Button>
@@ -875,12 +875,12 @@ export default function FrontCmsSettingPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Heading (H1)</Label>
-                                <Input value={settings.header_footer_sections?.courses_section_title || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, courses_section_title: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Our Main Courses" />
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("section_heading_h1")}</Label>
+                                <Input value={settings.header_footer_sections?.courses_section_title || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, courses_section_title: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("our_main_courses_placeholder")} />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("section_subtitle")}</Label>
-                                <Input value={settings.header_footer_sections?.courses_section_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, courses_section_subtitle: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Section subtitle..." />
+                                <Input value={settings.header_footer_sections?.courses_section_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, courses_section_subtitle: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("section_subtitle_placeholder")} />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -907,7 +907,8 @@ export default function FrontCmsSettingPage() {
                                                 </div>
                                                 <div className="w-24">
                                                     <Input placeholder={t("price")} value={course.price || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].price = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
-                                                </div>                                                <div className="w-32">
+                                                </div>
+                                                <div className="w-32">
                                                     <Input placeholder={t("apply_link")} value={course.link || ""} onChange={(e) => { const n = [...settings.main_courses]; n[idx].link = e.target.value; setSettings({ ...settings, main_courses: n }); }} className="h-9 text-[11px] bg-white border-gray-100 rounded-lg" />
                                                 </div>
                                             </div>
@@ -951,9 +952,9 @@ export default function FrontCmsSettingPage() {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="text-[12px] font-bold text-gray-800 truncate">{course.title}</h4>
-                                                        <p className="text-[10px] text-gray-400 font-medium truncate">{course.category || "General"} · ${course.price || "0"}</p>
+                                                        <p className="text-[10px] text-gray-400 font-medium truncate">{course.category || t("general")} · ${course.price || "0"}</p>
                                                     </div>
-                                                    <Button size="sm" disabled={alreadyAdded} onClick={() => { addOnlineCourse(course); }} className={`h-8 text-[10px] font-bold rounded-full px-4 ${alreadyAdded ? 'bg-green-100 text-green-600 border-0' : 'bg-gradient-to-r from-orange-400 to-indigo-500 text-white'}`}>
+                                                    <Button size="sm" disabled={alreadyAdded} onClick={() => { addOnlineCourse(course); }} className={`h-8 text-[10px] font-bold rounded-full px-4 ${alreadyAdded ? 'bg-green-100 text-green-600 border-0' : 'bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white'}`}>
                                                         {alreadyAdded ? <><Check size={12} className="mr-1" /> {t("added")}</> : t("select")}
                                                     </Button>
                                                 </div>
@@ -988,7 +989,7 @@ export default function FrontCmsSettingPage() {
                                 </div>
                                 <Button 
                                     onClick={() => addListItem("experienced_staffs", { name: "", role: "", image_url: "" })} 
-                                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-5 h-8 font-bold rounded-full shadow-md flex items-center gap-2"
                                 >
                                     <Plus size={14} className="stroke-[3px]" /> {t("add_faculty_member")}
                                 </Button>
@@ -996,12 +997,12 @@ export default function FrontCmsSettingPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-4">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Section Heading (H1)</Label>
-                                <Input value={settings.header_footer_sections?.staff_section_title || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, staff_section_title: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Our Experienced Staffs" />
+                                <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("section_heading_h1")}</Label>
+                                <Input value={settings.header_footer_sections?.staff_section_title || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, staff_section_title: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("our_experienced_staffs_placeholder")} />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">{t("section_subtitle")}</Label>
-                                <Input value={settings.header_footer_sections?.staff_section_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, staff_section_subtitle: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder="Section subtitle..." />
+                                <Input value={settings.header_footer_sections?.staff_section_subtitle || ""} onChange={(e) => setSettings({ ...settings, header_footer_sections: { ...settings.header_footer_sections, staff_section_subtitle: e.target.value } })} className="h-9 text-[11px] rounded-lg bg-gray-50/30" placeholder={t("section_subtitle_placeholder")} />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1142,7 +1143,7 @@ export default function FrontCmsSettingPage() {
                 <Button
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-gradient-to-r from-orange-400 to-indigo-500 hover:opacity-95 text-white px-16 h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-full shadow-[0_8px_20px_rgba(99,102,241,0.3)] hover:shadow-[0_10px_25px_rgba(99,102,241,0.25)] hover:-translate-y-1"
+                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-16 h-11 text-xs font-bold uppercase tracking-widest transition-all rounded-full shadow-[0_8px_20px_rgba(99,102,241,0.3)] hover:shadow-[0_10px_25px_rgba(99,102,241,0.25)] hover:-translate-y-1"
                 >
                     {saving ? (
                         <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> {t("saving_configuration")}</>

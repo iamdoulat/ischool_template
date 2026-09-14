@@ -8,16 +8,39 @@ export function getPageTitleFromPathname(pathname: string, t?: (key: string) => 
 
     // Known custom route overrides
     const knownMap: Record<string, string> = {
-        "/login": "Login",
-        "/forgot-password": "Forgot Password",
-        "/reset-password": "Reset Password",
-        "/dashboard": "Dashboard",
-        "/user/profile": "My Profile",
-        "/user/dashboard": "Student Dashboard",
+        "/login": "login",
+        "/forgot-password": "forgot_password",
+        "/reset-password": "reset_password",
+        "/dashboard": "dashboard",
+        "/user/profile": "my_profile",
+        "/user/dashboard": "student_dashboard",
+        "/dashboard/transport/fees-master": "transport_fees_master",
+        "/dashboard/transport/pickup-point": "pickup_point_list",
+        "/dashboard/transport/route": "route_list",
+        "/dashboard/transport/vehicles": "vehicle_list",
+        "/dashboard/transport/assign-vehicle": "vehicle_route_list",
+        "/dashboard/transport/route-pickup-point": "route_pickup_point",
+        "/dashboard/transport/student-transport-fees": "student_transport_fees",
+        "/dashboard/hostel/hostel-room": "hostel_room_list",
+        "/dashboard/hostel/room-type": "room_type_list",
+        "/dashboard/hostel/hostel": "hostel_list",
+        "/dashboard/hostel": "hostel_list",
+        "/dashboard/behaviour-records/assign-incident": "assign_incident",
+        "/dashboard/behaviour-records/incidents": "incidents",
+        "/dashboard/behaviour-records/reports": "behaviour_reports",
     };
 
     if (knownMap[cleanPath]) {
-        return knownMap[cleanPath];
+        const key = knownMap[cleanPath];
+        if (t) {
+            try {
+                const translated = t(key);
+                if (translated && translated !== key) return translated;
+            } catch {
+                // Ignore
+            }
+        }
+        return key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
     }
 
     const last = segments[segments.length - 1];

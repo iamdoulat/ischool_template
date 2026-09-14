@@ -24,7 +24,7 @@ import {
     FileBox, Printer, Columns, Loader2,
     Users, Phone, CreditCard, CalendarDays, LogIn, LogOut, StickyNote,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateVisitorPurpose } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
@@ -44,7 +44,8 @@ interface Visitor {
 }
 
 export default function UserVisitorBookPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [visitors, setVisitors] = useState<Visitor[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -70,8 +71,7 @@ export default function UserVisitorBookPage() {
             setTotalEntries(res.total || dataArr.length);
             setTotalPages(res.last_page || Math.ceil((res.total || dataArr.length) / perPage) || 1);
             setCurrentPage(res.current_page || page);
-        } catch (error) {
-            console.error("Error fetching visitors:", error);
+        } catch {
             toast.error(t("failed_to_load_visitors"));
         } finally {
             setLoading(false);
@@ -103,7 +103,10 @@ export default function UserVisitorBookPage() {
                     <div>
                         <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("visitor_book")}</h1>
                         <p className="text-[11px] text-gray-500 mt-1">
-                            {totalEntries} {totalEntries === 1 ? t("visitor") : t("visitors")} {t("recorded")}
+                            {(totalEntries === 1
+                                ? (t("visitor_count_recorded") || `${toLocaleNumber(totalEntries, langCode)} ${t("visitor")} ${t("recorded")}`)
+                                : (t("visitors_count_recorded") || `${toLocaleNumber(totalEntries, langCode)} ${t("visitors")} ${t("recorded")}`)
+                            ).replace("{count}", toLocaleNumber(totalEntries, langCode))}
                         </p>
                     </div>
                 </div>
@@ -125,14 +128,16 @@ export default function UserVisitorBookPage() {
 
                         <div className="flex items-center justify-between md:justify-end gap-2">
                             <Select value={itemsPerPage} onValueChange={(val) => setItemsPerPage(val)}>
-                                <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
-                                    <SelectValue placeholder="50" />
+                                <SelectTrigger className="h-8 min-w-16 px-2 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
+                                    <SelectValue placeholder={toLocaleNumber(50, langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, langCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, langCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, langCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, langCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
@@ -188,21 +193,21 @@ export default function UserVisitorBookPage() {
                                 ) : (
                                     visitors.map((item, idx) => (
                                         <TableRow key={item.id || idx} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/30 transition-colors whitespace-nowrap text-gray-600">
-                                            <TableCell className="py-3 px-4">{item.purpose}</TableCell>
+                                            <TableCell className="py-3 px-4">{translateVisitorPurpose(item.purpose, langCode)}</TableCell>
                                             <TableCell className="py-3 px-4 font-semibold text-gray-800">{item.visitorName}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.phone}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.idCard}</TableCell>
-                                            <TableCell className="py-3 px-4 text-center">{item.numberOfPerson}</TableCell>
+                                            <TableCell className="py-3 px-4">{item.phone ? toLocaleNumber(item.phone, langCode) : "-"}</TableCell>
+                                            <TableCell className="py-3 px-4">{item.idCard ? toLocaleNumber(item.idCard, langCode) : "-"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-center">{toLocaleNumber(item.numberOfPerson, langCode)}</TableCell>
                                             <TableCell className="py-3 px-4 max-w-[200px] truncate" title={item.note}>{item.note || "-"}</TableCell>
-                                            <TableCell className="py-3 px-4">{item.date}</TableCell>
+                                            <TableCell className="py-3 px-4">{item.date ? toLocaleNumber(item.date, langCode) : "-"}</TableCell>
                                             <TableCell className="py-3 px-4">
                                                 <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                                                    <LogIn className="h-3 w-3" />{item.inTime || "-"}
+                                                    <LogIn className="h-3 w-3" />{item.inTime ? toLocaleNumber(item.inTime, langCode) : "-"}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-3 px-4">
                                                 <span className="inline-flex items-center gap-1 text-rose-500 font-medium">
-                                                    <LogOut className="h-3 w-3" />{item.outTime || "-"}
+                                                    <LogOut className="h-3 w-3" />{item.outTime ? toLocaleNumber(item.outTime, langCode) : "-"}
                                                 </span>
                                             </TableCell>
                                         </TableRow>
@@ -231,20 +236,20 @@ export default function UserVisitorBookPage() {
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
                                                 <h3 className="text-[13px] font-bold text-gray-800 leading-snug truncate">{item.visitorName}</h3>
-                                                <p className="text-[11px] text-indigo-500 font-medium">{item.purpose}</p>
+                                                <p className="text-[11px] text-indigo-500 font-medium">{translateVisitorPurpose(item.purpose, langCode)}</p>
                                             </div>
                                             <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
-                                                <Users className="h-3 w-3" />{item.numberOfPerson}
+                                                <Users className="h-3 w-3" />{toLocaleNumber(item.numberOfPerson, langCode)}
                                             </span>
                                         </div>
 
                                         {/* Meta grid */}
                                         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600 border-t border-gray-100 pt-2.5">
-                                            <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.phone || "-"}</span>
-                                            <span className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.idCard || "-"}</span>
-                                            <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.date || "-"}</span>
-                                            <span className="flex items-center gap-1.5 text-emerald-600"><LogIn className="h-3.5 w-3.5 shrink-0" />{item.inTime || "-"}</span>
-                                            <span className="flex items-center gap-1.5 text-rose-500"><LogOut className="h-3.5 w-3.5 shrink-0" />{item.outTime || "-"}</span>
+                                            <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.phone ? toLocaleNumber(item.phone, langCode) : "-"}</span>
+                                            <span className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.idCard ? toLocaleNumber(item.idCard, langCode) : "-"}</span>
+                                            <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.date ? toLocaleNumber(item.date, langCode) : "-"}</span>
+                                            <span className="flex items-center gap-1.5 text-emerald-600"><LogIn className="h-3.5 w-3.5 shrink-0" />{item.inTime ? toLocaleNumber(item.inTime, langCode) : "-"}</span>
+                                            <span className="flex items-center gap-1.5 text-rose-500"><LogOut className="h-3.5 w-3.5 shrink-0" />{item.outTime ? toLocaleNumber(item.outTime, langCode) : "-"}</span>
                                         </div>
 
                                         {item.note && (
@@ -262,8 +267,9 @@ export default function UserVisitorBookPage() {
                     {/* ── Pagination ── */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} {t("of")} {totalEntries} {t("entries")}
+                            {totalEntries === 0
+                                ? t("no_entries")
+                                : `${t("showing")} ${toLocaleNumber(startIndex + 1, langCode)} ${t("to")} ${toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), langCode)} ${t("of")} ${toLocaleNumber(totalEntries, langCode)} ${t("entries")}`}
                         </div>
 
                         {totalPages > 1 && (
@@ -287,7 +293,7 @@ export default function UserVisitorBookPage() {
                                                 : "bg-white text-gray-500 border border-gray-200 hover:shadow-sm active:scale-95"
                                         )}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, langCode)}
                                     </button>
                                 ))}
 

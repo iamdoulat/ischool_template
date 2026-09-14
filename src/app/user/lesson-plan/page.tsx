@@ -15,9 +15,16 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateSubjectName,
+    translateDayName,
+    translateDayShortName,
+} from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
 
 interface PlanItem {
     subject: string;
@@ -45,7 +52,7 @@ const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
 const DAY_COLORS: Record<string, { card: string; accent: string; text: string; dot: string }> = {
     Monday:    { card: "border-indigo-200 bg-indigo-50/50 dark:bg-slate-900/90 dark:border-indigo-900/60",   accent: "text-indigo-600 dark:text-indigo-400",  text: "text-indigo-700 dark:text-indigo-300",  dot: "bg-indigo-500" },
     Tuesday:   { card: "border-violet-200 bg-violet-50/50 dark:bg-slate-900/90 dark:border-violet-900/60",   accent: "text-violet-600 dark:text-violet-400",  text: "text-violet-700 dark:text-violet-300",  dot: "bg-violet-500" },
-    Wednesday: { card: "border-sky-200 bg-sky-50/50 dark:bg-slate-900/90 dark:border-sky-900/60",         accent: "text-sky-600 dark:text-sky-400",     text: "text-sky-700 dark:text-sky-300",     dot: "bg-sky-500" },
+    Wednesday: { card: "border-sky-200 bg-sky-50/50 dark:bg-slate-900/90 dark:border-sky-900/60",         accent: "text-sky-600 dark:text-sky-400",     text: "text-sky-900 dark:text-sky-200 font-bold", dot: "bg-sky-500" },
     Thursday:  { card: "border-emerald-200 bg-emerald-50/50 dark:bg-slate-900/90 dark:border-emerald-900/60", accent: "text-emerald-600 dark:text-emerald-400", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" },
     Friday:    { card: "border-amber-200 bg-amber-50/50 dark:bg-slate-900/90 dark:border-amber-900/60",     accent: "text-amber-600 dark:text-amber-400",   text: "text-amber-700 dark:text-amber-300",   dot: "bg-amber-500" },
     Saturday:  { card: "border-orange-200 bg-orange-50/50 dark:bg-slate-900/90 dark:border-orange-900/60",   accent: "text-orange-600 dark:text-orange-400",  text: "text-orange-700 dark:text-orange-300",  dot: "bg-orange-500" },
@@ -54,10 +61,76 @@ const DAY_COLORS: Record<string, { card: string; accent: string; text: string; d
 
 const TODAY_NAME = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
+// ── Format time range with localized digits & 12h/24h format ──
+function formatTimeRange(timeStr: string, langCode: string, timeFormat: "12" | "24") {
+    if (!timeStr) return "";
+    const parts = timeStr.split("-").map(p => p.trim());
+    const formatSingleTime = (t: string) => {
+        if (!t) return "";
+        const m = t.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*(AM|PM))?$/i);
+        if (m) {
+            let h = parseInt(m[1], 10);
+            const min = m[2];
+            const ampm = m[3] ? m[3].toUpperCase() : undefined;
+            if (ampm) {
+                if (ampm === "PM" && h < 12) h += 12;
+                if (ampm === "AM" && h === 12) h = 0;
+            }
+            if (timeFormat === "12") {
+                const p = h >= 12 ? "PM" : "AM";
+                const h12 = h % 12 || 12;
+                return `${toLocaleNumber(h12, langCode)}:${toLocaleNumber(min, langCode)} ${p}`;
+            }
+            const hh = h.toString().padStart(2, "0");
+            return `${toLocaleNumber(hh, langCode)}:${toLocaleNumber(min, langCode)}`;
+        }
+        return toLocaleNumber(t, langCode);
+    };
+
+    if (parts.length === 2) {
+        return `${formatSingleTime(parts[0])} - ${formatSingleTime(parts[1])}`;
+    }
+    return toLocaleNumber(timeStr, langCode);
+}
+
+// ── Localize date string (MM/DD/YYYY or YYYY-MM-DD) into localized DD/MM/YYYY ──
+function formatLocalizedDate(dateStr: string, langCode: string) {
+    if (!dateStr) return "";
+    const mdy = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (mdy) {
+        const [, mm, dd, yyyy] = mdy;
+        const pad = (v: string) => v.padStart(2, "0");
+        return `${toLocaleNumber(pad(dd), langCode)}/${toLocaleNumber(pad(mm), langCode)}/${toLocaleNumber(yyyy, langCode)}`;
+    }
+    const ymd = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (ymd) {
+        const [, yyyy, mm, dd] = ymd;
+        const pad = (v: string) => v.padStart(2, "0");
+        return `${toLocaleNumber(pad(dd), langCode)}/${toLocaleNumber(pad(mm), langCode)}/${toLocaleNumber(yyyy, langCode)}`;
+    }
+    return toLocaleNumber(dateStr, langCode);
+}
+
 /* ── Single lesson card ── */
-function PlanCard({ plan, colors, onView }: { plan: PlanItem; colors: typeof DAY_COLORS[string]; onView: (plan: PlanItem) => void }) {
+function PlanCard({
+    plan,
+    colors,
+    onView,
+    langCode,
+    timeFormat,
+}: {
+    plan: PlanItem;
+    colors: typeof DAY_COLORS[string];
+    onView: (plan: PlanItem) => void;
+    langCode: string;
+    timeFormat: "12" | "24";
+}) {
     const { t } = useTranslation();
     const hasPlanData = !!(plan.topic || plan.subTopic || plan.lesson);
+    const translatedSubject = translateSubjectName(plan.subject, langCode);
+    const formattedTime = formatTimeRange(plan.time, langCode, timeFormat);
+    const formattedRoom = toLocaleNumber(plan.room, langCode);
+
     return (
         <div
             className={cn(
@@ -71,13 +144,13 @@ function PlanCard({ plan, colors, onView }: { plan: PlanItem; colors: typeof DAY
                     <div className="flex items-start justify-between gap-1">
                         <div className="flex items-start gap-1.5 min-w-0">
                             <BookOpen className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                            <span className={cn("font-bold leading-tight text-[12px]", colors.text)}>{plan.subject}</span>
+                            <span className={cn("font-bold leading-tight text-[12px]", colors.text)}>{translatedSubject}</span>
                         </div>
                         {hasPlanData && (
                             <Button
                                 onClick={() => onView(plan)}
                                 size="icon"
-                                className="h-6 w-6 shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md shadow-sm"
+                                className="h-6 w-6 shrink-0 bg-indigo-500 hover:bg-indigo-600 text-white rounded-md shadow-sm cursor-pointer"
                                 title={t("view_details")}
                             >
                                 <Eye className="h-3 w-3" />
@@ -86,12 +159,12 @@ function PlanCard({ plan, colors, onView }: { plan: PlanItem; colors: typeof DAY
                     </div>
                     <div className="flex items-start gap-1.5">
                         <Clock className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                        <span className="leading-tight text-[11px] font-medium text-gray-600 dark:text-gray-300">{plan.time}</span>
+                        <span className="leading-tight text-[11px] font-medium text-gray-600 dark:text-gray-300">{formattedTime}</span>
                     </div>
                     {plan.room && (
                         <div className="flex items-start gap-1.5">
                             <Building className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", colors.accent)} />
-                            <span className="leading-tight text-[11px] text-gray-600 dark:text-gray-300">{t("room")} {plan.room}</span>
+                            <span className="leading-tight text-[11px] text-gray-600 dark:text-gray-300">{t("room")}: {formattedRoom}</span>
                         </div>
                     )}
                     {(plan.topic || plan.subTopic) && (
@@ -129,7 +202,11 @@ function EmptyDay() {
 }
 
 export default function UserLessonPlanPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const { settings } = useSettings();
+    const timeFormat = settings?.time_format === "12" ? "12" : ("24" as const);
+
     const [data, setData] = useState<LessonPlanData | null>(null);
     const [loading, setLoading] = useState(true);
     const [weekOffset, setWeekOffset] = useState(0);
@@ -145,8 +222,8 @@ export default function UserLessonPlanPage() {
             });
             const res = response.data?.data || response.data || {};
             setData(res);
-        } catch (error) {
-            console.error("Error fetching lesson plan:", error);
+        } catch {
+            // Graceful fallback
         } finally {
             setLoading(false);
         }
@@ -170,7 +247,12 @@ export default function UserLessonPlanPage() {
     const dayFor = (day: string) => schedule.find((d) => d.day === day);
     const plansFor = (day: string) => dayFor(day)?.plans || [];
     const totalPlans = schedule.reduce((acc, d) => acc + d.plans.length, 0);
+    const localizedTotalPlans = toLocaleNumber(totalPlans, langCode);
     const activePlans = plansFor(activeDay);
+
+    const weekRangeDisplay = data
+        ? `${formatLocalizedDate(data.weekStart, langCode)} – ${formatLocalizedDate(data.weekEnd, langCode)}`
+        : t("loading");
 
     return (
         <div className="p-4 lg:p-6 animate-in fade-in duration-500">
@@ -181,17 +263,21 @@ export default function UserLessonPlanPage() {
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <CalendarRange className="h-5 w-5" />
                         </span>
-                        <div className="min-w-0">
-                            <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("lesson_plan")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? t("loading_schedule") : `${totalPlans} ${totalPlans === 1 ? t("lesson_this_week") : t("lessons_this_week")}`}
+                        <div className="min-w-0 space-y-1">
+                            <h1 className="text-[16px] font-bold text-gray-800 dark:text-zinc-100 leading-snug">{t("lesson_plan")}</h1>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                {loading
+                                    ? t("loading_schedule")
+                                    : totalPlans === 1
+                                        ? t("lesson_this_week", { count: localizedTotalPlans })
+                                        : t("lessons_this_week", { count: localizedTotalPlans })}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
                         title={t("print")}
-                        className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
+                        className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden cursor-pointer"
                     >
                         <Printer className="h-4 w-4" />
                         <span className="hidden sm:inline">{t("print")}</span>
@@ -215,7 +301,7 @@ export default function UserLessonPlanPage() {
                             <Button
                                 onClick={() => setWeekOffset((p) => p - 1)}
                                 size="icon"
-                                className="h-9 w-9 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 transition-opacity active:scale-95 border-0"
+                                className="h-9 w-9 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 transition-opacity active:scale-95 border-0 cursor-pointer"
                                 title={t("previous_week")}
                             >
                                 <ChevronLeft className="h-4 w-4" />
@@ -223,13 +309,13 @@ export default function UserLessonPlanPage() {
                             <div className="flex items-center gap-1.5 px-3 h-9 rounded-[10px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 min-w-[180px] justify-center">
                                 <CalendarDays className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                                 <span className="text-[12px] font-bold text-gray-700 dark:text-gray-200 whitespace-nowrap">
-                                    {data ? `${data.weekStart} – ${data.weekEnd}` : t("loading")}
+                                    {weekRangeDisplay}
                                 </span>
                             </div>
                             <Button
                                 onClick={() => setWeekOffset((p) => p + 1)}
                                 size="icon"
-                                className="h-9 w-9 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 transition-opacity active:scale-95 border-0"
+                                className="h-9 w-9 rounded-[10px] bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 transition-opacity active:scale-95 border-0 cursor-pointer"
                                 title={t("next_week")}
                             >
                                 <ChevronRight className="h-4 w-4" />
@@ -238,7 +324,7 @@ export default function UserLessonPlanPage() {
                                 <Button
                                     onClick={() => setWeekOffset(0)}
                                     variant="outline"
-                                    className="h-9 px-3 rounded-[10px] text-[11px] font-semibold text-gray-600 border-gray-200"
+                                    className="h-9 px-3 rounded-[10px] text-[11px] font-semibold text-gray-600 border-gray-200 cursor-pointer"
                                     title={t("back_to_current_week")}
                                 >
                                     {t("today")}
@@ -261,6 +347,8 @@ export default function UserLessonPlanPage() {
                                     const plans = plansFor(day);
                                     const colors = DAY_COLORS[day];
                                     const isToday = day === TODAY_NAME && weekOffset === 0;
+                                    const localizedDayShort = translateDayShortName(day, langCode);
+                                    const localizedDate = formatLocalizedDate(info?.date || "", langCode);
                                     return (
                                         <div key={day} className="border-r border-gray-100 last:border-r-0 min-h-[180px]">
                                             {/* Day column header */}
@@ -273,7 +361,7 @@ export default function UserLessonPlanPage() {
                                                 <div className="flex items-center justify-center gap-1.5">
                                                     <span className={cn("h-1.5 w-1.5 rounded-full", colors.dot)} />
                                                     <span className={cn("text-[11px] font-extrabold uppercase tracking-wide", isToday ? "text-indigo-700 dark:text-indigo-300" : "text-gray-700 dark:text-gray-200")}>
-                                                        {day.slice(0, 3)}
+                                                        {localizedDayShort}
                                                     </span>
                                                     {isToday && (
                                                         <span className="text-[9px] px-1.5 py-px rounded-full text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] font-semibold">
@@ -281,13 +369,20 @@ export default function UserLessonPlanPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mt-0.5">{info?.date || ""}</div>
+                                                <div className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 mt-0.5">{localizedDate}</div>
                                             </div>
                                             {/* Day column body */}
                                             <div className="p-1.5 space-y-2">
-                                                    {plans.length > 0 ? (
+                                                {plans.length > 0 ? (
                                                     plans.map((plan, idx) => (
-                                                        <PlanCard key={idx} plan={plan} colors={colors} onView={setViewPlan} />
+                                                        <PlanCard
+                                                            key={idx}
+                                                            plan={plan}
+                                                            colors={colors}
+                                                            onView={setViewPlan}
+                                                            langCode={langCode}
+                                                            timeFormat={timeFormat}
+                                                        />
                                                     ))
                                                 ) : (
                                                     <EmptyDay />
@@ -305,24 +400,24 @@ export default function UserLessonPlanPage() {
                                         const count = plansFor(day).length;
                                         const isToday = day === TODAY_NAME && weekOffset === 0;
                                         const isActive = day === activeDay;
-                                        const colors = DAY_COLORS[day];
+                                        const localizedDayShort = translateDayShortName(day, langCode);
                                         return (
                                             <button
                                                 key={day}
                                                 onClick={() => setActiveDay(day)}
                                                 className={cn(
-                                                    "flex flex-col items-center px-4 py-2.5 text-[12px] font-semibold whitespace-nowrap border-b-2 transition-all duration-200 min-w-[78px]",
+                                                    "flex flex-col items-center px-4 py-2.5 text-[12px] font-semibold whitespace-nowrap border-b-2 transition-all duration-200 min-w-[78px] cursor-pointer",
                                                     isActive
-                                                        ? `border-[#6366F1] ${colors.text} bg-gradient-to-b from-transparent to-indigo-50/40`
-                                                        : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                                                        ? "border-[#6366F1] bg-gradient-to-b from-transparent to-indigo-50/40 text-indigo-700 dark:text-indigo-300 font-bold"
+                                                        : "border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-50"
                                                 )}
                                             >
-                                                <span>{day.slice(0, 3)}</span>
+                                                <span className={cn(isActive ? "text-indigo-700 dark:text-indigo-300 font-bold" : "text-gray-700 dark:text-gray-300")}>{localizedDayShort}</span>
                                                 <span className={cn(
                                                     "text-[10px] mt-0.5 font-medium px-1.5 py-px rounded-full",
                                                     isToday ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white" : "text-gray-400"
                                                 )}>
-                                                    {isToday ? t("today") : `${count}`}
+                                                    {isToday ? t("today") : toLocaleNumber(count, langCode)}
                                                 </span>
                                             </button>
                                         );
@@ -331,16 +426,23 @@ export default function UserLessonPlanPage() {
 
                                 <div className="p-4">
                                     <div className="flex items-center gap-2 mb-3">
-                                        <span className="text-[13px] font-bold text-gray-700">{activeDay}</span>
-                                        <span className="text-[11px] text-gray-400">{dayFor(activeDay)?.date || ""}</span>
+                                        <span className="text-[13px] font-bold text-gray-700">{translateDayName(activeDay, langCode)}</span>
+                                        <span className="text-[11px] text-gray-400">{formatLocalizedDate(dayFor(activeDay)?.date || "", langCode)}</span>
                                         <span className="text-[11px] text-gray-400 ml-auto">
-                                            {activePlans.length} {activePlans.length !== 1 ? t("lessons") : t("lesson")}
+                                            {toLocaleNumber(activePlans.length, langCode)} {activePlans.length !== 1 ? t("lessons") : t("lesson")}
                                         </span>
                                     </div>
                                     {activePlans.length > 0 ? (
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             {activePlans.map((plan, idx) => (
-                                                <PlanCard key={idx} plan={plan} colors={DAY_COLORS[activeDay]} onView={setViewPlan} />
+                                                <PlanCard
+                                                    key={idx}
+                                                    plan={plan}
+                                                    colors={DAY_COLORS[activeDay]}
+                                                    onView={setViewPlan}
+                                                    langCode={langCode}
+                                                    timeFormat={timeFormat}
+                                                />
                                             ))}
                                         </div>
                                     ) : (
@@ -352,15 +454,15 @@ export default function UserLessonPlanPage() {
                             {/* ── Print: full weekly grid ── */}
                             <div className="hidden print:block p-4">
                                 <h2 className="text-base font-bold mb-3">
-                                    {t("lesson_plan")} — {data?.weekStart} {t("to")} {data?.weekEnd}
+                                    {t("lesson_plan")} — {formatLocalizedDate(data?.weekStart || "", langCode)} {t("to")} {formatLocalizedDate(data?.weekEnd || "", langCode)}
                                 </h2>
                                 <table className="w-full border-collapse text-[11px]">
                                     <thead>
                                         <tr>
                                             {DAYS.map((day) => (
                                                 <th key={day} className="border border-gray-300 px-2 py-2 bg-gray-100 font-bold text-gray-700 text-left">
-                                                    {day}
-                                                    <span className="block font-normal text-gray-500">{dayFor(day)?.date || ""}</span>
+                                                    {translateDayName(day, langCode)}
+                                                    <span className="block font-normal text-gray-500">{formatLocalizedDate(dayFor(day)?.date || "", langCode)}</span>
                                                 </th>
                                             ))}
                                         </tr>
@@ -377,9 +479,9 @@ export default function UserLessonPlanPage() {
                                                             <div className="space-y-2">
                                                                 {plans.map((p, i) => (
                                                                     <div key={i} className="border border-gray-200 rounded p-1.5">
-                                                                        <p className="font-semibold">{p.subject}</p>
-                                                                        <p className="text-gray-600">{p.time}</p>
-                                                                        {p.room && <p className="text-gray-500">{t("room")}: {p.room}</p>}
+                                                                        <p className="font-semibold">{translateSubjectName(p.subject, langCode)}</p>
+                                                                        <p className="text-gray-600">{formatTimeRange(p.time, langCode, timeFormat)}</p>
+                                                                        {p.room && <p className="text-gray-500">{t("room")}: {toLocaleNumber(p.room, langCode)}</p>}
                                                                         {p.topic && <p className="text-gray-500">{t("topic")}: {p.topic}</p>}
                                                                         {p.subTopic && <p className="text-gray-500">{t("sub")}: {p.subTopic}</p>}
                                                                     </div>
@@ -417,11 +519,11 @@ export default function UserLessonPlanPage() {
                                 <div className="flex flex-wrap gap-1.5 mt-2.5">
                                     <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm">
                                         <BookOpen className="h-3 w-3" />
-                                        {viewPlan.subject}
+                                        {translateSubjectName(viewPlan.subject, langCode)}
                                     </span>
                                     <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-semibold backdrop-blur-sm">
                                         <Clock className="h-3 w-3" />
-                                        {viewPlan.time}
+                                        {formatTimeRange(viewPlan.time, langCode, timeFormat)}
                                     </span>
                                 </div>
                             )}
@@ -434,16 +536,16 @@ export default function UserLessonPlanPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("subject")}</span>
-                                        <p className="text-sm font-semibold text-gray-800">{viewPlan.subject}</p>
+                                        <p className="text-sm font-semibold text-gray-800">{translateSubjectName(viewPlan.subject, langCode)}</p>
                                     </div>
                                     <div className="space-y-1">
                                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("time")}</span>
-                                        <p className="text-sm font-semibold text-gray-800">{viewPlan.time}</p>
+                                        <p className="text-sm font-semibold text-gray-800">{formatTimeRange(viewPlan.time, langCode, timeFormat)}</p>
                                     </div>
                                     {viewPlan.room && (
                                         <div className="space-y-1">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t("room")}</span>
-                                            <p className="text-sm font-semibold text-gray-800">{viewPlan.room}</p>
+                                            <p className="text-sm font-semibold text-gray-800">{toLocaleNumber(viewPlan.room, langCode)}</p>
                                         </div>
                                     )}
                                 </div>
@@ -452,7 +554,7 @@ export default function UserLessonPlanPage() {
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                                         <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1">
-                                            <span>Curriculum Hierarchy</span>
+                                            <span>{t("curriculum_hierarchy")}</span>
                                         </span>
                                         <span className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                                     </div>
@@ -461,7 +563,7 @@ export default function UserLessonPlanPage() {
                                         {/* Step 1: Lesson */}
                                         <div className="relative flex items-start gap-2.5">
                                             <div className="absolute -left-6 top-1 h-5 w-5 rounded-full bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white flex items-center justify-center font-black text-[9px] shadow-xs">
-                                                1
+                                                {toLocaleNumber(1, langCode)}
                                             </div>
                                             <div className="flex-1 bg-indigo-50/40 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900 rounded-xl p-2.5">
                                                 <span className="text-[9.5px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400">{t("lesson")}</span>
@@ -472,7 +574,7 @@ export default function UserLessonPlanPage() {
                                         {/* Step 2: Topic */}
                                         <div className="relative flex items-start gap-2.5">
                                             <div className="absolute -left-6 top-1 h-5 w-5 rounded-full bg-violet-600 text-white flex items-center justify-center font-black text-[9px] shadow-xs">
-                                                2
+                                                {toLocaleNumber(2, langCode)}
                                             </div>
                                             <div className="flex-1 bg-violet-50/40 dark:bg-violet-950/30 border border-violet-100 dark:border-violet-900 rounded-xl p-2.5">
                                                 <span className="text-[9.5px] font-black uppercase tracking-wider text-violet-600 dark:text-violet-400">{t("topic")}</span>
@@ -484,7 +586,7 @@ export default function UserLessonPlanPage() {
                                         {viewPlan.subTopic && (
                                             <div className="relative flex items-start gap-2.5">
                                                 <div className="absolute -left-6 top-1 h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-[9px] shadow-xs">
-                                                    3
+                                                    {toLocaleNumber(3, langCode)}
                                                 </div>
                                                 <div className="flex-1 bg-emerald-50/40 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-xl p-2.5">
                                                     <span className="text-[9.5px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">{t("sub")}</span>
@@ -502,7 +604,7 @@ export default function UserLessonPlanPage() {
                         <Button
                             onClick={() => setViewPlan(null)}
                             variant="outline"
-                            className="h-9 px-5 rounded-lg text-[10px] font-bold uppercase tracking-widest border-gray-200 hover:bg-gray-100 transition-all"
+                            className="h-9 px-5 rounded-lg text-[10px] font-bold uppercase tracking-widest border-gray-200 hover:bg-gray-100 transition-all cursor-pointer"
                         >
                             {t("close")}
                         </Button>
@@ -512,3 +614,4 @@ export default function UserLessonPlanPage() {
         </div>
     );
 }
+

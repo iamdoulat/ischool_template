@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
     Pencil, Trash2, Search, ChevronLeft, ChevronRight, GraduationCap,
-    Percent, Copy, FileSpreadsheet, FileText, Printer, Columns
+    Percent, Copy, FileSpreadsheet, FileText, Printer
 } from "lucide-react";
 import {
     AlertDialog,
@@ -32,6 +32,7 @@ import {
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { toLocaleNumber } from "@/lib/utils";
 
 interface Division {
     id: string;
@@ -57,7 +58,8 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function MarksDivisionPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [divisions, setDivisions] = useState<Division[]>([]);
@@ -83,6 +85,26 @@ export default function MarksDivisionPage() {
     // Delete State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
+    const getLocalizedDivisionName = (name?: string) => {
+        if (!name) return "";
+        const lower = name.toLowerCase().trim();
+        if (lower === "first" || lower === "1st" || lower === "first division" || lower === "1st division") {
+            return t("first_division");
+        }
+        if (lower === "second" || lower === "2nd" || lower === "second division" || lower === "2nd division") {
+            return t("second_division");
+        }
+        if (lower === "third" || lower === "3rd" || lower === "third division" || lower === "3rd division") {
+            return t("third_division");
+        }
+        if (lower === "distinction") {
+            return t("distinction");
+        }
+        const key = lower.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const trans = t(key);
+        return trans && trans !== key ? trans : name;
+    };
+
     const fetchDivisions = useCallback(async () => {
         setLoading(true);
         try {
@@ -99,7 +121,7 @@ export default function MarksDivisionPage() {
             setDivisions(Array.isArray(list) ? list : []);
             setTotalEntries(result?.total || result?.data?.total || 0);
             setLastPage(result?.last_page || result?.data?.last_page || 1);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_fetch_divisions");
             setDivisions([]);
         } finally {
@@ -173,7 +195,7 @@ export default function MarksDivisionPage() {
             } else {
                 fetchDivisions();
             }
-        } catch (error) {
+        } catch {
             tt.error("failed_to_delete_division");
         } finally {
             setDeleteId(null);
@@ -189,7 +211,7 @@ export default function MarksDivisionPage() {
     // Export functions
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(divisions.map(d => ({
-            [t("division_name")]: d.name,
+            [t("division_name")]: getLocalizedDivisionName(d.name),
             [t("percentage_from")]: d.percent_from,
             [t("percentage_upto")]: d.percent_upto
         })));
@@ -203,14 +225,14 @@ export default function MarksDivisionPage() {
         doc.text(t("division_list"), 14, 15);
         autoTable(doc, {
             head: [[t("division_name"), t("percentage_from"), t("percentage_upto")]],
-            body: divisions.map(d => [d.name, `${d.percent_from}%`, `${d.percent_upto}%`]),
+            body: divisions.map(d => [getLocalizedDivisionName(d.name), `${d.percent_from}%`, `${d.percent_upto}%`]),
             startY: 20,
         });
         doc.save("marks-divisions.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = divisions.map(d => `${d.name}\t${d.percent_from}%\t${d.percent_upto}%`).join('\n');
+        const text = divisions.map(d => `${getLocalizedDivisionName(d.name)}\t${d.percent_from}%\t${d.percent_upto}%`).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("data_copied_to_clipboard");
     };
@@ -241,7 +263,7 @@ export default function MarksDivisionPage() {
                                 <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    placeholder="e.g. First"
+                                    placeholder={t("eg_division_name")}
                                     className="h-11 border-gray-100 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
                                 />
                             </div>
@@ -255,7 +277,7 @@ export default function MarksDivisionPage() {
                                         type="number"
                                         value={formData.percent_from}
                                         onChange={(e) => setFormData({...formData, percent_from: e.target.value})}
-                                        placeholder="0.00"
+                                        placeholder={t("eg_percent_from")}
                                         min="0"
                                         max="100"
                                         step="0.01"
@@ -274,7 +296,7 @@ export default function MarksDivisionPage() {
                                         type="number"
                                         value={formData.percent_upto}
                                         onChange={(e) => setFormData({...formData, percent_upto: e.target.value})}
-                                        placeholder="0.00"
+                                        placeholder={t("eg_percent_upto")}
                                         min="0"
                                         max="100"
                                         step="0.01"
@@ -286,14 +308,14 @@ export default function MarksDivisionPage() {
 
                             <div className="flex gap-2 pt-4 justify-end">
                                 {editMode && (
-                                    <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5">
+                                    <Button onClick={resetForm} variant="outline" className="h-10 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-5 cursor-pointer">
                                         {t("cancel")}
                                     </Button>
                                 )}
                                 <Button
                                     onClick={handleSave}
                                     disabled={saving}
-                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95 cursor-pointer shadow-xs"
                                 >
                                     {saving ? t("saving") : editMode ? t("update") : t("save")}
                                 </Button>
@@ -312,19 +334,19 @@ export default function MarksDivisionPage() {
                                 </span>
                                 <div>
                                     <h2 className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("division_list")}</h2>
-                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_divisions", { count: totalEntries })}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_divisions", { count: toLocaleNumber(totalEntries, shortCode) })}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Select value={rowsPerPage} onValueChange={(v) => { setRowsPerPage(v); setCurrentPage(1); }}>
-                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg bg-white">
-                                        <SelectValue placeholder="50" />
+                                    <SelectTrigger className="w-[75px] h-8 text-xs border-gray-200 rounded-lg bg-white">
+                                        <SelectValue placeholder={toLocaleNumber("50", shortCode)} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="20">20</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                        <SelectItem value="500">500</SelectItem>
+                                        <SelectItem value="20">{toLocaleNumber("20", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
+                                        <SelectItem value="500">{toLocaleNumber("500", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center gap-1 text-gray-400">
@@ -339,9 +361,6 @@ export default function MarksDivisionPage() {
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" onClick={() => window.print()} title={t("print")}>
                                         <Printer className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" title={t("columns")}>
-                                        <Columns className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -385,23 +404,25 @@ export default function MarksDivisionPage() {
                                         ) : (
                                             divisions.map((division) => (
                                                 <TableRow key={division.id} className="text-sm text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
-                                                    <TableCell className="py-4 px-6 font-bold text-indigo-600 tracking-tight">{division.name}</TableCell>
+                                                    <TableCell className="py-4 px-6 font-bold text-indigo-600 tracking-tight">
+                                                        {getLocalizedDivisionName(division.name)}
+                                                    </TableCell>
                                                     <TableCell className="py-4 px-6">
                                                         <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-bold text-[11px] border border-emerald-100">
-                                                            {division.percent_from}%
+                                                            {toLocaleNumber(division.percent_from, shortCode)}%
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6">
                                                         <span className="bg-rose-50 text-rose-600 px-3 py-1 rounded-full font-bold text-[11px] border border-rose-100">
-                                                            {division.percent_upto}%
+                                                            {toLocaleNumber(division.percent_upto, shortCode)}%
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="py-4 px-6 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(division)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md transition-all">
+                                                            <Button size="icon" variant="ghost" onClick={() => handleEdit(division)} className="h-8 w-8 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-md transition-all cursor-pointer">
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>
-                                                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(division.id)} className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all">
+                                                            <Button size="icon" variant="ghost" onClick={() => setDeleteId(division.id)} className="h-8 w-8 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all cursor-pointer">
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </div>
@@ -416,22 +437,26 @@ export default function MarksDivisionPage() {
                             {totalEntries > 0 && (
                                 <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                                     <div>
-                                        {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
+                                        {t("showing_x_to_y_of_z", {
+                                            from: toLocaleNumber(((currentPage - 1) * itemsPerPage) + (totalEntries > 0 ? 1 : 0), shortCode),
+                                            to: toLocaleNumber(Math.min(currentPage * itemsPerPage, totalEntries), shortCode),
+                                            total: toLocaleNumber(totalEntries, shortCode)
+                                        })}
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
                                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50 cursor-pointer"
                                             disabled={currentPage === 1}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
                                         <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md">
-                                            {currentPage}
+                                            {toLocaleNumber(currentPage, shortCode)}
                                         </Button>
                                         <Button
                                             onClick={() => setCurrentPage(p => p + 1)}
-                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50"
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-md disabled:opacity-50 cursor-pointer"
                                             disabled={currentPage >= lastPage}
                                         >
                                             <ChevronRight className="h-4 w-4" />
@@ -454,8 +479,8 @@ export default function MarksDivisionPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-6">
-                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200">{t("cancel")}</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md">
+                        <AlertDialogCancel className="h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-gray-200 cursor-pointer">{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 h-11 rounded-full text-[10px] font-bold uppercase tracking-wider border-0 shadow-md cursor-pointer">
                             {t("yes_delete_division")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -464,3 +489,4 @@ export default function MarksDivisionPage() {
         </div>
     );
 }
+

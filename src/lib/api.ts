@@ -1,6 +1,7 @@
 import axios, { type InternalAxiosRequestConfig, type AxiosResponse, type AxiosRequestConfig } from 'axios';
 import { toast } from 'sonner';
 import { safeStorage } from '@/lib/utils';
+import { tokenManager } from '@/lib/token-manager';
 
 // Extend axios config to allow suppressing global error toast or fine-tuning caching
 declare module 'axios' {
@@ -12,15 +13,14 @@ declare module 'axios' {
 }
 
 const getBaseUrl = () => {
-    if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+    // In browser: Route through Next.js reverse proxy (/api/v1) on the current origin
+    // This hides backend port/IP from browser devtools and eliminates CORS
     if (typeof window !== 'undefined') {
-        const host = window.location.hostname;
-        const protocol = window.location.protocol;
-        if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.') || host.endsWith('.local')) {
-            return `${protocol}//${host}:8000/api/v1`;
-        }
-        return `${protocol}//${host}/api/v1`;
+        return `${window.location.origin}/api/v1`;
     }
+    // On server (SSR, Server Actions, RSC): Call backend directly
+    if (process.env.INTERNAL_API_URL) return process.env.INTERNAL_API_URL;
+    if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
     return 'http://127.0.0.1:8000/api/v1';
 };
 
@@ -74,12 +74,50 @@ export function clearApiCache(prefix?: string) {
     }
 }
 
+export function setCachedProfile(user: unknown) {
+    if (!user) return;
+    const cacheKey = 'get:/profile:';
+    responseCache.set(cacheKey, {
+        data: { status: 'Success', message: 'User profile retrieved', data: user },
+        expiresAt: Date.now() + 60000,
+    });
+}
+
 // Intercept requests for token, FormData, and in-memory caching
-api.interceptors.request.use((config) => {
-    const token = safeStorage.getItem('auth_token');
+api.interceptors.request.use(async (config) => {
+    let token = tokenManager.getToken();
+    if (!token && typeof window !== 'undefined') {
+        token = await tokenManager.syncSession();
+    }
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Determine active branch based on current URL path or storage
+    if (typeof window !== 'undefined' && window.location?.pathname) {
+        const pathname = window.location.pathname;
+        const branchMatch = pathname.match(/^\/br\/([^\/]+)/);
+        if (branchMatch && branchMatch[1] !== 'main') {
+            // Under sub-branch URL /br/[slug]...
+            const branchSlug = branchMatch[1];
+            const activeBranchSlug = safeStorage.getItem('active_branch_slug');
+            const activeBranchId = safeStorage.getItem('active_branch_id');
+            if (activeBranchSlug === branchSlug && activeBranchId) {
+                config.headers['X-Branch-Id'] = activeBranchId;
+            } else {
+                config.headers['X-Branch-Id'] = branchSlug;
+            }
+        } else {
+            // Main campus /dashboard/... or / -> always send 'main'
+            config.headers['X-Branch-Id'] = 'main';
+        }
+    } else {
+        const activeBranchId = safeStorage.getItem('active_branch_id');
+        if (activeBranchId) {
+            config.headers['X-Branch-Id'] = activeBranchId;
+        }
+    }
+
     // Let Axios auto-set Content-Type with boundary for FormData
     if (config.data instanceof FormData) {
         delete config.headers['Content-Type'];
@@ -137,13 +175,14 @@ api.interceptors.response.use(
             const isOptedOut = config?.skipGlobalErrorHandler || resConfig?.skipGlobalErrorHandler;
             if (!isOptedOut && typeof window !== 'undefined') {
                 const path = window.location.pathname;
-                const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/user');
-                if (isProtectedRoute && path !== '/login') {
-                    const token = safeStorage.getItem('auth_token');
-                    if (token) {
-                        safeStorage.removeItem('auth_token');
-                        window.location.href = '/login';
-                    }
+                const branchMatch = path.match(/^\/br\/([^\/]+)/);
+                const branchSlug = branchMatch ? branchMatch[1] : (safeStorage.getItem('active_branch_slug') || '');
+                const targetLogin = branchSlug && branchSlug !== 'main' ? `/br/${branchSlug}/login` : '/login';
+
+                const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/user') || path.includes('/dashboard') || path.includes('/user');
+                if (isProtectedRoute && !path.includes('/login')) {
+                    tokenManager.clearToken();
+                    window.location.href = targetLogin;
                 }
             }
         } else if (error.response?.status !== 422) {

@@ -43,7 +43,7 @@ import {
     QrCode
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn, formatLabel } from "@/lib/utils";
+import { cn, formatLabel, toLocaleNumber } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Popover,
@@ -220,6 +220,7 @@ const menuItems = [
                 color: "indigo",
                 submenus: [
                     { name: "staff_directory", href: "/dashboard/hr/staff-directory" },
+                    { name: "requisition_list", href: "/dashboard/hr/staff-requisition" },
                     { name: "staff_attendance", href: "/dashboard/hr/staff-attendance" },
                     { name: "payroll", href: "/dashboard/hr/payroll" },
                     { name: "approve_leave_request", href: "/dashboard/hr/approve-leave-request" },
@@ -488,7 +489,6 @@ const menuItems = [
                 href: "#",
                 color: "rose",
                 submenus: [
-                    { name: "attendance", href: "/dashboard/qr-code-attendance/attendance" },
                     { name: "terminal", href: "/dashboard/smart-attendance-terminal" },
                     { name: "face_registration", href: "/dashboard/qr-code-attendance/face-registration" },
                     { name: "qr_code_generation", href: "/dashboard/qr-code-attendance/qr-code-generation" },
@@ -613,6 +613,7 @@ const sidebarColorMap = {
 
 import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
+import { isSubmenuPermitted, isModulePermitted } from "@/lib/page-access";
 
 export function Sidebar({
     collapsed = false,
@@ -630,12 +631,27 @@ export function Sidebar({
     const { t, language } = useTranslation();
     const isNonEnglish = language?.short_code !== "en";
 
+    const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : null;
+    const branchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
+    const branchPrefix = (branchSlug && branchSlug !== "main") ? `/br/${branchSlug}` : "";
+
+    const toBranchHref = (href?: string) => {
+        if (!href || href === "#" || href.startsWith("http")) return href || "#";
+        if (href.startsWith("/br/")) return href;
+        return branchPrefix ? `${branchPrefix}${href}` : href;
+    };
+
     const [mounted, setMounted] = useState(false);
     const [logoError, setLogoError] = useState(false);
     const [smallLogoError, setSmallLogoError] = useState(false);
     const [sessions, setSessions] = useState<any[]>([]);
     const [fetchingSessions, setFetchingSessions] = useState(false);
     const [changingSessionId, setChangingSessionId] = useState<number | null>(null);
+
+    const [userPermissions, setUserPermissions] = useState<string[]>([]);
+    const [userRole, setUserRole] = useState<string>("");
+    const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
+    const [userLoaded, setUserLoaded] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -645,6 +661,23 @@ export function Sidebar({
     const [fetchingSidebar, setFetchingSidebar] = useState(true);
 
     useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                const res = await api.get("/profile", { skipGlobalErrorHandler: true });
+                const u = res.data?.data || res.data;
+                const role = u?.role || u?.user_type || u?.role_name || "";
+                setUserRole(role);
+                const roleClean = String(role).toLowerCase().replace(/[_\s]/g, "");
+                const isGlobal = ["superadmin", "admin"].includes(roleClean);
+                setIsGlobalAdmin(isGlobal);
+                setUserPermissions(isGlobal ? ["all"] : (u?.permissions || []));
+            } catch (err) {
+                console.error("Failed to load user profile in sidebar", err);
+            } finally {
+                setUserLoaded(true);
+            }
+        };
+
         const fetchSessions = async () => {
             try {
                 setFetchingSessions(true);
@@ -673,10 +706,12 @@ export function Sidebar({
             }
         };
 
+        fetchUserProfile();
         fetchSessions();
         fetchSidebarConfig();
 
         const handleUpdate = () => {
+            fetchUserProfile();
             fetchSidebarConfig();
         };
         window.addEventListener("sidebar-menu-updated", handleUpdate);
@@ -685,15 +720,10 @@ export function Sidebar({
         };
     }, []);
 
-    // Process menu items based on backend config
+    // Process menu items based on user role permissions and backend config
     const processedMenuItems = React.useMemo(() => {
-        // Default to all menu items if no custom sidebar config override is set
-        if (fetchingSidebar || !sidebarConfig || sidebarConfig.length === 0) {
-            return menuItems;
-        }
-
-        // Create a map for quick lookup
-        const configMap = new Map(sidebarConfig.map(c => [c.name, c]));
+        // Create a map for quick lookup from backend sidebarConfig
+        const configMap = new Map(sidebarConfig?.map(c => [c.name, c]) || []);
 
         return menuItems.map(group => {
             const filteredItems = group.items
@@ -701,10 +731,15 @@ export function Sidebar({
                     const config = configMap.get(item.name);
                     let submenus = item.submenus;
 
-                    // Filter submenus by backend's visible_submenus (permission-based)
+                    // 1. Filter submenus by user role permissions (if not global admin)
+                    if (!isGlobalAdmin && userLoaded) {
+                        submenus = submenus.filter(s => isSubmenuPermitted(item.name, s.name, userPermissions, userRole));
+                    }
+
+                    // 2. Filter submenus by backend's visible_submenus config
                     if (config?.visible_submenus && config.visible_submenus.length > 0) {
                         const visibleSet = new Set(config.visible_submenus);
-                        submenus = submenus.filter(s => visibleSet.has(s.name));
+                        submenus = submenus.filter(s => visibleSet.has(s.name) || s.name === "requisition_list");
                     }
 
                     if (config?.submenu_order && config.submenu_order.length > 0) {
@@ -723,13 +758,19 @@ export function Sidebar({
                         submenus = ordered;
                     }
 
+                    // Check top-level item permission visibility
+                    let isPermitted = true;
+                    if (!isGlobalAdmin && userLoaded) {
+                        isPermitted = isModulePermitted(item.name, item.submenus, userPermissions, userRole);
+                    }
+
                     const hasSubmenusHidden = item.submenus.length > 0 && submenus.length === 0;
 
                     return {
                         ...item,
                         submenus,
                         label: config?.label,
-                        is_visible: config ? (hasSubmenusHidden ? false : config.is_visible) : true,
+                        is_visible: !isPermitted ? false : (config ? (hasSubmenusHidden ? false : config.is_visible) : (hasSubmenusHidden ? false : true)),
                         sort_order: config?.sort_order ?? 0
                     };
                 })
@@ -748,7 +789,7 @@ export function Sidebar({
 
             return { ...group, items: processedItems };
         }).filter(group => group.items.length > 0);
-    }, [sidebarConfig, fetchingSidebar, isChatEnabled]);
+    }, [sidebarConfig, isChatEnabled, isGlobalAdmin, userLoaded, userPermissions, userRole]);
 
     const activeSession = sessions.find(s => s.is_active);
 
@@ -860,12 +901,13 @@ export function Sidebar({
                                 <div className="space-y-1">
                                     {group.items.map((item) => {
                                         const colors = sidebarColorMap[item.color as keyof typeof sidebarColorMap] || sidebarColorMap.blue;
-                                        const isItemActive = pathname === item.href || (item.submenus && item.submenus.some(s => pathname === s.href));
+                                        const itemTargetHref = toBranchHref(item.href);
+                                        const isItemActive = pathname === itemTargetHref || pathname === item.href || (item.submenus && item.submenus.some(s => pathname === toBranchHref(s.href) || pathname === s.href));
 
                                         const menuItem = (
                                             <Link
                                                 key={item.name}
-                                                href={item.href}
+                                                href={itemTargetHref}
                                                 onClick={() => {
                                                     if (window.innerWidth < 768 && onClose) onClose();
                                                 }}
@@ -928,36 +970,40 @@ export function Sidebar({
                                                                 </p>
                                                             </div>
                                                             <Link
-                                                                href={item.href}
+                                                                href={itemTargetHref}
                                                                 onClick={() => {
                                                                     if (window.innerWidth < 768 && onClose) onClose();
                                                                 }}
                                                                 className={cn(
                                                                     "block px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                                                                    pathname === item.href ? `${colors.bg} ${colors.icon} font-bold` : "hover:bg-muted"
+                                                                    pathname === itemTargetHref || pathname === item.href ? `${colors.bg} ${colors.icon} font-bold` : "hover:bg-muted"
                                                                 )}
                                                             >
                                                                 {t("overview")}
                                                             </Link>
                                                             {item.submenus && item.submenus.length > 0 && (
                                                                 <div className="pt-1 space-y-0.5">
-                                                                    {item.submenus.map((submenu) => (
-                                                                        <Link
-                                                                            key={submenu.name}
-                                                                            href={submenu.href}
-                                                                            onClick={() => {
-                                                                                if (window.innerWidth < 768 && onClose) onClose();
-                                                                            }}
-                                                                            className={cn(
-                                                                                "block px-3 py-1.5 text-xs rounded-md transition-all",
-                                                                                pathname === submenu.href
-                                                                                    ? `${colors.icon} font-bold ${colors.bg}`
-                                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                                                            )}
-                                                                        >
-                                                                            {(submenu as any).label || (submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)))}
-                                                                        </Link>
-                                                                    ))}
+                                                                    {item.submenus.map((submenu) => {
+                                                                        const subHref = toBranchHref(submenu.href);
+                                                                        const isSubActive = pathname === subHref || pathname === submenu.href;
+                                                                        return (
+                                                                            <Link
+                                                                                key={submenu.name}
+                                                                                href={subHref}
+                                                                                onClick={() => {
+                                                                                    if (window.innerWidth < 768 && onClose) onClose();
+                                                                                }}
+                                                                                className={cn(
+                                                                                    "block px-3 py-1.5 text-xs rounded-md transition-all",
+                                                                                    isSubActive
+                                                                                        ? `${colors.icon} font-bold ${colors.bg}`
+                                                                                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                                                )}
+                                                                            >
+                                                                                {isNonEnglish ? t(submenu.name) : ((submenu as any).label || (submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))))}
+                                                                            </Link>
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -998,11 +1044,12 @@ export function Sidebar({
                                                         <AccordionContent className="pb-2 pt-1 pl-4 pr-1">
                                                             <div className={cn("flex flex-col gap-1 border-l-2 ml-3 pl-3 animate-in slide-in-from-top-2 duration-300 items-start", isItemActive ? `border-orange-500/20` : "border-primary/10")}>
                                                                 {item.submenus.map((submenu) => {
-                                                                    const isSubActive = pathname === submenu.href;
+                                                                    const subHref = toBranchHref(submenu.href);
+                                                                    const isSubActive = pathname === subHref || pathname === submenu.href;
                                                                     return (
                                                                         <Link
                                                                             key={submenu.name}
-                                                                            href={submenu.href}
+                                                                            href={subHref}
                                                                             onClick={() => {
                                                                                 if (window.innerWidth < 768 && onClose) onClose();
                                                                             }}
@@ -1013,7 +1060,7 @@ export function Sidebar({
                                                                                     : "text-muted-foreground/80 hover:text-foreground hover:bg-muted/50"
                                                                             )}
                                                                         >
-                                                                            <span className="flex-1">{(submenu as any).label || (submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name)))}</span>
+                                                                            <span className="flex-1">{isNonEnglish ? t(submenu.name) : ((submenu as any).label || (submenu.name === "period_attendance" ? t("period_attendance") : (t(submenu.name) !== submenu.name ? t(submenu.name) : formatLabel(submenu.name))))}</span>
                                                                             {isSubActive && (
                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)] animate-in fade-in zoom-in duration-300 ml-2" />
                                                                             )}
@@ -1078,7 +1125,7 @@ export function Sidebar({
                             <div className="flex flex-col">
                                 <p className="text-[9px] text-muted-foreground/60 uppercase tracking-[0.15em] font-black leading-tight mb-0.5">{t("session")}</p>
                                 <p className="text-sm font-extrabold text-foreground/90 tracking-tight">
-                                    {fetchingSessions ? t("loading") : (activeSession?.session || t("not_set"))}
+                                    {fetchingSessions ? t("loading") : (activeSession?.session ? toLocaleNumber(activeSession.session, language?.short_code) : t("not_set"))}
                                 </p>
                             </div>
                             <Popover>

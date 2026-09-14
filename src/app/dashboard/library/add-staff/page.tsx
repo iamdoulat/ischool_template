@@ -14,7 +14,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { formatDate } from "@/lib/utils";
+import { formatDate, toLocaleNumber, cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -45,6 +45,8 @@ import {
     Mail,
     Calendar,
     Phone,
+    SlidersHorizontal,
+    Building2,
 } from "lucide-react";
 import {
     DropdownMenu,
@@ -72,7 +74,6 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
-import { cn } from "@/lib/utils";
 
 interface StaffMember {
     id: number;
@@ -81,6 +82,7 @@ interface StaffMember {
     dob: string;
     phone: string;
     staff_id: string;
+    branch_id?: number | string;
     avatar?: string;
     photo?: string;
     image?: string;
@@ -95,6 +97,13 @@ interface StaffMember {
         library_card_no: string;
         active: boolean;
     };
+}
+
+interface Branch {
+    id: number | string;
+    branch_name: string;
+    slug?: string;
+    is_main?: boolean;
 }
 
 interface PaginationData {
@@ -127,11 +136,13 @@ function SkeletonRows({ rows = 6, cols = TABLE_COLS }: { rows?: number; cols?: n
 }
 
 export default function AddStaffLibraryPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const getImageUrl = useImageUrl();
     const [searchTerm, setSearchTerm] = useState("");
     const [staffList, setStaffList] = useState<StaffMember[]>([]);
+    const [branches, setBranches] = useState<Branch[]>([]);
+    const [selectedBranch, setSelectedBranch] = useState<string>("all");
     const [pagination, setPagination] = useState<PaginationData | null>(null);
     const [loading, setLoading] = useState(true);
     const [limit, setLimit] = useState("50");
@@ -147,10 +158,24 @@ export default function AddStaffLibraryPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
 
-    const fetchStaff = async (page = 1) => {
-        setLoading(true);
+    const fetchBranches = async () => {
         try {
-            const response = await api.get(`/library/members?type=staff&page=${page}&search=${searchTerm}&limit=${limit}`);
+            const res = await api.get("/multi-branch/branches?all=true");
+            const data = res.data?.data || res.data || [];
+            if (Array.isArray(data)) {
+                setBranches(data);
+            }
+        } catch {
+            // Silently fallback if multi-branch is not enabled
+        }
+    };
+
+    const fetchStaff = async (page = 1, branchOverride?: string) => {
+        setLoading(true);
+        const branchVal = branchOverride !== undefined ? branchOverride : selectedBranch;
+        const branchParam = branchVal && branchVal !== "all" ? `&branch_id=${branchVal}` : "";
+        try {
+            const response = await api.get(`/library/members?type=staff&page=${page}&search=${searchTerm}&limit=${limit}${branchParam}`);
             setStaffList(response.data.data ?? response.data ?? []);
             setPagination({
                 current_page: response.data.current_page,
@@ -168,9 +193,15 @@ export default function AddStaffLibraryPage() {
     };
 
     useEffect(() => {
+        fetchBranches();
         fetchStaff();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [limit]);
+
+    const handleBranchChange = (value: string) => {
+        setSelectedBranch(value);
+        fetchStaff(1, value);
+    };
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -281,24 +312,69 @@ export default function AddStaffLibraryPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") || "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") || "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") || "CSV" },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") || "Print" },
+        { Icon: Columns, onClick: () => {}, title: t("columns") || "Columns" },
     ];
 
     return (
         <div className="space-y-6">
+            {/* Top Criteria / Branch Filter Card */}
+            {branches.length > 0 && (
+                <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
+                    <div className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <SlidersHorizontal className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0 py-0.5">
+                            <h1 className="text-[16px] font-bold text-gray-800 leading-snug">{t("select_criteria")}</h1>
+                            <p className="text-[11px] text-gray-500 mt-0.5">{t("filter_staff_by_branch")}</p>
+                        </div>
+                    </div>
+                    <CardContent className="p-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end">
+                            <div className="space-y-1.5 sm:col-span-1 md:col-span-2">
+                                <Label className="text-xs font-semibold text-gray-600">
+                                    {t("campus_branch") || t("branch")}
+                                </Label>
+                                <Select value={selectedBranch} onValueChange={handleBranchChange}>
+                                    <SelectTrigger className="h-9 text-xs">
+                                        <SelectValue placeholder={t("all_branches")} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t("all_branches")}</SelectItem>
+                                        {branches.map((b) => (
+                                            <SelectItem key={b.id} value={String(b.id)}>
+                                                {b.branch_name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="flex justify-end">
+                                <Button
+                                    onClick={() => fetchStaff(1)}
+                                    className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 transition-all"
+                                >
+                                    <Search className="h-4 w-4" /> {t("search")}
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
             {/* Staff Member List Section */}
             <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
                 <div className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <UserCog className="h-5 w-5" />
                     </span>
-                    <div className="min-w-0">
-                        <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("staff_member_list")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("staff_records_count", { count: pagination?.total ?? staffList.length })}</p>
+                    <div className="min-w-0 py-0.5">
+                        <h1 className="text-[16px] font-bold text-gray-800 leading-snug">{t("staff_member_list")}</h1>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{t("staff_records_count")}: {toLocaleNumber(pagination?.total ?? staffList.length, language?.short_code)}</p>
                     </div>
                 </div>
                 <CardContent className="space-y-4">
@@ -321,13 +397,15 @@ export default function AddStaffLibraryPage() {
                         <div className="flex items-center gap-2">
                             <Select value={limit} onValueChange={setLimit}>
                                 <SelectTrigger className="w-[70px] h-9 text-xs">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber(50, language?.short_code)}>
+                                        {toLocaleNumber(limit, language?.short_code)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
@@ -374,7 +452,7 @@ export default function AddStaffLibraryPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : staffList.map((staff) => {
-                                    const staffName = staff.name || "Staff Member";
+                                    const staffName = staff.name || "Staff";
                                     const initials = staffName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
                                     const isMember = !!staff.library_member;
 
@@ -389,12 +467,12 @@ export default function AddStaffLibraryPage() {
                                             {/* Member ID */}
                                             <TableCell className="py-3 px-4">
                                                 {isMember ? (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-200/70">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-200/70">
                                                         {staff.library_member?.member_id}
                                                     </span>
                                                 ) : (
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-gray-400 font-mono text-[10px] bg-gray-100">
-                                                        Not Member
+                                                        {t("not_member") || "Not Member"}
                                                     </span>
                                                 )}
                                             </TableCell>
@@ -404,7 +482,7 @@ export default function AddStaffLibraryPage() {
                                                 {staff.library_member?.library_card_no ? (
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-mono text-[11px] border border-slate-200/60 font-medium">
                                                         <CreditCard className="h-3 w-3 text-slate-500" />
-                                                        {staff.library_member.library_card_no}
+                                                        {toLocaleNumber(staff.library_member.library_card_no, language?.short_code)}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-300 font-sans">—</span>
@@ -515,7 +593,11 @@ export default function AddStaffLibraryPage() {
                     {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing_x_to_y_of_z", { from: pagination?.from || 0, to: pagination?.to || 0, total: pagination?.total || 0 })}
+                            {t("showing_x_to_y_of_z", {
+                                from: toLocaleNumber(pagination?.from || 0, language?.short_code),
+                                to: toLocaleNumber(pagination?.to || 0, language?.short_code),
+                                total: toLocaleNumber(pagination?.total || 0, language?.short_code)
+                            })}
                         </div>
                         <div className="flex gap-1 items-center">
                             <Button
@@ -539,7 +621,7 @@ export default function AddStaffLibraryPage() {
                                             : "bg-white text-gray-600 border border-gray-200"
                                     )}
                                 >
-                                    {i + 1}
+                                    {toLocaleNumber(i + 1, language?.short_code)}
                                 </Button>
                             ))}
                             <Button

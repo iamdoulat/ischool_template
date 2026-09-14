@@ -16,11 +16,12 @@ import {
     Loader2, Clock, BookOpen, Award, FileText, Monitor,
     Star, X
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateCourseCategory } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "@/hooks/use-translation";
+import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 
 interface OnlineCourse {
     id: number;
@@ -44,7 +45,10 @@ interface OnlineCourse {
 }
 
 export default function UserOnlineCoursePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const { symbol } = useCurrencyFormatter();
+    const fmtPrice = (n: number) => `${symbol}${toLocaleNumber(n.toFixed(2), langCode)}`;
     const [data, setData] = useState<OnlineCourse[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -72,8 +76,7 @@ export default function UserOnlineCoursePage() {
             setTotalEntries(res.total || 0);
             setLastPage(res.last_page || 1);
             setCurrentPage(res.current_page || 1);
-        } catch (error) {
-            console.error("Failed to load courses", error);
+        } catch {
             setData([]);
             setTotalEntries(0);
             setLastPage(1);
@@ -105,7 +108,7 @@ export default function UserOnlineCoursePage() {
                     </span>
                     <div>
                         <h1 className="text-[16px] font-bold text-white tracking-tight leading-none">{t("online_course")}</h1>
-                        <p className="text-[11px] text-white/80 mt-1">{totalEntries} {t("courses_available")}</p>
+                        <p className="text-[11px] text-white/80 mt-1">{toLocaleNumber(totalEntries, langCode)} {t("courses_available")}</p>
                     </div>
                 </div>
 
@@ -134,13 +137,15 @@ export default function UserOnlineCoursePage() {
                                 }}
                             >
                                 <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
-                                    <SelectValue placeholder="12" />
+                                    <SelectValue placeholder={toLocaleNumber("12", langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="6">6</SelectItem>
-                                    <SelectItem value="12">12</SelectItem>
-                                    <SelectItem value="24">24</SelectItem>
-                                    <SelectItem value="48">48</SelectItem>
+                                    <SelectItem value="6">{toLocaleNumber("6", langCode)}</SelectItem>
+                                    <SelectItem value="12">{toLocaleNumber("12", langCode)}</SelectItem>
+                                    <SelectItem value="24">{toLocaleNumber("24", langCode)}</SelectItem>
+                                    <SelectItem value="48">{toLocaleNumber("48", langCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
@@ -203,7 +208,7 @@ export default function UserOnlineCoursePage() {
                                             </div>
                                         )}
                                         <span className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-[#6366f1] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                                            {course.category}
+                                            {translateCourseCategory(course.category, langCode) || course.category}
                                         </span>
                                     </div>
 
@@ -229,19 +234,19 @@ export default function UserOnlineCoursePage() {
                                         <div className="grid grid-cols-2 gap-1.5 mb-3 mt-auto">
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <BookOpen className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_lessons} {t("lessons")}
+                                                {toLocaleNumber(course.total_lessons, langCode)} {t("lessons")}
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <Clock className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_hours || t("not_set")}
+                                                {course.total_hours ? toLocaleNumber(course.total_hours, langCode) : t("not_set")}
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <FileText className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_exams} {t("exams")}
+                                                {toLocaleNumber(course.total_exams, langCode)} {t("exams")}
                                             </div>
                                             <div className="flex items-center gap-1 text-[10px] text-gray-500">
                                                 <Award className="h-3 w-3 text-indigo-400 shrink-0" />
-                                                {course.total_quizzes} {t("quizzes")}
+                                                {toLocaleNumber(course.total_quizzes, langCode)} {t("quizzes")}
                                             </div>
                                         </div>
 
@@ -249,11 +254,11 @@ export default function UserOnlineCoursePage() {
                                         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                                             <div className="flex items-center gap-1.5">
                                                 <span className="text-[15px] font-bold text-[#6366f1]">
-                                                    ${course.price.toFixed(2)}
+                                                    {fmtPrice(course.price)}
                                                 </span>
                                                 {course.original_price > course.price && (
                                                     <span className="text-[10px] text-gray-400 line-through">
-                                                        ${course.original_price.toFixed(2)}
+                                                        {fmtPrice(course.original_price)}
                                                     </span>
                                                 )}
                                             </div>
@@ -273,9 +278,9 @@ export default function UserOnlineCoursePage() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                            {Math.min(startIndex + parseInt(itemsPerPage, 10), totalEntries)} {t("of")}{" "}
-                            {totalEntries} {t("entries")}
+                            {t("showing")} {toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, langCode)} {t("to")}{" "}
+                            {toLocaleNumber(Math.min(startIndex + parseInt(itemsPerPage, 10), totalEntries), langCode)} {t("of")}{" "}
+                            {toLocaleNumber(totalEntries, langCode)} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -299,7 +304,7 @@ export default function UserOnlineCoursePage() {
                                                 : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
                                         )}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, langCode)}
                                     </button>
                                 ))}
 
@@ -363,7 +368,7 @@ export default function UserOnlineCoursePage() {
                                                 {selectedCourse.instructor_name}
                                             </span>
                                             <span className="bg-indigo-50 text-[#6366f1] px-2 py-0.5 rounded-full font-medium">
-                                                {selectedCourse.category}
+                                                {translateCourseCategory(selectedCourse.category, langCode) || selectedCourse.category}
                                             </span>
                                         </div>
                                     </div>
@@ -372,10 +377,10 @@ export default function UserOnlineCoursePage() {
                                 {/* Stats Bar */}
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                     {[
-                                        { label: t("lessons"), value: selectedCourse.total_lessons, icon: BookOpen },
-                                        { label: t("hours"), value: selectedCourse.total_hours || t("not_set"), icon: Clock },
-                                        { label: t("exams"), value: selectedCourse.total_exams, icon: FileText },
-                                        { label: t("quizzes"), value: selectedCourse.total_quizzes, icon: Award },
+                                        { label: t("lessons"), value: toLocaleNumber(selectedCourse.total_lessons, langCode), icon: BookOpen },
+                                        { label: t("hours"), value: selectedCourse.total_hours ? toLocaleNumber(selectedCourse.total_hours, langCode) : t("not_set"), icon: Clock },
+                                        { label: t("exams"), value: toLocaleNumber(selectedCourse.total_exams, langCode), icon: FileText },
+                                        { label: t("quizzes"), value: toLocaleNumber(selectedCourse.total_quizzes, langCode), icon: Award },
                                     ].map((stat, i) => (
                                         <div key={i} className="rounded-lg border border-gray-100 bg-gradient-to-br from-[#FF9800]/5 to-[#6366F1]/5 p-3 flex flex-col items-center text-center">
                                             <stat.icon className="h-4 w-4 text-[#6366f1] mb-1" />
@@ -388,11 +393,11 @@ export default function UserOnlineCoursePage() {
                                 {/* Price */}
                                 <div className="flex items-center gap-2">
                                     <span className="text-lg font-bold text-[#6366f1]">
-                                        ${selectedCourse.price.toFixed(2)}
+                                        {fmtPrice(selectedCourse.price)}
                                     </span>
                                     {selectedCourse.original_price > selectedCourse.price && (
                                         <span className="text-[11px] text-gray-400 line-through">
-                                            ${selectedCourse.original_price.toFixed(2)}
+                                            {fmtPrice(selectedCourse.original_price)}
                                         </span>
                                     )}
                                 </div>
@@ -470,7 +475,7 @@ export default function UserOnlineCoursePage() {
                                                 >
                                                     <div className="flex items-start gap-2">
                                                         <span className="text-[10px] font-bold text-[#6366f1] bg-indigo-100 rounded-full w-4 h-4 flex items-center justify-center shrink-0 mt-0.5">
-                                                            {idx + 1}
+                                                            {toLocaleNumber(idx + 1, langCode)}
                                                         </span>
                                                         <div>
                                                             <p className="text-[11px] font-medium text-gray-700 mb-1">
@@ -492,7 +497,7 @@ export default function UserOnlineCoursePage() {
                                                                 ))}
                                                             </div>
                                                             <div className="text-[10px] text-gray-400 mt-1">
-                                                                {item.points} {t("pts")}
+                                                                {toLocaleNumber(item.points, langCode)} {t("pts")}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -509,11 +514,11 @@ export default function UserOnlineCoursePage() {
                     <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-[#6366f1]">
-                                ${selectedCourse?.price.toFixed(2)}
+                                {selectedCourse ? fmtPrice(selectedCourse.price) : ""}
                             </span>
                             {selectedCourse && selectedCourse.original_price > selectedCourse.price && (
                                 <span className="text-[11px] text-gray-400 line-through">
-                                    ${selectedCourse.original_price.toFixed(2)}
+                                    {fmtPrice(selectedCourse.original_price)}
                                 </span>
                             )}
                         </div>

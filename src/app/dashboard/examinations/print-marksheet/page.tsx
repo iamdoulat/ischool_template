@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,6 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas-pro";
 import { MarksheetTemplateLayout, MarksheetData } from "@/components/examination/MarksheetTemplateLayout";
 import { getImageUrl } from "@/lib/image-url";
-import { useRef } from "react";
 
 interface Student {
     id: string;
@@ -84,10 +84,13 @@ function TableSkeleton({ rows = 5, cols }: { rows?: number; cols: number }) {
 }
 
 export default function PrintMarksheetPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
+    const [printing, setPrinting] = useState(false);
+    const [printProgress, setPrintProgress] = useState<{ current: number; total: number } | null>(null);
 
     // Criteria Data
     const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -115,6 +118,47 @@ export default function PrintMarksheetPage() {
     const [marksheetData, setMarksheetData] = useState<MarksheetData | null>(null);
     const marksheetRef = useRef<HTMLDivElement>(null);
 
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        return translateClassName(name, shortCode);
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        return translateSectionName(name, shortCode);
+    };
+
+    const getLocalizedTemplateName = (name?: string) => {
+        if (!name) return "";
+        const match = name.match(/^Design\s+(\d+)$/i);
+        if (match) {
+            return `${t("design")} ${toLocaleNumber(match[1], shortCode)}`;
+        }
+        const key = name.toLowerCase().replace(/\s+/g, "_");
+        const trans = t(key);
+        return trans && trans !== key ? trans : name;
+    };
+
+    const getLocalizedExamGroupName = (name?: string) => {
+        if (!name) return "";
+        const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const trans = t(key);
+        return trans && trans !== key ? trans : name;
+    };
+
+    const getLocalizedExamName = (name?: string) => {
+        if (!name) return "";
+        return toLocaleNumber(name, shortCode);
+    };
+
+    const getLocalizedGender = (gender?: string) => {
+        if (!gender) return "---";
+        const g = gender.toLowerCase();
+        if (g === "male" || g === "পুরুষ") return t("male");
+        if (g === "female" || g === "মহিলা") return t("female");
+        return gender;
+    };
+
     useEffect(() => {
         fetchInitialData();
     }, []);
@@ -134,7 +178,7 @@ export default function PrintMarksheetPage() {
 
             const clsData = classesRes.data?.data || classesRes.data || [];
             setClasses(Array.isArray(clsData) ? clsData : (clsData.data || []));
-        } catch (error) {
+        } catch {
             tt.error("failed_to_load_criteria_data");
         } finally {
             setLoading(false);
@@ -153,7 +197,6 @@ export default function PrintMarksheetPage() {
 
     useEffect(() => {
         if (selectedCriteria.school_class_id) {
-            // Fetch sections from API rather than relying on nested data
             api.get(`/academics/sections?school_class_id=${selectedCriteria.school_class_id}&no_paginate=true`)
                 .then(res => setSections(res.data?.data || res.data || []))
                 .catch(() => setSections([]));
@@ -187,7 +230,7 @@ export default function PrintMarksheetPage() {
             const schedules = schedulesRes.data || [];
             setExamSubjectCount(Array.isArray(schedules) ? schedules.length : 0);
             setSelectedIds([]);
-        } catch (error) {
+        } catch {
             tt.error("failed_to_fetch_students");
         } finally {
             setSearching(false);
@@ -215,8 +258,8 @@ export default function PrintMarksheetPage() {
             const data = res.data;
             setMarksheetData(data);
             return data;
-        } catch (error: any) {
-            tt.error(error?.response?.data?.message || "Failed to fetch marksheet data");
+        } catch {
+            tt.error("failed_to_fetch_marksheet_data");
             return null;
         }
     };
@@ -228,7 +271,6 @@ export default function PrintMarksheetPage() {
             const src = img.getAttribute('src');
             if (!src || src.startsWith('data:')) return;
             try {
-                // Use a temporary Image to draw onto a canvas → base64
                 const tmpImg = new Image();
                 tmpImg.crossOrigin = 'anonymous';
                 await new Promise<void>((resolve, reject) => {
@@ -243,7 +285,6 @@ export default function PrintMarksheetPage() {
                 ctx.drawImage(tmpImg, 0, 0);
                 img.src = cvs.toDataURL('image/png');
             } catch {
-                // crossOrigin load failed — try fetching through our Next.js proxy
                 try {
                     const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(src)}`;
                     const res = await fetch(proxyUrl);
@@ -264,12 +305,12 @@ export default function PrintMarksheetPage() {
 
     const generatePdf = async () => {
         if (!marksheetRef.current) return null;
-        // Pre-convert all images to base64 so html2canvas can render them
         await inlineAllImages(marksheetRef.current);
         const canvas = await html2canvas(marksheetRef.current, {
             scale: 2,
             useCORS: true,
-            logging: false
+            logging: false,
+            backgroundColor: '#ffffff'
         });
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
@@ -283,11 +324,11 @@ export default function PrintMarksheetPage() {
         setPrintingStudentId(studentId);
         const data = await fetchMarksheetData(studentId);
         if (data) {
-            // Need slight delay to allow React to render the hidden marksheet
             setTimeout(async () => {
                 const pdf = await generatePdf();
                 if (pdf) {
-                    pdf.save(`Marksheet_${data.student.admission_no}.pdf`);
+                    pdf.save(`Marksheet_${data.student?.admission_no || studentId}.pdf`);
+                    tt.success("download_marksheet");
                 }
                 setPrintingStudentId(null);
             }, 500);
@@ -328,16 +369,71 @@ export default function PrintMarksheetPage() {
         }
     };
 
+    const handleBulkDownload = async () => {
+        if (selectedIds.length === 0) return;
+        setPrinting(true);
+        setPrintProgress({ current: 0, total: selectedIds.length });
+
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            let addedPages = 0;
+
+            for (let i = 0; i < selectedIds.length; i++) {
+                const studentId = selectedIds[i];
+                const data = await fetchMarksheetData(studentId);
+                
+                if (data && marksheetRef.current) {
+                    await new Promise(res => setTimeout(res, 100));
+                    await inlineAllImages(marksheetRef.current);
+                    await new Promise(res => setTimeout(res, 200));
+
+                    const canvas = await html2canvas(marksheetRef.current, {
+                        scale: 2,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
+
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                    if (addedPages > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    addedPages++;
+                }
+                setPrintProgress({ current: i + 1, total: selectedIds.length });
+            }
+
+            if (addedPages > 0) {
+                pdf.save(`Marksheets_${new Date().getTime()}.pdf`);
+                tt.success("marksheets_generated_successfully");
+            }
+        } catch {
+            tt.error("failed_to_generate_marksheets");
+        } finally {
+            setPrinting(false);
+            setPrintProgress(null);
+            setMarksheetData(null);
+        }
+    };
+
     return (
         <div className="space-y-6 font-sans p-4 bg-gray-50/10 min-h-screen">
-            {/* Header Section */}
-            <div className="flex justify-between items-center bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-800 uppercase tracking-widest flex items-center gap-3">
-                        <Printer className="h-6 w-6 text-indigo-500" />
-                        {t("print_marksheet")}
-                    </h1>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{t("print_marksheet_subtitle")}</p>
+            {/* Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-xl shadow-xs">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
+                        <Printer className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">
+                            {t("print_marksheet")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("print_marksheet_subtitle")}
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -363,7 +459,11 @@ export default function PrintMarksheetPage() {
                                     <SelectValue placeholder={t("select_group")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {examGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name} ({g.exam_type})</SelectItem>)}
+                                    {examGroups.map(g => (
+                                        <SelectItem key={g.id} value={g.id.toString()}>
+                                            {getLocalizedExamGroupName(g.name)} ({g.exam_type})
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -377,7 +477,11 @@ export default function PrintMarksheetPage() {
                                     <SelectValue placeholder={t("select_exam")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {exams.map(e => <SelectItem key={e.id} value={e.id.toString()}>{e.name}</SelectItem>)}
+                                    {exams.map(e => (
+                                        <SelectItem key={e.id} value={e.id.toString()}>
+                                            {getLocalizedExamName(e.name)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -391,7 +495,11 @@ export default function PrintMarksheetPage() {
                                     <SelectValue placeholder={t("select_session")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sessions.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.session}</SelectItem>)}
+                                    {sessions.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>
+                                            {toLocaleNumber(s.session, shortCode)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -405,7 +513,11 @@ export default function PrintMarksheetPage() {
                                     <SelectValue placeholder={t("select_class")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                                    {classes.map(c => (
+                                        <SelectItem key={c.id} value={c.id.toString()}>
+                                            {getLocalizedClassName(c.name)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -419,7 +531,11 @@ export default function PrintMarksheetPage() {
                                     <SelectValue placeholder={t("select_section")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                    {sections.map(s => (
+                                        <SelectItem key={s.id} value={s.id.toString()}>
+                                            {getLocalizedSectionName(s.name)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -433,7 +549,11 @@ export default function PrintMarksheetPage() {
                                     <SelectValue placeholder={t("select_template")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {templates.map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}
+                                    {templates.map(tmp => (
+                                        <SelectItem key={tmp.id} value={tmp.id.toString()}>
+                                            {getLocalizedTemplateName(tmp.name)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -442,10 +562,10 @@ export default function PrintMarksheetPage() {
                     <div className="flex justify-end pt-4">
                         <Button
                             onClick={handleSearch}
-                            disabled={searching}
-                            className="btn-gradient text-white px-10 h-11 text-[11px] font-bold uppercase shadow-xl shadow-orange-200/50 transition-all rounded-full flex gap-2"
+                            disabled={searching || loading}
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-8 h-10 text-[11px] font-bold uppercase shadow-md transition-all rounded-full flex gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
                         >
-                            {searching ? <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" /> : <Search className="h-4 w-4" />}
+                            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                             {t("search_students")}
                         </Button>
                     </div>
@@ -461,23 +581,37 @@ export default function PrintMarksheetPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("student_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{t("x_students_found", { count: students.length })}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(students.length, shortCode)} {t("students_found")}</p>
                         </div>
                     </div>
                     {selectedIds.length > 0 && (
-                        <Button className="btn-gradient text-white h-10 px-8 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-indigo-100 flex gap-2">
-                            <Download className="h-3.5 w-3.5" /> {t("bulk_download")} ({selectedIds.length})
+                        <Button 
+                            onClick={handleBulkDownload}
+                            disabled={printing}
+                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 px-6 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-md flex gap-2 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {printing ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    {printProgress ? `${t("generating")} (${toLocaleNumber(printProgress.current, shortCode)}/${toLocaleNumber(printProgress.total, shortCode)})` : t("generating")}
+                                </>
+                            ) : (
+                                <>
+                                    <Download className="h-3.5 w-3.5" />
+                                    {t("bulk_download")} ({toLocaleNumber(selectedIds.length, shortCode)})
+                                </>
+                            )}
                         </Button>
                     )}
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                     <div className="rounded-lg border border-gray-50 overflow-hidden shadow-sm">
                         <Table>
-                            <TableHeader className="!bg-[#f3f4f6] text-[10px] uppercase font-bold text-gray-500">
+                            <TableHeader className="!bg-[#f3f4f6] text-[11px] uppercase font-bold text-gray-600">
                                 <TableRow className="hover:bg-transparent border-gray-50">
                                     <TableHead className="w-[60px] px-6 text-center">
                                         <Checkbox
-                                            className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 transition-all"
+                                            className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 transition-all cursor-pointer"
                                             checked={students.length > 0 && selectedIds.length === students.length}
                                             onCheckedChange={toggleSelectAll}
                                         />
@@ -497,21 +631,23 @@ export default function PrintMarksheetPage() {
                                     <TableSkeleton rows={5} cols={9} />
                                 ) : students.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="h-32 text-center text-gray-400 text-sm italic">
+                                        <TableCell colSpan={9} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                             {t("please_select_criteria_and_search")}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     students.map((student) => (
-                                        <TableRow key={student.id} className="text-[12px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
+                                        <TableRow key={student.id} className="text-[13px] text-gray-600 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer group border-b last:border-0 border-gray-50 transition-colors">
                                             <TableCell className="text-center px-6 py-4">
                                                 <Checkbox
-                                                    className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                                                    className="h-4 w-4 rounded-md border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 cursor-pointer"
                                                     checked={selectedIds.includes(student.id)}
                                                     onCheckedChange={() => toggleSelect(student.id)}
                                                 />
                                             </TableCell>
-                                            <TableCell className="py-4 px-6 font-bold text-gray-700 bg-gray-50/30">{student.admission_no}</TableCell>
+                                            <TableCell className="py-4 px-6 font-bold text-gray-700 bg-gray-50/30">
+                                                {toLocaleNumber(student.admission_no, shortCode)}
+                                            </TableCell>
                                             <TableCell className="py-3 px-6">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className="h-8 w-8 rounded-full overflow-hidden bg-indigo-50 border border-indigo-100 shrink-0 flex items-center justify-center text-indigo-600 font-bold text-xs shadow-2xs">
@@ -535,19 +671,24 @@ export default function PrintMarksheetPage() {
                                             </TableCell>
                                             <TableCell className="py-4 px-6 font-medium">{student.father_name || "---"}</TableCell>
                                             <TableCell className="py-4 px-6 text-[11px] font-bold">
-                                                <span className="flex items-center gap-2 text-gray-500"><Calendar className="h-3 w-3" /> {student.dob ? new Date(student.dob).toLocaleDateString('en-GB') : "---"}</span>
+                                                <span className="flex items-center gap-2 text-gray-500">
+                                                    <Calendar className="h-3 w-3" /> 
+                                                    {student.dob ? toLocaleNumber(new Date(student.dob).toLocaleDateString('en-GB'), shortCode) : "---"}
+                                                </span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6">
-                                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${student.gender === 'Male' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
-                                                    {student.gender}
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border ${student.gender === 'Male' || student.gender === 'পুরুষ' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                                    {getLocalizedGender(student.gender)}
                                                 </span>
                                             </TableCell>
                                             <TableCell className="py-4 px-6 text-center">
                                                 <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold border border-indigo-100">
-                                                    {examSubjectCount}
+                                                    {toLocaleNumber(examSubjectCount, shortCode)}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="py-4 px-6 font-medium text-gray-400">{student.phone || "---"}</TableCell>
+                                            <TableCell className="py-4 px-6 font-medium text-gray-500">
+                                                {student.phone ? toLocaleNumber(student.phone, shortCode) : "---"}
+                                            </TableCell>
                                             <TableCell className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <Button
@@ -555,7 +696,7 @@ export default function PrintMarksheetPage() {
                                                         variant="ghost"
                                                         onClick={() => handleDownload(student.id)}
                                                         disabled={printingStudentId === student.id}
-                                                        className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50"
+                                                        className="h-8 w-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50 cursor-pointer"
                                                         title={t("download_marksheet")}
                                                     >
                                                         {printingStudentId === student.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
@@ -565,7 +706,7 @@ export default function PrintMarksheetPage() {
                                                         variant="ghost"
                                                         onClick={() => handlePrint(student.id)}
                                                         disabled={printingStudentId === student.id}
-                                                        className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50"
+                                                        className="h-8 w-8 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-md transition-all disabled:opacity-50 cursor-pointer"
                                                         title={t("print_marksheet")}
                                                     >
                                                         {printingStudentId === student.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}

@@ -14,14 +14,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/ui/date-picker";
-import { format, parseISO, isValid } from "date-fns";
+import { parseISO, isValid } from "date-fns";
 import {
     ChevronLeft, ChevronRight, Search, Plus, Pencil, Trash2,
     CalendarRange, Calendar, Loader2, FolderOpen,
     Copy, FileSpreadsheet, FileDown, Printer,
-    LayoutGrid, List, Clock, Info, Tag, CalendarDays, Eye,
+    LayoutGrid, List, Clock, Info, Tag, CalendarDays,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateHolidayTypeName } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import * as XLSX from "xlsx";
@@ -56,11 +56,6 @@ interface EventDetail {
     rawEntry?: CalendarEntry;
 }
 
-const monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-];
-
 const PAGE_SIZES = ["10", "25", "50", "100"];
 
 // Color definitions for various event/holiday categories
@@ -69,37 +64,37 @@ const CATEGORY_STYLES: Record<string, { badge: string; pill: string; cellBg: str
         badge: "bg-blue-600 text-white",
         pill: "bg-blue-100/90 text-blue-700 border-blue-200/80 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-800",
         cellBg: "bg-blue-50/80 hover:bg-blue-100/80 dark:bg-blue-950/40 border-blue-200/80",
-        text: "text-blue-700",
+        text: "text-blue-700 dark:text-blue-300",
     },
     vacation: {
         badge: "bg-emerald-600 text-white",
         pill: "bg-emerald-100/90 text-emerald-700 border-emerald-200/80 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800",
         cellBg: "bg-emerald-50/80 hover:bg-emerald-100/80 dark:bg-emerald-950/40 border-emerald-200/80",
-        text: "text-emerald-700",
+        text: "text-emerald-700 dark:text-emerald-300",
     },
     "school events": {
         badge: "bg-indigo-600 text-white",
         pill: "bg-indigo-100/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800",
         cellBg: "bg-indigo-50/80 hover:bg-indigo-100/80 dark:bg-indigo-950/40 border-indigo-200/80",
-        text: "text-indigo-700",
+        text: "text-indigo-700 dark:text-indigo-300",
     },
     event: {
         badge: "bg-indigo-600 text-white",
         pill: "bg-indigo-100/90 text-indigo-700 border-indigo-200/80 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800",
         cellBg: "bg-indigo-50/80 hover:bg-indigo-100/80 dark:bg-indigo-950/40 border-indigo-200/80",
-        text: "text-indigo-700",
+        text: "text-indigo-700 dark:text-indigo-300",
     },
     activity: {
         badge: "bg-amber-600 text-white",
         pill: "bg-amber-100/90 text-amber-800 border-amber-200/80 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800",
         cellBg: "bg-amber-50/80 hover:bg-amber-100/80 dark:bg-amber-950/40 border-amber-200/80",
-        text: "text-amber-700",
+        text: "text-amber-700 dark:text-amber-300",
     },
     weekly: {
         badge: "bg-red-600 text-white",
         pill: "bg-red-100/90 text-red-700 border-red-200/80 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800",
         cellBg: "bg-red-50/90 hover:bg-red-100/90 dark:bg-red-950/40 border-red-200/80",
-        text: "text-red-700",
+        text: "text-red-700 dark:text-red-300",
     },
 };
 
@@ -128,9 +123,30 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 export default function AnnualCalendarPage() {
-    const { t } = useTranslation();
-    const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const now = new Date();
+
+    const daysOfWeek = [
+        { key: 1, short: t("mon"), full: t("monday") },
+        { key: 2, short: t("tue"), full: t("tuesday") },
+        { key: 3, short: t("wed"), full: t("wednesday") },
+        { key: 4, short: t("thu"), full: t("thursday") },
+        { key: 5, short: t("fri"), full: t("friday") },
+        { key: 6, short: t("sat"), full: t("saturday") },
+        { key: 7, short: t("sun"), full: t("sunday") },
+    ];
+
+    // Localized Month & Year
+    const getLocalizedMonthYear = (year: number, month: number) => {
+        try {
+            const date = new Date(year, month - 1, 1);
+            const locale = shortCode === "bn" ? "bn-BD" : shortCode === "ar" ? "ar-SA" : shortCode === "hi" ? "hi-IN" : "en-US";
+            return date.toLocaleString(locale, { month: "long", year: "numeric" });
+        } catch {
+            return `${month}/${year}`;
+        }
+    };
 
     // View & Navigation State
     const [viewMode, setViewMode] = useState<"calendar" | "list" | "table">("calendar");
@@ -237,7 +253,7 @@ export default function AnnualCalendarPage() {
                 setAllEntries(Array.isArray(payload) ? payload : []);
             }
         } catch {
-            toast.error(t("failed_to_load_calendar_entries") || "Failed to load calendar entries");
+            toast.error(t("failed_to_load_calendar_entries"));
         } finally {
             setLoading(false);
         }
@@ -357,7 +373,7 @@ export default function AnnualCalendarPage() {
 
     const summaryCards = [
         {
-            label: t("public_holidays") || "Holidays",
+            label: t("public_holidays"),
             count: stats.holidays,
             bar: "from-blue-600 to-indigo-500",
             text: "text-blue-700 dark:text-blue-300",
@@ -366,7 +382,7 @@ export default function AnnualCalendarPage() {
             labelColor: "text-blue-600 dark:text-blue-400",
         },
         {
-            label: t("vacations") || "Vacations",
+            label: t("vacations"),
             count: stats.vacations,
             bar: "from-emerald-500 to-teal-500",
             text: "text-emerald-700 dark:text-emerald-300",
@@ -375,7 +391,7 @@ export default function AnnualCalendarPage() {
             labelColor: "text-emerald-600 dark:text-emerald-400",
         },
         {
-            label: t("school_events") || "School Events",
+            label: t("school_events"),
             count: stats.schoolEvents,
             bar: "from-indigo-500 to-purple-500",
             text: "text-indigo-700 dark:text-indigo-300",
@@ -384,7 +400,7 @@ export default function AnnualCalendarPage() {
             labelColor: "text-indigo-600 dark:text-indigo-400",
         },
         {
-            label: t("activities") || "Activities",
+            label: t("activities"),
             count: stats.activities,
             bar: "from-amber-500 to-orange-500",
             text: "text-amber-700 dark:text-amber-300",
@@ -393,7 +409,7 @@ export default function AnnualCalendarPage() {
             labelColor: "text-amber-600 dark:text-amber-400",
         },
         {
-            label: t("weekly_holidays") || "Weekly Holidays",
+            label: t("weekly_holidays"),
             count: stats.weeklyHolidays,
             bar: "from-red-500 to-rose-500",
             text: "text-red-700 dark:text-red-300",
@@ -402,7 +418,7 @@ export default function AnnualCalendarPage() {
             labelColor: "text-red-600 dark:text-red-400",
         },
         {
-            label: t("total_events") || "Total Events",
+            label: t("total_events"),
             count: stats.totalEvents,
             bar: "from-gray-700 to-gray-900",
             text: "text-gray-800 dark:text-gray-200",
@@ -421,30 +437,34 @@ export default function AnnualCalendarPage() {
         if (!dateStr) return "—";
         const d = parseISO(dateStr);
         if (isValid(d)) {
-            return format(d, "dd/MM/yyyy");
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dd = toLocaleNumber(pad(d.getDate()), shortCode);
+            const mm = toLocaleNumber(pad(d.getMonth() + 1), shortCode);
+            const yyyy = toLocaleNumber(d.getFullYear().toString(), shortCode);
+            return `${dd}/${mm}/${yyyy}`;
         }
         return dateStr;
     };
 
     const handleSave = async () => {
         if (!formData.start_date || !formData.end_date || !formData.holiday_type_id || !formData.description) {
-            toast.error(t("all_fields_required") || "All fields are required");
+            toast.error(t("all_fields_required") || t("please_fill_all_required_fields"));
             return;
         }
         setSubmitting(true);
         try {
             if (dialogMode === "edit" && selectedId) {
                 await api.put(`/annual-calendar/annual-calendars/${selectedId}`, formData);
-                toast.success(t("calendar_entry_updated") || "Calendar entry updated");
+                toast.success(t("calendar_entry_updated"));
             } else {
                 await api.post("/annual-calendar/annual-calendars", formData);
-                toast.success(t("calendar_entry_created") || "Calendar entry created");
+                toast.success(t("calendar_entry_created"));
             }
             setOpen(false);
             resetForm();
             fetchCalendarData();
         } catch {
-            toast.error(t("failed_to_save_calendar_entry") || "Failed to save calendar entry");
+            toast.error(t("failed_to_save_calendar_entry"));
         } finally {
             setSubmitting(false);
         }
@@ -468,13 +488,13 @@ export default function AnnualCalendarPage() {
         if (!deleteId) return;
         try {
             await api.delete(`/annual-calendar/annual-calendars/${deleteId}`);
-            toast.success(t("calendar_entry_deleted") || "Calendar entry deleted");
+            toast.success(t("calendar_entry_deleted"));
             if (selectedEvent && selectedEvent.id === deleteId) {
                 setSelectedEvent(null);
             }
             fetchCalendarData();
         } catch {
-            toast.error(t("failed_to_delete_calendar_entry") || "Failed to delete calendar entry");
+            toast.error(t("failed_to_delete_calendar_entry"));
         } finally {
             setDeleteId(null);
         }
@@ -492,7 +512,7 @@ export default function AnnualCalendarPage() {
         });
     };
 
-    // ── Export Handlers ──
+    // Export Handlers
     const handleCopy = () => {
         const rows = viewMode === "table" ? calendarData : allEntries;
         if (rows.length === 0) return;
@@ -501,46 +521,48 @@ export default function AnnualCalendarPage() {
             c.holiday_type?.name || c.holiday_type_name || "—",
             c.description || "",
             c.creator ? `${c.creator.name} ${c.creator.last_name || ""}`.trim() : "—",
-            c.is_front_site ? "Yes" : "No"
+            c.is_front_site ? t("yes") : t("no")
         ].join("\t")).join("\n");
         navigator.clipboard.writeText(text);
-        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
+        toast.success(t("copied_to_clipboard") || t("data_copied_to_clipboard"));
     };
 
     const handleExcel = () => {
         const rows = viewMode === "table" ? calendarData : allEntries;
         if (rows.length === 0) return;
         const ws = XLSX.utils.json_to_sheet(rows.map(c => ({
-            "Start Date": formatDate(c.start_date),
-            "End Date": formatDate(c.end_date),
-            "Holiday Type": c.holiday_type?.name || c.holiday_type_name || "—",
-            "Description": c.description || "",
-            "Created By": c.creator ? `${c.creator.name} ${c.creator.last_name || ""}`.trim() : "—",
-            "Front Site": c.is_front_site ? "Yes" : "No",
+            [t("start_date")]: formatDate(c.start_date),
+            [t("end_date")]: formatDate(c.end_date),
+            [t("holiday_type")]: c.holiday_type?.name || c.holiday_type_name || "—",
+            [t("description")]: c.description || "",
+            [t("created_by")]: c.creator ? `${c.creator.name} ${c.creator.last_name || ""}`.trim() : "—",
+            [t("front_site")]: c.is_front_site ? t("yes") : t("no"),
         })));
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Annual Calendar");
+        XLSX.utils.book_append_sheet(wb, ws, t("annual_calendar") || "AnnualCalendar");
         XLSX.writeFile(wb, "annual-calendar.xlsx");
+        toast.success(t("exported_to_excel"));
     };
 
     const handlePDF = () => {
         const rows = viewMode === "table" ? calendarData : allEntries;
         if (rows.length === 0) return;
         const doc = new jsPDF("l");
-        doc.text("Annual Calendar", 14, 16);
+        doc.text(t("annual_calendar"), 14, 16);
         autoTable(doc, {
-            head: [["Date Range", "Holiday Type", "Description", "Created By", "Front Site"]],
+            head: [[t("date_range") || t("date"), t("holiday_type"), t("description"), t("created_by"), t("front_site")]],
             body: rows.map(c => [
                 `${formatDate(c.start_date)} - ${formatDate(c.end_date)}`,
                 c.holiday_type?.name || c.holiday_type_name || "—",
                 c.description || "",
                 c.creator ? `${c.creator.name} ${c.creator.last_name || ""}`.trim() : "—",
-                c.is_front_site ? "Yes" : "No",
+                c.is_front_site ? t("yes") : t("no"),
             ]),
             startY: 22,
             styles: { fontSize: 8 },
         });
         doc.save("annual-calendar.pdf");
+        toast.success(t("exported_to_pdf"));
     };
 
     const sizeNum = parseInt(itemsPerPage, 10) || 50;
@@ -549,20 +571,20 @@ export default function AnnualCalendarPage() {
     const startIndex = (safePage - 1) * sizeNum;
 
     return (
-        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
-            <Card className="border-[0.5px] border-gray-200 dark:border-gray-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0 bg-white dark:bg-slate-900">
-                {/* ── Main Header ── */}
-                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-slate-800 dark:to-slate-850">
+        <div className="space-y-5 animate-in fade-in duration-500 pb-20">
+            <Card className="border-[0.5px] border-gray-200 dark:border-zinc-800 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0 bg-white dark:bg-card/50">
+                {/* Main Header */}
+                <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between space-y-0 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 dark:border-b dark:border-zinc-800">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <CalendarRange className="h-5 w-5" />
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold text-slate-800 dark:text-gray-100 leading-none">
-                                {t("annual_calendar") || "Annual Calendar"}
+                                {t("annual_calendar")}
                             </CardTitle>
                             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                                {t("manage_holidays_events_and_vacation_schedules") || "Manage Holidays, Events, And Vacation Schedules"}
+                                {t("manage_holidays_events_and_vacation_schedules")}
                             </p>
                         </div>
                     </div>
@@ -573,57 +595,57 @@ export default function AnnualCalendarPage() {
                             <button
                                 onClick={() => setViewMode("calendar")}
                                 className={cn(
-                                    "flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold rounded-md transition-all cursor-pointer",
+                                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer",
                                     viewMode === "calendar"
                                         ? "bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                                         : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
                                 )}
-                                title="Calendar Grid View"
+                                title={t("calendar")}
                             >
                                 <LayoutGrid className="h-3.5 w-3.5" />
-                                <span>{t("calendar") || "Calendar"}</span>
+                                <span>{t("calendar")}</span>
                             </button>
                             <button
                                 onClick={() => setViewMode("list")}
                                 className={cn(
-                                    "flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold rounded-md transition-all cursor-pointer",
+                                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer",
                                     viewMode === "list"
                                         ? "bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                                         : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
                                 )}
-                                title="Monthly Schedule List"
+                                title={t("schedule_list")}
                             >
                                 <List className="h-3.5 w-3.5" />
-                                <span>{t("schedule_list") || "Schedule"}</span>
+                                <span>{t("schedule_list")}</span>
                             </button>
                             <button
                                 onClick={() => setViewMode("table")}
                                 className={cn(
-                                    "flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold rounded-md transition-all cursor-pointer",
+                                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer",
                                     viewMode === "table"
                                         ? "bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-2xs"
                                         : "text-gray-500 hover:text-gray-800 dark:text-gray-400"
                                 )}
-                                title="Manage All Entries"
+                                title={t("manage_entries")}
                             >
                                 <CalendarDays className="h-3.5 w-3.5" />
-                                <span>{t("manage_entries") || "Manage Entries"}</span>
+                                <span>{t("manage_entries")}</span>
                             </button>
                         </div>
 
                         {/* Add Entry Button */}
                         <Button
                             onClick={() => { resetForm(); setOpen(true); }}
-                            className="h-9 px-4 sm:px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all shrink-0 cursor-pointer"
+                            className="h-9 px-4 sm:px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all shrink-0 cursor-pointer border-0"
                         >
                             <Plus className="h-4 w-4" />
-                            <span>{t("add_entry") || "Add Entry"}</span>
+                            <span>{t("add_entry")}</span>
                         </Button>
                     </div>
                 </CardHeader>
 
                 <CardContent className="p-4 lg:p-5 space-y-5">
-                    {/* ── Top Summary Stat Cards ── */}
+                    {/* Top Summary Stat Cards */}
                     {!loading && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                             {summaryCards.map((card, idx) => (
@@ -640,8 +662,8 @@ export default function AnnualCalendarPage() {
                                         <p className={cn("text-[10px] font-semibold uppercase tracking-wide leading-none truncate", card.labelColor)}>
                                             {card.label}
                                         </p>
-                                        <p className={cn("mt-1 text-xl font-bold", card.text)}>
-                                            {card.count}
+                                        <p className={cn("mt-1.5 text-xl font-bold", card.text)}>
+                                            {toLocaleNumber(card.count, shortCode)}
                                         </p>
                                     </div>
                                 </div>
@@ -649,42 +671,42 @@ export default function AnnualCalendarPage() {
                         </div>
                     )}
 
-                    {/* ── Calendar & Schedule Views Navigation ── */}
+                    {/* Calendar & Schedule Views Navigation */}
                     {viewMode !== "table" && (
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-1">
                             <Button
                                 onClick={goToToday}
                                 variant="outline"
                                 size="sm"
-                                className="text-xs font-semibold rounded-[10px] hidden sm:flex items-center gap-1.5 border-gray-200 dark:border-gray-700"
+                                className="text-xs font-semibold rounded-[10px] hidden sm:flex items-center gap-1.5 border-gray-200 dark:border-zinc-700 cursor-pointer"
                             >
                                 <Clock className="h-3.5 w-3.5 text-indigo-500" />
-                                {t("today") || "Today"}
+                                {t("today")}
                             </Button>
 
                             <div className="flex items-center justify-center gap-4 mx-auto sm:mx-0">
                                 <Button
                                     onClick={goToPrevMonth}
                                     size="icon"
-                                    className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-xs transition-all rounded-[10px] active:scale-95"
+                                    className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-xs transition-all rounded-[10px] active:scale-95 cursor-pointer border-0"
                                 >
                                     <ChevronLeft className="h-4 w-4" />
                                 </Button>
                                 <div className="font-bold text-[15px] text-gray-800 dark:text-gray-100 min-w-[170px] text-center">
-                                    {monthNames[currentMonth - 1]} {currentYear}
+                                    {getLocalizedMonthYear(currentYear, currentMonth)}
                                 </div>
                                 <Button
                                     onClick={goToNextMonth}
                                     size="icon"
-                                    className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-xs transition-all rounded-[10px] active:scale-95"
+                                    className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-xs transition-all rounded-[10px] active:scale-95 cursor-pointer border-0"
                                 >
                                     <ChevronRight className="h-4 w-4" />
                                 </Button>
                             </div>
 
                             <div className="text-xs text-gray-500 dark:text-gray-400 font-medium hidden sm:block">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
-                                    {currentMonthEntries.length} {t("events_in_month") || "Events in this month"}
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+                                    {toLocaleNumber(currentMonthEntries.length, shortCode)} {t("events_in_month")}
                                 </span>
                             </div>
                         </div>
@@ -694,26 +716,26 @@ export default function AnnualCalendarPage() {
                         <div className="text-center py-16 text-gray-400 text-sm">
                             <div className="flex items-center justify-center gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
-                                {t("loading") || "Loading calendar..."}
+                                {t("loading")}
                             </div>
                         </div>
                     ) : viewMode === "calendar" ? (
-                        /* ── Calendar Grid View ── */
-                        <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-2xs">
+                        /* Calendar Grid View */
+                        <div className="border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xs">
                             {/* Days Header */}
-                            <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-slate-800/80">
-                                {daysOfWeek.map((day, idx) => {
-                                    const isWeekendHeader = weeklyHolidays.includes(idx + 1);
+                            <div className="grid grid-cols-7 border-b border-gray-200 dark:border-zinc-800 bg-gray-50/80 dark:bg-zinc-800/80">
+                                {daysOfWeek.map((dayObj, idx) => {
+                                    const isWeekendHeader = weeklyHolidays.includes(dayObj.key);
                                     return (
                                         <div
                                             key={idx}
                                             className={cn(
-                                                "text-center py-2.5 text-[10px] sm:text-[12px] font-bold border-r border-gray-200 dark:border-gray-800 last:border-r-0 uppercase",
+                                                "text-center py-2.5 text-[10px] sm:text-[12px] font-bold border-r border-gray-200 dark:border-zinc-800 last:border-r-0 uppercase",
                                                 isWeekendHeader ? "text-red-600 bg-red-50/60 dark:bg-red-950/40" : "text-gray-600 dark:text-gray-300"
                                             )}
                                         >
-                                            <span className="sm:hidden">{day.charAt(0)}</span>
-                                            <span className="hidden sm:inline">{day}</span>
+                                            <span className="sm:hidden">{dayObj.short}</span>
+                                            <span className="hidden sm:inline">{dayObj.full || dayObj.short}</span>
                                         </div>
                                     );
                                 })}
@@ -735,7 +757,7 @@ export default function AnnualCalendarPage() {
                                         <div
                                             key={idx}
                                             className={cn(
-                                                "min-h-[86px] sm:min-h-[116px] border-r border-b border-gray-100 dark:border-gray-800 last:border-r-0 transition-colors flex flex-col justify-between p-1 sm:p-2",
+                                                "min-h-[86px] sm:min-h-[116px] border-r border-b border-gray-100 dark:border-zinc-800 last:border-r-0 transition-colors flex flex-col justify-between p-1 sm:p-2",
                                                 idx >= cells.length - 7 ? "border-b-0" : "",
                                                 isToday
                                                     ? "bg-indigo-50/60 dark:bg-indigo-950/40 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800"
@@ -744,8 +766,8 @@ export default function AnnualCalendarPage() {
                                                         : dayEvents.length > 0
                                                             ? catStyle.cellBg
                                                             : day
-                                                                ? "hover:bg-indigo-50/30 dark:hover:bg-slate-800/40"
-                                                                : "bg-gray-50/40 dark:bg-slate-900/40"
+                                                                ? "hover:bg-indigo-50/30 dark:hover:bg-zinc-800/40"
+                                                                : "bg-gray-50/40 dark:bg-zinc-900/40"
                                             )}
                                         >
                                             {day && (
@@ -761,24 +783,25 @@ export default function AnnualCalendarPage() {
                                                                     : "text-gray-500 dark:text-gray-400"
                                                     )}>
                                                         {isToday && (
-                                                            <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-1 py-0.5 rounded leading-none shadow-2xs">
-                                                                {t("today") || "TODAY"}
+                                                            <span className="text-[8px] font-bold uppercase bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-1.5 py-0.5 rounded leading-none shadow-2xs">
+                                                                {t("today")}
                                                             </span>
                                                         )}
-                                                        <span>{day}</span>
+                                                        <span>{toLocaleNumber(day, shortCode)}</span>
                                                     </div>
 
                                                     {/* Event & Holiday Badges */}
                                                     <div className="mt-1 space-y-1">
                                                         {isWeekend && dayEvents.length === 0 && (
                                                             <div className="px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold rounded shadow-2xs flex items-center justify-center text-center leading-tight bg-red-600 text-white">
-                                                                {t("weekly_holiday") || "Weekly Holiday"}
+                                                                {t("weekly_holiday")}
                                                             </div>
                                                         )}
 
                                                         {dayEvents.slice(0, 2).map((ev, evIdx) => {
-                                                            const evType = ev.holiday_type?.name || ev.holiday_type_name || "Holiday";
-                                                            const evStyle = getCategoryStyle(evType);
+                                                            const rawType = ev.holiday_type?.name || ev.holiday_type_name || "Holiday";
+                                                            const evType = translateHolidayTypeName(rawType, shortCode);
+                                                            const evStyle = getCategoryStyle(rawType);
                                                             return (
                                                                 <button
                                                                     key={evIdx}
@@ -818,7 +841,7 @@ export default function AnnualCalendarPage() {
 
                                                         {dayEvents.length > 2 && (
                                                             <p className="text-[7.5px] sm:text-[8.5px] font-bold text-center text-gray-500 dark:text-gray-400">
-                                                                +{dayEvents.length - 2} more
+                                                                +{toLocaleNumber(dayEvents.length - 2, shortCode)} {t("more") || "more"}
                                                             </p>
                                                         )}
                                                     </div>
@@ -830,31 +853,32 @@ export default function AnnualCalendarPage() {
                             </div>
                         </div>
                     ) : viewMode === "list" ? (
-                        /* ── Schedule List View ── */
+                        /* Schedule List View */
                         <div className="space-y-4">
                             {currentMonthEntries.length === 0 ? (
                                 <div className="text-center py-16 text-gray-400">
                                     <CalendarDays className="h-10 w-10 mx-auto opacity-30 mb-2" />
-                                    <p className="text-sm font-semibold">{t("no_events_this_month") || "No events or holidays scheduled for this month"}</p>
+                                    <p className="text-sm font-semibold">{t("no_events_this_month") || t("no_records_found")}</p>
                                 </div>
                             ) : (
-                                <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
+                                <div className="border border-gray-200 dark:border-zinc-800 rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-zinc-800">
                                     {currentMonthEntries.map((item, itemIdx) => {
-                                        const evType = item.holiday_type?.name || item.holiday_type_name || "Holiday";
-                                        const evStyle = getCategoryStyle(evType);
+                                        const rawType = item.holiday_type?.name || item.holiday_type_name || "Holiday";
+                                        const evType = translateHolidayTypeName(rawType, shortCode);
+                                        const evStyle = getCategoryStyle(rawType);
                                         const multiDay = item.start_date !== item.end_date;
                                         const sDate = parseISO(item.start_date);
-                                        const dayStr = isValid(sDate) ? String(sDate.getDate()).padStart(2, "0") : "—";
-                                        const mStr = isValid(sDate) ? monthNames[sDate.getMonth()].slice(0, 3).toUpperCase() : "";
+                                        const dayStr = isValid(sDate) ? toLocaleNumber(String(sDate.getDate()).padStart(2, "0"), shortCode) : "—";
+                                        const mStr = isValid(sDate) ? sDate.toLocaleString(shortCode === "bn" ? "bn-BD" : shortCode === "ar" ? "ar-SA" : shortCode === "hi" ? "hi-IN" : "en-US", { month: "short" }) : "";
 
                                         return (
                                             <div
                                                 key={itemIdx}
-                                                className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50/70 dark:hover:bg-slate-800/50 transition-colors"
+                                                className="flex items-center gap-4 px-4 py-3.5 hover:bg-gray-50/70 dark:hover:bg-zinc-800/50 transition-colors"
                                             >
                                                 <div className="flex flex-col items-center justify-center h-12 w-12 shrink-0 rounded-lg bg-gradient-to-br from-[#FF9800]/10 to-[#6366F1]/10 border border-indigo-100 dark:border-indigo-900/50">
                                                     <span className="text-[15px] font-bold text-indigo-700 dark:text-indigo-400 leading-none">{dayStr}</span>
-                                                    <span className="text-[8px] font-semibold text-indigo-500 dark:text-indigo-400 mt-0.5">{mStr}</span>
+                                                    <span className="text-[9px] font-semibold text-indigo-500 dark:text-indigo-400 mt-0.5">{mStr}</span>
                                                 </div>
 
                                                 <div className="flex-1 min-w-0">
@@ -868,7 +892,7 @@ export default function AnnualCalendarPage() {
                                                         </span>
                                                         {item.creator && (
                                                             <span className="text-gray-400">
-                                                                · By: {item.creator.name} {item.creator.last_name || ""}
+                                                                · {t("created_by")}: {item.creator.name} {item.creator.last_name || ""}
                                                             </span>
                                                         )}
                                                     </div>
@@ -887,7 +911,7 @@ export default function AnnualCalendarPage() {
                                                         onClick={() => handleEdit(item)}
                                                         size="sm"
                                                         className="h-7 w-7 p-0 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-xs active:scale-95 cursor-pointer"
-                                                        title={t("edit") || "Edit"}
+                                                        title={t("edit")}
                                                     >
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
@@ -895,7 +919,7 @@ export default function AnnualCalendarPage() {
                                                         onClick={() => setDeleteId(item.id)}
                                                         size="sm"
                                                         className="h-7 w-7 p-0 rounded bg-red-500 hover:bg-red-600 text-white shadow-xs active:scale-95 cursor-pointer"
-                                                        title={t("delete") || "Delete"}
+                                                        title={t("delete")}
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
@@ -907,34 +931,34 @@ export default function AnnualCalendarPage() {
                             )}
                         </div>
                     ) : (
-                        /* ── Manage Entries Table View ── */
+                        /* Manage Entries Table View */
                         <div className="space-y-4">
                             {/* Filters & Export Toolbar */}
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                                     <div className="space-y-1.5 w-full sm:w-56">
-                                        <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("holiday_type") || "Holiday Type"}</Label>
+                                        <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("holiday_type")}</Label>
                                         <Select value={filterType} onValueChange={v => { setFilterType(v); setCurrentPage(1); }}>
-                                            <SelectTrigger className="h-9 text-xs bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700">
-                                                <SelectValue placeholder={t("all_types") || "All Types"} />
+                                            <SelectTrigger className="h-9 text-xs bg-white dark:bg-card border-gray-200 dark:border-zinc-700">
+                                                <SelectValue placeholder={t("all_types")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="all">{t("all_types") || "All Types"}</SelectItem>
+                                                <SelectItem value="all">{t("all_types")}</SelectItem>
                                                 {holidayTypes.map(typ => (
-                                                    <SelectItem key={typ.id} value={typ.id.toString()}>{typ.name}</SelectItem>
+                                                    <SelectItem key={typ.id} value={typ.id.toString()}>{translateHolidayTypeName(typ.name, shortCode)}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5 w-full sm:w-64">
-                                        <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("search") || "Search"}</Label>
+                                        <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">{t("search")}</Label>
                                         <div className="relative">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                             <Input
-                                                placeholder={t("search_description") || "Search description..."}
+                                                placeholder={t("search_placeholder") || t("search")}
                                                 value={searchTerm}
                                                 onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                                                className="pl-9 h-9 text-xs bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700"
+                                                className="pl-9 h-9 text-xs bg-white dark:bg-card border-gray-200 dark:border-zinc-700"
                                             />
                                         </div>
                                     </div>
@@ -942,29 +966,31 @@ export default function AnnualCalendarPage() {
 
                                 {/* Export toolbar & page size */}
                                 <div className="flex items-center gap-3 self-end sm:self-auto">
-                                    <div className="flex items-center gap-1 border border-gray-200 dark:border-gray-700 rounded-lg p-1 bg-white dark:bg-slate-900">
-                                        <Button variant="ghost" size="icon" onClick={handleCopy} title="Copy" className="h-7 w-7 text-gray-500 hover:text-indigo-600">
+                                    <div className="flex items-center gap-1 border border-gray-200 dark:border-zinc-700 rounded-lg p-1 bg-white dark:bg-card">
+                                        <Button variant="ghost" size="icon" onClick={handleCopy} title={t("copy")} className="h-7 w-7 text-gray-500 hover:text-indigo-600">
                                             <Copy className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={handleExcel} title="Excel" className="h-7 w-7 text-gray-500 hover:text-green-600">
+                                        <Button variant="ghost" size="icon" onClick={handleExcel} title={t("excel")} className="h-7 w-7 text-gray-500 hover:text-green-600">
                                             <FileSpreadsheet className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={handlePDF} title="PDF" className="h-7 w-7 text-gray-500 hover:text-red-600">
+                                        <Button variant="ghost" size="icon" onClick={handlePDF} title={t("pdf") || "PDF"} className="h-7 w-7 text-gray-500 hover:text-red-600">
                                             <FileDown className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => window.print()} title="Print" className="h-7 w-7 text-gray-500 hover:text-indigo-600">
+                                        <Button variant="ghost" size="icon" onClick={() => window.print()} title={t("print")} className="h-7 w-7 text-gray-500 hover:text-indigo-600">
                                             <Printer className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
 
                                     <div className="flex items-center gap-1.5">
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">{t("show") || "Show"}</span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 font-semibold">{t("rows")}</span>
                                         <Select value={itemsPerPage} onValueChange={v => { setItemsPerPage(v); setCurrentPage(1); }}>
-                                            <SelectTrigger className="h-9 w-[70px] text-xs bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700">
-                                                <SelectValue />
+                                            <SelectTrigger className="h-9 w-[72px] text-xs bg-white dark:bg-card border-gray-200 dark:border-zinc-700">
+                                                <SelectValue placeholder={toLocaleNumber("50", shortCode)}>
+                                                    {toLocaleNumber(itemsPerPage, shortCode)}
+                                                </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {PAGE_SIZES.map(n => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                                                {PAGE_SIZES.map(n => <SelectItem key={n} value={n}>{toLocaleNumber(n, shortCode)}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -972,16 +998,16 @@ export default function AnnualCalendarPage() {
                             </div>
 
                             {/* Table */}
-                            <div className="rounded-md border border-gray-200 dark:border-gray-800 overflow-x-auto">
+                            <div className="rounded-md border border-gray-200 dark:border-zinc-800 overflow-x-auto">
                                 <Table className="min-w-[900px]">
-                                    <TableHeader className="bg-gray-50 dark:bg-slate-800/80 text-xs uppercase">
+                                    <TableHeader className="bg-gray-50 dark:bg-zinc-800/80 text-xs uppercase">
                                         <TableRow className="hover:bg-transparent whitespace-nowrap">
-                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("date") || "Date"}</TableHead>
-                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("type") || "Type"}</TableHead>
-                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("description") || "Description"}</TableHead>
-                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("created_by") || "Created By"}</TableHead>
-                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300 text-center">{t("front_site") || "Front Site"}</TableHead>
-                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300 text-right w-[100px]">{t("action") || "Action"}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("date")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("type")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("description")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300">{t("created_by")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300 text-center">{t("front_site")}</TableHead>
+                                            <TableHead className="font-semibold text-gray-600 dark:text-gray-300 text-right w-[100px]">{t("action")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -990,12 +1016,12 @@ export default function AnnualCalendarPage() {
                                                 <TableCell colSpan={6} className="py-14 text-center">
                                                     <div className="flex flex-col items-center gap-2 text-gray-400">
                                                         <FolderOpen className="h-8 w-8 opacity-40" />
-                                                        <span className="text-xs">{t("no_calendar_entries_found") || "No calendar entries found."}</span>
+                                                        <span className="text-xs">{t("no_records_found")}</span>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
                                         ) : calendarData.map((item, idx) => (
-                                            <TableRow key={item.id || idx} className="text-xs hover:bg-indigo-50/40 dark:hover:bg-slate-800/50 transition-colors">
+                                            <TableRow key={item.id || idx} className="text-xs hover:bg-indigo-50/40 dark:hover:bg-zinc-800/50 transition-colors">
                                                 <TableCell className="py-3 font-medium text-gray-800 dark:text-gray-200">
                                                     <span className="flex items-center gap-1.5 whitespace-nowrap">
                                                         <Calendar className="h-3 w-3 text-indigo-400" />
@@ -1004,7 +1030,7 @@ export default function AnnualCalendarPage() {
                                                 </TableCell>
                                                 <TableCell className="py-3">
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 text-[10px] font-semibold">
-                                                        {item.holiday_type?.name || item.holiday_type_name || "—"}
+                                                        {translateHolidayTypeName(item.holiday_type?.name || item.holiday_type_name, shortCode) || "—"}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="py-3 text-gray-600 dark:text-gray-300 max-w-[280px] truncate" title={item.description}>
@@ -1014,16 +1040,16 @@ export default function AnnualCalendarPage() {
                                                     {item.creator ? `${item.creator.name} ${item.creator.last_name || ""}`.trim() : "—"}
                                                 </TableCell>
                                                 <TableCell className="py-3 text-center">
-                                                    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold", item.is_front_site ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300" : "bg-gray-100 dark:bg-slate-800 text-gray-500")}>
-                                                        {item.is_front_site ? (t("yes") || "Yes") : (t("no") || "No")}
+                                                    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold", item.is_front_site ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300" : "bg-gray-100 dark:bg-zinc-800 text-gray-500")}>
+                                                        {item.is_front_site ? t("yes") : t("no")}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="py-3 text-right">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        <Button onClick={() => handleEdit(item)} size="sm" className="h-7 w-7 p-0 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-xs active:scale-95 cursor-pointer" title={t("edit") || "Edit"}>
+                                                        <Button onClick={() => handleEdit(item)} size="sm" className="h-7 w-7 p-0 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-xs active:scale-95 cursor-pointer" title={t("edit")}>
                                                             <Pencil className="h-3.5 w-3.5" />
                                                         </Button>
-                                                        <Button onClick={() => setDeleteId(item.id)} size="sm" className="h-7 w-7 p-0 rounded bg-red-500 hover:bg-red-600 text-white shadow-xs active:scale-95 cursor-pointer" title={t("delete") || "Delete"}>
+                                                        <Button onClick={() => setDeleteId(item.id)} size="sm" className="h-7 w-7 p-0 rounded bg-red-500 hover:bg-red-600 text-white shadow-xs active:scale-95 cursor-pointer" title={t("delete")}>
                                                             <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
@@ -1035,32 +1061,55 @@ export default function AnnualCalendarPage() {
                             </div>
 
                             {/* Pagination */}
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                <div>{t("showing") || "Showing"} {totalEntries > 0 ? startIndex + 1 : 0} {t("to") || "to"} {Math.min(startIndex + sizeNum, totalEntries)} {t("of") || "of"} {totalEntries} {t("entries") || "entries"}</div>
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium pt-2">
+                                <div>
+                                    {t("showing_x_to_y_of_z", {
+                                        from: toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, shortCode),
+                                        to: toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), shortCode),
+                                        total: toLocaleNumber(totalEntries, shortCode)
+                                    })}
+                                </div>
                                 {totalPages > 1 && (
-                                    <div className="flex gap-1">
-                                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></Button>
+                                    <div className="flex items-center gap-1">
+                                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safePage === 1} className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-card border border-gray-200 dark:border-zinc-700 disabled:opacity-40">
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
                                         {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, safePage - 3), safePage + 2).map(page => (
-                                            <Button key={page} size="sm" onClick={() => setCurrentPage(page)} className={cn("h-8 w-8 p-0 rounded-[10px] text-xs font-bold", safePage === page ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md" : "bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700")}>{page}</Button>
+                                            <Button
+                                                key={page}
+                                                size="sm"
+                                                onClick={() => setCurrentPage(page)}
+                                                className={cn(
+                                                    "h-8 w-8 p-0 rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer",
+                                                    safePage === page
+                                                        ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-lg shadow-indigo-500/25 hover:scale-105 active:scale-95 border-0"
+                                                        : "bg-white dark:bg-card text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800"
+                                                )}
+                                            >
+                                                {toLocaleNumber(page, shortCode)}
+                                            </Button>
                                         ))}
-                                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 disabled:opacity-40"><ChevronRight className="h-4 w-4" /></Button>
+                                        <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safePage === totalPages} className="h-8 w-8 p-0 rounded-[10px] bg-white dark:bg-card border border-gray-200 dark:border-zinc-700 disabled:opacity-40">
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
 
-                    {/* ── Monthly Event Highlights Breakdown ── */}
+                    {/* Monthly Event Highlights Breakdown */}
                     {viewMode === "calendar" && currentMonthEntries.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800">
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
                                 <Info className="h-4 w-4 text-indigo-500" />
-                                {monthNames[currentMonth - 1]} {currentYear} — {t("scheduled_events") || "Scheduled Events & Holidays"}
+                                {getLocalizedMonthYear(currentYear, currentMonth)} — {t("scheduled_events_and_holidays")}
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {currentMonthEntries.map((ev, idx) => {
-                                    const evType = ev.holiday_type?.name || ev.holiday_type_name || "Holiday";
-                                    const evStyle = getCategoryStyle(evType);
+                                    const rawType = ev.holiday_type?.name || ev.holiday_type_name || "Holiday";
+                                    const evType = translateHolidayTypeName(rawType, shortCode);
+                                    const evStyle = getCategoryStyle(rawType);
                                     const multiDay = ev.start_date !== ev.end_date;
 
                                     return (
@@ -1076,7 +1125,7 @@ export default function AnnualCalendarPage() {
                                                 isFrontSite: ev.is_front_site,
                                                 rawEntry: ev,
                                             })}
-                                            className="p-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-850 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs cursor-pointer transition-all flex flex-col justify-between space-y-2"
+                                            className="p-3 rounded-xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-card hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-xs cursor-pointer transition-all flex flex-col justify-between space-y-2"
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <p className="text-xs font-bold text-gray-800 dark:text-gray-200 line-clamp-2 leading-snug">
@@ -1092,7 +1141,7 @@ export default function AnnualCalendarPage() {
                                                     {formatDate(ev.start_date)}{multiDay ? ` – ${formatDate(ev.end_date)}` : ""}
                                                 </span>
                                                 <span className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
-                                                    Details →
+                                                    {t("details") || "Details"} →
                                                 </span>
                                             </div>
                                         </div>
@@ -1104,17 +1153,17 @@ export default function AnnualCalendarPage() {
                 </CardContent>
             </Card>
 
-            {/* ── Event Detail Modal (With Admin Edit & Delete) ── */}
+            {/* Event Detail Modal (With Admin Edit & Delete) */}
             <Dialog open={Boolean(selectedEvent)} onOpenChange={(isOpen) => !isOpen && setSelectedEvent(null)}>
-                <DialogContent className="sm:max-w-[460px] p-0 gap-0 overflow-hidden bg-white dark:bg-slate-900">
-                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-slate-800 dark:to-slate-850 border-b border-gray-100 dark:border-gray-800">
+                <DialogContent className="sm:max-w-[460px] p-0 gap-0 overflow-hidden bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 shadow-2xl rounded-2xl">
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2 mb-1">
                             <span className={cn("px-2.5 py-0.5 text-[10px] font-bold rounded-full border", selectedEvent ? getCategoryStyle(selectedEvent.type).pill : "")}>
                                 {selectedEvent?.type}
                             </span>
                             {selectedEvent?.isFrontSite && (
                                 <span className="px-2 py-0.5 text-[9px] font-semibold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    Published on Front Site
+                                    {t("published_on_front_site")}
                                 </span>
                             )}
                         </div>
@@ -1131,8 +1180,8 @@ export default function AnnualCalendarPage() {
                     </DialogHeader>
                     <div className="p-5 space-y-3">
                         {selectedEvent?.description && (
-                            <div className="p-3 bg-gray-50 dark:bg-slate-800/60 rounded-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-800">
-                                <p className="font-semibold text-gray-500 dark:text-gray-400 text-[10px] uppercase mb-1">Description</p>
+                            <div className="p-3 bg-gray-50 dark:bg-zinc-900 rounded-lg text-xs text-gray-700 dark:text-gray-300 border border-gray-150 dark:border-zinc-800">
+                                <p className="font-semibold text-gray-500 dark:text-gray-400 text-[10px] uppercase mb-1">{t("description")}</p>
                                 <p className="leading-relaxed">{selectedEvent.description}</p>
                             </div>
                         )}
@@ -1149,7 +1198,7 @@ export default function AnnualCalendarPage() {
                                     className="h-8 text-xs font-semibold gap-1.5 border-amber-200 text-amber-700 hover:bg-amber-50"
                                 >
                                     <Pencil className="h-3.5 w-3.5" />
-                                    {t("edit") || "Edit"}
+                                    {t("edit")}
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -1162,38 +1211,38 @@ export default function AnnualCalendarPage() {
                                     className="h-8 text-xs font-semibold gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
                                 >
                                     <Trash2 className="h-3.5 w-3.5" />
-                                    {t("delete") || "Delete"}
+                                    {t("delete")}
                                 </Button>
                             </div>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setSelectedEvent(null)}
-                                className="h-8 text-xs text-gray-500"
+                                className="h-8 text-xs text-gray-500 font-semibold"
                             >
-                                {t("close") || "Close"}
+                                {t("close")}
                             </Button>
                         </div>
                     </div>
                 </DialogContent>
             </Dialog>
 
-            {/* ── Add/Edit Dialog ── */}
+            {/* Add/Edit Dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-white dark:bg-slate-900">
-                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-slate-800 dark:to-slate-850 border-b border-gray-100 dark:border-gray-800">
+                <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 shadow-2xl rounded-2xl">
+                    <DialogHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-zinc-900 dark:to-zinc-950 border-b border-gray-100 dark:border-zinc-800">
                         <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800 dark:text-gray-100">
                             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                                 <CalendarRange className="h-4 w-4" />
                             </span>
-                            {dialogMode === "edit" ? (t("edit_calendar_entry") || "Edit Calendar Entry") : (t("add_calendar_entry") || "Add Calendar Entry")}
+                            {dialogMode === "edit" ? t("edit_calendar_entry") : t("add_calendar_entry")}
                         </DialogTitle>
                     </DialogHeader>
                     <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                                    {t("start_date") || "Start Date"} <span className="text-red-500">*</span>
+                                    {t("start_date")} <span className="text-red-500">*</span>
                                 </Label>
                                 <DatePicker
                                     value={formData.start_date}
@@ -1204,7 +1253,7 @@ export default function AnnualCalendarPage() {
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                                    {t("end_date") || "End Date"} <span className="text-red-500">*</span>
+                                    {t("end_date")} <span className="text-red-500">*</span>
                                 </Label>
                                 <DatePicker
                                     value={formData.end_date}
@@ -1216,38 +1265,38 @@ export default function AnnualCalendarPage() {
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                                {t("holiday_type") || "Holiday Type"} <span className="text-red-500">*</span>
+                                {t("holiday_type")} <span className="text-red-500">*</span>
                             </Label>
                             <Select value={formData.holiday_type_id} onValueChange={v => setFormData({ ...formData, holiday_type_id: v })}>
-                                <SelectTrigger className="h-9 text-xs bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700">
-                                    <SelectValue placeholder={t("select_type") || "Select type"} />
+                                <SelectTrigger className="h-9 text-xs bg-white dark:bg-card border-gray-200 dark:border-zinc-700">
+                                    <SelectValue placeholder={t("select_type")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {holidayTypes.map(typ => (
-                                        <SelectItem key={typ.id} value={typ.id.toString()}>{typ.name}</SelectItem>
+                                        <SelectItem key={typ.id} value={typ.id.toString()}>{translateHolidayTypeName(typ.name, shortCode)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                                {t("description") || "Description"} <span className="text-red-500">*</span>
+                                {t("description")} <span className="text-red-500">*</span>
                             </Label>
                             <Textarea
                                 value={formData.description}
                                 onChange={e => setFormData({ ...formData, description: e.target.value })}
                                 rows={3}
-                                className="text-xs resize-none bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700"
-                                placeholder={t("event_details") || "Event details..."}
+                                className="text-xs resize-none bg-white dark:bg-card border-gray-200 dark:border-zinc-700"
+                                placeholder={t("event_details")}
                             />
                         </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800/60 border border-gray-100 dark:border-gray-800 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-zinc-900 border border-gray-150 dark:border-zinc-800 rounded-lg">
                             <div className="space-y-0.5">
                                 <Label className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                                    {t("publish_on_front_site") || "Publish on front site"}
+                                    {t("publish_on_front_site")}
                                 </Label>
                                 <p className="text-[10px] text-gray-400">
-                                    {t("visible_to_students_and_public_users") || "Visible to students and public users"}
+                                    {t("visible_to_students_and_public_users")}
                                 </p>
                             </div>
                             <Switch
@@ -1257,34 +1306,34 @@ export default function AnnualCalendarPage() {
                             />
                         </div>
                     </div>
-                    <DialogFooter className="px-5 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800/40">
+                    <DialogFooter className="px-5 py-4 border-t border-gray-100 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/60 flex items-center justify-between">
                         <Button variant="ghost" onClick={() => setOpen(false)} className="h-9 px-5 text-xs font-bold">
-                            {t("cancel") || "Cancel"}
+                            {t("cancel")}
                         </Button>
                         <Button
                             onClick={handleSave}
                             disabled={submitting}
-                            className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95"
+                            className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-lg active:scale-95 border-0 cursor-pointer"
                         >
-                            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (dialogMode === "edit" ? (t("update_entry") || "Update Entry") : (t("save_entry") || "Save Entry"))}
+                            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : (dialogMode === "edit" ? t("update_entry") : t("save_entry"))}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* ── Delete Confirmation Alert ── */}
+            {/* Delete Confirmation Alert */}
             <AlertDialog open={!!deleteId} onOpenChange={o => !o && setDeleteId(null)}>
-                <AlertDialogContent className="bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-800">
+                <AlertDialogContent className="bg-white dark:bg-zinc-950 border-gray-200 dark:border-zinc-800 rounded-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>{t("delete_calendar_entry") || "Delete Calendar Entry"}</AlertDialogTitle>
+                        <AlertDialogTitle>{t("delete_calendar_entry")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t("delete_calendar_entry_confirm") || "This action cannot be undone. The calendar entry will be permanently removed from all dashboards."}
+                            {t("delete_calendar_entry_confirm")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>{t("cancel") || "Cancel"}</AlertDialogCancel>
-                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 text-white">
-                            {t("delete") || "Delete"}
+                        <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+                        <AlertDialogAction onClick={executeDelete} className="bg-red-500 hover:bg-red-600 text-white rounded-full">
+                            {t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

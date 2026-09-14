@@ -7,22 +7,21 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
     Search, Loader2, Filter, BarChart3, BookOpen, Copy, FileSpreadsheet,
-    FileBox, FileText, Printer, ChevronLeft, ChevronRight, Users, CheckCircle2,
-    Clock, AlertCircle, Calendar, CalendarDays, RefreshCw
+    FileBox, FileText, Printer, ChevronLeft, ChevronRight, Users, Clock
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 
 interface Student {
     id: number;
@@ -67,8 +66,10 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 export default function AttendanceReportPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const getImageUrl = useImageUrl();
+
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -85,7 +86,52 @@ export default function AttendanceReportPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState("50");
 
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        const match = name.match(/^Class\s+(\d+)$/i);
+        if (match) {
+            const key = `class_${match[1]}`;
+            const trans = t(key);
+            if (trans && trans !== key) return trans;
+            return `${t("class")} ${toLocaleNumber(match[1], shortCode)}`;
+        }
+        const key = name.toLowerCase().replace(/\s+/g, "_");
+        const trans = t(key);
+        return trans && trans !== key ? trans : toLocaleNumber(name, shortCode);
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        return toLocaleNumber(name, shortCode);
+    };
+
+    const formatDateDisplay = (dateStr?: string) => {
+        if (!dateStr) return "—";
+        const cleanStr = dateStr.substring(0, 10);
+        const parts = cleanStr.split("-");
+        if (parts.length === 3) {
+            const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return toLocaleNumber(formatted, shortCode);
+        }
+        return toLocaleNumber(cleanStr, shortCode);
+    };
+
     useEffect(() => {
+        const fetchClasses = async () => {
+            try {
+                const response = await api.get("/academics/classes?no_paginate=true");
+                if (response.data.success || response.data.data) {
+                    const list = response.data.data || [];
+                    setClasses(list);
+                    if (list.length > 0) {
+                        setSelectedClass(list[0].id.toString());
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching classes:", error);
+            }
+        };
+
         fetchClasses();
     }, []);
 
@@ -103,21 +149,6 @@ export default function AttendanceReportPage() {
             setSelectedSection("");
         }
     }, [selectedClass, classes]);
-
-    const fetchClasses = async () => {
-        try {
-            const response = await api.get("/academics/classes?no_paginate=true");
-            if (response.data.success || response.data.data) {
-                const list = response.data.data || [];
-                setClasses(list);
-                if (list.length > 0) {
-                    setSelectedClass(list[0].id.toString());
-                }
-            }
-        } catch (error) {
-            console.error("Error fetching classes:", error);
-        }
-    };
 
     const handleSearch = useCallback(async () => {
         if (!selectedClass || !selectedSection || !attendanceDate) {
@@ -149,8 +180,6 @@ export default function AttendanceReportPage() {
                 setCurrentPage(1);
                 if (payload.length === 0) {
                     toast.info(t("no_students_found_for_class_section") || "No records found for selected criteria");
-                } else {
-                    toast.success(`Generated attendance report for ${payload.length} students`);
                 }
             } else {
                 setStudents([]);
@@ -165,7 +194,7 @@ export default function AttendanceReportPage() {
 
     const getAttendanceStatus = (student: Student) => {
         const record = student.attendances?.[0] || student.student_attendances?.[0];
-        if (!record || !record.attendance) return "Not Marked";
+        if (!record || !record.attendance) return "not_marked";
         return record.attendance;
     };
 
@@ -178,32 +207,32 @@ export default function AttendanceReportPage() {
     const getEntryTime = (student: Student) => {
         const record = student.attendances?.[0] || student.student_attendances?.[0];
         if (!record || !record.entry_time) return "—";
-        return record.entry_time;
+        return toLocaleNumber(record.entry_time.substring(0, 5), shortCode);
     };
 
     const getExitTime = (student: Student) => {
         const record = student.attendances?.[0] || student.student_attendances?.[0];
         if (!record || !record.exit_time) return "—";
-        return record.exit_time;
+        return toLocaleNumber(record.exit_time.substring(0, 5), shortCode);
     };
 
     const getStatusBadge = (status: string) => {
         const s = (status || "").toLowerCase();
         switch (s) {
             case "present":
-                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">{t("present") || "Present"}</span>;
+                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">{t("present")}</span>;
             case "absent":
-                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">{t("absent") || "Absent"}</span>;
+                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">{t("absent")}</span>;
             case "late":
-                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">{t("late") || "Late"}</span>;
+                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">{t("late")}</span>;
             case "half_day":
-                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">{t("half_day") || "Half Day"}</span>;
+                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">{t("half_day")}</span>;
             case "holiday":
-                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">{t("holiday") || "Holiday"}</span>;
+                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">{t("holiday")}</span>;
             case "on_leave":
-                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">{t("on_leave") || "On Leave"}</span>;
+                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">{t("on_leave")}</span>;
             default:
-                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">{t("not_marked") || "Not Marked"}</span>;
+                return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">{t("not_marked")}</span>;
         }
     };
 
@@ -246,7 +275,7 @@ export default function AttendanceReportPage() {
 
     // Export Helpers
     const exportToCopy = () => {
-        if (filteredStudents.length === 0) { toast.error("No data to copy"); return; }
+        if (filteredStudents.length === 0) { toast.error(t("no_data_to_copy") || "No data to copy"); return; }
         const text = [
             "Admission No\tRoll No\tStudent Name\tAttendance\tEntry Time\tExit Time\tNote",
             ...filteredStudents.map(s =>
@@ -254,11 +283,11 @@ export default function AttendanceReportPage() {
             )
         ].join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Attendance report copied to clipboard");
+        toast.success(t("copied_to_clipboard") || "Attendance report copied to clipboard");
     };
 
     const exportToExcel = (isCsv = false) => {
-        if (filteredStudents.length === 0) { toast.error("No data to export"); return; }
+        if (filteredStudents.length === 0) { toast.error(t("no_records_to_export") || "No records to export"); return; }
         const mapped = filteredStudents.map(s => ({
             "Admission No": s.admission_no,
             "Roll No": s.roll_no || "-",
@@ -271,12 +300,12 @@ export default function AttendanceReportPage() {
         const ws = XLSX.utils.json_to_sheet(mapped);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Attendance Report");
-        if (isCsv) { XLSX.writeFile(wb, `attendance_report_${attendanceDate}.csv`, { bookType: "csv" }); toast.success("CSV downloaded"); }
-        else { XLSX.writeFile(wb, `attendance_report_${attendanceDate}.xlsx`); toast.success("Excel report downloaded"); }
+        if (isCsv) { XLSX.writeFile(wb, `attendance_report_${attendanceDate}.csv`, { bookType: "csv" }); toast.success(t("csv_downloaded") || "CSV downloaded"); }
+        else { XLSX.writeFile(wb, `attendance_report_${attendanceDate}.xlsx`); toast.success(t("excel_file_downloaded") || "Excel report downloaded"); }
     };
 
     const exportToPDF = () => {
-        if (filteredStudents.length === 0) { toast.error("No data to export"); return; }
+        if (filteredStudents.length === 0) { toast.error(t("no_records_to_export") || "No records to export"); return; }
         const doc = new jsPDF("landscape");
         const head = [["Adm No", "Roll No", "Student Name", "Attendance", "Entry Time", "Exit Time", "Note"]];
         const body = filteredStudents.map(s => [
@@ -290,13 +319,13 @@ export default function AttendanceReportPage() {
         ]);
         autoTable(doc, { head, body, theme: "grid" });
         doc.save(`attendance_report_${attendanceDate}.pdf`);
-        toast.success("PDF report downloaded");
+        toast.success(t("pdf_downloaded") || "PDF report downloaded");
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
+        <div className="w-full space-y-6 p-4 lg:p-6 font-sans bg-gray-50/10 min-h-screen">
             {/* Master Header Banner */}
-            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm overflow-hidden">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
                     <div className="flex items-center gap-3">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
@@ -304,13 +333,13 @@ export default function AttendanceReportPage() {
                         </span>
                         <div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                Student Attendance Analytical Report
+                                {t("student_attendance_report")}
                                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                                    Analytics & Auditing
+                                    {t("analytics_auditing")}
                                 </span>
                             </h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                Section-wise daily attendance audits, arrival & departure timestamps, and absence distributions.
+                                {t("attendance_report_subtitle")}
                             </p>
                         </div>
                     </div>
@@ -318,14 +347,14 @@ export default function AttendanceReportPage() {
             </div>
 
             {/* Criteria Selection Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
+            <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center justify-between gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
                             <Filter className="h-4 w-4" />
                         </span>
                         <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
-                            {t("select_criteria") || "Select Report Parameters"}
+                            {t("select_criteria")}
                         </CardTitle>
                     </div>
                 </CardHeader>
@@ -335,15 +364,17 @@ export default function AttendanceReportPage() {
                         {/* Class */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-slate-700">
-                                {t("class") || "Class"} <span className="text-rose-500">*</span>
+                                {t("class")} <span className="text-rose-500">*</span>
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder="Select Class" />
+                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg cursor-pointer">
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map(cls => (
-                                        <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
+                                        <SelectItem key={cls.id} value={cls.id.toString()} className="cursor-pointer">
+                                            {getLocalizedClassName(cls.name)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -352,30 +383,32 @@ export default function AttendanceReportPage() {
                         {/* Section */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-slate-700">
-                                {t("section") || "Section"} <span className="text-rose-500">*</span>
+                                {t("section")} <span className="text-rose-500">*</span>
                             </Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder="Select Section" />
+                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg cursor-pointer">
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map(sec => (
-                                        <SelectItem key={sec.id} value={sec.id.toString()}>{sec.name}</SelectItem>
+                                        <SelectItem key={sec.id} value={sec.id.toString()} className="cursor-pointer">
+                                            {getLocalizedSectionName(sec.name)}
+                                        </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        {/* Date */}
+                        {/* Attendance Date */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-slate-700">
-                                {t("attendance_date") || "Report Date"} <span className="text-rose-500">*</span>
+                                {t("attendance_date")} <span className="text-rose-500">*</span>
                             </Label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={attendanceDate}
-                                onChange={(e) => setAttendanceDate(e.target.value)}
-                                className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg"
+                                onChange={(val) => setAttendanceDate(val)}
+                                placeholder="DD/MM/YYYY"
+                                className="h-9 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg cursor-pointer shadow-xs"
                             />
                         </div>
 
@@ -387,7 +420,7 @@ export default function AttendanceReportPage() {
                                 className="w-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                             >
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                                {t("search") || "Generate Report"}
+                                {loading ? t("generating") : t("generate_report")}
                             </Button>
                         </div>
                     </div>
@@ -398,35 +431,35 @@ export default function AttendanceReportPage() {
             {students.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-slate-400">Total Enrolled</p>
-                        <p className="text-base font-extrabold text-slate-800">{stats.total}</p>
+                        <p className="text-[10px] font-bold uppercase text-slate-400">{t("total_enrolled")}</p>
+                        <p className="text-base font-extrabold text-slate-800">{toLocaleNumber(stats.total, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-emerald-600">Present (P)</p>
-                        <p className="text-base font-extrabold text-emerald-700">{stats.present}</p>
+                        <p className="text-[10px] font-bold uppercase text-emerald-600">{t("present")} (P)</p>
+                        <p className="text-base font-extrabold text-emerald-700">{toLocaleNumber(stats.present, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-amber-600">Late (L)</p>
-                        <p className="text-base font-extrabold text-amber-700">{stats.late}</p>
+                        <p className="text-[10px] font-bold uppercase text-amber-600">{t("late")} (L)</p>
+                        <p className="text-base font-extrabold text-amber-700">{toLocaleNumber(stats.late, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-rose-600">Absent (A)</p>
-                        <p className="text-base font-extrabold text-rose-700">{stats.absent}</p>
+                        <p className="text-[10px] font-bold uppercase text-rose-600">{t("absent")} (A)</p>
+                        <p className="text-base font-extrabold text-rose-700">{toLocaleNumber(stats.absent, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-sky-50/60 rounded-xl border border-sky-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-sky-600">Half Day (HD)</p>
-                        <p className="text-base font-extrabold text-sky-700">{stats.halfDay}</p>
+                        <p className="text-[10px] font-bold uppercase text-sky-600">{t("half_day")} (HD)</p>
+                        <p className="text-base font-extrabold text-sky-700">{toLocaleNumber(stats.halfDay, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-purple-600">On Leave / Holiday</p>
-                        <p className="text-base font-extrabold text-purple-700">{stats.onLeave + stats.holiday}</p>
+                        <p className="text-[10px] font-bold uppercase text-purple-600">{t("on_leave_or_holiday")}</p>
+                        <p className="text-base font-extrabold text-purple-700">{toLocaleNumber(stats.onLeave + stats.holiday, shortCode)}</p>
                     </div>
                 </div>
             )}
 
             {/* Attendance Report Table Card */}
             {hasSearched && (
-                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0 animate-in fade-in duration-300">
+                <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0 animate-in fade-in duration-300">
                     {/* Header & Filter Toolbar */}
                     <CardHeader className="p-4 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                         <div className="flex items-center gap-2.5">
@@ -435,10 +468,10 @@ export default function AttendanceReportPage() {
                             </span>
                             <div>
                                 <CardTitle className="text-sm font-bold text-slate-800">
-                                    {t("student_attendance_report") || "Student Attendance Audit Report"} ({filteredStudents.length})
+                                    {t("student_attendance_report")} ({toLocaleNumber(filteredStudents.length, shortCode)})
                                 </CardTitle>
                                 <p className="text-[11px] text-slate-500 font-mono">
-                                    Date: {attendanceDate}
+                                    {t("date")}: {formatDateDisplay(attendanceDate)}
                                 </p>
                             </div>
                         </div>
@@ -446,16 +479,16 @@ export default function AttendanceReportPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                             {/* Status Filter */}
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="h-8 w-32 text-xs bg-white border-slate-200">
-                                    <SelectValue placeholder="All Status" />
+                                <SelectTrigger className="h-8 w-32 text-xs bg-white border-slate-200 cursor-pointer">
+                                    <SelectValue placeholder={t("all_status")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Status</SelectItem>
-                                    <SelectItem value="present">Present Only</SelectItem>
-                                    <SelectItem value="late">Late</SelectItem>
-                                    <SelectItem value="absent">Absent</SelectItem>
-                                    <SelectItem value="half_day">Half Day</SelectItem>
-                                    <SelectItem value="on_leave">On Leave</SelectItem>
+                                    <SelectItem value="all" className="cursor-pointer">{t("all_status")}</SelectItem>
+                                    <SelectItem value="present" className="cursor-pointer">{t("present_only")}</SelectItem>
+                                    <SelectItem value="late" className="cursor-pointer">{t("late")}</SelectItem>
+                                    <SelectItem value="absent" className="cursor-pointer">{t("absent")}</SelectItem>
+                                    <SelectItem value="half_day" className="cursor-pointer">{t("half_day")}</SelectItem>
+                                    <SelectItem value="on_leave" className="cursor-pointer">{t("on_leave")}</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -463,7 +496,7 @@ export default function AttendanceReportPage() {
                             <div className="relative w-full sm:w-56">
                                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                                 <Input
-                                    placeholder="Search by name or admission..."
+                                    placeholder={t("search_by_name_roll_or_adm")}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
@@ -472,55 +505,55 @@ export default function AttendanceReportPage() {
 
                             {/* Per page */}
                             <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200">
+                                <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200 cursor-pointer">
                                     <SelectValue placeholder="50" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="20">20</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="20" className="cursor-pointer">{toLocaleNumber(20, shortCode)}</SelectItem>
+                                    <SelectItem value="50" className="cursor-pointer">{toLocaleNumber(50, shortCode)}</SelectItem>
+                                    <SelectItem value="100" className="cursor-pointer">{toLocaleNumber(100, shortCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
 
                             {/* Multi-format export toolbar */}
-                            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
+                            <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-2xs">
                                 <button
                                     type="button"
                                     onClick={exportToCopy}
-                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                    title="Copy Table"
+                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                    title="Copy"
                                 >
                                     <Copy className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => exportToExcel(false)}
-                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                    title="Export Excel"
+                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                    title="Excel"
                                 >
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => exportToExcel(true)}
-                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                    title="Export CSV"
+                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                    title="CSV"
                                 >
                                     <FileBox className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={exportToPDF}
-                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                    title="Export PDF"
+                                    className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                    title="PDF"
                                 >
                                     <FileText className="h-3.5 w-3.5" />
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => window.print()}
-                                    className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all"
-                                    title="Print Report"
+                                    className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all cursor-pointer"
+                                    title="Print"
                                 >
                                     <Printer className="h-3.5 w-3.5" />
                                 </button>
@@ -535,13 +568,13 @@ export default function AttendanceReportPage() {
                                 <TableHeader className="bg-slate-50/80 border-b border-slate-200">
                                     <TableRow>
                                         <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 w-12 text-center">#</TableHead>
-                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[200px]">Student Profile</TableHead>
-                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Admission No</TableHead>
-                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Roll No</TableHead>
-                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-center min-w-[130px]">Attendance Status</TableHead>
-                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-center min-w-[110px]">Entry Time</TableHead>
-                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-center min-w-[110px]">Exit Time</TableHead>
-                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[160px]">Remarks / Note</TableHead>
+                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[200px]">{t("student_profile")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("admission_no")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("roll_no")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-center min-w-[130px]">{t("attendance_status")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-center min-w-[110px]">{t("entry_time")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-center min-w-[110px]">{t("exit_time")}</TableHead>
+                                        <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[160px]">{t("remarks_note")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody className="divide-y divide-slate-100">
@@ -551,8 +584,8 @@ export default function AttendanceReportPage() {
                                         <TableRow>
                                             <TableCell colSpan={8} className="text-center py-16 text-slate-400">
                                                 <BookOpen className="h-10 w-10 mx-auto mb-2 text-slate-300" />
-                                                <p className="text-xs font-bold text-slate-600">No records found matching filters</p>
-                                                <p className="text-[11px] text-slate-400 mt-0.5">Try changing criteria or status filters.</p>
+                                                <p className="text-xs font-bold text-slate-600">{t("no_records_found_matching_filters")}</p>
+                                                <p className="text-[11px] text-slate-400 mt-0.5">{t("try_changing_criteria_or_filters")}</p>
                                             </TableCell>
                                         </TableRow>
                                     ) : (
@@ -563,7 +596,7 @@ export default function AttendanceReportPage() {
                                             >
                                                 {/* Index */}
                                                 <TableCell className="py-3 px-4 text-center text-xs font-medium text-slate-400">
-                                                    {startIndex + idx + 1}
+                                                    {toLocaleNumber(startIndex + idx + 1, shortCode)}
                                                 </TableCell>
 
                                                 {/* Student Profile */}
@@ -586,13 +619,13 @@ export default function AttendanceReportPage() {
                                                 {/* Admission No */}
                                                 <TableCell className="py-3 px-4">
                                                     <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                                                        {student.admission_no}
+                                                        {toLocaleNumber(student.admission_no, shortCode)}
                                                     </span>
                                                 </TableCell>
 
                                                 {/* Roll No */}
                                                 <TableCell className="py-3 px-4 text-xs font-semibold text-slate-600">
-                                                    {student.roll_no || "—"}
+                                                    {student.roll_no ? toLocaleNumber(student.roll_no, shortCode) : "—"}
                                                 </TableCell>
 
                                                 {/* Status Badge */}
@@ -631,8 +664,8 @@ export default function AttendanceReportPage() {
                     {/* Footer / Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
                         <div>
-                            Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                            {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                            {t("showing")} {toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, shortCode)} {t("to")}{" "}
+                            {toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), shortCode)} {t("of")} {toLocaleNumber(totalEntries, shortCode)} {t("entries")}
                         </div>
 
                         {totalEntries > 0 && (
@@ -656,7 +689,7 @@ export default function AttendanceReportPage() {
                                                 : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
                                         )}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, shortCode)}
                                     </button>
                                 ))}
 

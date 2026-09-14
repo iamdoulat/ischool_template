@@ -29,7 +29,9 @@
 - [📱 Progressive Web App (PWA) & Mobile Installation](#-progressive-web-app-pwa--mobile-installation)
 - [🛡️ Anti-Ban & Smart Message Dispatch Features](#️-anti-ban--smart-message-dispatch-features)
 - [⏰ Cron Job & Queue Worker Automation](#-cron-job--queue-worker-automation)
-- [🚀 Quick Start & Installation Guide](#-quick-start--installation-guide)
+- [🌐 Production Deployment & Hosting Options](#-production-deployment--hosting-options)
+  - [Option A: Decoupled Hosting (HestiaCP / cPanel Backend + Vercel / Netlify / Coolify Frontend)](#option-a-decoupled-hosting-hestiacp--cpanel-backend--vercel--netlify--coolify-frontend)
+  - [Option B: Single-Server Linux VPS (Nginx + PM2 + PHP-FPM + MySQL)](#option-b-single-server-linux-vps-nginx--pm2--php-fpm--mysql)
 - [💻 Scripts & Commands](#-scripts--commands)
 - [🎨 Design System & Theme Customization](#-design-system--theme-customization)
 - [📄 License & Credits](#-license--credits)
@@ -306,6 +308,32 @@ Or trigger the cron endpoint via curl:
 * 🔔 **Daily Fee Reminders**: Automatically executes `fees:send-reminders` every morning at 8:00 AM.
 * 💾 **Automated Backups**: Runs scheduled database backups if enabled in System Settings.
 * 🧹 **Log & Cache Maintenance**: Automatically purges communication logs older than 60 days to keep the database fast and lightweight.
+
+---
+
+## 🌐 Production Deployment & Hosting Options
+
+iSchool is built with a flexible modern architecture supporting multiple production deployment strategies:
+
+### Option A: Decoupled Hosting (HestiaCP / cPanel Backend + Vercel / Netlify / Coolify Frontend)
+> 📖 **Full Step-by-Step Guide**: [**`deploy/DECOUPLED_HOSTING_GUIDE.md`**](file:///k:/flyenv_folder/iSchool/deploy/DECOUPLED_HOSTING_GUIDE.md)
+
+* **Frontend Hosting**: Deploy Next.js 16 on **Vercel**, **Coolify**, or **Netlify** with automatic global CDN edge caching.
+* **Backend Hosting**: Host Laravel 12 API and MySQL on **HestiaCP** or **cPanel** (e.g. `https://api.yourdomain.com`).
+* **Environment Variable**: Simply set `NEXT_PUBLIC_API_URL=https://api.yourdomain.com/api/v1` on your frontend host.
+* **Cross-Origin Auth**: Bearer tokens are stored in `localStorage` and sent in HTTP headers, providing seamless cross-domain operation without cookie restriction issues.
+
+### Option B: Single-Server Linux VPS (Nginx + PM2 + PHP-FPM + MySQL)
+> 📖 **Full Step-by-Step Guide**: [**`deploy/README.md`**](file:///k:/flyenv_folder/iSchool/deploy/README.md)
+
+* **All-in-One VPS Setup**: Host both Next.js frontend (managed via PM2 cluster) and Laravel 12 backend under a single Nginx reverse proxy with HTTP/2, Gzip, and static asset caching.
+* **Automated Scripts & Configs**: Pre-configured templates provided in [`deploy/`](file:///k:/flyenv_folder/iSchool/deploy/):
+  - [`deploy/nginx/ischool.conf`](file:///k:/flyenv_folder/iSchool/deploy/nginx/ischool.conf) — Production Nginx reverse proxy with SSL and cache headers.
+  - [`deploy/php/opcache.ini`](file:///k:/flyenv_folder/iSchool/deploy/php/opcache.ini) — PHP OPcache JIT configuration.
+  - [`deploy/php/www-pool.conf`](file:///k:/flyenv_folder/iSchool/deploy/php/www-pool.conf) — PHP-FPM worker pool tuned for 4GB – 16GB VPS instances.
+  - [`deploy/mysql/my.cnf`](file:///k:/flyenv_folder/iSchool/deploy/mysql/my.cnf) — MySQL InnoDB buffer pool & IOPS tuning.
+  - [`deploy/deploy.sh`](file:///k:/flyenv_folder/iSchool/deploy/deploy.sh) — 1-click zero-downtime deployment script.
+  - [`ecosystem.config.js`](file:///k:/flyenv_folder/iSchool/ecosystem.config.js) — PM2 cluster and background queue manager.
 
 ---
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,7 +27,6 @@ import {
     Search,
     Loader2,
     Plus,
-    Save,
     Tag,
     AlertCircle,
     CheckCircle2,
@@ -50,7 +49,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
@@ -81,7 +80,9 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 export default function LeaveTypePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
+
     const [searchTerm, setSearchTerm] = useState("");
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
     const [loading, setLoading] = useState(true);
@@ -99,7 +100,7 @@ export default function LeaveTypePage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState("10");
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get("hr/leave-type");
@@ -111,11 +112,11 @@ export default function LeaveTypePage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [t]);
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -189,7 +190,7 @@ export default function LeaveTypePage() {
 
     // Export Functions
     const exportToExcel = (isCsv = false) => {
-        if (filteredLeaveTypes.length === 0) { toast.error("No data to export"); return; }
+        if (filteredLeaveTypes.length === 0) { toast.error(t("no_records_to_export") || "No data to export"); return; }
         const mapped = filteredLeaveTypes.map((lt, idx) => ({
             "SL": idx + 1,
             "Leave Type Name": lt.name
@@ -199,37 +200,37 @@ export default function LeaveTypePage() {
         XLSX.utils.book_append_sheet(wb, ws, "Leave Types");
         if (isCsv) {
             XLSX.writeFile(wb, "leave_types.csv", { bookType: "csv" });
-            toast.success("CSV downloaded");
+            toast.success(t("csv_downloaded") || "CSV downloaded");
         } else {
             XLSX.writeFile(wb, "leave_types.xlsx");
-            toast.success("Excel spreadsheet downloaded");
+            toast.success(t("excel_file_downloaded") || "Excel spreadsheet downloaded");
         }
     };
 
     const exportToPDF = () => {
-        if (filteredLeaveTypes.length === 0) { toast.error("No data to export"); return; }
+        if (filteredLeaveTypes.length === 0) { toast.error(t("no_records_to_export") || "No data to export"); return; }
         const doc = new jsPDF();
         doc.text("Leave Types Registry", 14, 15);
         autoTable(doc, {
-            head: [["SL", "Leave Category Name"]],
+            head: [["SL", t("leave_type_name") || "Leave Category Name"]],
             body: filteredLeaveTypes.map((lt, idx) => [idx + 1, lt.name]),
             startY: 20,
         });
         doc.save("leave_types.pdf");
-        toast.success("PDF document downloaded");
+        toast.success(t("pdf_downloaded") || "PDF document downloaded");
     };
 
     const copyToClipboard = () => {
-        if (filteredLeaveTypes.length === 0) { toast.error("No data to copy"); return; }
+        if (filteredLeaveTypes.length === 0) { toast.error(t("no_records_to_copy") || "No data to copy"); return; }
         const text = "SL\tLeave Type Name\n" + filteredLeaveTypes.map((lt, idx) => `${idx + 1}\t${lt.name}`).join('\n');
         navigator.clipboard.writeText(text);
-        toast.success("Copied to clipboard");
+        toast.success(t("copied_to_clipboard") || "Copied to clipboard");
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
+        <div className="w-full space-y-6 p-4 lg:p-6 font-sans bg-gray-50/10 min-h-screen">
             {/* Master Header Banner */}
-            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm overflow-hidden">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
                     <div className="flex items-center gap-3">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
@@ -237,13 +238,13 @@ export default function LeaveTypePage() {
                         </span>
                         <div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                Leave Categories & Absence Classifications
+                                {t("leave_categories_classifications")}
                                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                                    {leaveTypes.length} Configured
+                                    {t("configured_badge", { count: toLocaleNumber(leaveTypes.length, shortCode) })}
                                 </span>
                             </h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                Define and maintain institutional leave types for student applications and staff absence tracking.
+                                {t("leave_types_subtitle")}
                             </p>
                         </div>
                     </div>
@@ -254,17 +255,17 @@ export default function LeaveTypePage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 {/* Left Form Card */}
                 <div className="lg:col-span-1">
-                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0 sticky top-6">
+                    <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0 sticky top-6">
                         <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
                                 {isEditing ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                             </span>
                             <div>
                                 <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
-                                    {isEditing ? (t("edit_leave_type") || "Edit Leave Type") : (t("add_leave_type") || "Add Leave Type")}
+                                    {isEditing ? t("edit_leave_type") : t("add_leave_type")}
                                 </CardTitle>
                                 <p className="text-[10px] text-slate-500">
-                                    {isEditing ? "Update existing category" : "Create new absence classification"}
+                                    {isEditing ? t("update_existing_leave_type") : t("create_new_leave_type")}
                                 </p>
                             </div>
                         </CardHeader>
@@ -273,13 +274,13 @@ export default function LeaveTypePage() {
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-bold text-slate-700">
-                                        {t("name") || "Leave Type Name"} <span className="text-rose-500">*</span>
+                                        {t("leave_type_name")} <span className="text-rose-500">*</span>
                                     </Label>
                                     <Input
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg"
-                                        placeholder={t("e_g_sick_leave") || "e.g. Medical Leave, Casual Leave, Emergency"}
+                                        className="h-9 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg"
+                                        placeholder={t("e_g_sick_leave")}
                                     />
                                 </div>
 
@@ -289,9 +290,9 @@ export default function LeaveTypePage() {
                                             type="button"
                                             onClick={resetForm}
                                             variant="outline"
-                                            className="h-9 px-4 text-xs font-semibold rounded-lg border-slate-200"
+                                            className="h-9 px-4 text-xs font-semibold rounded-lg border-slate-200 cursor-pointer"
                                         >
-                                            {t("cancel") || "Cancel"}
+                                            {t("cancel")}
                                         </Button>
                                     )}
                                     <Button
@@ -306,7 +307,7 @@ export default function LeaveTypePage() {
                                         ) : (
                                             <Plus className="h-3.5 w-3.5" />
                                         )}
-                                        {isEditing ? (t("update") || "Update Category") : (t("save") || "Save Category")}
+                                        {saving ? t("saving") : isEditing ? t("update") : t("save")}
                                     </Button>
                                 </div>
                             </form>
@@ -316,7 +317,7 @@ export default function LeaveTypePage() {
 
                 {/* Right Table Card */}
                 <div className="lg:col-span-2">
-                    <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
+                    <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
                         {/* Table Header / Toolbar */}
                         <CardHeader className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                             <div className="flex items-center gap-2.5">
@@ -324,7 +325,7 @@ export default function LeaveTypePage() {
                                     <Layers className="h-4 w-4" />
                                 </span>
                                 <CardTitle className="text-sm font-bold text-slate-800">
-                                    {t("leave_type_list") || "Leave Type Directory"} ({filteredLeaveTypes.length})
+                                    {t("leave_type_list")} ({toLocaleNumber(filteredLeaveTypes.length, shortCode)})
                                 </CardTitle>
                             </div>
 
@@ -333,7 +334,7 @@ export default function LeaveTypePage() {
                                 <div className="relative w-full sm:w-48">
                                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                                     <Input
-                                        placeholder={t("search") || "Search categories..."}
+                                        placeholder={t("search")}
                                         value={searchTerm}
                                         onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                                         className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
@@ -345,55 +346,55 @@ export default function LeaveTypePage() {
                                     value={itemsPerPage}
                                     onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
                                 >
-                                    <SelectTrigger className="h-8 w-16 text-xs bg-white border-slate-200">
+                                    <SelectTrigger className="h-8 w-16 text-xs bg-white border-slate-200 cursor-pointer">
                                         <SelectValue placeholder="10" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="10" className="cursor-pointer">{toLocaleNumber(10, shortCode)}</SelectItem>
+                                        <SelectItem value="25" className="cursor-pointer">{toLocaleNumber(25, shortCode)}</SelectItem>
+                                        <SelectItem value="50" className="cursor-pointer">{toLocaleNumber(50, shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
 
                                 {/* Multi-format export toolbar */}
-                                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
+                                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-2xs">
                                     <button
                                         type="button"
                                         onClick={copyToClipboard}
-                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                        title="Copy Table"
+                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                        title="Copy"
                                     >
                                         <Copy className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => exportToExcel(false)}
-                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                        title="Export Excel"
+                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                        title="Excel"
                                     >
                                         <FileSpreadsheet className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => exportToExcel(true)}
-                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                        title="Export CSV"
+                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                        title="CSV"
                                     >
                                         <FileBox className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                         type="button"
                                         onClick={exportToPDF}
-                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                        title="Export PDF"
+                                        className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all cursor-pointer"
+                                        title="PDF"
                                     >
                                         <FileText className="h-3.5 w-3.5" />
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => window.print()}
-                                        className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all"
-                                        title="Print List"
+                                        className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all cursor-pointer"
+                                        title="Print"
                                     >
                                         <Printer className="h-3.5 w-3.5" />
                                     </button>
@@ -408,8 +409,8 @@ export default function LeaveTypePage() {
                                     <TableHeader className="bg-slate-50/80 border-b border-slate-200">
                                         <TableRow>
                                             <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 w-16 text-center">#</TableHead>
-                                            <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("leave_type") || "Leave Classification Name"}</TableHead>
-                                            <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-right pr-6 w-28">{t("action") || "Action"}</TableHead>
+                                            <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("leave_type_name")}</TableHead>
+                                            <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-right pr-6 w-28">{t("actions")}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody className="divide-y divide-slate-100">
@@ -419,8 +420,8 @@ export default function LeaveTypePage() {
                                             <TableRow>
                                                 <TableCell colSpan={3} className="text-center py-16 text-slate-400">
                                                     <AlertCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                                                    <p className="text-xs font-bold text-slate-600">No leave categories registered</p>
-                                                    <p className="text-[11px] text-slate-400 mt-0.5">Use the left form to add your first classification.</p>
+                                                    <p className="text-xs font-bold text-slate-600">{t("no_leave_types_registered")}</p>
+                                                    <p className="text-[11px] text-slate-400 mt-0.5">{t("use_form_to_add_first")}</p>
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
@@ -430,7 +431,7 @@ export default function LeaveTypePage() {
                                                     className="hover:bg-indigo-50/20 transition-colors group"
                                                 >
                                                     <TableCell className="py-3.5 px-4 text-center font-mono text-xs text-slate-400">
-                                                        {startIndex + idx + 1}
+                                                        {toLocaleNumber(startIndex + idx + 1, shortCode)}
                                                     </TableCell>
                                                     <TableCell className="py-3.5 px-4">
                                                         <div className="flex items-center gap-2.5">
@@ -448,8 +449,8 @@ export default function LeaveTypePage() {
                                                                 size="sm"
                                                                 variant="outline"
                                                                 onClick={() => handleEdit(lt)}
-                                                                className="h-7 w-7 p-0 border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 rounded-lg"
-                                                                title="Edit Category"
+                                                                className="h-7 w-7 p-0 border-slate-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 rounded-lg cursor-pointer"
+                                                                title="Edit"
                                                             >
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
@@ -460,8 +461,8 @@ export default function LeaveTypePage() {
                                                                     setItemToDelete(lt.id);
                                                                     setDeleteDialogOpen(true);
                                                                 }}
-                                                                className="h-7 w-7 p-0 border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-lg"
-                                                                title="Delete Category"
+                                                                className="h-7 w-7 p-0 border-slate-200 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 rounded-lg cursor-pointer"
+                                                                title="Delete"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -478,8 +479,8 @@ export default function LeaveTypePage() {
                         {/* Footer / Pagination */}
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
                             <div>
-                                Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                                {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                                {t("showing")} {toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, shortCode)} {t("to")}{" "}
+                                {toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), shortCode)} {t("of")} {toLocaleNumber(totalEntries, shortCode)} {t("entries")}
                             </div>
 
                             {totalEntries > 0 && (
@@ -503,7 +504,7 @@ export default function LeaveTypePage() {
                                                     : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
                                             )}
                                         >
-                                            {page}
+                                            {toLocaleNumber(page, shortCode)}
                                         </button>
                                     ))}
 
@@ -527,20 +528,20 @@ export default function LeaveTypePage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
                             <Trash2 className="h-5 w-5 text-rose-600" />
-                            Delete Leave Category?
+                            {t("delete_leave_type_title")}
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-xs text-slate-500">
-                            This action will permanently delete this leave type. Existing leave records referencing it might be affected.
+                            {t("delete_leave_type_desc")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-2 sm:gap-0">
-                        <AlertDialogCancel className="text-xs font-semibold rounded-lg">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="text-xs font-semibold rounded-lg cursor-pointer">{t("cancel")}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={confirmDelete}
                             disabled={deleting}
-                            className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm"
+                            className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                         >
-                            {deleting ? "Deleting..." : "Yes, Delete"}
+                            {deleting ? t("deleting") : t("delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

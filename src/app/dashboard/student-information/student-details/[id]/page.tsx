@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { useTranslation } from "@/hooks/use-translation";
 import { getImageUrl } from "@/lib/image-url";
 
 const formatDate = (d?: string | null) => {
@@ -67,6 +68,7 @@ export default function StudentProfilePage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
     const tt = useTranslateToast();
+    const { t } = useTranslation();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [student, setStudent] = useState<Record<string, any> | null>(null);
     const [loading, setLoading] = useState(true);
@@ -466,25 +468,25 @@ export default function StudentProfilePage() {
                 {/* Guardian Tab */}
                 <TabsContent value="guardian" className="mt-4 space-y-4">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <SectionCard title="Father's Details" icon={User}>
-                            <InfoRow icon={User} label="Name" value={student.father_name} />
-                            <InfoRow icon={Phone} label="Phone" value={student.father_phone} />
-                            <InfoRow icon={FileText} label="Occupation" value={student.father_occupation} />
+                        <SectionCard title={t("father_details") || "Father's Details"} icon={User}>
+                            <InfoRow icon={User} label={t("name")} value={student.father_name} />
+                            <InfoRow icon={Phone} label={t("father_phone") || t("phone")} value={student.father_phone} />
+                            <InfoRow icon={FileText} label={t("father_occupation") || t("occupation")} value={student.father_occupation} />
                         </SectionCard>
 
-                        <SectionCard title="Mother's Details" icon={User}>
-                            <InfoRow icon={User} label="Name" value={student.mother_name} />
-                            <InfoRow icon={Phone} label="Phone" value={student.mother_phone} />
-                            <InfoRow icon={FileText} label="Occupation" value={student.mother_occupation} />
+                        <SectionCard title={t("mother_details") || "Mother's Details"} icon={User}>
+                            <InfoRow icon={User} label={t("name")} value={student.mother_name} />
+                            <InfoRow icon={Phone} label={t("mother_phone") || t("phone")} value={student.mother_phone} />
+                            <InfoRow icon={FileText} label={t("mother_occupation") || t("occupation")} value={student.mother_occupation} />
                         </SectionCard>
 
-                        <SectionCard title="Guardian Details" icon={Users}>
-                            <InfoRow icon={User} label="Guardian Name" value={student.guardian_name} />
-                            <InfoRow icon={Users} label="Relation" value={student.guardian_relation} />
-                            <InfoRow icon={Phone} label="Phone" value={student.guardian_phone} />
-                            <InfoRow icon={Mail} label="Email" value={student.guardian_email} />
-                            <InfoRow icon={FileText} label="Occupation" value={student.guardian_occupation} />
-                            <InfoRow icon={Home} label="Address" value={student.guardian_address} />
+                        <SectionCard title={t("guardian_details") || "Guardian Details"} icon={Users}>
+                            <InfoRow icon={User} label={t("guardian_name")} value={student.guardian_name} />
+                            <InfoRow icon={Users} label={t("guardian_relation") || "Relation"} value={student.guardian_relation} />
+                            <InfoRow icon={Phone} label={t("guardian_phone") || t("phone")} value={student.guardian_phone} />
+                            <InfoRow icon={Mail} label={t("guardian_email") || t("email")} value={student.guardian_email} />
+                            <InfoRow icon={FileText} label={t("guardian_occupation") || t("occupation")} value={student.guardian_occupation} />
+                            <InfoRow icon={Home} label={t("guardian_address") || t("address")} value={student.guardian_address} />
                         </SectionCard>
 
                         {/* Siblings */}

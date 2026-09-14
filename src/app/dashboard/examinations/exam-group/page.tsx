@@ -18,7 +18,7 @@ import {
     BarChart, CheckCircle2, ArrowLeft, Users, BookOpen, FileDigit, MessageSquare, Trophy, X, Send, Check,
     Link2, RefreshCw
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { getImageUrl } from "@/lib/image-url";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -111,7 +111,8 @@ interface StudentRow {
 }
 
 export default function ExamGroupPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [groups, setGroups] = useState<ExamGroup[]>([]);
@@ -2699,7 +2700,7 @@ interface ExamRemarkStudentItem {
                                 <Input
                                     value={formData.name}
                                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                    placeholder="e.g. Annual Exams 2026"
+                                    placeholder={t("eg_annual_exams")}
                                     className="h-10 text-xs border-gray-200 bg-white rounded-lg focus:ring-indigo-500 shadow-2xs"
                                 />
                             </div>
@@ -2758,7 +2759,7 @@ interface ExamRemarkStudentItem {
                                 </span>
                                 <div>
                                     <CardTitle className="text-sm font-bold tracking-tight text-slate-800 leading-none">{t("exam_group_registry")}</CardTitle>
-                                    <p className="text-[11px] text-gray-500 mt-1 font-normal">{t("x_groups", { count: totalEntries })}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1 font-normal">{t("x_groups", { count: toLocaleNumber(totalEntries, shortCode) })}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2.5 flex-wrap">
@@ -2785,10 +2786,10 @@ interface ExamRemarkStudentItem {
                                         <SelectValue placeholder="50" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="20">20</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                        <SelectItem value="500">500</SelectItem>
+                                        <SelectItem value="20">{toLocaleNumber("20", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
+                                        <SelectItem value="500">{toLocaleNumber("500", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -2826,7 +2827,7 @@ interface ExamRemarkStudentItem {
                                                     </TableCell>
                                                     <TableCell className="py-3 px-4 text-center">
                                                         <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold text-[10px] border border-indigo-100/70 inline-flex items-center gap-1">
-                                                            <FileStack className="h-3 w-3" /> {group.exams_count} {t("exams")}
+                                                            <FileStack className="h-3 w-3" /> {toLocaleNumber(group.exams_count || 0, shortCode)} {t("exams")}
                                                         </span>
                                                     </TableCell>
                                                     <TableCell className="py-3 px-4 font-medium">
@@ -2879,7 +2880,11 @@ interface ExamRemarkStudentItem {
 
                             <div className="flex items-center justify-between text-xs text-gray-500 font-semibold p-4 border-t border-gray-100">
                                 <div>
-                                    {t("showing_x_to_y_of_z", { from: ((currentPage - 1) * itemsPerPage) + 1, to: Math.min(currentPage * itemsPerPage, totalEntries), total: totalEntries })}
+                                    {t("showing_x_to_y_of_z", { 
+                                        from: toLocaleNumber(((currentPage - 1) * itemsPerPage) + 1, shortCode), 
+                                        to: toLocaleNumber(Math.min(currentPage * itemsPerPage, totalEntries), shortCode), 
+                                        total: toLocaleNumber(totalEntries, shortCode) 
+                                    })}
                                 </div>
                                 <div className="flex gap-2">
                                     <Button
@@ -2890,7 +2895,7 @@ interface ExamRemarkStudentItem {
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
                                     <Button size="sm" className="h-8 px-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-lg shadow-sm font-bold text-xs">
-                                        {currentPage}
+                                        {toLocaleNumber(currentPage, shortCode)}
                                     </Button>
                                     <Button
                                         onClick={() => setCurrentPage(p => p + 1)}

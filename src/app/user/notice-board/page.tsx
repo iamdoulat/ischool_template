@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, formatLocalizedDate } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 type Notice = {
     id: number;
@@ -36,9 +37,6 @@ const ACCENTS = [
 
 const PER_PAGE = 12;
 
-const formatDate = (d: string) =>
-    d ? new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "";
-
 /** Strip HTML tags to a plain-text preview snippet. */
 const toPreview = (html: string) => {
     if (!html) return "";
@@ -52,7 +50,8 @@ const splitTo = (s: string | null) =>
     s ? s.split(",").map((x) => x.trim()).filter(Boolean) : [];
 
 export default function UserNoticeBoardPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [notices, setNotices] = useState<Notice[]>([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState<Notice | null>(null);
@@ -99,6 +98,10 @@ export default function UserNoticeBoardPage() {
         );
     }, [notices, searchTerm]);
 
+    const publishedNoticeText = total === 1
+        ? `${toLocaleNumber(total, langCode)} ${t("published_notice")}`
+        : `${toLocaleNumber(total, langCode)} ${t("published_notices")}`;
+
     return (
         <div className="p-4 lg:p-6 animate-in fade-in duration-500">
             <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
@@ -111,7 +114,7 @@ export default function UserNoticeBoardPage() {
                         <div className="min-w-0">
                             <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("notice_board")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading ? `${t("loading")}…` : `${total} ${total === 1 ? t("published_notice") : t("published_notices")}`}
+                                {loading ? `${t("loading")}…` : publishedNoticeText}
                             </p>
                         </div>
                     </div>
@@ -180,7 +183,7 @@ export default function UserNoticeBoardPage() {
                                                     ))}
                                                     {recipients.length > 3 && (
                                                         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400">
-                                                            +{recipients.length - 3}
+                                                            +{toLocaleNumber(recipients.length - 3, langCode)}
                                                         </span>
                                                     )}
                                                 </div>
@@ -190,10 +193,10 @@ export default function UserNoticeBoardPage() {
                                         <div className="flex items-center justify-between gap-2 px-4 pl-5 py-2.5 border-t border-gray-100 bg-gray-50/50">
                                             <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
                                                 <Calendar className="h-3 w-3" />
-                                                {formatDate(notice.notice_date || notice.publish_date)}
+                                                {formatLocalizedDate(notice.notice_date || notice.publish_date, langCode)}
                                             </span>
                                             <span className="flex items-center gap-1 text-[11px] font-semibold text-[#6366F1] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {t("read")} <ArrowRight className="h-3 w-3" />
+                                                {t("read")} <ArrowRight className="h-3 w-3 rtl:rotate-180" />
                                             </span>
                                         </div>
                                     </button>
@@ -206,7 +209,7 @@ export default function UserNoticeBoardPage() {
                     {!loading && total > 0 && lastPage > 1 && (
                         <div className="flex items-center justify-between gap-3 mt-5">
                             <span className="text-[12px] text-gray-500">
-                                {t("page")} {page} {t("of")} {lastPage} · {total} {total === 1 ? t("notice") : t("notices")}
+                                {t("page")} {toLocaleNumber(page, langCode)} {t("of")} {toLocaleNumber(lastPage, langCode)} · {toLocaleNumber(total, langCode)} {total === 1 ? t("notice") : t("notices")}
                             </span>
                             <div className="flex items-center gap-1.5">
                                 <Button
@@ -214,14 +217,14 @@ export default function UserNoticeBoardPage() {
                                     disabled={page <= 1}
                                     className="h-8 px-3 gap-1 text-[12px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 disabled:opacity-40 transition-opacity"
                                 >
-                                    <ChevronLeft className="h-3.5 w-3.5" /> {t("prev")}
+                                    <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" /> {t("prev")}
                                 </Button>
                                 <Button
                                     onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
                                     disabled={page >= lastPage}
                                     className="h-8 px-3 gap-1 text-[12px] rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 disabled:opacity-40 transition-opacity"
                                 >
-                                    {t("next")} <ChevronRight className="h-3.5 w-3.5" />
+                                    {t("next")} <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
                                 </Button>
                             </div>
                         </div>
@@ -262,13 +265,13 @@ export default function UserNoticeBoardPage() {
                             {selected.notice_date && (
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5" />
-                                    <span>{t("notice_date")}: <span className="font-medium text-gray-700">{formatDate(selected.notice_date)}</span></span>
+                                    <span>{t("notice_date")}: <span className="font-medium text-gray-700">{formatLocalizedDate(selected.notice_date, langCode)}</span></span>
                                 </div>
                             )}
                             {selected.publish_date && (
                                 <div className="flex items-center gap-1.5">
                                     <Send className="h-3.5 w-3.5" />
-                                    <span>{t("published")}: <span className="font-medium text-gray-700">{formatDate(selected.publish_date)}</span></span>
+                                    <span>{t("published")}: <span className="font-medium text-gray-700">{formatLocalizedDate(selected.publish_date, langCode)}</span></span>
                                 </div>
                             )}
                             {(selected.notify_to || selected.message_to) && (
@@ -283,7 +286,7 @@ export default function UserNoticeBoardPage() {
                         <div className="flex-1 overflow-y-auto px-5 py-4">
                             <div
                                 className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full prose-img:h-auto prose-img:rounded-lg prose-table:w-full prose-pre:overflow-x-auto break-words"
-                                dangerouslySetInnerHTML={{ __html: selected.message }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(selected.message) }}
                             />
                         </div>
 

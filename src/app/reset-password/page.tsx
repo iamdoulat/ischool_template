@@ -27,8 +27,9 @@ function ResetPasswordForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get("token") || "";
-    const emailOrUsername = searchParams.get("email_or_username") || "";
-
+    const paramEmail = searchParams.get("email_or_username") || searchParams.get("email") || searchParams.get("username") || "";
+    
+    const [emailOrUsername, setEmailOrUsername] = useState(paramEmail);
     const [password, setPassword] = useState("");
     const [passwordConfirmation, setPasswordConfirmation] = useState("");
     const [loading, setLoading] = useState(false);
@@ -37,6 +38,12 @@ function ResetPasswordForm() {
     const [mounted, setMounted] = useState(false);
     const [settings, setSettings] = useState<{ app_logo?: string; school_name?: string; school_slogan?: string; tagline?: string; base_url?: string } | null>(null);
     const getImageUrl = useImageUrl();
+
+    useEffect(() => {
+        if (paramEmail) {
+            setEmailOrUsername(paramEmail);
+        }
+    }, [paramEmail]);
 
     useEffect(() => {
         setMounted(true);
@@ -50,6 +57,18 @@ function ResetPasswordForm() {
         e.preventDefault();
         setLoading(true);
         setError("");
+
+        if (!token) {
+            setError("Invalid or missing password reset token. Please request a new link.");
+            setLoading(false);
+            return;
+        }
+
+        if (!emailOrUsername) {
+            setError("Please enter your email or username.");
+            setLoading(false);
+            return;
+        }
 
         if (password !== passwordConfirmation) {
             setError("Passwords do not match.");
@@ -67,8 +86,10 @@ function ResetPasswordForm() {
             setSuccess(true);
             setTimeout(() => router.push("/login"), 3000);
         } catch (err: any) {
+            const errData = err.response?.data;
+            const validationErrors = errData?.errors ? Object.values(errData.errors).flat().join(" ") : "";
             setError(
-                err.response?.data?.message || "Failed to reset password. Please try again."
+                validationErrors || errData?.message || "Failed to reset password. Please try again."
             );
         } finally {
             setLoading(false);
@@ -100,23 +121,23 @@ function ResetPasswordForm() {
                                 <div className="inline-block bg-slate-800/80 p-2 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md">
                                     <img
                                         src={getImageUrl(settings.app_logo)}
-                                        alt={settings?.school_name || "School Logo"}
-                                        className="h-10 sm:h-12 w-auto max-w-[240px] object-contain"
+                                        alt={settings.school_name || "Logo"}
+                                        className="h-12 sm:h-14 w-auto max-w-[240px] object-contain rounded-xl"
                                     />
                                 </div>
                             ) : (
-                                <div className="inline-flex bg-gradient-to-br from-indigo-500 to-purple-600 p-2.5 rounded-2xl shadow-lg shadow-indigo-500/30 border border-white/10">
-                                    <GraduationCap className="h-7 w-7 text-white" />
+                                <div className="inline-flex bg-gradient-to-br from-indigo-500 to-purple-600 p-3 rounded-2xl shadow-lg shadow-indigo-500/30 border border-white/10">
+                                    <GraduationCap className="h-8 w-8 text-white" />
                                 </div>
                             )}
                         </div>
 
-                        {/* School Title & Slogan */}
-                        <div className="space-y-0.5 pt-0.5 text-center w-full">
-                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight leading-tight" suppressHydrationWarning>
-                                {mounted ? (settings?.school_name || "iSchool Management System") : "iSchool Management System"}
+                        {/* School Name & Slogan */}
+                        <div className="space-y-1 pt-0.5 text-center w-full">
+                            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-tight" suppressHydrationWarning>
+                                {settings?.school_name || "iSchool Management System"}
                             </h1>
-                            {mounted && (settings?.school_slogan || settings?.tagline) && (
+                            {(settings?.school_slogan || settings?.tagline) && (
                                 <p className="text-indigo-300 font-semibold text-xs sm:text-sm tracking-wide" suppressHydrationWarning>
                                     {settings?.school_slogan || settings?.tagline}
                                 </p>
@@ -149,13 +170,26 @@ function ResetPasswordForm() {
 
                                 {!success && (
                                     <>
+                                        {!paramEmail && (
+                                            <div className="space-y-1.5">
+                                                <Input
+                                                    id="email_or_username"
+                                                    type="text"
+                                                    placeholder="Email or Username"
+                                                    required
+                                                    value={emailOrUsername}
+                                                    onChange={(e) => setEmailOrUsername(e.target.value)}
+                                                    className="bg-white border-white/10 text-slate-900 focus:ring-indigo-500 h-11 text-xs sm:text-sm font-semibold rounded-xl px-3.5"
+                                                />
+                                            </div>
+                                        )}
                                         <div className="space-y-1.5">
                                             <Input
                                                 id="password"
                                                 type="password"
-                                                placeholder="New Password"
+                                                placeholder="New Password (min 6 characters)"
                                                 required
-                                                minLength={8}
+                                                minLength={6}
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 className="bg-white border-white/10 text-slate-900 focus:ring-indigo-500 h-11 text-xs sm:text-sm font-semibold rounded-xl px-3.5"
@@ -167,7 +201,7 @@ function ResetPasswordForm() {
                                                 type="password"
                                                 placeholder="Confirm New Password"
                                                 required
-                                                minLength={8}
+                                                minLength={6}
                                                 value={passwordConfirmation}
                                                 onChange={(e) => setPasswordConfirmation(e.target.value)}
                                                 className="bg-white border-white/10 text-slate-900 focus:ring-indigo-500 h-11 text-xs sm:text-sm font-semibold rounded-xl px-3.5"

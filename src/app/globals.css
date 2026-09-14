@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-geist-sans), var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -532,4 +532,112 @@ a[class*="from-"],
 [data-slot="button"][class*="from-"],
 [data-slot="alert-dialog-action"][class*="from-"] {
   color: #ffffff;
+}
+
+/* Card header dark mode styling for gradient headers across dashboard */
+.dark [class*="from-[#FFF5E7]"],
+.dark [class*="from-[#fff5e7]"] {
+  background: #121215 !important;
+  background-image: linear-gradient(to right, #18181b, #09090b) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark [class*="from-[#FFF5E7]"] [data-slot="card-title"],
+.dark [class*="from-[#fff5e7]"] [data-slot="card-title"],
+.dark [class*="from-[#FFF5E7]"] [class*="text-slate-800"],
+.dark [class*="from-[#fff5e7]"] [class*="text-slate-800"],
+.dark [class*="from-[#FFF5E7]"] h1,
+.dark [class*="from-[#fff5e7]"] h1,
+.dark [class*="from-[#FFF5E7]"] h2,
+.dark [class*="from-[#fff5e7]"] h2,
+.dark [class*="from-[#FFF5E7]"] h3,
+.dark [class*="from-[#fff5e7]"] h3,
+.dark [class*="from-[#FFF5E7]"] h4,
+.dark [class*="from-[#fff5e7]"] h4 {
+  color: #f8fafc !important;
+}
+
+.dark [class*="from-[#FFF5E7]"] p,
+.dark [class*="from-[#fff5e7]"] p,
+.dark [class*="from-[#FFF5E7]"] [class*="text-gray-500"],
+.dark [class*="from-[#fff5e7]"] [class*="text-gray-500"] {
+  color: #94a3b8 !important;
+}
+
+/* Scanner Laser Sweeping Animation for Camera Kiosks */
+@keyframes scannerLaser {
+  0% {
+    top: 6%;
+    opacity: 0.35;
+  }
+  50% {
+    top: 92%;
+    opacity: 1;
+  }
+  100% {
+    top: 6%;
+    opacity: 0.35;
+  }
+}
+
+/* Smooth marquee scrolling for top bar lengthy contact items */
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: inline-flex;
+  animation: marquee 14s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee:hover,
+.group:hover .animate-marquee {
+  animation-play-state: paused;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Complex Script Typography Enhancements (Bengali, Arabic, Hindi)
+ * Prevents vertical clipping and glyph collisions for ascenders/descenders/matras
+ * ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  --font-bengali-fallback: var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", "SolaimanLipi", "Kalpurush", system-ui, sans-serif;
+  --font-arabic-fallback: "Noto Sans Arabic", "Cairo", "Amiri", system-ui, sans-serif;
+  --font-hindi-fallback: "Noto Sans Devanagari", "Hind", system-ui, sans-serif;
+}
+
+/* Bengali locale font priority and line-height safety */
+html[lang="bn"],
+[lang="bn"] {
+  font-family: var(--font-hind-siliguri), var(--font-geist-sans), var(--font-bengali-fallback);
+}
+
+html[lang="bn"] h1,
+html[lang="bn"] h2,
+html[lang="bn"] h3,
+html[lang="bn"] h4,
+html[lang="bn"] h5,
+html[lang="bn"] h6,
+[lang="bn"] h1,
+[lang="bn"] h2,
+[lang="bn"] h3,
+[lang="bn"] h4,
+[lang="bn"] h5,
+[lang="bn"] h6 {
+  letter-spacing: normal !important;
+}
+
+/* Ensure leading-none does not clip Bengali/Hindi/Arabic diacritics */
+html[lang="bn"] .leading-none,
+html[lang="ar"] .leading-none,
+html[lang="hi"] .leading-none,
+[lang="bn"] .leading-none,
+[lang="ar"] .leading-none,
+[lang="hi"] .leading-none {
+  line-height: 1.25 !important;
 }

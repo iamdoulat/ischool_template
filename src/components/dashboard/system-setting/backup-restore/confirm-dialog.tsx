@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface ConfirmDialogProps {
     open: boolean;
@@ -31,11 +32,14 @@ export function ConfirmDialog({
     onConfirm,
     title,
     description,
-    confirmText = "Confirm",
-    cancelText = "Cancel",
+    confirmText,
+    cancelText,
     variant = "default",
     loading = false,
 }: ConfirmDialogProps) {
+    const { t } = useTranslation();
+    const resolvedConfirmText = confirmText || t("confirm");
+    const resolvedCancelText = cancelText || t("cancel");
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent className="max-w-[400px]">
@@ -50,7 +54,7 @@ export function ConfirmDialog({
                         disabled={loading}
                         className="h-8 text-[10px] font-bold uppercase rounded shadow-sm hover:bg-gray-100 transition-all border-none"
                     >
-                        {cancelText}
+                        {resolvedCancelText}
                     </AlertDialogCancel>
                     <AlertDialogAction
                         onClick={(e) => {
@@ -66,7 +70,7 @@ export function ConfirmDialog({
                         )}
                     >
                         {loading && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
-                        {confirmText}
+                        {resolvedConfirmText}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

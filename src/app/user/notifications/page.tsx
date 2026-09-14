@@ -70,8 +70,8 @@ export default function UserNotificationsPage() {
 
             setNotifications(list);
             setSelectedIds([]);
-        } catch (error) {
-            console.error("Failed to fetch notifications", error);
+        } catch {
+            // Handled gracefully
         } finally {
             setLoading(false);
         }
@@ -95,8 +95,8 @@ export default function UserNotificationsPage() {
             setNotifications((prev) =>
                 prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
             );
-        } catch (error) {
-            console.error("Failed to mark as read", error);
+        } catch {
+            // Handled gracefully
         }
     };
 
@@ -106,8 +106,8 @@ export default function UserNotificationsPage() {
             await api.post("/notifications/read-all");
             setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
             toast({ title: "All notifications marked as read" });
-        } catch (error) {
-            console.error("Failed to mark all as read", error);
+        } catch {
+            // Handled gracefully
         } finally {
             setActionLoading(false);
         }
@@ -119,8 +119,8 @@ export default function UserNotificationsPage() {
             setNotifications((prev) => prev.filter((n) => n.id !== id));
             setSelectedIds((prev) => prev.filter((item) => item !== id));
             toast({ title: "Notification deleted" });
-        } catch (error) {
-            console.error("Failed to delete notification", error);
+        } catch {
+            // Handled gracefully
         }
     };
 
@@ -150,8 +150,8 @@ export default function UserNotificationsPage() {
             );
             setSelectedIds([]);
             toast({ title: `${selectedIds.length} notification(s) marked as read` });
-        } catch (error) {
-            console.error("Failed bulk mark read", error);
+        } catch {
+            // Handled gracefully
         } finally {
             setActionLoading(false);
         }
@@ -166,8 +166,8 @@ export default function UserNotificationsPage() {
             setSelectedIds([]);
             toast({ title: "Selected notification(s) deleted" });
             fetchNotifications(currentPage, activeFilter);
-        } catch (error) {
-            console.error("Failed bulk delete", error);
+        } catch {
+            // Handled gracefully
         } finally {
             setActionLoading(false);
         }

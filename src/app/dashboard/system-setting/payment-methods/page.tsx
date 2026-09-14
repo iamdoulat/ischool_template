@@ -22,8 +22,6 @@ import {
     EyeOff,
     CheckCircle2,
     AlertCircle,
-    Globe,
-    HelpCircle
 } from "lucide-react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
@@ -38,54 +36,82 @@ const gateways = [
     "Mollie", "Payfast"
 ];
 
-const specificConfigs: Record<string, { fields: { key: string, label: string, type: string, placeholder?: string, help?: string, options?: { value: string, label: string }[] }[] }> = {
+interface FieldOption {
+    value: string;
+    labelKey: string;
+    defaultLabel: string;
+}
+
+interface ConfigField {
+    key: string;
+    labelKey: string;
+    defaultLabel: string;
+    type: string;
+    placeholderKey?: string;
+    defaultPlaceholder?: string;
+    helpKey?: string;
+    defaultHelp?: string;
+    options?: FieldOption[];
+}
+
+const specificConfigs: Record<string, { fields: ConfigField[] }> = {
     "Offline": {
         fields: [
-            { key: "name", label: "Payment Method Name", type: "text", placeholder: "Offline Payment / Cash Deposit" },
-            { key: "description", label: "Description", type: "textarea", placeholder: "Pay at counter or deposit to our bank account" },
-            { key: "instructions", label: "Payment Instructions", type: "textarea", placeholder: "Bank Name: XYZ, Account: 123456789" }
+            { key: "name", labelKey: "payment_method_name", defaultLabel: "Payment Method Name", type: "text", placeholderKey: "offline_payment_placeholder", defaultPlaceholder: "Offline Payment / Cash Deposit" },
+            { key: "description", labelKey: "description", defaultLabel: "Description", type: "textarea", placeholderKey: "offline_description_placeholder", defaultPlaceholder: "Pay at counter or deposit to our bank account" },
+            { key: "instructions", labelKey: "payment_instructions", defaultLabel: "Payment Instructions", type: "textarea", placeholderKey: "payment_instructions_placeholder", defaultPlaceholder: "Bank Name: XYZ, Account: 123456789" }
         ]
     },
     "UddoktaPay": {
         fields: [
             {
                 key: "api_key",
-                label: "UddoktaPay API Key",
+                labelKey: "uddoktapay_api_key",
+                defaultLabel: "UddoktaPay API Key",
                 type: "password",
-                placeholder: "Enter your UddoktaPay API Key (e.g. 9845xxxx-xxxx-xxxx)",
-                help: "Found in your UddoktaPay Merchant Panel -> API Credentials"
+                placeholderKey: "uddoktapay_api_key_placeholder",
+                defaultPlaceholder: "Enter your UddoktaPay API Key (e.g. 9845xxxx-xxxx-xxxx)",
+                helpKey: "uddoktapay_api_key_help",
+                defaultHelp: "Found in your UddoktaPay Merchant Panel -> API Credentials"
             },
             {
                 key: "api_url",
-                label: "API Endpoint URL",
+                labelKey: "api_endpoint_url",
+                defaultLabel: "API Endpoint URL",
                 type: "text",
-                placeholder: "https://sandbox.uddoktapay.com/api/checkout-v2",
-                help: "Sandbox: https://sandbox.uddoktapay.com/api/checkout-v2 | Live: https://pay.uddoktapay.com/api/checkout-v2 or your custom domain"
+                placeholderKey: "api_endpoint_url_placeholder",
+                defaultPlaceholder: "https://sandbox.uddoktapay.com/api/checkout-v2",
+                helpKey: "uddoktapay_api_url_help",
+                defaultHelp: "Sandbox: https://sandbox.uddoktapay.com/api/checkout-v2 | Live: https://pay.uddoktapay.com/api/checkout-v2 or your custom domain"
             },
             {
                 key: "mode",
-                label: "Environment Mode",
+                labelKey: "environment_mode",
+                defaultLabel: "Environment Mode",
                 type: "radio",
                 options: [
-                    { value: "sandbox", label: "Sandbox (Testing)" },
-                    { value: "live", label: "Live (Production)" }
+                    { value: "sandbox", labelKey: "sandbox_testing", defaultLabel: "Sandbox (Testing)" },
+                    { value: "live", labelKey: "live_production", defaultLabel: "Live (Production)" }
                 ]
             },
             {
                 key: "fee_type",
-                label: "Processing Fees Type",
+                labelKey: "processing_fees_type",
+                defaultLabel: "Processing Fees Type",
                 type: "radio",
                 options: [
-                    { value: "none", label: "None (0%)" },
-                    { value: "percentage", label: "Percentage (%)" },
-                    { value: "fix", label: "Fixed Amount" }
+                    { value: "none", labelKey: "fee_none", defaultLabel: "None (0%)" },
+                    { value: "percentage", labelKey: "fee_percentage", defaultLabel: "Percentage (%)" },
+                    { value: "fix", labelKey: "fee_fixed_amount", defaultLabel: "Fixed Amount" }
                 ]
             },
             {
                 key: "fee_amount",
-                label: "Processing Fee Value",
+                labelKey: "processing_fee_value",
+                defaultLabel: "Processing Fee Value",
                 type: "text",
-                placeholder: "e.g. 2.5 for 2.5% or 10 for 10 currency units"
+                placeholderKey: "fee_amount_placeholder",
+                defaultPlaceholder: "e.g. 2.5 for 2.5% or 10 for 10 currency units"
             }
         ]
     },
@@ -93,69 +119,80 @@ const specificConfigs: Record<string, { fields: { key: string, label: string, ty
         fields: [
             {
                 key: "client_id",
-                label: "PayPal Client ID",
+                labelKey: "paypal_client_id",
+                defaultLabel: "PayPal Client ID",
                 type: "text",
-                placeholder: "e.g. AXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-                help: "Found in PayPal Developer Dashboard -> Apps & Credentials"
+                placeholderKey: "paypal_client_id_placeholder",
+                defaultPlaceholder: "e.g. AXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                helpKey: "paypal_client_id_help",
+                defaultHelp: "Found in PayPal Developer Dashboard -> Apps & Credentials"
             },
             {
                 key: "client_secret",
-                label: "PayPal Client Secret",
+                labelKey: "paypal_client_secret",
+                defaultLabel: "PayPal Client Secret",
                 type: "password",
-                placeholder: "e.g. ELxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-                help: "Keep this secret safe. Found in PayPal Developer Dashboard"
+                placeholderKey: "paypal_client_secret_placeholder",
+                defaultPlaceholder: "e.g. ELxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                helpKey: "paypal_client_secret_help",
+                defaultHelp: "Keep this secret safe. Found in PayPal Developer Dashboard"
             },
             {
                 key: "mode",
-                label: "Environment Mode",
+                labelKey: "environment_mode",
+                defaultLabel: "Environment Mode",
                 type: "radio",
                 options: [
-                    { value: "sandbox", label: "Sandbox (Testing)" },
-                    { value: "live", label: "Live (Production)" }
+                    { value: "sandbox", labelKey: "sandbox_testing", defaultLabel: "Sandbox (Testing)" },
+                    { value: "live", labelKey: "live_production", defaultLabel: "Live (Production)" }
                 ]
             },
             {
                 key: "currency",
-                label: "Currency Code",
+                labelKey: "currency_code",
+                defaultLabel: "Currency Code",
                 type: "text",
-                placeholder: "USD",
-                help: "Standard ISO 3-letter currency code (e.g. USD, EUR, GBP, CAD, AUD)"
+                defaultPlaceholder: "USD",
+                helpKey: "currency_code_help",
+                defaultHelp: "Standard ISO 3-letter currency code (e.g. USD, EUR, GBP, CAD, AUD)"
             },
             {
                 key: "fee_type",
-                label: "Processing Fees Type",
+                labelKey: "processing_fees_type",
+                defaultLabel: "Processing Fees Type",
                 type: "radio",
                 options: [
-                    { value: "none", label: "None (0%)" },
-                    { value: "percentage", label: "Percentage (%)" },
-                    { value: "fix", label: "Fix Amount ($)" }
+                    { value: "none", labelKey: "fee_none", defaultLabel: "None (0%)" },
+                    { value: "percentage", labelKey: "fee_percentage", defaultLabel: "Percentage (%)" },
+                    { value: "fix", labelKey: "fee_fixed_amount", defaultLabel: "Fix Amount ($)" }
                 ]
             },
             {
                 key: "fee_amount",
-                label: "Percentage / Fix Amount",
+                labelKey: "fee_percentage_or_fix_amount",
+                defaultLabel: "Percentage / Fix Amount",
                 type: "text",
-                placeholder: "0.00"
+                defaultPlaceholder: "0.00"
             }
         ]
     },
     "Stripe": {
         fields: [
-            { key: "publishable_key", label: "Publishable Key", type: "text" },
-            { key: "secret_key", label: "Secret Key", type: "password" }
+            { key: "publishable_key", labelKey: "publishable_key", defaultLabel: "Publishable Key", type: "text" },
+            { key: "secret_key", labelKey: "secret_key", defaultLabel: "Secret Key", type: "password" }
         ]
     },
     "Razorpay": {
         fields: [
-            { key: "key_id", label: "Key ID", type: "text" },
-            { key: "key_secret", label: "Key Secret", type: "password" }
+            { key: "key_id", labelKey: "key_id", defaultLabel: "Key ID", type: "text" },
+            { key: "key_secret", labelKey: "key_secret", defaultLabel: "Key Secret", type: "password" }
         ]
     },
     "SSLCommerz": {
         fields: [
-            { key: "store_id", label: "Store ID", type: "text" },
-            { key: "store_password", label: "Store Password", type: "password" },
-            { key: "mode", label: "Environment Mode", type: "radio", options: [{ value: "sandbox", label: "Sandbox" }, { value: "live", label: "Live" }] }
+            { key: "store_id", labelKey: "store_id", defaultLabel: "Store ID", type: "text" },
+            { key: "store_password", labelKey: "store_password", defaultLabel: "Store Password", type: "password" },
+            { key: "mode", labelKey: "environment_mode", defaultLabel: "Environment Mode", type: "radio", options: [{ value: "sandbox", labelKey: "sandbox_testing", defaultLabel: "Sandbox" }, { value: "live", labelKey: "live_production", defaultLabel: "Live" }] }
         ]
     }
 };
@@ -168,8 +205,8 @@ function getProviderConfig(gateway: string) {
     return {
         providerName,
         fields: [
-            { key: "api_key", label: "API Key", type: "text" },
-            { key: "api_secret", label: "API Secret", type: "password" },
+            { key: "api_key", labelKey: "api_key", defaultLabel: "API Key", type: "text" },
+            { key: "api_secret", labelKey: "api_secret", defaultLabel: "API Secret", type: "password" },
         ]
     };
 }
@@ -198,7 +235,34 @@ export default function PaymentMethodsPage() {
     const [copiedWebhook, setCopiedWebhook] = useState(false);
     const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
 
-    const [settingsData, setSettingsData] = useState<Record<string, { config: any, status: boolean }>>({});
+    const [settingsData, setSettingsData] = useState<Record<string, { config: Record<string, string>; status: boolean }>>({});
+
+    const getGatewayTitle = (gateway: string) => {
+        const key = `gateway_${gateway.toLowerCase().replace(/ /g, '_')}`;
+        const translated = t(key);
+        return translated && translated !== key ? translated : gateway;
+    };
+
+    const getFieldLabel = (field: ConfigField) => {
+        const translated = t(field.labelKey);
+        return translated && translated !== field.labelKey ? translated : field.defaultLabel;
+    };
+
+    const getFieldPlaceholder = (field: ConfigField) => {
+        if (field.placeholderKey) {
+            const translated = t(field.placeholderKey);
+            if (translated && translated !== field.placeholderKey) return translated;
+        }
+        if (field.defaultPlaceholder) return field.defaultPlaceholder;
+        const lbl = getFieldLabel(field);
+        return t("enter_field_value", { field: lbl.toLowerCase() }) || `Enter ${lbl.toLowerCase()}`;
+    };
+
+    const getFieldHelp = (field: ConfigField) => {
+        if (!field.helpKey) return field.defaultHelp;
+        const translated = t(field.helpKey);
+        return translated && translated !== field.helpKey ? translated : field.defaultHelp;
+    };
 
     useEffect(() => {
         fetchSettings();
@@ -215,9 +279,9 @@ export default function PaymentMethodsPage() {
             const res = await api.get('system-setting/payment-settings');
             if (res.data?.status === 'success') {
                 const fetchedSettings = res.data.data;
-                const formattedData: any = {};
+                const formattedData: Record<string, { config: Record<string, string>; status: boolean }> = {};
 
-                fetchedSettings.forEach((setting: any) => {
+                fetchedSettings.forEach((setting: { provider: string; config?: Record<string, string>; status: boolean }) => {
                     formattedData[setting.provider] = {
                         config: setting.config || {},
                         status: setting.status
@@ -242,7 +306,7 @@ export default function PaymentMethodsPage() {
             }
         } catch (error) {
             console.error('Failed to fetch settings:', error);
-            sonnerToast.error("Failed to load payment settings");
+            sonnerToast.error(t("failed_load_payment_settings") || "Failed to load payment settings");
         } finally {
             setLoading(false);
         }
@@ -261,6 +325,7 @@ export default function PaymentMethodsPage() {
 
     const handleSaveTab = async () => {
         setSavingTab(true);
+        const currentTitle = getGatewayTitle(activeTab);
         try {
             const activeConfig = getProviderConfig(activeTab);
             const providerKey = activeConfig.providerName;
@@ -269,8 +334,9 @@ export default function PaymentMethodsPage() {
             const payload = { provider: providerKey, config: currentData.config, status: currentData.status ?? false };
             const res = await api.post('system-setting/payment-settings', payload);
             if (res.data?.status === 'success') {
-                sonnerToast.success(`${activeTab} configuration saved successfully`);
-                toast("success", `${activeTab} ${t("configuration_saved")}`);
+                const successMsg = t("gateway_config_saved_success", { name: currentTitle }) || `${currentTitle} configuration saved successfully`;
+                sonnerToast.success(successMsg);
+                toast("success", successMsg);
                 
                 setSettingsData(prev => ({
                     ...prev,
@@ -280,9 +346,10 @@ export default function PaymentMethodsPage() {
                     }
                 }));
             }
-        } catch (error) {
-            sonnerToast.error(`Failed to save ${activeTab} configuration`);
-            toast("error", `${t("failed_to_save")} ${activeTab} ${t("configuration")}`);
+        } catch {
+            const errMsg = t("failed_save_gateway_config", { name: currentTitle }) || `Failed to save ${currentTitle} configuration`;
+            sonnerToast.error(errMsg);
+            toast("error", errMsg);
         } finally {
             setSavingTab(false);
         }
@@ -291,9 +358,10 @@ export default function PaymentMethodsPage() {
     const handleToggleGateway = async (gatewayName: string) => {
         const providerName = gatewayName.toLowerCase().replace(/ /g, '_');
         const currentData = settingsData[providerName];
+        const currentTitle = getGatewayTitle(gatewayName);
 
         if (!currentData) {
-            sonnerToast.error(`Please configure and save ${gatewayName} before enabling it.`);
+            sonnerToast.error(t("configure_before_enabling", { name: currentTitle }) || `Please configure and save ${currentTitle} before enabling it.`);
             return;
         }
 
@@ -309,13 +377,13 @@ export default function PaymentMethodsPage() {
                     }
                 }));
                 if (newStatus) {
-                    sonnerToast.success(`${gatewayName} activated`);
+                    sonnerToast.success(t("gateway_activated", { name: currentTitle }) || `${currentTitle} activated`);
                 } else {
-                    sonnerToast.info(`${gatewayName} deactivated`);
+                    sonnerToast.info(t("gateway_deactivated", { name: currentTitle }) || `${currentTitle} deactivated`);
                 }
             }
-        } catch (error) {
-            sonnerToast.error(`Failed to toggle ${gatewayName}`);
+        } catch {
+            sonnerToast.error(t("failed_toggle_gateway", { name: currentTitle }) || `Failed to toggle ${currentTitle}`);
         }
     };
 
@@ -325,7 +393,7 @@ export default function PaymentMethodsPage() {
         if (activeTab === "UddoktaPay") {
             const currentData = settingsData.uddoktapay?.config || {};
             if (!currentData.api_key) {
-                sonnerToast.error("Please enter an API Key first before testing");
+                sonnerToast.error(t("please_enter_api_key_first") || "Please enter an API Key first before testing");
                 return;
             }
 
@@ -337,14 +405,15 @@ export default function PaymentMethodsPage() {
                 });
 
                 if (res.data?.status === 'success') {
-                    setTestResult({ success: true, message: res.data.message || "Connection verified successfully!" });
-                    sonnerToast.success("UddoktaPay Connection Verified!");
+                    setTestResult({ success: true, message: res.data.message || t("uddoktapay_verified_success") || "Connection verified successfully!" });
+                    sonnerToast.success(t("uddoktapay_verified_success") || "UddoktaPay Connection Verified!");
                 } else {
-                    setTestResult({ success: false, message: res.data?.message || "Connection test failed." });
-                    sonnerToast.error(res.data?.message || "Connection test failed");
+                    setTestResult({ success: false, message: res.data?.message || t("connection_test_failed") || "Connection test failed." });
+                    sonnerToast.error(res.data?.message || t("connection_test_failed") || "Connection test failed");
                 }
-            } catch (err: any) {
-                const errorMsg = err.response?.data?.message || "Unable to reach UddoktaPay endpoint";
+            } catch (err: unknown) {
+                const errRes = err as { response?: { data?: { message?: string } } };
+                const errorMsg = errRes.response?.data?.message || t("connection_test_failed") || "Unable to reach UddoktaPay endpoint";
                 setTestResult({ success: false, message: errorMsg });
                 sonnerToast.error(errorMsg);
             } finally {
@@ -353,7 +422,7 @@ export default function PaymentMethodsPage() {
         } else if (activeTab === "Paypal") {
             const currentData = settingsData.paypal?.config || {};
             if (!currentData.client_id || !currentData.client_secret) {
-                sonnerToast.error("Please enter both PayPal Client ID & Secret before testing");
+                sonnerToast.error(t("please_enter_paypal_credentials") || "Please enter both PayPal Client ID & Secret before testing");
                 return;
             }
 
@@ -366,14 +435,15 @@ export default function PaymentMethodsPage() {
                 });
 
                 if (res.data?.status === 'success') {
-                    setTestResult({ success: true, message: res.data.message || "PayPal connection verified!" });
-                    sonnerToast.success("PayPal REST API Verified!");
+                    setTestResult({ success: true, message: res.data.message || t("paypal_verified_success") || "PayPal connection verified!" });
+                    sonnerToast.success(t("paypal_verified_success") || "PayPal REST API Verified!");
                 } else {
-                    setTestResult({ success: false, message: res.data?.message || "PayPal connection test failed." });
-                    sonnerToast.error(res.data?.message || "PayPal connection failed");
+                    setTestResult({ success: false, message: res.data?.message || t("paypal_connection_failed") || "PayPal connection test failed." });
+                    sonnerToast.error(res.data?.message || t("paypal_connection_failed") || "PayPal connection failed");
                 }
-            } catch (err: any) {
-                const errorMsg = err.response?.data?.message || "Unable to authenticate with PayPal";
+            } catch (err: unknown) {
+                const errRes = err as { response?: { data?: { message?: string } } };
+                const errorMsg = errRes.response?.data?.message || t("paypal_connection_failed") || "Unable to authenticate with PayPal";
                 setTestResult({ success: false, message: errorMsg });
                 sonnerToast.error(errorMsg);
             } finally {
@@ -396,443 +466,465 @@ export default function PaymentMethodsPage() {
     const handleCopyWebhook = () => {
         navigator.clipboard.writeText(getWebhookUrl());
         setCopiedWebhook(true);
-        sonnerToast.success("Webhook URL copied to clipboard");
+        sonnerToast.success(t("webhook_copied_clipboard") || "Webhook URL copied to clipboard");
         setTimeout(() => setCopiedWebhook(false), 2500);
     };
 
     const currentActiveConfig = getProviderConfig(activeTab);
     const providerKey = currentActiveConfig.providerName;
     const currentData = settingsData[providerKey] || { config: {}, status: true };
+    const currentTitle = getGatewayTitle(activeTab);
 
     return (
-        <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6 bg-gray-50/10 min-h-screen font-sans flex flex-col lg:flex-row gap-4 sm:gap-6">
-            {/* Left Column: Configuration Area */}
-            <div className="flex-1 min-w-0 space-y-4">
-                <Card className="pt-0 overflow-hidden border border-gray-200/75 shadow-sm rounded-xl">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+        <div className="p-2 sm:p-3 md:p-4 space-y-4 sm:space-y-6 bg-gray-50/10 min-h-screen font-sans">
+            
+            {/* Standalone Edge-to-Edge Page Header Banner */}
+            <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <CreditCard className="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h1 className="text-sm sm:text-base font-bold text-gray-800 tracking-tight leading-none">
+                                {t("payment_methods") || "Payment Methods"}
+                            </h1>
+                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-1">
+                                {t("configure_payment_gateways_desc") || "Configure gateways, credentials, webhook IPN and processing fees"}
+                            </p>
+                        </div>
+                    </div>
+
+                    {activeTab === "UddoktaPay" && (
+                        <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 shadow-2xs">
+                                {t("v2_api_ready") || "v2 API Ready"}
                             </span>
-                            <div>
-                                <h1 className="text-[13px] sm:text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("payment_methods")}</h1>
-                                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 sm:mt-1">
-                                    Configure gateways, credentials, webhook IPN and processing fees
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
+                {/* Left Column: Configuration Area */}
+                <div className="flex-1 min-w-0 space-y-4">
+                    <Card className="pt-0 overflow-hidden border border-gray-200/75 shadow-sm rounded-xl">
+                        <CardContent className="p-0 min-h-[400px] sm:min-h-[500px]">
+                            {/* Top Tabs - Select on mobile, scrollable tabs on md+ */}
+                            <div className="border-b border-gray-100 bg-white">
+                                <div className="sm:hidden px-3 py-2">
+                                    <Select value={activeTab} onValueChange={setActiveTab}>
+                                        <SelectTrigger className="h-9 text-[12px] border-gray-200 shadow-none rounded">
+                                            <SelectValue placeholder={t("select_gateway") || "Select gateway"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {gateways.map((gateway) => (
+                                                <SelectItem key={gateway} value={gateway} className="text-[12px]">
+                                                    {getGatewayTitle(gateway)}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="hidden sm:block overflow-x-auto">
+                                    <div className="flex pb-1 pt-1 px-1">
+                                        {gateways.map((gateway) => (
+                                            <button
+                                                key={gateway}
+                                                onClick={() => setActiveTab(gateway)}
+                                                className={cn(
+                                                    "px-3 xl:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 mx-0.5 sm:mx-1 flex items-center gap-1.5",
+                                                    activeTab === gateway
+                                                        ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
+                                                        : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
+                                                )}
+                                            >
+                                                {gateway === "Offline" && <Banknote className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+                                                {gateway === "UddoktaPay" && <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500" />}
+                                                {getGatewayTitle(gateway)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Configuration Form */}
+                            <div className="p-4 sm:p-5 md:p-6 space-y-6">
+                                {loading ? (
+                                    <FormSkeleton />
+                                ) : (
+                                    <div className="flex flex-col xl:flex-row gap-6 xl:gap-8 animate-in fade-in duration-300">
+                                        <div className="flex-1 min-w-0 space-y-4 sm:space-y-5">
+                                            
+                                            {/* UddoktaPay Banner & Quick Presets */}
+                                            {activeTab === "UddoktaPay" && (
+                                                <div className="p-3.5 bg-gradient-to-r from-amber-50/70 to-indigo-50/60 border border-amber-200/50 rounded-lg space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 text-gray-800 text-xs font-semibold">
+                                                            <Zap className="h-4 w-4 text-amber-600" />
+                                                            <span>{t("uddoktapay_banner_title") || "UddoktaPay Automated Payment Gateway (bKash, Nagad, Rocket, Cards)"}</span>
+                                                        </div>
+                                                        <a
+                                                            href="https://uddoktapay.readme.io/reference/overview"
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                                                        >
+                                                            {t("documentation") || "Documentation"} <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                                                        {t("uddoktapay_banner_desc") || "Seamless integration with automated instant checkout, webhooks & auto fee settlement for Bangladesh & global payment methods."}
+                                                    </p>
+                                                    <div className="pt-1 flex flex-wrap items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-gray-500 uppercase">{t("quick_endpoint_presets") || "Quick Endpoint Presets:"}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                handleFieldChange("uddoktapay", "api_url", "https://pay.uddoktapay.com/api/checkout-v2");
+                                                                handleFieldChange("uddoktapay", "mode", "live");
+                                                            }}
+                                                            className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                                                        >
+                                                            {t("uddoktapay_live_preset") || "Live (pay.uddoktapay.com)"}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                handleFieldChange("uddoktapay", "api_url", "https://sandbox.uddoktapay.com/api/checkout-v2");
+                                                                handleFieldChange("uddoktapay", "mode", "sandbox");
+                                                                if (!currentData.config?.api_key || currentData.config.api_key.trim() === "") {
+                                                                    handleFieldChange("uddoktapay", "api_key", "982d381360a69d419689740d9f2e26ce36fb7a50");
+                                                                }
+                                                            }}
+                                                            className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                                                        >
+                                                            {t("uddoktapay_sandbox_preset") || "Sandbox (Test Mode)"}
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-800">
+                                                        <strong>{t("uddoktapay_live_note_title") || "Note:"}</strong> {t("uddoktapay_live_note_desc") || "In live mode, if you have a branded UddoktaPay merchant panel, enter your panel API URL (e.g. https://yourpanel.uddoktapay.com/api/checkout-v2) and your Live API Key from your merchant dashboard."}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* PayPal REST API v2 Banner & Presets */}
+                                            {activeTab === "Paypal" && (
+                                                <div className="p-3.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/70 border border-blue-200/60 rounded-lg space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 text-gray-800 text-xs font-semibold">
+                                                            <CreditCard className="h-4 w-4 text-blue-600" />
+                                                            <span>{t("paypal_banner_title") || "PayPal REST API v2 Checkout & Smart Payments"}</span>
+                                                        </div>
+                                                        <a
+                                                            href="https://developer.paypal.com/dashboard/applications/sandbox"
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                                        >
+                                                            {t("paypal_developer_portal") || "PayPal Developer Portal"} <ExternalLink className="h-3 w-3" />
+                                                        </a>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                                                        {t("paypal_banner_desc") || "Official PayPal Orders v2 integration with automated instant capture, multi-currency support (USD, EUR, GBP, etc.), and refund tracking."}
+                                                    </p>
+                                                    <div className="pt-1 flex flex-wrap items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-gray-500 uppercase">{t("quick_mode_switch") || "Quick Mode Switch:"}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFieldChange("paypal", "mode", "sandbox")}
+                                                            className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                                                        >
+                                                            {t("sandbox_testing") || "Sandbox (Testing)"}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleFieldChange("paypal", "mode", "live")}
+                                                            className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
+                                                        >
+                                                            {t("live_production") || "Live (Production)"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {currentActiveConfig.fields.map((field) => {
+                                                const label = getFieldLabel(field);
+                                                const placeholder = getFieldPlaceholder(field);
+                                                const help = getFieldHelp(field);
+
+                                                if (field.type === 'radio') {
+                                                    return (
+                                                        <div key={field.key} className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 pt-1 sm:pt-2">
+                                                            <Label className="text-[11px] font-bold text-gray-600 sm:text-right uppercase mt-0 sm:mt-1">
+                                                                {label}
+                                                            </Label>
+                                                            <div className="sm:col-span-2 space-y-2">
+                                                                <RadioGroup
+                                                                    value={currentData.config[field.key] || (field.options?.[0]?.value || "none")}
+                                                                    onValueChange={(val) => handleFieldChange(providerKey, field.key, val)}
+                                                                    className="flex flex-wrap gap-4"
+                                                                >
+                                                                    {field.options?.map(opt => {
+                                                                        const optLabel = t(opt.labelKey) || opt.defaultLabel;
+                                                                        return (
+                                                                            <div key={opt.value} className="flex items-center space-x-2">
+                                                                                <RadioGroupItem value={opt.value} id={`r-${field.key}-${opt.value}`} className="text-indigo-600 border-gray-300" />
+                                                                                <Label htmlFor={`r-${field.key}-${opt.value}`} className="text-[11px] text-gray-700 cursor-pointer">{optLabel}</Label>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </RadioGroup>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                if (field.type === 'textarea') {
+                                                    return (
+                                                        <div key={field.key} className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+                                                            <Label className="text-[11px] font-bold text-gray-600 sm:text-right uppercase mt-0 sm:mt-2">
+                                                                {label}
+                                                            </Label>
+                                                            <div className="sm:col-span-2 relative">
+                                                                <Textarea
+                                                                    value={currentData.config[field.key] || ""}
+                                                                    onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
+                                                                    className="min-h-[70px] sm:min-h-[80px] text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                                                    placeholder={placeholder}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                const isPasswordField = field.type === 'password';
+                                                const isRevealed = showPassword[field.key] || false;
+
+                                                return (
+                                                    <div key={field.key} className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-center sm:gap-4">
+                                                        <div className="sm:text-right">
+                                                            <Label className="text-[11px] font-bold text-gray-600 uppercase">
+                                                                {label} <span className="text-red-500">*</span>
+                                                            </Label>
+                                                        </div>
+                                                        <div className="sm:col-span-2 relative">
+                                                            <div className="relative flex items-center">
+                                                                <Input
+                                                                    type={isPasswordField && !isRevealed ? "password" : "text"}
+                                                                    value={currentData.config[field.key] || ""}
+                                                                    onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
+                                                                    className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded pr-10 font-mono"
+                                                                    placeholder={placeholder}
+                                                                />
+                                                                {isPasswordField && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setShowPassword(prev => ({ ...prev, [field.key]: !prev[field.key] }))}
+                                                                        className="absolute right-2.5 text-gray-400 hover:text-gray-600 transition-colors p-1 cursor-pointer"
+                                                                        title={isRevealed ? (t("hide_key") || "Hide key") : (t("show_key") || "Show key")}
+                                                                    >
+                                                                        {isRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {help && (
+                                                                <p className="text-[10px] text-gray-400 mt-1">{help}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+
+                                            {/* IPN / Webhook Section for UddoktaPay & PayPal */}
+                                            {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
+                                                <div className="border-t border-dashed border-gray-200 pt-4 space-y-3">
+                                                    <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
+                                                        <div className="sm:text-right">
+                                                            <Label className="text-[11px] font-bold text-gray-600 uppercase">
+                                                                {t("ipn_webhook_url") || "IPN / Webhook URL"}
+                                                            </Label>
+                                                        </div>
+                                                        <div className="sm:col-span-2 space-y-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    readOnly
+                                                                    value={getWebhookUrl()}
+                                                                    className="h-8 sm:h-9 text-[11px] bg-gray-50/80 text-gray-700 font-mono border-gray-200 rounded"
+                                                                />
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={handleCopyWebhook}
+                                                                    className="h-8 sm:h-9 px-3 text-xs shrink-0 border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
+                                                                >
+                                                                    {copiedWebhook ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                                                                    <span className="ml-1 text-[11px]">{copiedWebhook ? (t("copied") || "Copied") : (t("copy") || "Copy")}</span>
+                                                                </Button>
+                                                            </div>
+                                                            <p className="text-[10px] text-gray-500">
+                                                                {activeTab === "Paypal" ? (
+                                                                    t("paypal_webhook_help") || "Set this Webhook URL in your PayPal Developer Portal under App Settings > Add Webhook for event CHECKOUT.ORDER.APPROVED and PAYMENT.CAPTURE.COMPLETED."
+                                                                ) : (
+                                                                    t("uddoktapay_webhook_help") || "Set this URL in your UddoktaPay merchant panel under Webhook Settings to automatically record completed payments."
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Connection Test Probe Status Banner */}
+                                                    {testResult && (
+                                                        <div className={cn(
+                                                            "p-3 rounded-lg flex items-start gap-2.5 text-xs animate-in fade-in duration-200",
+                                                            testResult.success
+                                                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                                                : "bg-red-50 text-red-800 border border-red-200"
+                                                        )}>
+                                                            {testResult.success ? (
+                                                                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                                                            ) : (
+                                                                <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                                                            )}
+                                                            <div>
+                                                                <p className="font-semibold text-[11px]">{testResult.success ? (t("connection_successful") || "Connection Successful") : (t("connection_failed") || "Connection Failed")}</p>
+                                                                <p className="text-[11px] mt-0.5 opacity-90">{testResult.message}</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="hidden xl:flex flex-col items-center justify-center space-y-4 xl:border-l border-gray-100 xl:pl-8 min-w-[200px] shrink-0">
+                                            <div className="h-20 w-20 sm:h-24 sm:w-24 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center shadow-xs">
+                                                {activeTab === "Offline" ? (
+                                                    <Banknote className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-400" />
+                                                ) : activeTab === "UddoktaPay" ? (
+                                                    <Zap className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500" />
+                                                ) : activeTab === "Paypal" ? (
+                                                    <CreditCard className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500" />
+                                                ) : (
+                                                    <CreditCard className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-400" />
+                                                )}
+                                            </div>
+                                            <div className="text-center space-y-1">
+                                                <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">
+                                                    {currentTitle}
+                                                </p>
+                                                <span className={cn(
+                                                    "inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                                                    currentData.status ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"
+                                                )}>
+                                                    {currentData.status ? (t("enabled") || "Enabled") : (t("disabled") || "Disabled")}
+                                                </span>
+                                            </div>
+
+                                            {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
+                                                <div className="w-full pt-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={handleTestConnection}
+                                                        disabled={testingConnection}
+                                                        className="w-full h-8 text-[11px] font-semibold border-indigo-200 text-indigo-600 hover:bg-indigo-50 cursor-pointer"
+                                                    >
+                                                        {testingConnection ? (
+                                                            <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> {t("verifying_dots") || "Verifying..."}</>
+                                                        ) : (
+                                                            <><Zap className="w-3 h-3 mr-1.5 text-amber-500" /> {t("test_connection") || "Test Connection"}</>
+                                                        )}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer Action Buttons */}
+                            <div className="border-t border-gray-100 p-4 sm:p-5 md:p-6 bg-white flex flex-col sm:flex-row items-center justify-center gap-3">
+                                {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleTestConnection}
+                                        disabled={testingConnection}
+                                        className="h-9 sm:h-10 px-6 text-[11px] sm:text-xs font-bold uppercase rounded-full border-gray-200 hover:bg-gray-50 w-full sm:w-auto cursor-pointer"
+                                    >
+                                        {testingConnection ? (
+                                            <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> {t("testing_dots") || "Testing..."}</>
+                                        ) : (
+                                            <><Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" /> {t("test_connection") || "Test Connection"}</>
+                                        )}
+                                    </Button>
+                                )}
+
+                                <Button
+                                    onClick={handleSaveTab}
+                                    disabled={savingTab}
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 sm:px-10 h-9 sm:h-10 text-[11px] sm:text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 w-full sm:w-auto"
+                                >
+                                    {savingTab ? <><Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" /> {t("saving") || "Saving..."}</> : (t("save") || "Save")}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Right Column: Gateway Selection Sidebar */}
+                <div className="w-full lg:w-56 xl:w-64 shrink-0">
+                    <Card className="pt-0 overflow-hidden border border-gray-200/75 shadow-sm rounded-xl">
+                        <div className="flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                            <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </span>
+                            <div className="min-w-0">
+                                <h2 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">
+                                    {t("active_gateways") || "Active Gateways"}
+                                </h2>
+                                <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">
+                                    {t("toggle_to_enable") || t("toggle_payment_methods") || "Toggle to enable"}
                                 </p>
                             </div>
                         </div>
-
-                        {activeTab === "UddoktaPay" && (
-                            <div className="flex items-center gap-2">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                                    v2 API Ready
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                    <CardContent className="p-0 min-h-[400px] sm:min-h-[500px]">
-                        {/* Top Tabs - Select on mobile, scrollable tabs on md+ */}
-                        <div className="border-b border-gray-100 bg-white">
-                            <div className="sm:hidden px-3 py-2">
-                                <Select value={activeTab} onValueChange={setActiveTab}>
-                                    <SelectTrigger className="h-9 text-[12px] border-gray-200 shadow-none rounded">
-                                        <SelectValue placeholder="Select gateway" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {gateways.map((gateway) => (
-                                            <SelectItem key={gateway} value={gateway} className="text-[12px]">
-                                                {gateway}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="hidden sm:block overflow-x-auto">
-                                <div className="flex pb-1 pt-1 px-1">
-                                    {gateways.map((gateway) => (
-                                        <button
-                                            key={gateway}
-                                            onClick={() => setActiveTab(gateway)}
-                                            className={cn(
-                                                "px-3 xl:px-4 py-2.5 sm:py-3 text-[10px] sm:text-[11px] font-bold uppercase transition-all whitespace-nowrap border-b-2 mx-0.5 sm:mx-1 flex items-center gap-1.5",
-                                                activeTab === gateway
-                                                    ? "text-indigo-600 border-indigo-500 bg-indigo-50/10"
-                                                    : "text-gray-400 border-transparent hover:text-gray-600 hover:bg-gray-50"
-                                            )}
-                                        >
-                                            {gateway === "Offline" && <Banknote className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
-                                            {gateway === "UddoktaPay" && <Zap className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500" />}
-                                            {gateway}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Configuration Form */}
-                        <div className="p-4 sm:p-5 md:p-6 space-y-6">
-                            {loading ? (
-                                <FormSkeleton />
-                            ) : (
-                                <div className="flex flex-col xl:flex-row gap-6 xl:gap-8 animate-in fade-in duration-300">
-                                    <div className="flex-1 min-w-0 space-y-4 sm:space-y-5">
+                        <CardContent className="p-3 sm:p-4">
+                            <div className="overflow-y-auto max-h-[40vh] sm:max-h-[50vh] lg:max-h-[60vh] pr-1">
+                                <div className="space-y-1.5 sm:space-y-2">
+                                    {gateways.map((gateway) => {
+                                        const providerName = gateway.toLowerCase().replace(/ /g, '_');
+                                        const isEnabled = settingsData[providerName]?.status || false;
+                                        const title = getGatewayTitle(gateway);
                                         
-                                        {/* UddoktaPay Banner & Quick Presets */}
-                                        {activeTab === "UddoktaPay" && (
-                                            <div className="p-3.5 bg-gradient-to-r from-amber-50/70 to-indigo-50/60 border border-amber-200/50 rounded-lg space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2 text-gray-800 text-xs font-semibold">
-                                                        <Zap className="h-4 w-4 text-amber-600" />
-                                                        <span>UddoktaPay Automated Payment Gateway (bKash, Nagad, Rocket, Cards)</span>
-                                                    </div>
-                                                    <a
-                                                        href="https://uddoktapay.readme.io/reference/overview"
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-                                                    >
-                                                        Documentation <ExternalLink className="h-3 w-3" />
-                                                    </a>
-                                                </div>
-                                                <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                    Seamless integration with automated instant checkout, webhooks & auto fee settlement for Bangladesh & global payment methods.
-                                                </p>
-                                                <div className="pt-1 flex flex-wrap items-center gap-2">
-                                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Quick Endpoint Presets:</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            handleFieldChange("uddoktapay", "api_url", "https://pay.uddoktapay.com/api/checkout-v2");
-                                                            handleFieldChange("uddoktapay", "mode", "live");
-                                                        }}
-                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
-                                                    >
-                                                        Live (pay.uddoktapay.com)
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            handleFieldChange("uddoktapay", "api_url", "https://sandbox.uddoktapay.com/api/checkout-v2");
-                                                            handleFieldChange("uddoktapay", "mode", "sandbox");
-                                                            if (!currentData.config?.api_key || currentData.config.api_key.trim() === "") {
-                                                                handleFieldChange("uddoktapay", "api_key", "982d381360a69d419689740d9f2e26ce36fb7a50");
-                                                            }
-                                                        }}
-                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
-                                                    >
-                                                        Sandbox (Test Mode)
-                                                    </button>
-                                                </div>
-                                                <p className="text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-200 dark:border-amber-800">
-                                                    <strong>Note:</strong> In live mode, if you have a branded UddoktaPay merchant panel, enter your panel API URL (e.g. <code>https://yourpanel.uddoktapay.com/api/checkout-v2</code>) and your Live API Key from your merchant dashboard.
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {/* PayPal REST API v2 Banner & Presets */}
-                                        {activeTab === "Paypal" && (
-                                            <div className="p-3.5 bg-gradient-to-r from-blue-50/80 to-indigo-50/70 border border-blue-200/60 rounded-lg space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2 text-gray-800 text-xs font-semibold">
-                                                        <CreditCard className="h-4 w-4 text-blue-600" />
-                                                        <span>PayPal REST API v2 Checkout & Smart Payments</span>
-                                                    </div>
-                                                    <a
-                                                        href="https://developer.paypal.com/dashboard/applications/sandbox"
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                                                    >
-                                                        PayPal Developer Portal <ExternalLink className="h-3 w-3" />
-                                                    </a>
-                                                </div>
-                                                <p className="text-[11px] text-gray-600 leading-relaxed">
-                                                    Official PayPal Orders v2 integration with automated instant capture, multi-currency support (USD, EUR, GBP, etc.), and refund tracking.
-                                                </p>
-                                                <div className="pt-1 flex flex-wrap items-center gap-2">
-                                                    <span className="text-[10px] font-bold text-gray-500 uppercase">Quick Mode Switch:</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleFieldChange("paypal", "mode", "sandbox")}
-                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
-                                                    >
-                                                        Sandbox (Testing)
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleFieldChange("paypal", "mode", "live")}
-                                                        className="px-2.5 py-1 text-[10px] font-bold bg-white border border-gray-200 hover:border-blue-400 hover:text-blue-600 rounded-md text-gray-700 shadow-2xs transition-colors cursor-pointer"
-                                                    >
-                                                        Live (Production)
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {currentActiveConfig.fields.map((field) => {
-                                            if (field.type === 'radio') {
-                                                return (
-                                                    <div key={field.key} className="space-y-2 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4 pt-1 sm:pt-2">
-                                                        <Label className="text-[11px] font-bold text-gray-600 sm:text-right uppercase mt-0 sm:mt-1">
-                                                            {field.label}
-                                                        </Label>
-                                                        <div className="sm:col-span-2 space-y-2">
-                                                            <RadioGroup
-                                                                value={currentData.config[field.key] || (field.options?.[0]?.value || "none")}
-                                                                onValueChange={(val) => handleFieldChange(providerKey, field.key, val)}
-                                                                className="flex flex-wrap gap-4"
-                                                            >
-                                                                {field.options?.map(opt => (
-                                                                    <div key={opt.value} className="flex items-center space-x-2">
-                                                                        <RadioGroupItem value={opt.value} id={`r-${field.key}-${opt.value}`} className="text-indigo-600 border-gray-300" />
-                                                                        <Label htmlFor={`r-${field.key}-${opt.value}`} className="text-[11px] text-gray-700 cursor-pointer">{opt.label}</Label>
-                                                                    </div>
-                                                                ))}
-                                                            </RadioGroup>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-
-                                            if (field.type === 'textarea') {
-                                                return (
-                                                    <div key={field.key} className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-                                                        <Label className="text-[11px] font-bold text-gray-600 sm:text-right uppercase mt-0 sm:mt-2">
-                                                            {field.label}
-                                                        </Label>
-                                                        <div className="sm:col-span-2 relative">
-                                                            <Textarea
-                                                                value={currentData.config[field.key] || ""}
-                                                                onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
-                                                                className="min-h-[70px] sm:min-h-[80px] text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded"
-                                                                placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            }
-
-                                            const isPasswordField = field.type === 'password';
-                                            const isRevealed = showPassword[field.key] || false;
-
-                                            return (
-                                                <div key={field.key} className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-center sm:gap-4">
-                                                    <div className="sm:text-right">
-                                                        <Label className="text-[11px] font-bold text-gray-600 uppercase">
-                                                            {field.label} <span className="text-red-500">*</span>
-                                                        </Label>
-                                                    </div>
-                                                    <div className="sm:col-span-2 relative">
-                                                        <div className="relative flex items-center">
-                                                            <Input
-                                                                type={isPasswordField && !isRevealed ? "password" : "text"}
-                                                                value={currentData.config[field.key] || ""}
-                                                                onChange={(e) => handleFieldChange(providerKey, field.key, e.target.value)}
-                                                                className="h-8 sm:h-9 text-[11px] border-gray-200 focus:ring-indigo-500 shadow-none rounded pr-10 font-mono"
-                                                                placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
-                                                            />
-                                                            {isPasswordField && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setShowPassword(prev => ({ ...prev, [field.key]: !prev[field.key] }))}
-                                                                    className="absolute right-2.5 text-gray-400 hover:text-gray-600 transition-colors p-1"
-                                                                    title={isRevealed ? "Hide key" : "Show key"}
-                                                                >
-                                                                    {isRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        {field.help && (
-                                                            <p className="text-[10px] text-gray-400 mt-1">{field.help}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-
-                                        {/* IPN / Webhook Section for UddoktaPay & PayPal */}
-                                        {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
-                                            <div className="border-t border-dashed border-gray-200 pt-4 space-y-3">
-                                                <div className="space-y-1.5 sm:space-y-0 sm:grid sm:grid-cols-3 sm:items-start sm:gap-4">
-                                                    <div className="sm:text-right">
-                                                        <Label className="text-[11px] font-bold text-gray-600 uppercase">
-                                                            IPN / Webhook URL
-                                                        </Label>
-                                                    </div>
-                                                    <div className="sm:col-span-2 space-y-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <Input
-                                                                readOnly
-                                                                value={getWebhookUrl()}
-                                                                className="h-8 sm:h-9 text-[11px] bg-gray-50/80 text-gray-700 font-mono border-gray-200 rounded"
-                                                            />
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={handleCopyWebhook}
-                                                                className="h-8 sm:h-9 px-3 text-xs shrink-0 border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
-                                                            >
-                                                                {copiedWebhook ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                                                                <span className="ml-1 text-[11px]">{copiedWebhook ? "Copied" : "Copy"}</span>
-                                                            </Button>
-                                                        </div>
-                                                        <p className="text-[10px] text-gray-500">
-                                                            {activeTab === "Paypal" ? (
-                                                                <>Set this Webhook URL in your PayPal Developer Portal under <strong>App Settings &gt; Add Webhook</strong> for event <code>CHECKOUT.ORDER.APPROVED</code> and <code>PAYMENT.CAPTURE.COMPLETED</code>.</>
-                                                            ) : (
-                                                                <>Set this URL in your UddoktaPay merchant panel under <strong>Webhook Settings</strong> to automatically record completed payments.</>
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                {/* Connection Test Probe Status Banner */}
-                                                {testResult && (
-                                                    <div className={cn(
-                                                        "p-3 rounded-lg flex items-start gap-2.5 text-xs animate-in fade-in duration-200",
-                                                        testResult.success
-                                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                                            : "bg-red-50 text-red-800 border border-red-200"
-                                                    )}>
-                                                        {testResult.success ? (
-                                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                                                        ) : (
-                                                            <AlertCircle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                                                        )}
-                                                        <div>
-                                                            <p className="font-semibold text-[11px]">{testResult.success ? "Connection Successful" : "Connection Failed"}</p>
-                                                            <p className="text-[11px] mt-0.5 opacity-90">{testResult.message}</p>
-                                                        </div>
-                                                    </div>
+                                        return (
+                                            <div
+                                                key={`sel-${gateway}`}
+                                                className={cn(
+                                                    "flex items-center justify-between group py-1.5 px-2 rounded-md transition-colors border-b border-gray-50 last:border-0",
+                                                    activeTab === gateway ? "bg-indigo-50/50" : "hover:bg-gray-50"
                                                 )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="hidden xl:flex flex-col items-center justify-center space-y-4 xl:border-l border-gray-100 xl:pl-8 min-w-[200px] shrink-0">
-                                        <div className="h-20 w-20 sm:h-24 sm:w-24 bg-gray-50 border border-gray-100 rounded-2xl flex items-center justify-center shadow-xs">
-                                            {activeTab === "Offline" ? (
-                                                <Banknote className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-400" />
-                                            ) : activeTab === "UddoktaPay" ? (
-                                                <Zap className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500" />
-                                            ) : activeTab === "Paypal" ? (
-                                                <CreditCard className="h-8 w-8 sm:h-10 sm:w-10 text-blue-500" />
-                                            ) : (
-                                                <CreditCard className="h-8 w-8 sm:h-10 sm:w-10 text-indigo-400" />
-                                            )}
-                                        </div>
-                                        <div className="text-center space-y-1">
-                                            <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wide">
-                                                {activeTab}
-                                            </p>
-                                            <span className={cn(
-                                                "inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase",
-                                                currentData.status ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-500"
-                                            )}>
-                                                {currentData.status ? "Enabled" : "Disabled"}
-                                            </span>
-                                        </div>
-
-                                        {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
-                                            <div className="w-full pt-2">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={handleTestConnection}
-                                                    disabled={testingConnection}
-                                                    className="w-full h-8 text-[11px] font-semibold border-indigo-200 text-indigo-600 hover:bg-indigo-50 cursor-pointer"
-                                                >
-                                                    {testingConnection ? (
-                                                        <><Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Verifying...</>
-                                                    ) : (
-                                                        <><Zap className="w-3 h-3 mr-1.5 text-amber-500" /> Test Connection</>
-                                                    )}
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Footer Action Buttons */}
-                        <div className="border-t border-gray-100 p-4 sm:p-5 md:p-6 bg-white flex flex-col sm:flex-row items-center justify-center gap-3">
-                            {(activeTab === "UddoktaPay" || activeTab === "Paypal") && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleTestConnection}
-                                    disabled={testingConnection}
-                                    className="h-9 sm:h-10 px-6 text-[11px] sm:text-xs font-bold uppercase rounded-full border-gray-200 hover:bg-gray-50 w-full sm:w-auto cursor-pointer"
-                                >
-                                    {testingConnection ? (
-                                        <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Testing...</>
-                                    ) : (
-                                        <><Zap className="w-3.5 h-3.5 mr-1.5 text-amber-500" /> Test Connection</>
-                                    )}
-                                </Button>
-                            )}
-
-                            <Button
-                                onClick={handleSaveTab}
-                                disabled={savingTab}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 sm:px-10 h-9 sm:h-10 text-[11px] sm:text-xs font-bold uppercase transition-all rounded-full shadow-[0_4px_14px_0_rgba(99,102,241,0.39)] hover:shadow-[0_6px_20px_rgba(99,102,241,0.23)] hover:-translate-y-0.5 w-full sm:w-auto"
-                            >
-                                {savingTab ? <><Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 animate-spin" /> {t("saving")}</> : t("save")}
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Right Column: Gateway Selection Sidebar */}
-            <div className="w-full lg:w-56 xl:w-64 shrink-0">
-                <Card className="pt-0 overflow-hidden border border-gray-200/75 shadow-sm rounded-xl">
-                    <div className="flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <span className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <CreditCard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        </span>
-                        <div className="min-w-0">
-                            <h1 className="text-[12px] sm:text-[14px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("active_gateways") || "Active Gateways"}</h1>
-                            <p className="text-[10px] sm:text-[11px] text-gray-500 mt-0.5 truncate">{t("toggle_payment_methods") || "Toggle to enable"}</p>
-                        </div>
-                    </div>
-                    <CardContent className="p-3 sm:p-4">
-                        <div className="overflow-y-auto max-h-[40vh] sm:max-h-[50vh] lg:max-h-[60vh] pr-1">
-                            <div className="space-y-1.5 sm:space-y-2">
-                                {gateways.map((gateway) => {
-                                    const providerName = gateway.toLowerCase().replace(/ /g, '_');
-                                    const isEnabled = settingsData[providerName]?.status || false;
-                                    
-                                    return (
-                                        <div
-                                            key={`sel-${gateway}`}
-                                            className={cn(
-                                                "flex items-center justify-between group py-1.5 px-2 rounded-md transition-colors border-b border-gray-50 last:border-0",
-                                                activeTab === gateway ? "bg-indigo-50/50" : "hover:bg-gray-50"
-                                            )}
-                                        >
-                                            <Label
-                                                className="text-[10px] sm:text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 sm:gap-1.5 truncate text-gray-600 group-hover:text-indigo-600"
-                                                onClick={() => setActiveTab(gateway)}
                                             >
-                                                {gateway === "Offline" && <Banknote className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />}
-                                                {gateway === "UddoktaPay" && <Zap className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-amber-500 shrink-0" />}
-                                                <span className="truncate">{gateway}</span>
-                                            </Label>
-                                            <Switch 
-                                                checked={isEnabled} 
-                                                onCheckedChange={() => handleToggleGateway(gateway)} 
-                                                className="data-[state=checked]:bg-indigo-600 h-4 w-7 sm:h-5 sm:w-9"
-                                            />
-                                        </div>
-                                    );
-                                })}
+                                                <Label
+                                                    className="text-[10px] sm:text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 sm:gap-1.5 truncate text-gray-600 group-hover:text-indigo-600"
+                                                    onClick={() => setActiveTab(gateway)}
+                                                >
+                                                    {gateway === "Offline" && <Banknote className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" />}
+                                                    {gateway === "UddoktaPay" && <Zap className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-amber-500 shrink-0" />}
+                                                    <span className="truncate">{title}</span>
+                                                </Label>
+                                                <Switch 
+                                                    checked={isEnabled} 
+                                                    onCheckedChange={() => handleToggleGateway(gateway)} 
+                                                    className="data-[state=checked]:bg-indigo-600 h-4 w-7 sm:h-5 sm:w-9"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </div>
     );

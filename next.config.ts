@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   compress: true,
   turbopack: {},
   serverExternalPackages: ["face-api.js"],
@@ -75,6 +76,26 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const apiOrigin = (() => {
+      try {
+        return process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : "";
+      } catch {
+        return "";
+      }
+    })();
+
+    const connectOrigins = [
+      "'self'",
+      "http://localhost:8000",
+      "http://127.0.0.1:8000",
+      "https://localhost:8000",
+      "https://127.0.0.1:8000",
+      "http://100.121.103.60:*",
+      "ws:",
+      "wss:",
+      apiOrigin,
+    ].filter(Boolean).join(" ");
+
     return [
       {
         source: "/:path*",
@@ -85,11 +106,11 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self' http: https: data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' http: https: blob:; style-src 'self' 'unsafe-inline' http: https:; img-src 'self' data: blob: http: https:; font-src 'self' data: http: https:; connect-src 'self' http: https: ws: wss:; media-src 'self' data: blob: http: https:; object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self' http: https:;",
+            value: `default-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: http: https:; font-src 'self' data: https:; connect-src ${connectOrigins}; media-src 'self' data: blob: http: https:; object-src 'none'; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self' http: https:;`.replace(/\s{2,}/g, " ").trim(),
           },
           {
             key: "Permissions-Policy",
-            value: "camera=(self), microphone=(), geolocation=(), browsing-topics=()",
+            value: "camera=(self), microphone=(), geolocation=(), browsing-topics=(), payment=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), display-capture=(), xr-spatial-tracking=()",
           },
           {
             key: "X-Frame-Options",
@@ -105,7 +126,15 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-XSS-Protection",
-            value: "1; mode=block",
+            value: "0",
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-origin",
           },
         ],
       },
@@ -115,6 +144,10 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "cross-origin",
           },
         ],
       },
@@ -126,12 +159,32 @@ const nextConfig: NextConfig = {
       : "http://127.0.0.1:8000";
     return [
       {
+        source: "/api/v1/:path*",
+        destination: `${backendUrl}/api/v1/:path*`,
+      },
+      {
         source: "/storage/:path*",
         destination: `${backendUrl}/storage/:path*`,
       },
       {
         source: "/uploads/:path*",
         destination: `${backendUrl}/uploads/:path*`,
+      },
+      {
+        source: "/br/:slug/dashboard",
+        destination: "/dashboard",
+      },
+      {
+        source: "/br/:slug/dashboard/:path*",
+        destination: "/dashboard/:path*",
+      },
+      {
+        source: "/br/:slug/user",
+        destination: "/user/dashboard",
+      },
+      {
+        source: "/br/:slug/user/:path*",
+        destination: "/user/:path*",
       },
     ];
   },

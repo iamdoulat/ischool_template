@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Loader2, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber, translateMonthName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
@@ -43,8 +43,48 @@ const monthNames = [
     "July", "August", "September", "October", "November", "December"
 ];
 
+const dayNamesMap: Record<string, Record<string, { short: string; full: string }>> = {
+    bn: {
+        Mon: { short: "সোম", full: "সোমবার" },
+        Tue: { short: "মঙ্গল", full: "মঙ্গলবার" },
+        Wed: { short: "বুধ", full: "বুধবার" },
+        Thu: { short: "বৃহঃ", full: "বৃহস্পতিবার" },
+        Fri: { short: "শুক্র", full: "শুক্রবার" },
+        Sat: { short: "শনি", full: "শনিবার" },
+        Sun: { short: "রবি", full: "রবিবার" },
+    },
+    ar: {
+        Mon: { short: "إثنين", full: "الإثنين" },
+        Tue: { short: "ثلاثاء", full: "الثلاثاء" },
+        Wed: { short: "أربعاء", full: "الأربعاء" },
+        Thu: { short: "خميس", full: "الخميس" },
+        Fri: { short: "جمعة", full: "الجمعة" },
+        Sat: { short: "سبت", full: "السبت" },
+        Sun: { short: "أحد", full: "الأحد" },
+    },
+    hi: {
+        Mon: { short: "सोम", full: "सोमवार" },
+        Tue: { short: "मंगल", full: "मंगलवार" },
+        Wed: { short: "बुध", full: "बुधवार" },
+        Thu: { short: "गुरु", full: "गुरुवार" },
+        Fri: { short: "शुक्र", full: "शुक्रवार" },
+        Sat: { short: "शनि", full: "शनिवार" },
+        Sun: { short: "रवि", full: "रविवार" },
+    },
+    en: {
+        Mon: { short: "Mon", full: "Monday" },
+        Tue: { short: "Tue", full: "Tuesday" },
+        Wed: { short: "Wed", full: "Wednesday" },
+        Thu: { short: "Thu", full: "Thursday" },
+        Fri: { short: "Fri", full: "Friday" },
+        Sat: { short: "Sat", full: "Saturday" },
+        Sun: { short: "Sun", full: "Sunday" },
+    },
+};
+
 export default function UserAttendancePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const daysOfWeek = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
     const now = new Date();
     const [currentMonth, setCurrentMonth] = useState(now.getMonth() + 1);
@@ -56,6 +96,19 @@ export default function UserAttendancePage() {
     const [startDayOfWeek, setStartDayOfWeek] = useState(1);
     const [weeklyHolidays, setWeeklyHolidays] = useState<number[]>([7]);
     const [loading, setLoading] = useState(true);
+
+    const translateStatus = useCallback((status?: string | null) => {
+        if (!status) return "";
+        const s = status.trim().toLowerCase();
+        if (s === "present") return t("status_present") || (langCode === "ar" ? "حاضر" : langCode === "bn" ? "উপস্থিত" : langCode === "hi" ? "उपस्थित" : "Present");
+        if (s === "absent") return t("status_absent") || (langCode === "ar" ? "غائب" : langCode === "bn" ? "অনুপস্থিত" : langCode === "hi" ? "अनुपस्थित" : "Absent");
+        if (s === "late") return t("status_late") || (langCode === "ar" ? "متأخر" : langCode === "bn" ? "বিলম্ব" : langCode === "hi" ? "देर" : "Late");
+        if (s === "half day" || s === "half_day") return t("half_day") || (langCode === "ar" ? "نصف يوم" : langCode === "bn" ? "অর্ধ দিবস" : langCode === "hi" ? "आधा दिन" : "Half Day");
+        if (s === "holiday") return t("holiday") || (langCode === "ar" ? "عطلة" : langCode === "bn" ? "ছুটি" : langCode === "hi" ? "अवकाश" : "Holiday");
+        if (s === "on leave" || s === "on_leave") return t("on_leave") || (langCode === "ar" ? "في إجازة" : langCode === "bn" ? "ছুটিতে" : langCode === "hi" ? "अवकाश पर" : "On Leave");
+        if (s === "weekly holiday" || s === "weekly_holiday") return t("weekly_holiday") || (langCode === "ar" ? "عطلة أسبوعية" : langCode === "bn" ? "সাপ্তাহিক ছুটি" : langCode === "hi" ? "साप्ताहिक अवकाश" : "Weekly Holiday");
+        return status;
+    }, [t, langCode]);
 
     const fetchAttendance = useCallback(async () => {
         setLoading(true);
@@ -82,8 +135,7 @@ export default function UserAttendancePage() {
 
             setDaysInMonth(data.daysInMonth || new Date(currentYear, currentMonth, 0).getDate());
             setStartDayOfWeek(data.startDayOfWeek || (new Date(currentYear, currentMonth - 1, 1).getDay() || 7));
-        } catch (error) {
-            console.error("Error fetching attendance:", error);
+        } catch {
             toast.error(t("failed_to_load_attendance") || "Failed to load attendance");
             setDaysInMonth(new Date(currentYear, currentMonth, 0).getDate());
             setStartDayOfWeek(new Date(currentYear, currentMonth - 1, 1).getDay() || 7);
@@ -137,6 +189,8 @@ export default function UserAttendancePage() {
             ? now.getDate()
             : null;
 
+    const formattedMonthYear = `${translateMonthName(monthNames[currentMonth - 1], langCode)} ${toLocaleNumber(currentYear, langCode)}`;
+
     return (
         <div className="p-4 lg:p-6 space-y-5 min-h-screen font-sans animate-in fade-in duration-500">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -149,7 +203,7 @@ export default function UserAttendancePage() {
                         </span>
                         <div>
                             <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("attendance")}</h1>
-                            <p className="text-[11px] text-gray-500 mt-1">{monthNames[currentMonth - 1]} {currentYear}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{formattedMonthYear}</p>
                         </div>
                     </div>
                     {!loading && (
@@ -161,7 +215,7 @@ export default function UserAttendancePage() {
                                     "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white shadow-2xs bg-gradient-to-r",
                                     monthlyPercentage >= 75 ? "from-green-500 to-emerald-500" : "from-amber-500 to-rose-500"
                                 )}>
-                                    {monthlyPercentage}%
+                                    {toLocaleNumber(monthlyPercentage, langCode)}%
                                 </span>
                             </div>
 
@@ -172,7 +226,7 @@ export default function UserAttendancePage() {
                                     "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold text-white shadow-2xs bg-gradient-to-r",
                                     yearlyPercentage >= 75 ? "from-emerald-500 to-green-600" : "from-red-500 to-rose-500"
                                 )}>
-                                    {yearlyPercentage}%
+                                    {toLocaleNumber(yearlyPercentage, langCode)}%
                                 </span>
                             </div>
                         </div>
@@ -190,8 +244,12 @@ export default function UserAttendancePage() {
                                     <div key={status} className={cn("rounded-xl border shadow-sm overflow-hidden", style.border || "border-gray-100", style.bg || "bg-white")}>
                                         <div className={cn("h-1 w-full bg-gradient-to-r", style.bar)} />
                                         <div className="px-3 py-2.5">
-                                            <p className={cn("text-[10px] font-semibold uppercase tracking-wide leading-none truncate", style.labelColor || "text-gray-400")}>{status}</p>
-                                            <p className={cn("mt-1 text-xl font-bold", style.text)}>{statusCounts[status] || 0}</p>
+                                            <p className={cn("text-[10px] font-semibold uppercase tracking-wide leading-none truncate", style.labelColor || "text-gray-400")}>
+                                                {translateStatus(status)}
+                                            </p>
+                                            <p className={cn("mt-1 text-xl font-bold", style.text)}>
+                                                {toLocaleNumber(statusCounts[status] || 0, langCode)}
+                                            </p>
                                         </div>
                                     </div>
                                 );
@@ -206,17 +264,17 @@ export default function UserAttendancePage() {
                             size="icon-sm"
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-sm transition-all rounded-[10px] active:scale-95"
                         >
-                            <ChevronLeft className="h-4 w-4" />
+                            <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                         </Button>
                         <div className="font-bold text-[15px] text-gray-800 min-w-[150px] text-center">
-                            {monthNames[currentMonth - 1]} {currentYear}
+                            {formattedMonthYear}
                         </div>
                         <Button
                             onClick={goToNextMonth}
                             size="icon-sm"
                             className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 shadow-sm transition-all rounded-[10px] active:scale-95"
                         >
-                            <ChevronRight className="h-4 w-4" />
+                            <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                         </Button>
                     </div>
 
@@ -233,6 +291,8 @@ export default function UserAttendancePage() {
                             <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/80">
                                 {daysOfWeek.map((day, idx) => {
                                     const isWeekendHeader = weeklyHolidays.includes(idx + 1);
+                                    const langDays = dayNamesMap[langCode] || dayNamesMap.en;
+                                    const dayInfo = langDays[day] || { short: day.charAt(0), full: day };
                                     return (
                                         <div
                                             key={idx}
@@ -241,8 +301,8 @@ export default function UserAttendancePage() {
                                                 isWeekendHeader ? "text-red-600 bg-red-50/60" : "text-gray-600"
                                             )}
                                         >
-                                            <span className="sm:hidden">{day.charAt(0)}</span>
-                                            <span className="hidden sm:inline">{day}</span>
+                                            <span className="sm:hidden">{dayInfo.short}</span>
+                                            <span className="hidden sm:inline">{dayInfo.full}</span>
                                         </div>
                                     );
                                 })}
@@ -298,21 +358,21 @@ export default function UserAttendancePage() {
                                                                 {t("today") || "TODAY"}
                                                             </span>
                                                         )}
-                                                        <span>{day}</span>
+                                                        <span>{toLocaleNumber(day, langCode)}</span>
                                                     </div>
 
                                                     {(status || holidayTitle || isWeekend) && (
                                                         <div className="mt-1 space-y-1">
                                                             {(isWeeklyHoliday || (isWeekend && !entryTime)) ? (
                                                                 <div className="px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight bg-red-600 text-white">
-                                                                    {status || t("weekly_holiday") || "Weekly Holiday"}
+                                                                    {translateStatus(status || "Weekly Holiday")}
                                                                 </div>
                                                             ) : status ? (
                                                                 <div className={cn(
                                                                     "px-1.5 py-0.5 text-[8px] sm:text-[10px] font-bold rounded shadow-xs flex items-center justify-center text-center leading-tight",
                                                                     statusColors[status] || "bg-gray-500 text-white"
                                                                 )}>
-                                                                    {status}
+                                                                    {translateStatus(status)}
                                                                 </div>
                                                             ) : null}
 
@@ -329,12 +389,12 @@ export default function UserAttendancePage() {
                                                                 <div className="text-[8px] sm:text-[9.5px] font-medium flex flex-col items-center justify-center gap-0.5 pt-0.5 leading-tight">
                                                                     {entryTime && (
                                                                         <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                                                                            <span className="text-[7.5px] sm:text-[8.5px] text-gray-500 font-normal uppercase">In:</span> {entryTime}
+                                                                            <span className="text-[7.5px] sm:text-[8.5px] text-gray-500 font-normal uppercase">{t("in_label") || "In:"}</span> {toLocaleNumber(entryTime, langCode)}
                                                                         </span>
                                                                     )}
                                                                     {exitTime && (
                                                                         <span className="text-indigo-700 dark:text-indigo-400 font-semibold flex items-center gap-0.5">
-                                                                            <span className="text-[7.5px] sm:text-[8.5px] text-gray-500 font-normal uppercase">Out:</span> {exitTime}
+                                                                            <span className="text-[7.5px] sm:text-[8.5px] text-gray-500 font-normal uppercase">{t("out_label") || "Out:"}</span> {toLocaleNumber(exitTime, langCode)}
                                                                         </span>
                                                                     )}
                                                                 </div>

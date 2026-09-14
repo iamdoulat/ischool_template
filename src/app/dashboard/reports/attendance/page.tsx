@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -24,27 +25,37 @@ import { Input } from "@/components/ui/input";
 import {
     Search,
     FileText,
-    Users,
     CalendarCheck,
     ClipboardList,
-    UserCheck,
-    CalendarDays,
     Copy,
     FileSpreadsheet,
     FileBox,
     Printer,
-    Columns,
-    Columns2,
     FolderOpen,
     ChevronLeft,
     ChevronRight,
-    ArrowUpDown,
     Monitor,
+    Filter,
 } from "lucide-react";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/components/providers/language-provider";
+
+const monthList = [
+    { value: "jan", key: "month_jan", label: "January" },
+    { value: "feb", key: "month_feb", label: "February" },
+    { value: "mar", key: "month_mar", label: "March" },
+    { value: "apr", key: "month_apr", label: "April" },
+    { value: "may", key: "month_may", label: "May" },
+    { value: "jun", key: "month_jun", label: "June" },
+    { value: "jul", key: "month_jul", label: "July" },
+    { value: "aug", key: "month_aug", label: "August" },
+    { value: "sep", key: "month_sep", label: "September" },
+    { value: "oct", key: "month_oct", label: "October" },
+    { value: "nov", key: "month_nov", label: "November" },
+    { value: "dec", key: "month_dec", label: "December" },
+];
 
 function TableSkeleton({ cols }: { cols: number }) {
     return (
@@ -63,13 +74,13 @@ function TableSkeleton({ cols }: { cols: number }) {
 }
 
 const reportLinks = [
-    { name: "Attendance Report", icon: FileText },
-    { name: "Student Attendance Type Report", icon: FileText },
-    { name: "Daily Attendance Report", icon: FileText },
-    { name: "Student Day Wise Attendance Report", icon: FileText },
-    { name: "Staff Day Wise Attendance Report", icon: FileText },
-    { name: "Staff Attendance Report", icon: FileText },
-    { name: "Biometric Attendance Log", icon: FileText },
+    { id: "Attendance Report", key: "attendance_report", icon: FileText },
+    { id: "Student Attendance Type Report", key: "student_attendance_type_report", icon: FileText },
+    { id: "Daily Attendance Report", key: "daily_attendance_report", icon: FileText },
+    { id: "Student Day Wise Attendance Report", key: "student_day_wise_attendance_report", icon: FileText },
+    { id: "Staff Day Wise Attendance Report", key: "staff_day_wise_attendance_report", icon: FileText },
+    { id: "Staff Attendance Report", key: "staff_attendance_report", icon: FileText },
+    { id: "Biometric Attendance Log", key: "biometric_attendance_log", icon: FileText },
 ];
 
 interface AttendanceRow {
@@ -84,6 +95,14 @@ interface AttendanceRow {
 }
 
 export default function AttendanceReportPage() {
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
+
+    const getMonthLabel = (mVal: string) => {
+        const item = monthList.find(m => m.value.toLowerCase() === mVal?.toLowerCase());
+        if (!item) return mVal;
+        return t(item.key) || item.label;
+    };
     const [activeTab, setActiveTab] = useState("Attendance Report");
     const [searchTerm, setSearchTerm] = useState("");
     const [classes, setClasses] = useState<any[]>([]);
@@ -385,102 +404,150 @@ export default function AttendanceReportPage() {
     const daysHeader = selectedMonth && selectedYear ? getDaysInMonth(selectedMonth, selectedYear) : [];
 
     return (
-        <div className="p-4 lg:p-6 space-y-5 animate-in fade-in duration-500 pb-20">
-            {/* Gradient header card with report-type tabs inside */}
-            <Card className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] overflow-hidden pt-0 gap-0">
-                <CardHeader className="px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <CalendarCheck className="h-5 w-5" />
-                            </span>
-                            <div>
-                                <CardTitle className="text-base font-bold text-slate-800 leading-none">Attendance Report</CardTitle>
-                                <p className="text-[11px] text-gray-500 mt-1">Student and staff attendance reports</p>
-                            </div>
-                        </div>
-                        <Link
-                            href="/user/attendance"
-                            className="flex items-center gap-1.5 h-8 px-3.5 rounded-[10px] text-white text-[11px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 shadow-sm"
-                        >
-                            <Monitor className="h-3.5 w-3.5" />
-                            Student Portal View
-                        </Link>
+        <div className="space-y-6 pb-20">
+            {/* Standalone Edge-to-Edge Gradient Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CalendarCheck className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("attendance_report")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("attendance_report_description")}
+                        </p>
                     </div>
-                </CardHeader>
-                <CardContent className="p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {reportLinks.map((link) => {
-                            const isActive = activeTab === link.name;
-                            return (
-                                <div
-                                    key={link.name}
-                                    onClick={() => setActiveTab(link.name)}
-                                    className={cn(
-                                        "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all group",
-                                        isActive
-                                            ? "border-indigo-200 bg-indigo-50/50 shadow-sm"
-                                            : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "p-2 rounded-lg transition-all",
-                                        isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
-                                    )}>
-                                        <link.icon className="h-4 w-4" />
-                                    </div>
-                                    <span className={cn(
-                                        "text-[10px] font-bold uppercase tracking-tight",
-                                        isActive ? "text-indigo-700" : "text-gray-600"
-                                    )}>
-                                        {link.name}
-                                    </span>
+                </div>
+                <Link
+                    href="/user/attendance"
+                    className="flex items-center gap-1.5 h-8 px-4 rounded-full text-white text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] transition-all active:scale-95 shadow-md shrink-0"
+                >
+                    <Monitor className="h-3.5 w-3.5" />
+                    {t("student_portal_view")}
+                </Link>
+            </div>
+
+            {/* Navigation Grid of 7 Report Tabs */}
+            <div className="rounded-xl border border-gray-200/80 bg-white p-5 shadow-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {reportLinks.map((link) => {
+                        const isActive = activeTab === link.id;
+                        return (
+                            <div
+                                key={link.id}
+                                onClick={() => setActiveTab(link.id)}
+                                className={cn(
+                                    "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all group",
+                                    isActive
+                                        ? "border-indigo-200 bg-indigo-50/50 shadow-xs ring-1 ring-indigo-200"
+                                        : "border-gray-100 bg-white hover:border-gray-200 hover:shadow-xs"
+                                )}
+                            >
+                                <div className={cn(
+                                    "p-2 rounded-lg transition-all duration-300",
+                                    isActive ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs" : "bg-gray-100 text-gray-400 group-hover:bg-gray-200"
+                                )}>
+                                    <link.icon className="h-4 w-4" />
                                 </div>
-                            );
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
+                                <span className={cn(
+                                    "text-xs font-bold tracking-tight transition-colors duration-300",
+                                    isActive ? "text-[#6366f1]" : "text-gray-700"
+                                )}>
+                                    {t(link.key)}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
 
             {/* Attendance Report Tab */}
             {activeTab === "Attendance Report" && (
-                <div className="space-y-4">
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
+                <div className="space-y-5">
+                    {/* Select Criteria Card */}
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                                <Filter className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("select_criteria") || "Select Criteria"}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3.5 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("class") || "Class"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
-                                <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>{filteredSections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Month <span className="text-red-500">*</span></Label>
-                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        {["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].map(m => (
-                                            <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>
+                                        {classes.map(c => (
+                                            <SelectItem key={c.id} value={c.id.toString()}>
+                                                {translateClassName(c.name, langCode)}
+                                            </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Year <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("section") || "Section"} <span className="text-red-500">*</span>
+                                </Label>
+                                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {filteredSections.map(s => (
+                                            <SelectItem key={s.id} value={s.id.toString()}>
+                                                {translateSectionName(s.name, langCode)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("month") || "Month"} <span className="text-red-500">*</span>
+                                </Label>
+                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"}>
+                                            {getMonthLabel(selectedMonth)}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {monthList.map(m => (
+                                            <SelectItem key={m.value} value={m.value}>
+                                                {t(m.key) || m.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("year") || "Year"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"}>
+                                            {selectedYear ? toLocaleNumber(sessions.find(s => (s.session.match(/\d{4}/)?.[0] || s.session) === selectedYear)?.session || selectedYear, langCode) : (t("select") || "Select")}
+                                        </SelectValue>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {sessions.map(s => {
                                             const y = s.session.match(/\d{4}/)?.[0] || s.session;
-                                            return <SelectItem key={s.id} value={y}>{s.session}</SelectItem>;
+                                            return (
+                                                <SelectItem key={s.id} value={y}>
+                                                    {toLocaleNumber(s.session, langCode)}
+                                                </SelectItem>
+                                            );
                                         })}
                                     </SelectContent>
                                 </Select>
@@ -488,74 +555,186 @@ export default function AttendanceReportPage() {
                             <Button 
                                 onClick={handleSearch} 
                                 disabled={loading} 
-                                variant="gradient"
-                                className="h-9 px-10 text-[11px] uppercase tracking-wider min-w-[140px]"
+                                className="h-9 px-5 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer w-full flex items-center justify-center uppercase tracking-wider"
                             >
-                                <Search className="h-4 w-4 mr-1.5" /> 
-                                {loading ? "Searching..." : "Search"}
+                                <Search className="h-3.5 w-3.5" /> 
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden">
-                        <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Student Attendance Report</h2>
-                            <div className="flex gap-2 text-[9px] font-bold text-gray-400">
-                                <span className="text-emerald-500">P</span> <span className="text-amber-500">L</span> <span className="text-red-500">A</span> <span className="text-blue-500">H</span> <span className="text-indigo-500">F</span>
+                    {/* Student Attendance Analytical Report Card & Table */}
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                            <div className="flex items-center gap-2">
+                                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                    <ClipboardList className="h-4 w-4" />
+                                </span>
+                                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                    {t("student_attendance_report") || "Student Attendance Analytical Report"}
+                                </h2>
+                            </div>
+                            {/* Legend badges */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    P: {t("present") || "Present"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    L: {t("late") || "Late"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    A: {t("absent") || "Absent"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    H: {t("holiday") || "Holiday"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    F: {t("half_day") || "Half Day"}
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center gap-4">
-                            <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Printer className="h-3.5 w-3.5" /></Button>
+                        {/* Search and Toolbar */}
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input 
+                                    placeholder={t("search") || "Search"} 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                    className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500" 
+                                />
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                                <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
 
-                        <div className="rounded border border-gray-100 overflow-x-auto">
+                        {/* Attendance Matrix Table */}
+                        <div className="rounded-xl border border-gray-200/80 overflow-x-auto shadow-2xs">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2 px-3 sticky left-0 bg-gray-50 min-w-[120px]">Student / Date</TableHead>
-                                        <TableHead className="py-2 px-1 text-center">(%)</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-emerald-600">P</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-amber-600">L</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-red-600">A</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-blue-600">H</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-indigo-600 border-r border-gray-100">F</TableHead>
-                                        {daysHeader.map((d, i) => <TableHead key={i} className="py-2 px-1 text-center border-r border-gray-100 min-w-[30px]">{d.d}</TableHead>)}
+                                <TableHeader className="bg-gray-50/75">
+                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200 hover:bg-gray-50/75">
+                                        <TableHead className="py-2.5 px-3 sticky left-0 z-20 bg-gray-50 min-w-[140px] text-gray-700 font-bold border-r border-gray-200">
+                                            {t("student_date") || "Student / Date"}
+                                        </TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-gray-700 border-r border-gray-100 min-w-[42px]">
+                                            (%)
+                                        </TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-emerald-600 border-r border-gray-100 min-w-[30px]">
+                                            P
+                                        </TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-amber-600 border-r border-gray-100 min-w-[30px]">
+                                            L
+                                        </TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-red-600 border-r border-gray-100 min-w-[30px]">
+                                            A
+                                        </TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-blue-600 border-r border-gray-100 min-w-[30px]">
+                                            H
+                                        </TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-indigo-600 border-r-2 border-gray-200 min-w-[30px]">
+                                            F
+                                        </TableHead>
+                                        {daysHeader.map((d, i) => (
+                                            <TableHead key={i} className="py-2 px-1 text-center border-r border-gray-100 min-w-[32px] text-gray-700 font-bold text-[10px]">
+                                                {toLocaleNumber(d.d, langCode)}
+                                            </TableHead>
+                                        ))}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {attendanceData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
-                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                            <TableCell className="py-2 px-3 font-medium text-indigo-600 sticky left-0 bg-white">{s.name}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center"><span className="bg-emerald-500 text-white px-1 rounded text-[8px]">{s.percentage}</span></TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.p}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.l}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.a}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.h}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center border-r border-gray-100">{s.f}</TableCell>
-                                            {s.grid.map((c, j) => (
-                                                <TableCell key={j} className={cn("py-2 px-1 text-center border-r border-gray-100 last:border-r-0 font-bold", 
-                                                    c==='P' && "text-emerald-500", c==='L' && "text-amber-500", c==='A' && "text-red-500", c==='H' && "text-blue-500", c==='F' && "text-indigo-500"
-                                                )}>{c}</TableCell>
-                                            ))}
+                                    {loading ? (
+                                        <TableSkeleton cols={7 + (daysHeader.length || 30)} />
+                                    ) : attendanceData.length > 0 ? (
+                                        attendanceData
+                                            .filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+                                            .map((s, i) => (
+                                                <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-colors">
+                                                    <TableCell className="py-2 px-3 font-semibold text-gray-800 sticky left-0 z-10 bg-white border-r border-gray-200">
+                                                        {s.name}
+                                                    </TableCell>
+                                                    <TableCell className="py-2 px-1 text-center border-r border-gray-100">
+                                                        <span className="inline-block bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded text-[8px]">
+                                                            {toLocaleNumber(s.percentage, langCode)}%
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="py-2 px-1 text-center font-semibold text-emerald-600 border-r border-gray-100">
+                                                        {toLocaleNumber(s.p, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2 px-1 text-center font-semibold text-amber-600 border-r border-gray-100">
+                                                        {toLocaleNumber(s.l, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2 px-1 text-center font-semibold text-red-600 border-r border-gray-100">
+                                                        {toLocaleNumber(s.a, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2 px-1 text-center font-semibold text-blue-600 border-r border-gray-100">
+                                                        {toLocaleNumber(s.h, langCode)}
+                                                    </TableCell>
+                                                    <TableCell className="py-2 px-1 text-center font-semibold text-indigo-600 border-r-2 border-gray-200">
+                                                        {toLocaleNumber(s.f, langCode)}
+                                                    </TableCell>
+                                                    {s.grid.map((c, j) => (
+                                                        <TableCell key={j} className={cn(
+                                                            "py-2 px-1 text-center border-r border-gray-100 last:border-r-0 font-bold text-[10px]",
+                                                            c === 'P' && "text-emerald-600 bg-emerald-50/30",
+                                                            c === 'L' && "text-amber-600 bg-amber-50/30",
+                                                            c === 'A' && "text-rose-600 bg-rose-50/30",
+                                                            c === 'H' && "text-blue-600 bg-blue-50/30",
+                                                            c === 'F' && "text-indigo-600 bg-indigo-50/30"
+                                                        )}>
+                                                            {c || "-"}
+                                                        </TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={7 + (daysHeader.length || 30)} className="h-48 text-center py-10">
+                                                <div className="flex flex-col items-center justify-center space-y-2 opacity-75">
+                                                    <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200/60 shadow-inner">
+                                                        <CalendarCheck className="h-6 w-6 text-gray-400" />
+                                                    </div>
+                                                    <p className="text-gray-500 font-semibold text-xs">
+                                                        {t("no_attendance_records_found") || "No attendance records found"}
+                                                    </p>
+                                                    <p className="text-[11px] text-gray-400">
+                                                        {t("choose_criteria_above_and_click_generate_report") || "Choose criteria above and click search"}
+                                                    </p>
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
-                                    ))}
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-[10px] text-gray-500">Showing {attendanceData.length} entries</span>
-                            <div className="flex gap-1">
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="pagination-active" className="h-7 w-7 text-[10px]">1</Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+
+                        {/* Footer with Translated Showing Entries and Localized Page Number */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+                            <span>
+                                {t("showing_entries_count") 
+                                    ? t("showing_entries_count").replace("{count}", toLocaleNumber(attendanceData.length, langCode))
+                                    : `Showing ${toLocaleNumber(attendanceData.length, langCode)} entries`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled>
+                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:from-[#f59e0b] hover:to-[#818cf8] shadow-xs">
+                                    {toLocaleNumber(1, langCode)}
+                                </Button>
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled>
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </Button>
                             </div>
                         </div>
                     </div>
@@ -564,136 +743,185 @@ export default function AttendanceReportPage() {
 
             {/* Day Wise Tab */}
             {activeTab === "Student Day Wise Attendance Report" && (
-                <div className="space-y-4">
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                <div className="space-y-5">
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                                <Filter className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("select_criteria") || "Select Criteria"}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("class") || "Class"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section <span className="text-red-500">*</span></Label>
-                                <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select</SelectItem>
-                                        {filteredSections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                        {classes.map(c => (
+                                            <SelectItem key={c.id} value={c.id.toString()}>
+                                                {translateClassName(c.name, langCode)}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("section") || "Section"} <span className="text-red-500">*</span>
+                                </Label>
+                                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">{t("select") || "Select"}</SelectItem>
+                                        {filteredSections.map(s => (
+                                            <SelectItem key={s.id} value={s.id.toString()}>
+                                                {translateSectionName(s.name, langCode)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("date") || "Date"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Input 
                                     type="date" 
                                     value={selectedDayWiseDate} 
                                     onChange={e => setSelectedDayWiseDate(e.target.value)}
-                                    className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"
+                                    className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Source</Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("source") || "Source"}
+                                </Label>
                                 <Select value={selectedSource} onValueChange={setSelectedSource}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="All">All</SelectItem>
-                                        <SelectItem value="Manual">Manual</SelectItem>
-                                        <SelectItem value="Device">Device</SelectItem>
+                                        <SelectItem value="All">{t("all") || "All"}</SelectItem>
+                                        <SelectItem value="Manual">{t("manual") || "Manual"}</SelectItem>
+                                        <SelectItem value="Device">{t("device") || "Device"}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <Button 
                                 onClick={handleDayWiseSearch} 
                                 disabled={loading} 
-                                variant="gradient"
-                                className="h-9 px-10 text-[11px] uppercase tracking-wider min-w-[140px]"
+                                className="h-9 px-5 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer w-full flex items-center justify-center uppercase tracking-wider"
                             >
-                                <Search className="h-4 w-4 mr-1.5" /> 
-                                {loading ? "Searching..." : "Search"}
+                                <Search className="h-3.5 w-3.5" /> 
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Student Day Wise Attendance Report</h2>
-                        <div className="flex justify-between items-center gap-4">
-                            <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-2 text-gray-600 font-bold text-[11px]">
-                                    <Select defaultValue="50">
-                                        <SelectTrigger className="h-7 w-16 text-[10px] border-none shadow-none focus:ring-0">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="50">50</SelectItem>
-                                            <SelectItem value="100">100</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex items-center gap-1 text-gray-400 border-l pl-2">
-                                    <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Printer className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded"><Columns className="h-3.5 w-3.5" /></Button>
-                                </div>
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                <FileText className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("student_day_wise_attendance_report") || "Student Day Wise Attendance Report"}
+                            </h2>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input 
+                                    placeholder={t("search") || "Search"} 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                    className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500" 
+                                />
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                                <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
-                        <div className="rounded border border-gray-100 overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2 px-3">#</TableHead>
-                                        <TableHead className="py-2 px-3">Admission No</TableHead>
-                                        <TableHead className="py-2 px-3">Roll Number</TableHead>
-                                        <TableHead className="py-2 px-3">Name</TableHead>
-                                        <TableHead className="py-2 px-3">Attendance</TableHead>
-                                        <TableHead className="py-2 px-3">Date</TableHead>
-                                        <TableHead className="py-2 px-3">Source</TableHead>
-                                        <TableHead className="py-2 px-3">IP Address</TableHead>
-                                        <TableHead className="py-2 px-3">Agent</TableHead>
-                                        <TableHead className="py-2 px-3">Scan Location</TableHead>
+                        <div className="rounded-xl border border-gray-200/80 overflow-x-auto shadow-2xs">
+                            <Table className="min-w-full">
+                                <TableHeader className="bg-gray-50/75">
+                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200">
+                                        <TableHead className="py-2.5 px-3">#</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("admission_no") || "Admission No"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("roll_number") || "Roll Number"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("name") || "Name"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("attendance") || "Attendance"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("date") || "Date"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("source") || "Source"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("ip_address") || "IP Address"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("agent") || "Agent"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("scan_location") || "Scan Location"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {dayWiseData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
-                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50">
-                                            <TableCell className="py-2 px-3">{i + 1}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.admission_no}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.roll_no}</TableCell>
-                                            <TableCell className="py-2 px-3 font-medium text-indigo-600">{s.name}</TableCell>
-                                            <TableCell className="py-2 px-3">
-                                                <span className={cn(
-                                                    "px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase",
-                                                    s.attendance === 'present' && "bg-emerald-500",
-                                                    s.attendance === 'absent' && "bg-red-500",
-                                                    s.attendance === 'late' && "bg-amber-500",
-                                                    s.attendance === 'half_day' && "bg-cyan-500",
-                                                    s.attendance === 'holiday' && "bg-blue-500"
-                                                )}>
-                                                    {s.attendance}
-                                                </span>
+                                    {dayWiseData.length > 0 ? (
+                                        dayWiseData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
+                                            <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                                                <TableCell className="py-2.5 px-3 font-medium">{toLocaleNumber(i + 1, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.admission_no}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{toLocaleNumber(s.roll_no, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 font-semibold text-indigo-600">{s.name}</TableCell>
+                                                <TableCell className="py-2.5 px-3">
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase shadow-2xs",
+                                                        s.attendance === 'present' && "bg-emerald-500",
+                                                        s.attendance === 'absent' && "bg-rose-500",
+                                                        s.attendance === 'late' && "bg-amber-500",
+                                                        s.attendance === 'half_day' && "bg-indigo-500",
+                                                        s.attendance === 'holiday' && "bg-blue-500"
+                                                    )}>
+                                                        {s.attendance === 'present' ? (t("present") || "Present") :
+                                                         s.attendance === 'absent' ? (t("absent") || "Absent") :
+                                                         s.attendance === 'late' ? (t("late") || "Late") :
+                                                         s.attendance === 'holiday' ? (t("holiday") || "Holiday") :
+                                                         s.attendance === 'half_day' ? (t("half_day") || "Half Day") : s.attendance}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="py-2.5 px-3">{toLocaleNumber(s.date, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.source}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.ip_address}</TableCell>
+                                                <TableCell className="py-2.5 px-3 truncate max-w-[100px]">{s.agent}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.scan_location}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={10} className="h-40 text-center py-8">
+                                                <p className="text-gray-400 text-xs font-medium">
+                                                    {t("no_attendance_records_found") || "No attendance records found"}
+                                                </p>
                                             </TableCell>
-                                            <TableCell className="py-2 px-3">{s.date}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.source}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.ip_address}</TableCell>
-                                            <TableCell className="py-2 px-3 truncate max-w-[100px]">{s.agent}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.scan_location}</TableCell>
                                         </TableRow>
-                                    ))}
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-[10px] text-gray-500">Showing {dayWiseData.length} entries</span>
-                            <div className="flex gap-1">
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="pagination-active" className="h-7 w-7 text-[10px]">1</Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+                            <span>
+                                {t("showing_entries_count") 
+                                    ? t("showing_entries_count").replace("{count}", toLocaleNumber(dayWiseData.length, langCode))
+                                    : `Showing ${toLocaleNumber(dayWiseData.length, langCode)} entries`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                <Button className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs">{toLocaleNumber(1, langCode)}</Button>
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
                     </div>
@@ -702,117 +930,174 @@ export default function AttendanceReportPage() {
 
             {/* Student Attendance Type Report Tab */}
             {activeTab === "Student Attendance Type Report" && (
-                <div className="space-y-4">
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+                <div className="space-y-5">
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                                <Filter className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("select_criteria") || "Select Criteria"}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3.5 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Search Type</Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("search_type") || "Search Type"}
+                                </Label>
                                 <Select value={searchType} onValueChange={setSearchType}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="today">Today</SelectItem>
-                                        <SelectItem value="this_week">This Week</SelectItem>
-                                        <SelectItem value="this_month">This Month</SelectItem>
+                                        <SelectItem value="today">{t("today") || "Today"}</SelectItem>
+                                        <SelectItem value="this_week">{t("this_week") || "This Week"}</SelectItem>
+                                        <SelectItem value="this_month">{t("this_month") || "This Month"}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Attendance Type <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("attendance_type") || "Attendance Type"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Select value={attendanceType} onValueChange={setAttendanceType}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="P">Present (P)</SelectItem>
-                                        <SelectItem value="A">Absent (A)</SelectItem>
-                                        <SelectItem value="L">Late (L)</SelectItem>
-                                        <SelectItem value="H">Holiday (H)</SelectItem>
-                                        <SelectItem value="F">Half Day (F)</SelectItem>
+                                        <SelectItem value="P">{t("present") || "Present"} (P)</SelectItem>
+                                        <SelectItem value="A">{t("absent") || "Absent"} (A)</SelectItem>
+                                        <SelectItem value="L">{t("late") || "Late"} (L)</SelectItem>
+                                        <SelectItem value="H">{t("holiday") || "Holiday"} (H)</SelectItem>
+                                        <SelectItem value="F">{t("half_day") || "Half Day"} (F)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Class <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("class") || "Class"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classes.map(c => (
+                                            <SelectItem key={c.id} value={c.id.toString()}>
+                                                {translateClassName(c.name, langCode)}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Section</Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("section") || "Section"}
+                                </Label>
                                 <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="all">Select</SelectItem>
-                                        {sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                                        <SelectItem value="all">{t("select") || "Select"}</SelectItem>
+                                        {sections.map(s => (
+                                            <SelectItem key={s.id} value={s.id.toString()}>
+                                                {translateSectionName(s.name, langCode)}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <Button 
                                 onClick={handleAttendanceTypeSearch} 
                                 disabled={loading} 
-                                variant="gradient"
-                                className="h-9 px-10 text-[11px] uppercase tracking-wider min-w-[140px]"
+                                className="h-9 px-5 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer w-full flex items-center justify-center uppercase tracking-wider"
                             >
-                                <Search className="h-4 w-4 mr-1.5" /> 
-                                {loading ? "Searching..." : "Search"}
+                                <Search className="h-3.5 w-3.5" /> 
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Student Attendance Type Report</h2>
-                        <div className="flex justify-between items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                <FileText className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("student_attendance_type_report") || "Student Attendance Type Report"}
+                            </h2>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input 
+                                    placeholder={t("search") || "Search"} 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                    className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500" 
+                                />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 text-gray-400">
-                                    <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Printer className="h-3.5 w-3.5" /></Button>
-                                </div>
+                            <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                                <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
-                        <div className="rounded border border-gray-100 overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2 px-3">Admission No</TableHead>
-                                        <TableHead className="py-2 px-3">Student Name</TableHead>
-                                        <TableHead className="py-2 px-3">Class</TableHead>
-                                        <TableHead className="py-2 px-3">Father Name</TableHead>
-                                        <TableHead className="py-2 px-3">Date Of Birth</TableHead>
-                                        <TableHead className="py-2 px-3">Admission Date</TableHead>
-                                        <TableHead className="py-2 px-3">Gender</TableHead>
-                                        <TableHead className="py-2 px-3">Mobile Number</TableHead>
-                                        <TableHead className="py-2 px-3 text-right">Count</TableHead>
+                        <div className="rounded-xl border border-gray-200/80 overflow-x-auto shadow-2xs">
+                            <Table className="min-w-full">
+                                <TableHeader className="bg-gray-50/75">
+                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200">
+                                        <TableHead className="py-2.5 px-3">{t("admission_no") || "Admission No"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("student_name") || "Student Name"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("class") || "Class"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("father_name") || "Father Name"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("date_of_birth") || "Date Of Birth"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("admission_date") || "Admission Date"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("gender") || "Gender"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("mobile_number") || "Mobile Number"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-right">{t("count") || "Count"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {attendanceTypeData.filter(s => s.student_name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
-                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50">
-                                            <TableCell className="py-2 px-3">{s.admission_no}</TableCell>
-                                            <TableCell className="py-2 px-3 font-medium text-indigo-600">{s.student_name}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.class}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.father_name}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.dob}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.admission_date}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.gender}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.mobile_number}</TableCell>
-                                            <TableCell className="py-2 px-3 text-right font-bold text-gray-700">{s.count}</TableCell>
+                                    {attendanceTypeData.length > 0 ? (
+                                        attendanceTypeData.filter(s => s.student_name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
+                                            <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                                                <TableCell className="py-2.5 px-3">{s.admission_no}</TableCell>
+                                                <TableCell className="py-2.5 px-3 font-semibold text-indigo-600">{s.student_name}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.class}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.father_name}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{toLocaleNumber(s.dob, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{toLocaleNumber(s.admission_date, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.gender}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{toLocaleNumber(s.mobile_number, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-right font-bold text-gray-800">{toLocaleNumber(s.count, langCode)}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={9} className="h-40 text-center py-8">
+                                                <p className="text-gray-400 text-xs font-medium">
+                                                    {t("no_attendance_records_found") || "No attendance records found"}
+                                                </p>
+                                            </TableCell>
                                         </TableRow>
-                                    ))}
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-[10px] text-gray-500">Showing {attendanceTypeData.length} entries</span>
-                            <div className="flex gap-1">
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="pagination-active" className="h-7 w-7 text-[10px]">1</Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+                            <span>
+                                {t("showing_entries_count") 
+                                    ? t("showing_entries_count").replace("{count}", toLocaleNumber(attendanceTypeData.length, langCode))
+                                    : `Showing ${toLocaleNumber(attendanceTypeData.length, langCode)} entries`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                <Button className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs">{toLocaleNumber(1, langCode)}</Button>
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
                     </div>
@@ -821,113 +1106,166 @@ export default function AttendanceReportPage() {
 
             {/* Staff Day Wise Attendance Report */}
             {activeTab === "Staff Day Wise Attendance Report" && (
-                <div className="space-y-4">
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-5">
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                                <Filter className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("select_criteria") || "Select Criteria"}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Role</Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("role") || "Role"}
+                                </Label>
                                 <Select value={selectedStaffRole} onValueChange={setSelectedStaffRole}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>{staffRoles.map(r => <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {staffRoles.map(r => (
+                                            <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date</Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("date") || "Date"}
+                                </Label>
                                 <Input 
                                     type="date" 
                                     value={selectedStaffDate} 
                                     onChange={e => setSelectedStaffDate(e.target.value)}
-                                    className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"
+                                    className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Source</Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("source") || "Source"}
+                                </Label>
                                 <Select value={selectedStaffSource} onValueChange={setSelectedStaffSource}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="All">All</SelectItem>
-                                        <SelectItem value="Manual">Manual</SelectItem>
-                                        <SelectItem value="Device">Device</SelectItem>
+                                        <SelectItem value="All">{t("all") || "All"}</SelectItem>
+                                        <SelectItem value="Manual">{t("manual") || "Manual"}</SelectItem>
+                                        <SelectItem value="Device">{t("device") || "Device"}</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
                             <Button 
                                 onClick={handleStaffDayWiseSearch} 
                                 disabled={loading} 
-                                variant="gradient"
-                                className="h-9 px-10 text-[11px] uppercase tracking-wider min-w-[140px]"
+                                className="h-9 px-5 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer w-full flex items-center justify-center uppercase tracking-wider"
                             >
-                                <Search className="h-4 w-4 mr-1.5" /> 
-                                {loading ? "Searching..." : "Search"}
+                                <Search className="h-3.5 w-3.5" /> 
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Staff Day Wise Attendance Report</h2>
-                        <div className="flex justify-between items-center gap-4">
-                            <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Printer className="h-3.5 w-3.5" /></Button>
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                <FileText className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("staff_day_wise_attendance_report") || "Staff Day Wise Attendance Report"}
+                            </h2>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input 
+                                    placeholder={t("search") || "Search"} 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                    className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500" 
+                                />
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                                <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
-                        <div className="rounded border border-gray-100 overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2 px-3">#</TableHead>
-                                        <TableHead className="py-2 px-3">Staff ID</TableHead>
-                                        <TableHead className="py-2 px-3">Role</TableHead>
-                                        <TableHead className="py-2 px-3">Name</TableHead>
-                                        <TableHead className="py-2 px-3">Attendance</TableHead>
-                                        <TableHead className="py-2 px-3">Date</TableHead>
-                                        <TableHead className="py-2 px-3">Source</TableHead>
-                                        <TableHead className="py-2 px-3">IP Address</TableHead>
-                                        <TableHead className="py-2 px-3">Agent</TableHead>
-                                        <TableHead className="py-2 px-3">Scan Location</TableHead>
+                        <div className="rounded-xl border border-gray-200/80 overflow-x-auto shadow-2xs">
+                            <Table className="min-w-full">
+                                <TableHeader className="bg-gray-50/75">
+                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200">
+                                        <TableHead className="py-2.5 px-3">#</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("staff_id") || "Staff ID"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("role") || "Role"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("name") || "Name"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("attendance") || "Attendance"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("date") || "Date"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("source") || "Source"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("ip_address") || "IP Address"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("agent") || "Agent"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("scan_location") || "Scan Location"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {staffDayWiseData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
-                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50">
-                                            <TableCell className="py-2 px-3">{i + 1}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.staff_id}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.role}</TableCell>
-                                            <TableCell className="py-2 px-3 font-medium">{s.name}</TableCell>
-                                            <TableCell className="py-2 px-3">
-                                                <span className={cn(
-                                                    "px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase",
-                                                    s.attendance === 'present' && "bg-emerald-500",
-                                                    s.attendance === 'absent' && "bg-red-500",
-                                                    s.attendance === 'late' && "bg-amber-500",
-                                                    s.attendance === 'half_day' && "bg-cyan-500",
-                                                    s.attendance === 'half_day_second' && "bg-cyan-600",
-                                                    s.attendance === 'holiday' && "bg-blue-500"
-                                                )}>
-                                                    {s.attendance.replace(/_/g, ' ')}
-                                                </span>
+                                    {staffDayWiseData.length > 0 ? (
+                                        staffDayWiseData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
+                                            <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                                                <TableCell className="py-2.5 px-3 font-medium">{toLocaleNumber(i + 1, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.staff_id}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.role}</TableCell>
+                                                <TableCell className="py-2.5 px-3 font-semibold text-gray-800">{s.name}</TableCell>
+                                                <TableCell className="py-2.5 px-3">
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase shadow-2xs",
+                                                        s.attendance === 'present' && "bg-emerald-500",
+                                                        s.attendance === 'absent' && "bg-rose-500",
+                                                        s.attendance === 'late' && "bg-amber-500",
+                                                        s.attendance === 'half_day' && "bg-cyan-500",
+                                                        s.attendance === 'half_day_second' && "bg-cyan-600",
+                                                        s.attendance === 'holiday' && "bg-blue-500"
+                                                    )}>
+                                                        {s.attendance === 'present' ? (t("present") || "Present") :
+                                                         s.attendance === 'absent' ? (t("absent") || "Absent") :
+                                                         s.attendance === 'late' ? (t("late") || "Late") :
+                                                         s.attendance === 'holiday' ? (t("holiday") || "Holiday") :
+                                                         s.attendance === 'half_day' ? (t("half_day") || "Half Day") : s.attendance.replace(/_/g, ' ')}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="py-2.5 px-3">{toLocaleNumber(s.date, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.source}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.ip_address}</TableCell>
+                                                <TableCell className="py-2.5 px-3 truncate max-w-[100px]">{s.agent}</TableCell>
+                                                <TableCell className="py-2.5 px-3">{s.scan_location}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={10} className="h-40 text-center py-8">
+                                                <p className="text-gray-400 text-xs font-medium">
+                                                    {t("no_attendance_records_found") || "No attendance records found"}
+                                                </p>
                                             </TableCell>
-                                            <TableCell className="py-2 px-3">{s.date}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.source}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.ip_address}</TableCell>
-                                            <TableCell className="py-2 px-3 truncate max-w-[100px]">{s.agent}</TableCell>
-                                            <TableCell className="py-2 px-3">{s.scan_location}</TableCell>
                                         </TableRow>
-                                    ))}
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-[10px] text-gray-500">Showing {staffDayWiseData.length} entries</span>
-                            <div className="flex gap-1">
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="pagination-active" className="h-7 w-7 text-[10px]">1</Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+                            <span>
+                                {t("showing_entries_count") 
+                                    ? t("showing_entries_count").replace("{count}", toLocaleNumber(staffDayWiseData.length, langCode))
+                                    : `Showing ${toLocaleNumber(staffDayWiseData.length, langCode)} entries`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                <Button className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs">{toLocaleNumber(1, langCode)}</Button>
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
                     </div>
@@ -936,89 +1274,122 @@ export default function AttendanceReportPage() {
 
             {/* Daily Attendance Report Tab */}
             {activeTab === "Daily Attendance Report" && (
-                <div className="space-y-4">
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-5">
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                                <Filter className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("select_criteria") || "Select Criteria"}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("date") || "Date"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Input 
                                     type="date" 
                                     value={selectedDate} 
                                     onChange={e => setSelectedDate(e.target.value)}
-                                    className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"
+                                    className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30"
                                 />
                             </div>
                             <Button 
                                 onClick={handleDailySearch} 
                                 disabled={loading} 
-                                variant="gradient"
-                                className="h-9 px-10 text-[11px] uppercase tracking-wider min-w-[140px]"
+                                className="h-9 px-5 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer w-full flex items-center justify-center uppercase tracking-wider"
                             >
-                                <Search className="h-4 w-4 mr-1.5" /> 
-                                {loading ? "Searching..." : "Search"}
+                                <Search className="h-3.5 w-3.5" /> 
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Daily Attendance Report</h2>
-                        <div className="flex justify-between items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                <FileText className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("daily_attendance_report") || "Daily Attendance Report"}
+                            </h2>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input 
+                                    placeholder={t("search") || "Search"} 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                    className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500" 
+                                />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1 text-gray-400">
-                                    <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Printer className="h-3.5 w-3.5" /></Button>
-                                </div>
+                            <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                                <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
-                        <div className="rounded border border-gray-100 overflow-hidden">
+                        <div className="rounded-xl border border-gray-200/80 overflow-hidden shadow-2xs">
                             <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="text-[9px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2 px-2">Class (Section)</TableHead>
-                                        <TableHead className="py-2 px-2 text-center">Total Present</TableHead>
-                                        <TableHead className="py-2 px-2 text-center">Male Present</TableHead>
-                                        <TableHead className="py-2 px-2 text-center">Female Present</TableHead>
-                                        <TableHead className="py-2 px-2 text-center">Total Absent</TableHead>
-                                        <TableHead className="py-2 px-2 text-center">Male Absent</TableHead>
-                                        <TableHead className="py-2 px-2 text-center">Female Absent</TableHead>
-                                        <TableHead className="py-2 px-2 text-center text-emerald-600">Present %</TableHead>
-                                        <TableHead className="py-2 px-2 text-center text-red-600">Absent %</TableHead>
+                                <TableHeader className="bg-gray-50/75">
+                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200">
+                                        <TableHead className="py-2.5 px-3">{t("class_section") || "Class (Section)"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("total_present") || "Total Present"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("male_present") || "Male Present"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("female_present") || "Female Present"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("total_absent") || "Total Absent"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("male_absent") || "Male Absent"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("female_absent") || "Female Absent"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center text-emerald-600">{t("present_percentage") || "Present %"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center text-red-600">{t("absent_percentage") || "Absent %"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {dailyReportData.filter(r => r.class_section.toLowerCase().includes(searchTerm.toLowerCase())).map((r, i) => (
-                                        <TableRow key={i} className="text-[10px] border-b border-gray-50 hover:bg-gray-50/50">
-                                            <TableCell className="py-2 px-2 font-medium text-gray-700">{r.class_section}</TableCell>
-                                            <TableCell className="py-2 px-2 text-center font-bold text-emerald-600">{r.total_present}</TableCell>
-                                            <TableCell className="py-2 px-2 text-center text-gray-500">{r.male_present}</TableCell>
-                                            <TableCell className="py-2 px-2 text-center text-gray-500">{r.female_present}</TableCell>
-                                            <TableCell className="py-2 px-2 text-center font-bold text-red-500">{r.total_absent}</TableCell>
-                                            <TableCell className="py-2 px-2 text-center text-gray-500">{r.male_absent}</TableCell>
-                                            <TableCell className="py-2 px-2 text-center text-gray-500">{r.female_absent}</TableCell>
-                                            <TableCell className="py-2 px-2 text-center">
-                                                <span className="bg-emerald-500 text-white px-1.5 py-0.5 rounded-sm font-bold text-[8px]">{r.present_percentage}</span>
-                                            </TableCell>
-                                            <TableCell className="py-2 px-2 text-center">
-                                                <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-sm font-bold text-[8px]">{r.absent_percentage}</span>
+                                    {dailyReportData.length > 0 ? (
+                                        dailyReportData.filter(r => r.class_section.toLowerCase().includes(searchTerm.toLowerCase())).map((r, i) => (
+                                            <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                                                <TableCell className="py-2.5 px-3 font-semibold text-gray-800">{r.class_section}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center font-bold text-emerald-600">{toLocaleNumber(r.total_present, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center text-gray-500">{toLocaleNumber(r.male_present, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center text-gray-500">{toLocaleNumber(r.female_present, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center font-bold text-rose-500">{toLocaleNumber(r.total_absent, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center text-gray-500">{toLocaleNumber(r.male_absent, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center text-gray-500">{toLocaleNumber(r.female_absent, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center">
+                                                    <span className="bg-emerald-500 text-white px-2 py-0.5 rounded font-bold text-[9px] shadow-2xs">{toLocaleNumber(r.present_percentage, langCode)}</span>
+                                                </TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center">
+                                                    <span className="bg-rose-500 text-white px-2 py-0.5 rounded font-bold text-[9px] shadow-2xs">{toLocaleNumber(r.absent_percentage, langCode)}</span>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={9} className="h-40 text-center py-8">
+                                                <p className="text-gray-400 text-xs font-medium">
+                                                    {t("no_attendance_records_found") || "No attendance records found"}
+                                                </p>
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-[10px] text-gray-500">Showing {dailyReportData.length} entries</span>
-                            <div className="flex gap-1">
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="pagination-active" className="h-7 w-7 text-[10px]">1</Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+                            <span>
+                                {t("showing_entries_count") 
+                                    ? t("showing_entries_count").replace("{count}", toLocaleNumber(dailyReportData.length, langCode))
+                                    : `Showing ${toLocaleNumber(dailyReportData.length, langCode)} entries`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                <Button className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs">{toLocaleNumber(1, langCode)}</Button>
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
                     </div>
@@ -1027,36 +1398,69 @@ export default function AttendanceReportPage() {
 
             {/* Staff Attendance Report */}
             {activeTab === "Staff Attendance Report" && (
-                <div className="space-y-4">
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
+                <div className="space-y-5">
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                                <Filter className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("select_criteria") || "Select Criteria"}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Role <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("role") || "Role"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Select value={selectedStaffRole} onValueChange={setSelectedStaffRole}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>{staffRoles.map(r => <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Month <span className="text-red-500">*</span></Label>
-                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"} />
+                                    </SelectTrigger>
                                     <SelectContent>
-                                        {["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].map(m => (
-                                            <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>
+                                        {staffRoles.map(r => (
+                                            <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Year <span className="text-red-500">*</span></Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("month") || "Month"} <span className="text-red-500">*</span>
+                                </Label>
+                                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"}>
+                                            {getMonthLabel(selectedMonth)}
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {monthList.map(m => (
+                                            <SelectItem key={m.value} value={m.value}>
+                                                {t(m.key) || m.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("year") || "Year"} <span className="text-red-500">*</span>
+                                </Label>
                                 <Select value={selectedYear} onValueChange={setSelectedYear}>
-                                    <SelectTrigger className="h-8 border-gray-200 text-[11px] rounded shadow-none"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30">
+                                        <SelectValue placeholder={t("select") || "Select"}>
+                                            {selectedYear ? toLocaleNumber(sessions.find(s => (s.session.match(/\d{4}/)?.[0] || s.session) === selectedYear)?.session || selectedYear, langCode) : (t("select") || "Select")}
+                                        </SelectValue>
+                                    </SelectTrigger>
                                     <SelectContent>
                                         {sessions.map(s => {
                                             const y = s.session.match(/\d{4}/)?.[0] || s.session;
-                                            return <SelectItem key={s.id} value={y}>{s.session}</SelectItem>;
+                                            return (
+                                                <SelectItem key={s.id} value={y}>
+                                                    {toLocaleNumber(s.session, langCode)}
+                                                </SelectItem>
+                                            );
                                         })}
                                     </SelectContent>
                                 </Select>
@@ -1064,74 +1468,135 @@ export default function AttendanceReportPage() {
                             <Button 
                                 onClick={handleStaffAttendanceSearch} 
                                 disabled={loading} 
-                                variant="gradient"
-                                className="h-9 px-10 text-[11px] uppercase tracking-wider min-w-[140px]"
+                                className="h-9 px-5 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer w-full flex items-center justify-center uppercase tracking-wider"
                             >
-                                <Search className="h-4 w-4 mr-1.5" /> 
-                                {loading ? "Searching..." : "Search"}
+                                <Search className="h-3.5 w-3.5" /> 
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white overflow-hidden">
-                        <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Staff Attendance Report</h2>
-                            <div className="flex gap-2 text-[9px] font-bold text-gray-400">
-                                <span className="text-emerald-500">P</span> <span className="text-amber-500">L</span> <span className="text-red-500">A</span> <span className="text-blue-500">H</span> <span className="text-indigo-500">F</span>
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                            <div className="flex items-center gap-2">
+                                <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                    <ClipboardList className="h-4 w-4" />
+                                </span>
+                                <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                    {t("staff_attendance_report") || "Staff Attendance Report"}
+                                </h2>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    P: {t("present") || "Present"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                    L: {t("late") || "Late"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                    A: {t("absent") || "Absent"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    H: {t("holiday") || "Holiday"}
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                    F: {t("half_day") || "Half Day"}
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center gap-4">
-                            <Input placeholder="Search" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="h-8 text-[11px] w-64 rounded shadow-none" />
-                            <div className="flex items-center gap-1 text-gray-400">
-                                <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                                <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Printer className="h-3.5 w-3.5" /></Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                                <Input 
+                                    placeholder={t("search") || "Search"} 
+                                    value={searchTerm} 
+                                    onChange={e => setSearchTerm(e.target.value)} 
+                                    className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500" 
+                                />
+                            </div>
+                            <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                                <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
 
-                        <div className="rounded border border-gray-100 overflow-x-auto">
+                        <div className="rounded-xl border border-gray-200/80 overflow-x-auto shadow-2xs">
                             <Table className="min-w-full">
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2 px-3 sticky left-0 bg-gray-50 min-w-[120px]">Staff / Date</TableHead>
-                                        <TableHead className="py-2 px-1 text-center">(%)</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-emerald-600">P</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-amber-600">L</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-red-600">A</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-blue-600">H</TableHead>
-                                        <TableHead className="py-2 px-1 text-center text-indigo-600 border-r border-gray-100">F</TableHead>
-                                        {daysHeader.map((d, i) => <TableHead key={i} className="py-2 px-1 text-center border-r border-gray-100 min-w-[30px]">{d.d}</TableHead>)}
+                                <TableHeader className="bg-gray-50/75">
+                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200">
+                                        <TableHead className="py-2.5 px-3 sticky left-0 z-20 bg-gray-50 min-w-[140px] text-gray-700 font-bold border-r border-gray-200">
+                                            {t("staff_date") || "Staff / Date"}
+                                        </TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-gray-700 border-r border-gray-100 min-w-[42px]">(%)</TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-emerald-600 border-r border-gray-100 min-w-[30px]">P</TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-amber-600 border-r border-gray-100 min-w-[30px]">L</TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-red-600 border-r border-gray-100 min-w-[30px]">A</TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-blue-600 border-r border-gray-100 min-w-[30px]">H</TableHead>
+                                        <TableHead className="py-2.5 px-1.5 text-center font-bold text-indigo-600 border-r-2 border-gray-200 min-w-[30px]">F</TableHead>
+                                        {daysHeader.map((d, i) => (
+                                            <TableHead key={i} className="py-2 px-1 text-center border-r border-gray-100 min-w-[32px] text-gray-700 font-bold text-[10px]">
+                                                {toLocaleNumber(d.d, langCode)}
+                                            </TableHead>
+                                        ))}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {staffAttendanceData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
-                                        <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                            <TableCell className="py-2 px-3 font-medium text-indigo-600 sticky left-0 bg-white">{s.name}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center"><span className="bg-emerald-500 text-white px-1 rounded text-[8px]">{s.percentage}</span></TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.p}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.l}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.a}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center">{s.h}</TableCell>
-                                            <TableCell className="py-2 px-1 text-center border-r border-gray-100">{s.f}</TableCell>
-                                            {s.grid.map((c: string, j: number) => (
-                                                <TableCell key={j} className={cn("py-2 px-1 text-center border-r border-gray-100 last:border-r-0 font-bold", 
-                                                    c==='P' && "text-emerald-500", c==='L' && "text-amber-500", c==='A' && "text-red-500", c==='H' && "text-blue-500", c==='F' && "text-indigo-500"
-                                                )}>{c}</TableCell>
-                                            ))}
+                                    {staffAttendanceData.length > 0 ? (
+                                        staffAttendanceData.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase())).map((s, i) => (
+                                            <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-colors">
+                                                <TableCell className="py-2 px-3 font-semibold text-gray-800 sticky left-0 z-10 bg-white border-r border-gray-200">{s.name}</TableCell>
+                                                <TableCell className="py-2 px-1 text-center border-r border-gray-100">
+                                                    <span className="inline-block bg-emerald-500 text-white font-bold px-1.5 py-0.5 rounded text-[8px] shadow-2xs">
+                                                        {toLocaleNumber(s.percentage, langCode)}%
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell className="py-2 px-1 text-center font-semibold text-emerald-600 border-r border-gray-100">{toLocaleNumber(s.p, langCode)}</TableCell>
+                                                <TableCell className="py-2 px-1 text-center font-semibold text-amber-600 border-r border-gray-100">{toLocaleNumber(s.l, langCode)}</TableCell>
+                                                <TableCell className="py-2 px-1 text-center font-semibold text-red-600 border-r border-gray-100">{toLocaleNumber(s.a, langCode)}</TableCell>
+                                                <TableCell className="py-2 px-1 text-center font-semibold text-blue-600 border-r border-gray-100">{toLocaleNumber(s.h, langCode)}</TableCell>
+                                                <TableCell className="py-2 px-1 text-center font-semibold text-indigo-600 border-r-2 border-gray-200">{toLocaleNumber(s.f, langCode)}</TableCell>
+                                                {s.grid.map((c: string, j: number) => (
+                                                    <TableCell key={j} className={cn("py-2 px-1 text-center border-r border-gray-100 last:border-r-0 font-bold text-[10px]", 
+                                                        c==='P' && "text-emerald-600 bg-emerald-50/30",
+                                                        c==='L' && "text-amber-600 bg-amber-50/30",
+                                                        c==='A' && "text-rose-600 bg-rose-50/30",
+                                                        c==='H' && "text-blue-600 bg-blue-50/30",
+                                                        c==='F' && "text-indigo-600 bg-indigo-50/30"
+                                                    )}>{c || "-"}</TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={7 + (daysHeader.length || 30)} className="h-40 text-center py-8">
+                                                <p className="text-gray-400 text-xs font-medium">
+                                                    {t("no_attendance_records_found") || "No attendance records found"}
+                                                </p>
+                                            </TableCell>
                                         </TableRow>
-                                    ))}
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-[10px] text-gray-500">Showing {staffAttendanceData.length} entries</span>
-                            <div className="flex gap-1">
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="pagination-active" className="h-7 w-7 text-[10px]">1</Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+                            <span>
+                                {t("showing_entries_count") 
+                                    ? t("showing_entries_count").replace("{count}", toLocaleNumber(staffAttendanceData.length, langCode))
+                                    : `Showing ${toLocaleNumber(staffAttendanceData.length, langCode)} entries`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                <Button className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs">{toLocaleNumber(1, langCode)}</Button>
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
                     </div>
@@ -1140,73 +1605,75 @@ export default function AttendanceReportPage() {
 
             {/* Biometric Attendance Log */}
             {activeTab === "Biometric Attendance Log" && (
-                <div className="space-y-4">
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide border-b border-gray-100 pb-3 mb-2">Select Criteria</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div className="space-y-5">
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white transition-all">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-orange-50 text-orange-600">
+                                <Filter className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("select_criteria") || "Select Criteria"}
+                            </h2>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 items-end">
                             <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Date</Label>
+                                <Label className="text-[11px] font-semibold text-gray-600">
+                                    {t("date") || "Date"}
+                                </Label>
                                 <Input 
                                     type="date" 
                                     value={selectedBiometricDate} 
                                     onChange={e => setSelectedBiometricDate(e.target.value)}
-                                    className="h-8 border-gray-200 text-[11px] rounded shadow-none focus:ring-primary"
+                                    className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500 bg-gray-50/30"
                                 />
                             </div>
                             <Button 
                                 onClick={handleBiometricSearch}
                                 disabled={loading}
-                                variant="gradient"
-                                className="h-9 px-10 text-[11px] uppercase tracking-wider min-w-[140px]"
+                                className="h-9 px-5 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-sm shadow-orange-500/20 active:scale-95 transition-all cursor-pointer w-full flex items-center justify-center uppercase tracking-wider"
                             >
-                                <Search className="h-4 w-4 mr-1.5" /> 
-                                {loading ? "Searching..." : "Search"}
+                                <Search className="h-3.5 w-3.5" /> 
+                                {loading ? (t("loading") || "Loading...") : (t("search") || "Search")}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="border-[0.5px] border-gray-200 shadow-[0_4px_24px_rgb(0,0,0,0.08)] rounded-xl p-5 space-y-4 bg-white">
-                        <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Biometric Attendance</h2>
-                        <div className="flex justify-between items-center gap-4">
-                            <div className="flex items-center gap-2">
+                    <div className="border border-gray-100 shadow-sm rounded-xl p-5 space-y-4 bg-white overflow-hidden">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                                <FileText className="h-4 w-4" />
+                            </span>
+                            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                                {t("biometric_attendance_log") || "Biometric Attendance"}
+                            </h2>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
                                 <Input 
-                                    placeholder="Search" 
+                                    placeholder={t("search") || "Search"} 
                                     value={searchTerm}
                                     onChange={e => setSearchTerm(e.target.value)}
-                                    className="h-8 text-[11px] w-64 rounded shadow-none" 
+                                    className="h-8 pl-8 text-[11px] w-full rounded-lg border-gray-200 shadow-none focus:ring-1 focus:ring-indigo-500" 
                                 />
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Select defaultValue="50">
-                                    <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 rounded shadow-none">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <div className="flex items-center gap-1 text-gray-400 border-l pl-2 border-gray-100 ml-2">
-                                    <Button onClick={() => handleExport('copy')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Copy className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('excel')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('csv')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileBox className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('pdf')} variant="ghost" size="icon" className="h-7 w-7 rounded"><FileText className="h-3.5 w-3.5" /></Button>
-                                    <Button onClick={() => handleExport('print')} variant="ghost" size="icon" className="h-7 w-7 rounded"><Printer className="h-3.5 w-3.5" /></Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded"><Columns2 className="h-3.5 w-3.5" /></Button>
-                                </div>
+                            <div className="flex items-center gap-1 text-gray-500 self-end sm:self-auto">
+                                <Button onClick={() => handleExport('copy')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("copy") || "Copy"}><Copy className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('excel')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("excel") || "Excel"}><FileSpreadsheet className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('csv')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title="CSV"><FileBox className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('pdf')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("pdf") || "PDF"}><FileText className="h-3.5 w-3.5" /></Button>
+                                <Button onClick={() => handleExport('print')} variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200 hover:bg-gray-50 hover:text-gray-700" title={t("print") || "Print"}><Printer className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
-                        <div className="rounded border border-gray-100 overflow-hidden">
-                            <Table>
-                                <TableHeader className="bg-gray-50/50">
-                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600">
-                                        <TableHead className="py-2 px-3">Admission No</TableHead>
-                                        <TableHead className="py-2 px-3">Student Name</TableHead>
-                                        <TableHead className="py-2 px-3 text-center">Punch In</TableHead>
-                                        <TableHead className="py-2 px-3 text-center">Device Serial Number</TableHead>
-                                        <TableHead className="py-2 px-3 text-right">IP Address</TableHead>
+                        <div className="rounded-xl border border-gray-200/80 overflow-hidden shadow-2xs">
+                            <Table className="min-w-full">
+                                <TableHeader className="bg-gray-50/75">
+                                    <TableRow className="text-[10px] font-bold uppercase text-gray-600 border-b border-gray-200">
+                                        <TableHead className="py-2.5 px-3">{t("admission_no") || "Admission No"}</TableHead>
+                                        <TableHead className="py-2.5 px-3">{t("student_name") || "Student Name"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("punch_in") || "Punch In"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-center">{t("device_serial_number") || "Device Serial Number"}</TableHead>
+                                        <TableHead className="py-2.5 px-3 text-right">{t("ip_address") || "IP Address"}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1215,34 +1682,22 @@ export default function AttendanceReportPage() {
                                             row.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                             row.admission_no.toLowerCase().includes(searchTerm.toLowerCase())
                                         ).map((row, i) => (
-                                            <TableRow key={i} className="text-[11px] border-b border-gray-50 hover:bg-gray-50/50">
-                                                <TableCell className="py-2 px-3">{row.admission_no}</TableCell>
-                                                <TableCell className="py-2 px-3 font-medium text-indigo-600">{row.student_name}</TableCell>
-                                                <TableCell className="py-2 px-3 text-center">{row.punch_in}</TableCell>
-                                                <TableCell className="py-2 px-3 text-center">{row.device_serial}</TableCell>
-                                                <TableCell className="py-2 px-3 text-right">{row.ip_address}</TableCell>
+                                            <TableRow key={i} className="text-[11px] border-b border-gray-100 hover:bg-gray-50/50 transition-colors">
+                                                <TableCell className="py-2.5 px-3">{row.admission_no}</TableCell>
+                                                <TableCell className="py-2.5 px-3 font-semibold text-indigo-600">{row.student_name}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center">{toLocaleNumber(row.punch_in, langCode)}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-center">{row.device_serial}</TableCell>
+                                                <TableCell className="py-2.5 px-3 text-right">{row.ip_address}</TableCell>
                                             </TableRow>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="h-64">
-                                                <div className="flex flex-col items-center justify-center space-y-3">
-                                                    <p className="text-red-400 text-[11px] font-medium">No data available in table</p>
+                                            <TableCell colSpan={5} className="h-48">
+                                                <div className="flex flex-col items-center justify-center space-y-2 py-8">
+                                                    <p className="text-gray-400 text-xs font-medium">{t("no_attendance_records_found") || "No data available in table"}</p>
                                                     <div className="relative">
-                                                        <FolderOpen className="h-24 w-24 text-gray-100" />
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="space-y-1">
-                                                                <div className="h-8 w-6 bg-white border border-gray-200 rounded-sm transform -rotate-6"></div>
-                                                                <div className="h-8 w-6 bg-white border border-gray-200 rounded-sm absolute top-0 left-2 transform rotate-6 shadow-sm"></div>
-                                                            </div>
-                                                        </div>
+                                                        <FolderOpen className="h-16 w-16 text-gray-200" />
                                                     </div>
-                                                    <button 
-                                                        onClick={handleBiometricSearch}
-                                                        className="text-[10px] font-bold text-emerald-500 hover:text-emerald-600 flex items-center transition-colors"
-                                                    >
-                                                        <span className="mr-1">⬅</span> Add new record or search with different criteria.
-                                                    </button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
@@ -1250,11 +1705,16 @@ export default function AttendanceReportPage() {
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                            <span className="text-[10px] text-gray-500">Showing {biometricData.length} to {biometricData.length} of {biometricData.length} entries</span>
-                            <div className="flex gap-1">
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="pagination-inactive" size="icon" className="h-7 w-7"><ChevronRight className="h-4 w-4" /></Button>
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100 text-[11px] text-gray-500">
+                            <span>
+                                {t("showing_entries_count") 
+                                    ? t("showing_entries_count").replace("{count}", toLocaleNumber(biometricData.length, langCode))
+                                    : `Showing ${toLocaleNumber(biometricData.length, langCode)} entries`}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronLeft className="h-3.5 w-3.5" /></Button>
+                                <Button className="h-7 px-2.5 text-[11px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs">{toLocaleNumber(1, langCode)}</Button>
+                                <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg border-gray-200" disabled><ChevronRight className="h-3.5 w-3.5" /></Button>
                             </div>
                         </div>
                     </div>

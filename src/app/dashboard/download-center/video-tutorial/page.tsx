@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
-import { useTranslation } from "@/hooks/use-translation";
+import { useLanguage } from "@/components/providers/language-provider";
+import {
+    translateClassName,
+    translateSectionName,
+    toLocaleNumber,
+    cn,
+} from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -12,15 +18,27 @@ import {
     DialogTitle,
     DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
-    SelectValue
+    SelectValue,
 } from "@/components/ui/select";
 import {
     Plus,
@@ -28,10 +46,23 @@ import {
     PlayCircle,
     Video,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Pencil,
+    Trash2,
+    GraduationCap,
+    Layers,
+    Loader2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import Image from "next/image";
+
+interface SchoolClass {
+    id: number;
+    name: string;
+}
+
+interface Section {
+    id: number;
+    name: string;
+}
 
 interface Tutorial {
     id: number;
@@ -39,10 +70,10 @@ interface Tutorial {
     video_url: string;
     thumbnail?: string;
     description?: string;
-    class_id?: number;
-    section_id?: number;
-    school_class?: { name: string };
-    section?: { name: string };
+    class_id?: number | null;
+    section_id?: number | null;
+    school_class?: { id?: number; name: string };
+    section?: { id?: number; name: string };
 }
 
 interface PaginationData {
@@ -56,13 +87,13 @@ interface PaginationData {
 const getVideoThumbnail = (video: Tutorial) => {
     if (video.thumbnail) return video.thumbnail;
     const url = video.video_url || "";
-    
+
     // YouTube detection
-    const ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+    const ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
     if (ytMatch && ytMatch[2].length === 11) {
         return `https://img.youtube.com/vi/${ytMatch[2]}/mqdefault.jpg`;
     }
-    
+
     const ytShortsMatch = url.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
     if (ytShortsMatch) {
         return `https://img.youtube.com/vi/${ytShortsMatch[1]}/mqdefault.jpg`;
@@ -73,19 +104,19 @@ const getVideoThumbnail = (video: Tutorial) => {
     if (vimeoMatch) {
         return `https://vumbnail.com/${vimeoMatch[1]}.jpg`;
     }
-    
+
     return null;
 };
 
 const getEmbedUrl = (url: string) => {
     if (!url) return "";
-    
+
     // YouTube
-    const ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/);
+    const ytMatch = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
     if (ytMatch && ytMatch[2].length === 11) {
         return `https://www.youtube.com/embed/${ytMatch[2]}?autoplay=1`;
     }
-    
+
     const ytShortsMatch = url.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
     if (ytShortsMatch) {
         return `https://www.youtube.com/embed/${ytShortsMatch[1]}?autoplay=1`;
@@ -96,19 +127,22 @@ const getEmbedUrl = (url: string) => {
     if (vimeoMatch) {
         return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
     }
-    
+
     return url;
 };
 
 export default function VideoTutorialPage() {
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
     const { toast } = useToast();
-    const { t } = useTranslation();
+
     const [tutorials, setTutorials] = useState<Tutorial[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [previewVideo, setPreviewVideo] = useState<Tutorial | null>(null);
-    const [classes, setClasses] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
+    const [classes, setClasses] = useState<SchoolClass[]>([]);
+    const [sections, setSections] = useState<Section[]>([]);
 
     const [filters, setFilters] = useState({
         class_id: "",
@@ -117,6 +151,10 @@ export default function VideoTutorialPage() {
     });
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
     const [formData, setFormData] = useState({
         title: "",
         video_url: "",
@@ -125,16 +163,11 @@ export default function VideoTutorialPage() {
         description: "",
     });
 
-    useEffect(() => {
-        fetchInitialData();
-        fetchTutorials();
-    }, []);
-
     const fetchInitialData = async () => {
         try {
             const [classesRes, sectionsRes] = await Promise.all([
-                api.get('/academics/classes?no_paginate=true'),
-                api.get('/academics/sections?no_paginate=true')
+                api.get("/academics/classes?no_paginate=true"),
+                api.get("/academics/sections?no_paginate=true"),
             ]);
             setClasses(classesRes.data.data || []);
             setSections(sectionsRes.data.data || []);
@@ -143,289 +176,577 @@ export default function VideoTutorialPage() {
         }
     };
 
-    const fetchTutorials = async (page = 1) => {
+    const fetchTutorials = useCallback(async (page = 1) => {
         setLoading(true);
         try {
+            const cleanFilters: Record<string, string> = {};
+            if (filters.class_id && filters.class_id !== "all") cleanFilters.class_id = filters.class_id;
+            if (filters.section_id && filters.section_id !== "all") cleanFilters.section_id = filters.section_id;
+            if (filters.search.trim()) cleanFilters.search = filters.search.trim();
+
             const params = new URLSearchParams({
                 page: String(page),
                 limit: "12",
-                ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
+                ...cleanFilters,
             });
             const response = await api.get(`/download-center/video-tutorials?${params.toString()}`);
-            setTutorials(response.data.data);
+            const data = response.data;
+            setTutorials(data.data || []);
             setPagination({
-                current_page: response.data.current_page,
-                last_page: response.data.last_page,
-                total: response.data.total,
-                from: response.data.from,
-                to: response.data.to
+                current_page: data.current_page || 1,
+                last_page: data.last_page || 1,
+                total: data.total || 0,
+                from: data.from || 0,
+                to: data.to || 0,
             });
         } catch (error) {
             console.error("Error fetching tutorials:", error);
-            toast({ title: "Error", description: "Failed to fetch video tutorials", variant: "destructive" });
+            toast({
+                title: t("error"),
+                description: t("failed_to_load_video_tutorials") || "Failed to fetch video tutorials",
+                variant: "destructive",
+            });
         } finally {
             setLoading(false);
         }
-    };
+    }, [filters, t, toast]);
+
+    useEffect(() => {
+        fetchInitialData();
+    }, []);
+
+    useEffect(() => {
+        fetchTutorials(1);
+    }, [fetchTutorials]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         fetchTutorials(1);
     };
 
+    const handleOpenAdd = () => {
+        setEditingId(null);
+        setFormData({
+            title: "",
+            video_url: "",
+            class_id: "",
+            section_id: "",
+            description: "",
+        });
+        setIsDialogOpen(true);
+    };
+
+    const handleEdit = (video: Tutorial) => {
+        setEditingId(video.id);
+        setFormData({
+            title: video.title || "",
+            video_url: video.video_url || "",
+            class_id: video.class_id ? String(video.class_id) : "",
+            section_id: video.section_id ? String(video.section_id) : "",
+            description: video.description || "",
+        });
+        setIsDialogOpen(true);
+    };
+
     const handleSave = async () => {
-        try {
-            await api.post('/download-center/video-tutorials', formData);
-            toast({ title: "Success", description: "Video tutorial added successfully" });
-            setIsDialogOpen(false);
-            setFormData({ title: "", video_url: "", class_id: "", section_id: "", description: "" });
-            fetchTutorials();
-        } catch (error: any) {
+        if (!formData.title.trim() || !formData.video_url.trim()) {
             toast({
-                title: "Error",
-                description: error.response?.data?.message || "Failed to save tutorial",
+                title: t("error"),
+                description: t("please_fill_all_required_fields") || "Please fill all required fields",
                 variant: "destructive",
             });
+            return;
+        }
+
+        setSaving(true);
+        const payload = {
+            title: formData.title,
+            video_url: formData.video_url,
+            class_id: formData.class_id && formData.class_id !== "all" ? Number(formData.class_id) : null,
+            section_id: formData.section_id && formData.section_id !== "all" ? Number(formData.section_id) : null,
+            description: formData.description,
+        };
+
+        try {
+            if (editingId) {
+                await api.put(`/download-center/video-tutorials/${editingId}`, payload);
+                toast({
+                    title: t("success"),
+                    description: t("video_tutorial_updated_successfully"),
+                });
+            } else {
+                await api.post("/download-center/video-tutorials", payload);
+                toast({
+                    title: t("success"),
+                    description: t("video_tutorial_added_successfully"),
+                });
+            }
+            setIsDialogOpen(false);
+            setEditingId(null);
+            setFormData({ title: "", video_url: "", class_id: "", section_id: "", description: "" });
+            fetchTutorials(pagination?.current_page || 1);
+        } catch (error: unknown) {
+            const err = error as { response?: { data?: { message?: string } } };
+            toast({
+                title: t("error"),
+                description: err.response?.data?.message || t("failed_to_save_tutorial") || "Failed to save tutorial",
+                variant: "destructive",
+            });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const promptDelete = (id: number) => {
+        setDeleteId(id);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.delete(`/download-center/video-tutorials/${deleteId}`);
+            toast({
+                title: t("success"),
+                description: t("video_tutorial_deleted_successfully"),
+            });
+            fetchTutorials(pagination?.current_page || 1);
+        } catch (error) {
+            console.error("Error deleting tutorial:", error);
+            toast({
+                title: t("error"),
+                description: t("failed_to_delete_video_tutorial") || "Failed to delete tutorial",
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDeleteId(null);
         }
     };
 
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+        <div className="space-y-6">
+            {/* Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Video className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("video_tutorial_list")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("manage_class_video_tutorials")}</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("video_tutorial_list")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("manage_class_video_tutorials")}
+                        </p>
                     </div>
                 </div>
-                <Button onClick={() => setIsDialogOpen(true)} className="btn-gradient gap-2 h-8 px-4 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
-                    <Plus className="h-3.5 w-3.5" /> {t("add_video")}
+                <Button
+                    onClick={handleOpenAdd}
+                    className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                >
+                    <Plus className="h-4 w-4" /> {t("add_video")}
                 </Button>
             </div>
 
             {/* Filter Section */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-4">
+                <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    {/* Class */}
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase">{t("class")}</Label>
-                        <Select value={filters.class_id} onValueChange={(v) => setFilters({ ...filters, class_id: v })}>
-                            <SelectTrigger className="h-8 border-gray-200 text-xs focus:ring-indigo-500 rounded shadow-none">
+                        <Label className="text-xs font-bold text-gray-600">{t("class")}</Label>
+                        <Select
+                            value={filters.class_id}
+                            onValueChange={(v) => setFilters({ ...filters, class_id: v })}
+                        >
+                            <SelectTrigger className="h-9 border-gray-200 text-xs bg-white rounded-lg shadow-2xs focus:ring-indigo-500">
                                 <SelectValue placeholder={t("select_class")} />
                             </SelectTrigger>
                             <SelectContent>
-                                {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                <SelectItem value="all">{t("all_classes") || t("all")}</SelectItem>
+                                {classes.map((c) => (
+                                    <SelectItem key={c.id} value={String(c.id)} className="text-xs">
+                                        {translateClassName(c.name, langCode)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
+                    {/* Section */}
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase">{t("section")}</Label>
-                        <Select value={filters.section_id} onValueChange={(v) => setFilters({ ...filters, section_id: v })}>
-                            <SelectTrigger className="h-8 border-gray-200 text-xs focus:ring-indigo-500 rounded shadow-none">
+                        <Label className="text-xs font-bold text-gray-600">{t("section")}</Label>
+                        <Select
+                            value={filters.section_id}
+                            onValueChange={(v) => setFilters({ ...filters, section_id: v })}
+                        >
+                            <SelectTrigger className="h-9 border-gray-200 text-xs bg-white rounded-lg shadow-2xs focus:ring-indigo-500">
                                 <SelectValue placeholder={t("select_section")} />
                             </SelectTrigger>
                             <SelectContent>
-                                {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                <SelectItem value="all">{t("all_sections") || t("all")}</SelectItem>
+                                {sections.map((s) => (
+                                    <SelectItem key={s.id} value={String(s.id)} className="text-xs">
+                                        {translateSectionName(s.name, langCode)}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
 
+                    {/* Search by title */}
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-gray-500 uppercase">{t("search_by_title")}</Label>
+                        <Label className="text-xs font-bold text-gray-600">{t("search_by_title")}</Label>
                         <Input
                             placeholder={t("title_placeholder")}
                             value={filters.search}
                             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                            className="h-8 border-gray-200 text-xs focus-visible:ring-indigo-500 rounded shadow-none"
+                            className="h-9 border-gray-200 text-xs bg-white rounded-lg shadow-2xs focus-visible:ring-indigo-500"
                         />
                     </div>
 
+                    {/* Search Button */}
                     <div className="flex justify-end">
-                        <Button type="submit" className="btn-gradient gap-2 h-8 px-6 text-[10px] font-bold uppercase transition-all rounded-full shadow-md">
+                        <Button
+                            type="submit"
+                            className="w-full sm:w-auto h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                        >
                             <Search className="h-3.5 w-3.5" /> {t("search")}
                         </Button>
                     </div>
                 </form>
-            </div>
+            </Card>
 
-             <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                    {tutorials.length === 0 ? (
-                        <div className="col-span-full py-12 flex flex-col items-center justify-center text-gray-400">
-                            <Video className="h-12 w-12 mb-2 opacity-20" />
-                            <p className="text-xs">{t("no_video_tutorials_found")}</p>
+            {/* Video Cards Grid */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-4 space-y-4">
+                {loading ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-gray-400 gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-[#6366f1]" />
+                        <span className="text-xs font-medium">{t("loading")}...</span>
+                    </div>
+                ) : tutorials.length === 0 ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-gray-400 gap-3">
+                        <div className="h-14 w-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-400">
+                            <Video className="h-7 w-7 opacity-60" />
                         </div>
-                    ) : (
-                        tutorials.map((video) => {
+                        <p className="text-xs font-bold text-gray-500">{t("no_video_tutorials_found")}</p>
+                        <Button
+                            onClick={handleOpenAdd}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs font-semibold text-[#6366f1] border-indigo-200 hover:bg-indigo-50 rounded-full mt-1"
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-1" /> {t("add_video")}
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        {tutorials.map((video) => {
                             const thumbnailUrl = getVideoThumbnail(video);
                             return (
-                                <div key={video.id} onClick={() => setPreviewVideo(video)} className="group cursor-pointer flex flex-col h-full">
-                                    <div className="relative aspect-video rounded-lg overflow-hidden border border-gray-100 bg-gray-50 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all duration-300">
+                                <div
+                                    key={video.id}
+                                    className="group relative flex flex-col justify-between bg-white border border-gray-150 hover:border-indigo-200 rounded-xl overflow-hidden shadow-xs hover:shadow-md transition-all duration-300"
+                                >
+                                    {/* Thumbnail container */}
+                                    <div
+                                        onClick={() => setPreviewVideo(video)}
+                                        className="relative aspect-video w-full bg-slate-900 overflow-hidden cursor-pointer flex items-center justify-center"
+                                    >
                                         {thumbnailUrl ? (
                                             <>
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={thumbnailUrl}
                                                     alt={video.title}
                                                     className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                                                 />
-                                                <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 scale-90 group-hover:scale-100 transition-transform">
-                                                        <PlayCircle className="h-8 w-8 text-white fill-white/20" />
+                                                <div className="absolute inset-0 bg-black/25 group-hover:bg-black/40 flex items-center justify-center transition-colors duration-300">
+                                                    <div className="h-12 w-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/40 scale-90 group-hover:scale-110 transition-transform shadow-lg">
+                                                        <PlayCircle className="h-8 w-8 text-white fill-white/30" />
                                                     </div>
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center">
-                                                    <Video className="h-6 w-6 text-indigo-200" />
-                                                </div>
-                                                <span className="text-[8px] text-gray-300 font-bold uppercase tracking-widest">Preview Unavailable</span>
+                                            <div className="flex flex-col items-center gap-2 text-white/50">
+                                                <Video className="h-8 w-8 text-indigo-300" />
+                                                <span className="text-[9px] uppercase tracking-widest font-bold">
+                                                    {t("watch_tutorial")}
+                                                </span>
                                             </div>
                                         )}
-                                    </div>
-                                    <div className="mt-3 flex-1 flex flex-col">
-                                        <h3 className="text-[10px] font-bold text-gray-700 uppercase tracking-tight line-clamp-2 leading-relaxed group-hover:text-indigo-600 transition-colors" title={video.title}>
-                                            {video.title}
-                                        </h3>
+
+                                        {/* Academic Badge Overlay */}
                                         {(video.school_class || video.section) && (
-                                            <div className="mt-1 flex items-center gap-1">
-                                                <span className="text-[8px] px-1.5 py-0.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white rounded-full font-bold uppercase tracking-tighter shadow-sm">
-                                                    {video.school_class?.name} {video.section?.name}
+                                            <div className="absolute top-2 left-2 flex items-center gap-1 z-10">
+                                                <span className="text-[9px] px-2 py-0.5 bg-black/60 backdrop-blur-md text-white rounded-full font-bold shadow-xs">
+                                                    {video.school_class?.name ? translateClassName(video.school_class.name, langCode) : ""}
+                                                    {video.school_class && video.section ? " - " : ""}
+                                                    {video.section?.name ? translateSectionName(video.section.name, langCode) : ""}
                                                 </span>
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Card Content */}
+                                    <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                                        <div className="space-y-1.5">
+                                            <h3
+                                                onClick={() => setPreviewVideo(video)}
+                                                className="text-xs font-bold text-gray-800 line-clamp-2 cursor-pointer group-hover:text-[#6366f1] transition-colors leading-relaxed"
+                                                title={video.title}
+                                            >
+                                                {video.title}
+                                            </h3>
+                                            {video.description && (
+                                                <p
+                                                    className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed"
+                                                    title={video.description}
+                                                >
+                                                    {video.description}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Card Footer Actions */}
+                                        <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setPreviewVideo(video)}
+                                                className="h-7 px-2 text-[11px] font-bold text-[#6366f1] hover:bg-indigo-50 rounded-full gap-1"
+                                            >
+                                                <PlayCircle className="h-3.5 w-3.5" /> {t("watch_tutorial")}
+                                            </Button>
+
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => handleEdit(video)}
+                                                    className="h-7 w-7 text-amber-600 hover:bg-amber-50 rounded-full"
+                                                    title={t("edit")}
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" />
+                                                </Button>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => promptDelete(video.id)}
+                                                    className="h-7 w-7 text-rose-500 hover:bg-rose-50 rounded-full"
+                                                    title={t("delete")}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             );
-                        })
-                    )}
-                </div>
-
-                 {/* Pagination */}
-                <div className="flex items-center justify-between mt-8 border-t border-gray-50 pt-4">
-                    <div className="text-[10px] text-gray-400 font-medium italic">
-                        Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} tutorials
+                        })}
                     </div>
+                )}
+
+                {/* Pagination */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-gray-100 mt-4">
+                    <div className="text-[11px] text-gray-500 font-medium">
+                        {t("showing_x_to_y_of_z", {
+                            from: toLocaleNumber(pagination?.from || 0, langCode),
+                            to: toLocaleNumber(pagination?.to || 0, langCode),
+                            total: toLocaleNumber(pagination?.total || 0, langCode),
+                        })}
+                    </div>
+
                     <div className="flex items-center gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={pagination?.current_page === 1}
-                            onClick={() => fetchTutorials(pagination!.current_page - 1)}
-                            className="h-7 px-3 text-[10px] text-gray-400 border-gray-100 hover:bg-gray-50 rounded-full shadow-none"
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!pagination || pagination.current_page <= 1}
+                            onClick={() => fetchTutorials((pagination?.current_page || 2) - 1)}
+                            className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1"
                         >
-                            <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
+                            <ChevronLeft className="h-3.5 w-3.5" /> {t("previous")}
                         </Button>
+
                         <div className="flex items-center gap-1">
-                            {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                                <Button 
-                                    key={i + 1}
-                                    onClick={() => fetchTutorials(i + 1)}
-                                    className={cn(
-                                        "h-7 w-7 p-0 text-[10px] font-bold rounded-full transition-all duration-300 shadow-sm",
-                                        pagination?.current_page === i + 1 
-                                            ? "btn-gradient" 
-                                            : "bg-white text-gray-400 border border-gray-100 hover:bg-gray-50"
-                                    )}
-                                >
-                                    {i + 1}
-                                </Button>
-                            ))}
+                            {Array.from({ length: pagination?.last_page || 1 }).map((_, i) => {
+                                const pageNum = i + 1;
+                                const isActive = pagination?.current_page === pageNum;
+                                return (
+                                    <Button
+                                        key={pageNum}
+                                        size="sm"
+                                        onClick={() => fetchTutorials(pageNum)}
+                                        className={cn(
+                                            "h-8 w-8 p-0 text-xs font-bold rounded-full transition-all",
+                                            isActive
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                        )}
+                                    >
+                                        {toLocaleNumber(pageNum, langCode)}
+                                    </Button>
+                                );
+                            })}
                         </div>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={pagination?.current_page === pagination?.last_page}
-                            onClick={() => fetchTutorials(pagination!.current_page + 1)}
-                            className="h-7 px-3 text-[10px] text-gray-400 border-gray-100 hover:bg-gray-50 rounded-full shadow-none"
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!pagination || pagination.current_page >= pagination.last_page}
+                            onClick={() => fetchTutorials((pagination?.current_page || 1) + 1)}
+                            className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1"
                         >
-                            Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                            {t("next")} <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                     </div>
                 </div>
-            </div>
+            </Card>
 
-            {/* Add Tutorial Dialog */}
+            {/* Add / Edit Video Tutorial Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-gray-800">Add Video Tutorial</DialogTitle>
+                <DialogContent className="sm:max-w-[500px] rounded-2xl p-0 overflow-hidden">
+                    <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                                <Video className="h-4 w-4" />
+                            </span>
+                            <DialogTitle className="text-base font-bold text-gray-800">
+                                {editingId ? t("edit_video_tutorial") : t("add_video_tutorial")}
+                            </DialogTitle>
+                        </div>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+
+                    <div className="px-6 py-4 space-y-4">
+                        {/* Title */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Title <span className="text-red-500">*</span></Label>
-                            <Input 
+                            <Label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                                {t("title")} <span className="text-rose-500">*</span>
+                            </Label>
+                            <Input
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                placeholder="Enter tutorial title"
-                                className="h-9 border-gray-200 text-xs shadow-none"
+                                placeholder={t("title_placeholder")}
+                                className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
                             />
                         </div>
+
+                        {/* Class and Section */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Class</Label>
-                                <Select value={formData.class_id} onValueChange={(v) => setFormData({ ...formData, class_id: v })}>
-                                    <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
-                                        <SelectValue placeholder="Select Class" />
+                                <Label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                                    <GraduationCap className="h-3.5 w-3.5 text-gray-400" />
+                                    {t("class")}
+                                </Label>
+                                <Select
+                                    value={formData.class_id}
+                                    onValueChange={(v) => setFormData({ ...formData, class_id: v })}
+                                >
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-indigo-500">
+                                        <SelectValue placeholder={t("select_class")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {classes.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                                        <SelectItem value="all">{t("all_classes") || t("all")}</SelectItem>
+                                        {classes.map((c) => (
+                                            <SelectItem key={c.id} value={String(c.id)} className="text-xs">
+                                                {translateClassName(c.name, langCode)}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
+
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-400 uppercase">Section</Label>
-                                <Select value={formData.section_id} onValueChange={(v) => setFormData({ ...formData, section_id: v })}>
-                                    <SelectTrigger className="h-9 border-gray-200 text-xs shadow-none">
-                                        <SelectValue placeholder="Select Section" />
+                                <Label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                                    <Layers className="h-3.5 w-3.5 text-gray-400" />
+                                    {t("section")}
+                                </Label>
+                                <Select
+                                    value={formData.section_id}
+                                    onValueChange={(v) => setFormData({ ...formData, section_id: v })}
+                                >
+                                    <SelectTrigger className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus:ring-indigo-500">
+                                        <SelectValue placeholder={t("select_section")} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {sections.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                                        <SelectItem value="all">{t("all_sections") || t("all")}</SelectItem>
+                                        {sections.map((s) => (
+                                            <SelectItem key={s.id} value={String(s.id)} className="text-xs">
+                                                {translateSectionName(s.name, langCode)}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
+
+                        {/* Video URL */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Video URL <span className="text-red-500">*</span></Label>
-                            <Input 
+                            <Label className="text-xs font-bold text-gray-700 flex items-center gap-1">
+                                {t("video_url")} <span className="text-rose-500">*</span>
+                            </Label>
+                            <Input
                                 value={formData.video_url}
                                 onChange={(e) => setFormData({ ...formData, video_url: e.target.value })}
-                                placeholder="YouTube/Vimeo link"
-                                className="h-9 border-gray-200 text-xs shadow-none"
+                                placeholder={t("video_url_placeholder")}
+                                className="h-9 border-gray-200 text-xs rounded-lg shadow-none focus-visible:ring-indigo-500"
                             />
                         </div>
+
+                        {/* Description */}
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-400 uppercase">Description</Label>
-                            <Textarea 
+                            <Label className="text-xs font-bold text-gray-700">
+                                {t("description")}
+                            </Label>
+                            <Textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                className="border-gray-200 text-xs shadow-none min-h-[80px]"
-                                placeholder="Optional description..."
+                                className="border-gray-200 text-xs shadow-none min-h-[80px] rounded-lg focus-visible:ring-indigo-500"
+                                placeholder={t("optional_description")}
                             />
                         </div>
                     </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full">Cancel</Button>
-                        <Button onClick={handleSave} className="btn-gradient h-9 px-8 text-[11px] uppercase font-bold rounded-full">Save Tutorial</Button>
+
+                    <DialogFooter className="px-6 py-3 bg-gray-50/80 border-t border-gray-100 gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setIsDialogOpen(false)}
+                            className="h-9 px-4 text-xs font-bold rounded-full"
+                        >
+                            {t("cancel")}
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="h-9 px-6 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all"
+                        >
+                            {saving ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("saving")}...
+                                </>
+                            ) : editingId ? (
+                                t("update_tutorial")
+                            ) : (
+                                t("save_tutorial")
+                            )}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Video Preview Dialog */}
+            {/* Video Player Preview Dialog */}
             <Dialog open={!!previewVideo} onOpenChange={(open) => !open && setPreviewVideo(null)}>
-                <DialogContent className="sm:max-w-[800px] p-0 overflow-hidden bg-black border-none rounded-xl shadow-2xl">
+                <DialogContent className="sm:max-w-[820px] p-0 overflow-hidden bg-black border-none rounded-2xl shadow-2xl">
                     <DialogHeader className="sr-only">
                         <DialogTitle>{previewVideo?.title || "Video Preview"}</DialogTitle>
                     </DialogHeader>
                     <div className="relative aspect-video w-full bg-black">
                         {previewVideo && (() => {
                             const embedUrl = getEmbedUrl(previewVideo.video_url);
-                            const isEmbeddable = embedUrl.includes('youtube.com') || embedUrl.includes('vimeo.com');
-                            
+                            const isEmbeddable = embedUrl.includes("youtube.com") || embedUrl.includes("vimeo.com");
+
                             if (isEmbeddable) {
                                 return (
                                     <iframe
@@ -448,21 +769,59 @@ export default function VideoTutorialPage() {
                             }
                         })()}
                     </div>
-                    <div className="p-4 bg-gray-900 text-white flex justify-between items-center">
-                        <div>
-                            <h3 className="text-sm font-bold uppercase tracking-tight line-clamp-1">{previewVideo?.title}</h3>
-                            <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{previewVideo?.description || "No description provided."}</p>
+                    <div className="p-4 bg-gray-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold truncate">{previewVideo?.title}</h3>
+                                {(previewVideo?.school_class || previewVideo?.section) && (
+                                    <Badge variant="outline" className="text-[9px] font-bold text-indigo-300 border-indigo-700 bg-indigo-950/60 shrink-0">
+                                        {previewVideo.school_class?.name ? translateClassName(previewVideo.school_class.name, langCode) : ""}
+                                        {previewVideo.school_class && previewVideo.section ? " - " : ""}
+                                        {previewVideo.section?.name ? translateSectionName(previewVideo.section.name, langCode) : ""}
+                                    </Badge>
+                                )}
+                            </div>
+                            {previewVideo?.description && (
+                                <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">
+                                    {previewVideo.description}
+                                </p>
+                            )}
                         </div>
-                        <Button 
-                            variant="ghost" 
-                            onClick={() => setPreviewVideo(null)} 
-                            className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 px-4 text-xs font-bold uppercase transition-all"
+                        <Button
+                            variant="ghost"
+                            onClick={() => setPreviewVideo(null)}
+                            className="text-gray-400 hover:text-white hover:bg-gray-800 rounded-full h-8 px-4 text-xs font-bold transition-all shrink-0"
                         >
-                            Close
+                            {t("close")}
                         </Button>
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Confirmation Alert Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="rounded-2xl max-w-[400px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-base font-bold text-gray-900">
+                            {t("delete")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-gray-500">
+                            {t("delete_video_tutorial_confirm")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full">
+                            {t("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="h-9 text-xs font-bold rounded-full bg-rose-600 hover:bg-rose-700 text-white"
+                        >
+                            {t("delete")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

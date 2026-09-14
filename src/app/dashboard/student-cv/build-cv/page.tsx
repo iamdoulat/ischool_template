@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
 import { toast } from "sonner";
-import { useTranslation } from "@/hooks/use-translation";
+import { useLanguage } from "@/components/providers/language-provider";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -15,9 +15,6 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-    Card, CardContent, CardHeader, CardTitle,
-} from "@/components/ui/card";
-import {
     Dialog, DialogContent, DialogDescription, DialogFooter,
     DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -28,12 +25,19 @@ import Link from "next/link";
 import {
     Copy, FileSpreadsheet, Printer,
     ChevronLeft, ChevronRight, Search, LayoutList, Settings,
-    FileUser, Users, Eye, Sparkles, Phone, Calendar,
-    GraduationCap, AlertCircle, Loader2, Save, Plus, Trash2, BookOpen, Award
+    FileUser, Users, Eye, Phone, Calendar,
+    GraduationCap, AlertCircle, Loader2, Save, Plus, Trash2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getImageUrl } from "@/lib/image-url";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateClassName,
+    translateSectionName,
+    translateGender,
+    translateStudentCategory,
+} from "@/lib/utils";
 
 interface Student {
     id: string | number;
@@ -69,12 +73,11 @@ interface CVBuildForm {
 }
 
 export default function BuildCVPage() {
-    const { t } = useTranslation();
+    const { t, language } = useLanguage();
     const [searchTerm, setSearchTerm] = useState("");
     const [searching, setSearching] = useState(false);
     const [criteria, setCriteria] = useState<any[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
-    const [loading, setLoading] = useState(false);
 
     // Criteria states
     const [selectedClass, setSelectedClass] = useState("");
@@ -118,7 +121,6 @@ export default function BuildCVPage() {
     }, [t]);
 
     const fetchCriteria = useCallback(async () => {
-        setLoading(true);
         try {
             const response = await api.get('/student-cv/criteria');
             const dataList = response.data.data || [];
@@ -136,8 +138,6 @@ export default function BuildCVPage() {
         } catch (error) {
             console.error("Failed to fetch criteria", error);
             toast.error(t("failed_to_load_criteria") || "Failed to load criteria");
-        } finally {
-            setLoading(false);
         }
     }, [fetchStudentsForClassSection, t]);
 
@@ -215,10 +215,13 @@ export default function BuildCVPage() {
         setSavingCV(true);
         try {
             await api.post(`/student-cv/detail/${selectedStudent.id}`, cvForm).catch(() => {});
-            toast.success(`CV Portfolio updated successfully for ${selectedStudent.name}!`);
+            toast.success(
+                t("cv_portfolio_updated_successfully", { name: selectedStudent.name }) ||
+                `CV Portfolio updated successfully for ${selectedStudent.name}!`
+            );
             setBuilderOpen(false);
         } catch {
-            toast.error("Failed to save CV portfolio");
+            toast.error(t("failed_to_save_cv_portfolio") || "Failed to save CV portfolio");
         } finally {
             setSavingCV(false);
         }
@@ -238,7 +241,8 @@ export default function BuildCVPage() {
             const d = new Date(dobStr);
             if (isNaN(d.getTime())) return dobStr;
             const pad = (n: number) => n.toString().padStart(2, '0');
-            return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+            const formatted = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+            return toLocaleNumber(formatted, language?.short_code);
         } catch {
             return dobStr;
         }
@@ -258,7 +262,7 @@ export default function BuildCVPage() {
             `${s.admission_no}\t${s.name}\t${formatDob(s.dob)}\t${s.gender}\t${s.student_category?.category_name || s.category || '-'}\t${s.phone || '-'}`
         ).join("\n");
         navigator.clipboard.writeText(header + rows);
-        toast.success("Student directory copied to clipboard!");
+        toast.success(t("student_directory_copied_to_clipboard") || "Student directory copied to clipboard!");
     };
 
     const handleExportCsv = () => {
@@ -272,27 +276,27 @@ export default function BuildCVPage() {
         link.href = url;
         link.download = `student_cv_builder_${new Date().toISOString().slice(0, 10)}.csv`;
         link.click();
-        toast.success("CSV file downloaded!");
+        toast.success(t("csv_file_downloaded") || "CSV file downloaded!");
     };
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
-            {/* Master Page Header */}
-            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
+        <div className="w-full space-y-4 pb-12">
+            {/* Master Page Header Banner */}
+            <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
-                            <FileUser className="h-6 w-6" />
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileUser className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                Build & Manage Student CV Portfolios
+                            <h1 className="text-base font-bold tracking-tight text-gray-800 leading-none flex items-center gap-2 flex-wrap">
+                                {t("build_and_manage_student_cv_portfolios") || "Build & Manage Student CV Portfolios"}
                                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                                    Resume Builder
+                                    {t("resume_builder") || "Resume Builder"}
                                 </span>
                             </h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                Customize career objectives, extracurricular achievements, skills, and academic history for institutional portfolios.
+                                {t("customize_student_cv_description") || "Customize career objectives, extracurricular achievements, skills, and academic history for institutional portfolios."}
                             </p>
                         </div>
                     </div>
@@ -301,16 +305,18 @@ export default function BuildCVPage() {
                         <Link href="/dashboard/student-cv/download-cv">
                             <Button
                                 variant="outline"
-                                className="h-8.5 px-3.5 text-xs font-semibold rounded-lg border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                                className="h-8 px-3 text-xs font-semibold rounded-lg border-gray-200 bg-white hover:bg-gray-50 text-gray-700 gap-1.5 cursor-pointer shadow-xs"
                             >
-                                <Eye className="h-3.5 w-3.5 mr-1 text-indigo-600" /> Download CVs
+                                <Eye className="h-3.5 w-3.5 text-indigo-600" />
+                                <span>{t("download_cvs") || "Download CVs"}</span>
                             </Button>
                         </Link>
                         <Link href="/dashboard/student-cv/setting">
                             <Button
-                                className="h-8.5 px-4 text-xs font-bold rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs"
+                                className="h-8 px-3.5 text-xs font-bold rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-xs gap-1.5 cursor-pointer active:scale-95 transition-all"
                             >
-                                <Settings className="h-3.5 w-3.5 mr-1" /> CV Settings
+                                <Settings className="h-3.5 w-3.5" />
+                                <span>{t("cv_settings") || "CV Settings"}</span>
                             </Button>
                         </Link>
                     </div>
@@ -318,33 +324,31 @@ export default function BuildCVPage() {
             </div>
 
             {/* Criteria Selection Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
-                <CardHeader className="flex flex-row items-center justify-between gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
-                            <GraduationCap className="h-4 w-4" />
-                        </span>
-                        <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
-                            Filter Selection Criteria
-                        </CardTitle>
-                    </div>
-                </CardHeader>
+            <div className="border border-gray-100 shadow-sm rounded-lg bg-white overflow-hidden">
+                <div className="flex items-center gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                        <GraduationCap className="h-4 w-4" />
+                    </span>
+                    <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-gray-800">
+                        {t("filter_selection_criteria") || "Filter Selection Criteria"}
+                    </h2>
+                </div>
 
-                <CardContent className="p-5">
+                <div className="p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
                         {/* Class Select */}
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-slate-700">
-                                Class <span className="text-rose-500">*</span>
+                            <Label className="text-xs font-bold text-gray-700">
+                                {t("class") || "Class"} <span className="text-rose-500">*</span>
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder="Select Class" />
+                                <SelectTrigger className="h-9 text-xs bg-white border-gray-200 focus:ring-indigo-500 rounded-lg">
+                                    <SelectValue placeholder={t("select_class") || "Select Class"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {criteria.map((c: any) => (
                                         <SelectItem key={c.id} value={c.id.toString()}>
-                                            {c.name}
+                                            {translateClassName(c.name, language?.short_code)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -353,15 +357,15 @@ export default function BuildCVPage() {
 
                         {/* Section Select */}
                         <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-slate-700">Section</Label>
+                            <Label className="text-xs font-bold text-gray-700">{t("section") || "Section"}</Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder="Select Section" />
+                                <SelectTrigger className="h-9 text-xs bg-white border-gray-200 focus:ring-indigo-500 rounded-lg">
+                                    <SelectValue placeholder={t("select_section") || "Select Section"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map((s: any) => (
                                         <SelectItem key={s.id} value={s.id.toString()}>
-                                            {s.name}
+                                            {translateSectionName(s.name, language?.short_code)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -373,113 +377,113 @@ export default function BuildCVPage() {
                             <Button
                                 onClick={handleSearch}
                                 disabled={searching || !selectedClass}
-                                className="w-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
+                                className="w-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white h-9 text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                             >
                                 {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                                Search Students
+                                <span>{t("search_students") || "Search Students"}</span>
                             </Button>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* Student Directory Table Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
-                {/* Table Header / Toolbar */}
-                <CardHeader className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
-                            <Users className="h-4 w-4" />
-                        </span>
-                        <CardTitle className="text-sm font-bold text-slate-800">
-                            Student Directory List ({filteredStudents.length})
-                        </CardTitle>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                        {/* Search Input */}
-                        <div className="relative w-full sm:w-56">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                            <Input
-                                placeholder="Search by name or admission no..."
-                                value={searchTerm}
-                                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                                className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
-                            />
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden min-h-[500px] flex flex-col justify-between">
+                <div className="space-y-4 flex-1 flex flex-col">
+                    {/* Table Header / Toolbar */}
+                    <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                                <Users className="h-4 w-4" />
+                            </span>
+                            <h3 className="text-sm font-bold text-gray-800">
+                                {t("student_directory_list") || "Student Directory List"} ({toLocaleNumber(filteredStudents.length, language?.short_code)})
+                            </h3>
                         </div>
 
-                        {/* Per page */}
-                        <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
-                            <SelectTrigger className="h-8 w-20 text-xs bg-white border-slate-200">
-                                <SelectValue placeholder="50" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="10">10</SelectItem>
-                                <SelectItem value="25">25</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Search Input */}
+                            <div className="relative w-full sm:w-56">
+                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                                <Input
+                                    placeholder={t("search_by_name_admission_no") || "Search by name or admission no..."}
+                                    value={searchTerm}
+                                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                    className="pl-8 h-8 text-xs bg-white border-gray-200 focus-visible:ring-indigo-500 rounded-lg shadow-none"
+                                />
+                            </div>
 
-                        {/* Multi-format export toolbar */}
-                        <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
-                            <button
-                                type="button"
-                                onClick={handleCopyTable}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Copy Table"
-                            >
-                                <Copy className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleExportCsv}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 border-r border-slate-200 transition-all"
-                                title="Export CSV"
-                            >
-                                <FileSpreadsheet className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => window.print()}
-                                className="p-1.5 hover:bg-slate-100 text-slate-600 transition-all"
-                                title="Print List"
-                            >
-                                <Printer className="h-3.5 w-3.5" />
-                            </button>
+                            {/* Per page */}
+                            <Select value={itemsPerPage} onValueChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}>
+                                <SelectTrigger className="h-8 w-20 text-xs bg-white border-gray-200">
+                                    <SelectValue placeholder="50" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber(25, language?.short_code)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            {/* Multi-format export toolbar */}
+                            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden bg-white shadow-xs">
+                                <button
+                                    type="button"
+                                    onClick={handleCopyTable}
+                                    className="p-1.5 hover:bg-gray-100 text-gray-600 border-r border-gray-200 transition-all cursor-pointer"
+                                    title={t("copy") || "Copy Table"}
+                                >
+                                    <Copy className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleExportCsv}
+                                    className="p-1.5 hover:bg-gray-100 text-gray-600 border-r border-gray-200 transition-all cursor-pointer"
+                                    title={t("export_csv") || "Export CSV"}
+                                >
+                                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => window.print()}
+                                    className="p-1.5 hover:bg-gray-100 text-gray-600 transition-all cursor-pointer"
+                                    title={t("print") || "Print List"}
+                                >
+                                    <Printer className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </CardHeader>
 
-                {/* Table Content */}
-                <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-slate-50/80 border-b border-slate-200">
+                    {/* Table Content */}
+                    <div className="overflow-x-auto custom-scrollbar px-4">
+                        <Table className="min-w-[900px]">
+                            <TableHeader className="bg-gray-50/80 border-b border-gray-200">
                                 <TableRow>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Admission No</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Student Profile</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Date Of Birth</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Gender</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Category</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Mobile Number</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 text-right pr-6">CV Builder</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("admission_no") || "Admission No"}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("student_profile") || "Student Profile"}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("date_of_birth") || "Date Of Birth"}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("gender") || "Gender"}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("category") || "Category"}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-gray-700">{t("mobile_number") || "Mobile Number"}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-gray-700 text-right pr-6">{t("cv_builder") || "CV Builder"}</TableHead>
                                 </TableRow>
                             </TableHeader>
-                            <TableBody className="divide-y divide-slate-100">
+                            <TableBody className="divide-y divide-gray-100">
                                 {searching ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="text-center py-16">
                                             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-indigo-500" />
-                                            <p className="text-xs font-medium text-slate-500">Loading student directory...</p>
+                                            <p className="text-xs font-medium text-gray-500">{t("loading_student_directory") || "Loading student directory..."}</p>
                                         </TableCell>
                                     </TableRow>
                                 ) : paginatedStudents.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-16 text-slate-400">
-                                            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                                            <p className="text-xs font-bold text-slate-600">No students found</p>
-                                            <p className="text-[11px] text-slate-400 mt-0.5">Select a different class or section above.</p>
+                                        <TableCell colSpan={7} className="text-center py-16 text-gray-400">
+                                            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                                            <p className="text-xs font-bold text-gray-600">{t("no_students_found") || "No students found"}</p>
+                                            <p className="text-[11px] text-gray-400 mt-0.5">{t("select_different_class_or_section") || "Select a different class or section above."}</p>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -490,7 +494,7 @@ export default function BuildCVPage() {
                                         >
                                             {/* Admission No */}
                                             <TableCell className="py-3 px-4">
-                                                <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                                                <span className="font-mono text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md border border-gray-200">
                                                     {item.admission_no}
                                                 </span>
                                             </TableCell>
@@ -498,28 +502,28 @@ export default function BuildCVPage() {
                                             {/* Student Profile & Avatar */}
                                             <TableCell className="py-3 px-4">
                                                 <div className="flex items-center gap-3">
-                                                    <Avatar className="h-8 w-8 border border-slate-200 shadow-xs">
+                                                    <Avatar className="h-8 w-8 border border-gray-200 shadow-xs">
                                                         <AvatarImage src={getImageUrl(item.avatar || item.student_photo || item.photo_url)} className="object-cover" />
                                                         <AvatarFallback className="text-xs font-bold bg-indigo-50 text-indigo-700">
                                                             {item.name.charAt(0)}
                                                         </AvatarFallback>
                                                     </Avatar>
                                                     <div>
-                                                        <p className="text-xs font-bold text-slate-800 leading-snug group-hover:text-indigo-600 transition-colors">
+                                                        <p className="text-xs font-bold text-gray-800 leading-snug group-hover:text-indigo-600 transition-colors">
                                                             {item.name} {item.last_name || ""}
                                                         </p>
-                                                        <p className="text-[10px] text-slate-400">
-                                                            {item.school_class?.name ? `${item.school_class.name} (${item.section?.name || 'A'})` : 'Student'}
+                                                        <p className="text-[10px] text-gray-400">
+                                                            {item.school_class?.name ? `${translateClassName(item.school_class.name, language?.short_code)} (${translateSectionName(item.section?.name || 'A', language?.short_code)})` : (t("student") || "Student")}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </TableCell>
 
                                             {/* Date of Birth */}
-                                            <TableCell className="py-3 px-4 text-xs text-slate-600 font-medium">
+                                            <TableCell className="py-3 px-4 text-xs text-gray-600 font-medium">
                                                 <span className="inline-flex items-center gap-1">
-                                                    <Calendar className="h-3 w-3 text-slate-400" />
-                                                    {formatDob(item.dob)}
+                                                    <Calendar className="h-3 w-3 text-gray-400" />
+                                                    {toLocaleNumber(formatDob(item.dob), language?.short_code)}
                                                 </span>
                                             </TableCell>
 
@@ -531,24 +535,24 @@ export default function BuildCVPage() {
                                                         ? "bg-blue-50 text-blue-700 border-blue-200"
                                                         : item.gender?.toLowerCase() === "female"
                                                             ? "bg-rose-50 text-rose-700 border-rose-200"
-                                                            : "bg-slate-100 text-slate-700 border-slate-200"
+                                                            : "bg-gray-100 text-gray-700 border-gray-200"
                                                 )}>
-                                                    {item.gender || "—"}
+                                                    {translateGender(item.gender, language?.short_code) || item.gender || "—"}
                                                 </span>
                                             </TableCell>
 
                                             {/* Category */}
-                                            <TableCell className="py-3 px-4 text-xs text-slate-600 font-medium">
-                                                <span className="bg-slate-50 border border-slate-200 px-2 py-0.5 rounded text-[10px]">
-                                                    {item.student_category?.category_name || item.category || "General"}
+                                            <TableCell className="py-3 px-4 text-xs text-gray-600 font-medium">
+                                                <span className="bg-gray-50 border border-gray-200 px-2 py-0.5 rounded text-[10px]">
+                                                    {translateStudentCategory(item.student_category?.category_name || item.category, language?.short_code) || item.student_category?.category_name || item.category || t("general") || "General"}
                                                 </span>
                                             </TableCell>
 
                                             {/* Mobile Phone */}
-                                            <TableCell className="py-3 px-4 text-xs text-slate-600 font-medium">
+                                            <TableCell className="py-3 px-4 text-xs text-gray-600 font-medium">
                                                 <span className="inline-flex items-center gap-1 font-mono">
                                                     <Phone className="h-3 w-3 text-indigo-500" />
-                                                    {item.phone || "—"}
+                                                    {item.phone ? toLocaleNumber(item.phone, language?.short_code) : "—"}
                                                 </span>
                                             </TableCell>
 
@@ -557,11 +561,11 @@ export default function BuildCVPage() {
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleOpenBuilder(item)}
-                                                    className="h-7 px-3 text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs gap-1 border-0"
-                                                    title="Build & Customize CV"
+                                                    className="h-7 px-3 text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-xs gap-1 border-0 cursor-pointer active:scale-95 transition-all"
+                                                    title={t("build_and_customize_cv") || "Build & Customize CV"}
                                                 >
                                                     <LayoutList className="h-3.5 w-3.5" />
-                                                    <span>Build CV</span>
+                                                    <span>{t("build_cv") || "Build CV"}</span>
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -570,13 +574,16 @@ export default function BuildCVPage() {
                             </TableBody>
                         </Table>
                     </div>
-                </CardContent>
+                </div>
 
-                {/* Footer / Pagination */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-slate-100 bg-slate-50/50 text-xs text-slate-500">
+                {/* Footer / Pagination pinned to bottom */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 border-t border-gray-100 bg-gray-50/50 text-xs text-gray-500 mt-auto">
                     <div>
-                        Showing {totalEntries > 0 ? startIndex + 1 : 0} to{" "}
-                        {Math.min(startIndex + sizeNum, totalEntries)} of {totalEntries} entries
+                        {t("showing_x_to_y_of_z", {
+                            x: toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, language?.short_code),
+                            y: toLocaleNumber(Math.min(startIndex + sizeNum, totalEntries), language?.short_code),
+                            z: toLocaleNumber(totalEntries, language?.short_code),
+                        }) || `Showing ${totalEntries > 0 ? startIndex + 1 : 0} to ${Math.min(startIndex + sizeNum, totalEntries)} of ${totalEntries} entries`}
                     </div>
 
                     {totalEntries > 0 && (
@@ -584,7 +591,7 @@ export default function BuildCVPage() {
                             <button
                                 disabled={safePage === 1}
                                 onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                                className="h-8 w-8 bg-white hover:bg-slate-100 text-slate-600 rounded-lg transition-all border border-slate-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 bg-white hover:bg-gray-100 text-gray-600 rounded-lg transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
@@ -597,35 +604,35 @@ export default function BuildCVPage() {
                                         "h-8 w-8 transition-all text-xs flex items-center justify-center cursor-pointer font-bold rounded-lg",
                                         safePage === page
                                             ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
-                                            : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200"
+                                            : "bg-white hover:bg-gray-100 text-gray-700 border border-gray-200"
                                     )}
                                 >
-                                    {page}
+                                    {toLocaleNumber(page, language?.short_code)}
                                 </button>
                             ))}
 
                             <button
                                 disabled={safePage === totalPages}
                                 onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                                className="h-8 w-8 bg-white hover:bg-slate-100 text-slate-600 rounded-lg transition-all border border-slate-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+                                className="h-8 w-8 bg-white hover:bg-gray-100 text-gray-600 rounded-lg transition-all border border-gray-200 flex items-center justify-center cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </button>
                         </div>
                     )}
                 </div>
-            </Card>
+            </div>
 
             {/* ── Interactive Student CV Builder Modal ── */}
             <Dialog open={builderOpen} onOpenChange={setBuilderOpen}>
-                <DialogContent className="max-w-3xl rounded-2xl p-6 max-h-[88vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl rounded-2xl p-6 max-h-[88vh] overflow-y-auto bg-white">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800">
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-800">
                             <LayoutList className="h-5 w-5 text-indigo-600" />
-                            Build Student Curriculum Vitae — {selectedStudent?.name}
+                            {t("build_student_cv_title") || "Build Student Curriculum Vitae"} — {selectedStudent?.name}
                         </DialogTitle>
-                        <DialogDescription className="text-xs text-slate-500">
-                            Customize student portfolio sections before generating institutional resumes.
+                        <DialogDescription className="text-xs text-gray-500">
+                            {t("customize_student_cv_modal_desc") || "Customize student portfolio sections before generating institutional resumes."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -640,9 +647,9 @@ export default function BuildCVPage() {
                                     </AvatarFallback>
                                 </Avatar>
                                 <div>
-                                    <h4 className="text-sm font-bold text-slate-900">{selectedStudent.name}</h4>
+                                    <h4 className="text-sm font-bold text-gray-900">{selectedStudent.name}</h4>
                                     <p className="text-xs text-indigo-700 font-semibold">
-                                        Admission No: {selectedStudent.admission_no} | Class: {selectedStudent.school_class?.name || "Class 1"} ({selectedStudent.section?.name || "A"})
+                                        {t("admission_no") || "Admission No"}: {selectedStudent.admission_no} | {t("class") || "Class"}: {translateClassName(selectedStudent.school_class?.name, language?.short_code)} ({translateSectionName(selectedStudent.section?.name || "A", language?.short_code)})
                                     </p>
                                 </div>
                             </div>
@@ -650,67 +657,67 @@ export default function BuildCVPage() {
                             {/* Section Tabs */}
                             <Tabs defaultValue="overview" className="w-full">
                                 <TabsList className="grid grid-cols-2 w-full">
-                                    <TabsTrigger value="overview" className="text-xs font-bold">
-                                        Profile & Competencies
+                                    <TabsTrigger value="overview" className="text-xs font-bold cursor-pointer">
+                                        {t("profile_and_competencies") || "Profile & Competencies"}
                                     </TabsTrigger>
-                                    <TabsTrigger value="academic" className="text-xs font-bold">
-                                        Academic Records ({cvForm.academic_records.length})
+                                    <TabsTrigger value="academic" className="text-xs font-bold cursor-pointer">
+                                        {t("academic_records") || "Academic Records"} ({toLocaleNumber(cvForm.academic_records.length, language?.short_code)})
                                     </TabsTrigger>
                                 </TabsList>
 
                                 {/* Overview Tab */}
                                 <TabsContent value="overview" className="space-y-3.5 pt-3">
                                     <div className="space-y-1">
-                                        <Label className="text-xs font-bold text-slate-700">Career / Academic Objective</Label>
+                                        <Label className="text-xs font-bold text-gray-700">{t("career_academic_objective") || "Career / Academic Objective"}</Label>
                                         <Textarea
                                             value={cvForm.career_objective}
                                             onChange={(e) => setCvForm({ ...cvForm, career_objective: e.target.value })}
-                                            placeholder="Enter student academic objective..."
+                                            placeholder={t("enter_student_academic_objective") || "Enter student academic objective..."}
                                             rows={2}
-                                            className="text-xs bg-white border-slate-200"
+                                            className="text-xs bg-white border-gray-200"
                                         />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
-                                            <Label className="text-xs font-bold text-slate-700">Skills & Competencies</Label>
+                                            <Label className="text-xs font-bold text-gray-700">{t("skills_and_competencies") || "Skills & Competencies"}</Label>
                                             <Input
                                                 value={cvForm.skills}
                                                 onChange={(e) => setCvForm({ ...cvForm, skills: e.target.value })}
                                                 placeholder="e.g. Mathematics, Public Speaking"
-                                                className="h-8 text-xs bg-white border-slate-200"
+                                                className="h-8 text-xs bg-white border-gray-200"
                                             />
                                         </div>
 
                                         <div className="space-y-1">
-                                            <Label className="text-xs font-bold text-slate-700">Languages Known</Label>
+                                            <Label className="text-xs font-bold text-gray-700">{t("languages_known") || "Languages Known"}</Label>
                                             <Input
                                                 value={cvForm.languages}
                                                 onChange={(e) => setCvForm({ ...cvForm, languages: e.target.value })}
                                                 placeholder="e.g. English, Bengali, Arabic"
-                                                className="h-8 text-xs bg-white border-slate-200"
+                                                className="h-8 text-xs bg-white border-gray-200"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="space-y-1">
-                                            <Label className="text-xs font-bold text-slate-700">Interests & Hobbies</Label>
+                                            <Label className="text-xs font-bold text-gray-700">{t("interests_and_hobbies") || "Interests & Hobbies"}</Label>
                                             <Input
                                                 value={cvForm.hobbies}
                                                 onChange={(e) => setCvForm({ ...cvForm, hobbies: e.target.value })}
                                                 placeholder="e.g. Chess, Reading, Football"
-                                                className="h-8 text-xs bg-white border-slate-200"
+                                                className="h-8 text-xs bg-white border-gray-200"
                                             />
                                         </div>
 
                                         <div className="space-y-1">
-                                            <Label className="text-xs font-bold text-slate-700">Extracurricular Achievements</Label>
+                                            <Label className="text-xs font-bold text-gray-700">{t("extracurricular_achievements") || "Extracurricular Achievements"}</Label>
                                             <Input
                                                 value={cvForm.extracurricular}
                                                 onChange={(e) => setCvForm({ ...cvForm, extracurricular: e.target.value })}
                                                 placeholder="e.g. Science Fair Winner 2025"
-                                                className="h-8 text-xs bg-white border-slate-200"
+                                                className="h-8 text-xs bg-white border-gray-200"
                                             />
                                         </div>
                                     </div>
@@ -719,50 +726,50 @@ export default function BuildCVPage() {
                                 {/* Academic Tab */}
                                 <TabsContent value="academic" className="space-y-3 pt-3">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                            Previous Academic History
+                                        <Label className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                            {t("previous_academic_history") || "Previous Academic History"}
                                         </Label>
                                         <Button
                                             type="button"
                                             variant="outline"
                                             size="sm"
                                             onClick={handleAddAcademicRecord}
-                                            className="h-7 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1"
+                                            className="h-7 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50 gap-1 cursor-pointer"
                                         >
-                                            <Plus className="h-3 w-3" /> Add Institution
+                                            <Plus className="h-3 w-3" /> {t("add_institution") || "Add Institution"}
                                         </Button>
                                     </div>
 
                                     <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
                                         {cvForm.academic_records.map((record, index) => (
-                                            <div key={index} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 relative group">
+                                            <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-xl space-y-2 relative group">
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                     <Input
-                                                        placeholder="School / Academy Name"
+                                                        placeholder={t("school_academy_name") || "School / Academy Name"}
                                                         value={record.school_name}
                                                         onChange={(e) => handleUpdateAcademicRecord(index, "school_name", e.target.value)}
-                                                        className="h-8 text-xs bg-white border-slate-200"
+                                                        className="h-8 text-xs bg-white border-gray-200"
                                                     />
                                                     <Input
-                                                        placeholder="Qualification / Exam"
+                                                        placeholder={t("qualification_exam") || "Qualification / Exam"}
                                                         value={record.qualification}
                                                         onChange={(e) => handleUpdateAcademicRecord(index, "qualification", e.target.value)}
-                                                        className="h-8 text-xs bg-white border-slate-200"
+                                                        className="h-8 text-xs bg-white border-gray-200"
                                                     />
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-2">
                                                     <Input
-                                                        placeholder="Passing Year"
+                                                        placeholder={t("passing_year") || "Passing Year"}
                                                         value={record.year}
                                                         onChange={(e) => handleUpdateAcademicRecord(index, "year", e.target.value)}
-                                                        className="h-8 text-xs bg-white border-slate-200"
+                                                        className="h-8 text-xs bg-white border-gray-200"
                                                     />
                                                     <div className="flex gap-2">
                                                         <Input
-                                                            placeholder="Grade / GPA / Percentage"
+                                                            placeholder={t("grade_gpa_percentage") || "Grade / GPA / Percentage"}
                                                             value={record.percentage_or_grade}
                                                             onChange={(e) => handleUpdateAcademicRecord(index, "percentage_or_grade", e.target.value)}
-                                                            className="h-8 text-xs bg-white border-slate-200 flex-1"
+                                                            className="h-8 text-xs bg-white border-gray-200 flex-1"
                                                         />
                                                         {cvForm.academic_records.length > 1 && (
                                                             <Button
@@ -770,7 +777,7 @@ export default function BuildCVPage() {
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => handleRemoveAcademicRecord(index)}
-                                                                className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                                                className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50 cursor-pointer"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
@@ -786,16 +793,16 @@ export default function BuildCVPage() {
                     )}
 
                     <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => setBuilderOpen(false)} className="text-xs">
-                            Cancel
+                        <Button variant="outline" onClick={() => setBuilderOpen(false)} className="text-xs cursor-pointer">
+                            {t("cancel") || "Cancel"}
                         </Button>
                         <Button
                             onClick={handleSaveCV}
                             disabled={savingCV}
-                            className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs gap-1"
+                            className="text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs gap-1 cursor-pointer hover:opacity-90"
                         >
                             {savingCV ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                            Save CV Portfolio
+                            {t("save_cv_portfolio") || "Save CV Portfolio"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

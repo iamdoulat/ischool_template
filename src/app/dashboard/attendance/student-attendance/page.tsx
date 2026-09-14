@@ -20,7 +20,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { toast } from "sonner";
 import api from "@/lib/api";
 import {
@@ -35,7 +35,6 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-    Info,
     CheckCircle2,
     Search,
     Save,
@@ -43,17 +42,10 @@ import {
     ClipboardCheck,
     Filter,
     Users,
-    Clock,
     AlertCircle,
-    Calendar,
-    Sparkles,
-    Check,
-    X,
-    Sun,
-    CalendarDays,
-    Coffee
 } from "lucide-react";
 import CsvImportDialog from "@/components/attendance/CsvImportDialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useTranslation } from "@/hooks/use-translation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -116,16 +108,17 @@ interface Section {
 }
 
 const ATTENDANCE_OPTIONS = [
-    { id: "present", label: "Present", short: "P", color: "text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100", activeBg: "bg-emerald-600 text-white border-emerald-600" },
-    { id: "late", label: "Late", short: "L", color: "text-amber-700 bg-amber-50 border-amber-300 hover:bg-amber-100", activeBg: "bg-amber-500 text-white border-amber-500" },
-    { id: "absent", label: "Absent", short: "A", color: "text-rose-700 bg-rose-50 border-rose-300 hover:bg-rose-100", activeBg: "bg-rose-600 text-white border-rose-600" },
-    { id: "half_day", label: "Half Day", short: "HD", color: "text-sky-700 bg-sky-50 border-sky-300 hover:bg-sky-100", activeBg: "bg-sky-600 text-white border-sky-600" },
-    { id: "holiday", label: "Holiday", short: "H", color: "text-purple-700 bg-purple-50 border-purple-300 hover:bg-purple-100", activeBg: "bg-purple-600 text-white border-purple-600" },
+    { id: "present", key: "present", defaultLabel: "Present", short: "P", color: "text-emerald-700 bg-emerald-50 border-emerald-300 hover:bg-emerald-100", activeBg: "bg-emerald-600 text-white border-emerald-600" },
+    { id: "late", key: "late", defaultLabel: "Late", short: "L", color: "text-amber-700 bg-amber-50 border-amber-300 hover:bg-amber-100", activeBg: "bg-amber-500 text-white border-amber-500" },
+    { id: "absent", key: "absent", defaultLabel: "Absent", short: "A", color: "text-rose-700 bg-rose-50 border-rose-300 hover:bg-rose-100", activeBg: "bg-rose-600 text-white border-rose-600" },
+    { id: "half_day", key: "half_day", defaultLabel: "Half Day", short: "HD", color: "text-sky-700 bg-sky-50 border-sky-300 hover:bg-sky-100", activeBg: "bg-sky-600 text-white border-sky-600" },
+    { id: "holiday", key: "holiday", defaultLabel: "Holiday", short: "H", color: "text-purple-700 bg-purple-50 border-purple-300 hover:bg-purple-100", activeBg: "bg-purple-600 text-white border-purple-600" },
 ] as const;
 
 export default function StudentAttendancePage() {
     const { settings } = useSettings();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const getImageUrl = useImageUrl();
     const [classes, setClasses] = useState<SchoolClass[]>([]);
     const [sections, setSections] = useState<Section[]>([]);
@@ -140,9 +133,54 @@ export default function StudentAttendancePage() {
     const [bulkAttendance, setBulkAttendance] = useState("");
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+    const getLocalizedClassName = (name?: string) => {
+        if (!name) return "";
+        const match = name.match(/^Class\s+(\d+)$/i);
+        if (match) {
+            const key = `class_${match[1]}`;
+            const trans = t(key);
+            if (trans && trans !== key) return trans;
+            return `${t("class")} ${toLocaleNumber(match[1], shortCode)}`;
+        }
+        const key = name.toLowerCase().replace(/\s+/g, "_");
+        const trans = t(key);
+        return trans && trans !== key ? trans : toLocaleNumber(name, shortCode);
+    };
+
+    const getLocalizedSectionName = (name?: string) => {
+        if (!name) return "";
+        return toLocaleNumber(name, shortCode);
+    };
+
+    const formatDateDisplay = (dateStr: string) => {
+        if (!dateStr) return "";
+        const parts = dateStr.split("-");
+        if (parts.length === 3) {
+            const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return toLocaleNumber(formatted, shortCode);
+        }
+        return toLocaleNumber(dateStr, shortCode);
+    };
+
     useEffect(() => {
+        const fetchClasses = async () => {
+            try {
+                const response = await api.get("/academics/classes?no_paginate=true");
+                if (response.data.success || response.data.data) {
+                    const list = response.data.data || [];
+                    setClasses(list);
+                    if (list.length > 0) {
+                        setSelectedClass(list[0].id.toString());
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching classes:", error);
+                toast.error(t("failed_to_load_classes"));
+            }
+        };
+
         fetchClasses();
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         if (selectedClass) {
@@ -166,22 +204,6 @@ export default function StudentAttendancePage() {
         setBulkAttendance("");
     }, [selectedClass, selectedSection, attendanceDate]);
 
-    const fetchClasses = async () => {
-        try {
-            const response = await api.get("/academics/classes?no_paginate=true");
-            if (response.data.success || response.data.data) {
-                const list = response.data.data || [];
-                setClasses(list);
-                if (list.length > 0) {
-                    setSelectedClass(list[0].id.toString());
-                }
-            }
-        } catch (error) {
-            console.error("Error fetching classes:", error);
-            toast.error(t("failed_to_load_classes"));
-        }
-    };
-
     const handleSearch = async () => {
         if (!selectedClass || !selectedSection || !attendanceDate) {
             toast.error(t("please_select_all_criteria") || "Please select Class, Section, and Date");
@@ -199,107 +221,140 @@ export default function StudentAttendancePage() {
             try {
                 const attendanceRes = await api.get("/attendance/student", {
                     params: {
-                        school_class_id: selectedClass,
+                        class_id: selectedClass,
                         section_id: selectedSection,
                         attendance_date: attendanceDate,
-                    },
+                    }
                 });
-                
-                let payload = attendanceRes.data;
-                if (payload?.status === "Success" || payload?.success) {
-                    payload = payload.data;
+
+                if (attendanceRes.data?.data && Array.isArray(attendanceRes.data.data) && attendanceRes.data.data.length > 0) {
+                    studentsData = attendanceRes.data.data;
                 }
-                if (payload?.data && Array.isArray(payload.data)) {
-                    payload = payload.data;
-                }
-                
-                if (Array.isArray(payload) && payload.length > 0) {
-                    studentsData = payload;
-                }
-            } catch (err) {
-                console.warn("Attendance endpoint fallback:", err);
+            } catch (attErr) {
+                console.warn("Could not fetch from /attendance/student:", attErr);
             }
 
-            // Step 2: Fallback to students list
+            // Step 2: Fallback to /student/students
             if (studentsData.length === 0) {
                 try {
                     const studentsRes = await api.get("/students", {
                         params: {
-                            school_class_id: selectedClass,
+                            class_id: selectedClass,
                             section_id: selectedSection,
-                            limit: 200,
-                        },
+                            no_paginate: true,
+                        }
                     });
-                    
-                    let payload = studentsRes.data;
-                    if (payload?.status === "Success" || payload?.success) {
-                        payload = payload.data;
+
+                    if (studentsRes.data?.data && Array.isArray(studentsRes.data.data)) {
+                        studentsData = studentsRes.data.data;
+                    } else if (Array.isArray(studentsRes.data)) {
+                        studentsData = studentsRes.data;
                     }
-                    if (payload?.data && Array.isArray(payload.data)) {
-                        payload = payload.data;
-                    }
-                    
-                    if (Array.isArray(payload) && payload.length > 0) {
-                        studentsData = payload;
-                    }
-                } catch (err) {
-                    console.error("Students endpoint error:", err);
+                } catch (studErr) {
+                    console.warn("Could not fetch from /student/students:", studErr);
                 }
             }
 
-            if (studentsData.length > 0) {
-                const mappedStudents = studentsData.map((student) => {
-                    const attendance = student.attendances?.[0] || student.student_attendances?.[0];
-                    const hasLeaveRecord = student.leave_requests && student.leave_requests.length > 0;
-                    const hasApprovedLeave = attendance?.attendance === "on_leave" || hasLeaveRecord;
-                    return {
-                        id: student.id,
-                        student_id: student.id,
-                        admission_no: student.admission_no || "-",
-                        roll_no: student.roll_no || "-",
-                        name: `${student.name || ""}${student.last_name ? " " + student.last_name : ""}`.trim(),
-                        avatar: student.avatar || "",
-                        attendance: attendance?.attendance || (hasApprovedLeave ? "on_leave" : "present"),
-                        reason: attendance?.reason || (hasApprovedLeave ? "Leave System" : "Manual"),
-                        entry_time: attendance?.entry_time || "",
-                        exit_time: attendance?.exit_time || "",
-                        note: attendance?.note || "",
-                        isOnLeave: hasApprovedLeave,
-                        leaveDetails: hasApprovedLeave ? student.leave_requests?.[0] : null,
-                    };
+            // Step 3: Fetch active leave requests
+            let leaveRequests: Record<string, unknown>[] = [];
+            try {
+                const leavesRes = await api.get("/attendance/approve-leave", {
+                    params: {
+                        class_id: selectedClass,
+                        section_id: selectedSection,
+                        status: "approved",
+                        no_paginate: true,
+                    }
                 });
-                setStudents(mappedStudents);
-                setBulkAttendance("");
-                toast.success(`Loaded ${mappedStudents.length} student records`);
-            } else {
-                toast.info(t("no_students_found_for_class_section") || "No students found for this class and section");
+                if (leavesRes.data?.data && Array.isArray(leavesRes.data.data)) {
+                    leaveRequests = leavesRes.data.data;
+                }
+            } catch {
+                // optional
+            }
+
+            // Map and assemble attendance roster
+            const mappedRecords: StudentAttendanceRecord[] = studentsData.map((s, idx) => {
+                const existingAtt = (s.attendances && s.attendances.length > 0)
+                    ? s.attendances[0]
+                    : (s.student_attendances && s.student_attendances.length > 0)
+                    ? s.student_attendances[0]
+                    : null;
+
+                // Check leave status
+                const activeLeave = leaveRequests.find((l) => {
+                    if (Number(l.student_id) !== Number(s.id)) return false;
+                    const from = String(l.leave_from || l.from_date || "");
+                    const to = String(l.leave_to || l.to_date || "");
+                    return attendanceDate >= from && attendanceDate <= to;
+                });
+
+                const fullName = s.name
+                    ? (s.last_name ? `${s.name} ${s.last_name}` : s.name)
+                    : `Student #${s.id}`;
+
+                let attendanceStatus: StudentAttendanceRecord["attendance"] = "present";
+                let isOnLeave = false;
+
+                if (activeLeave) {
+                    attendanceStatus = "on_leave";
+                    isOnLeave = true;
+                } else if (existingAtt?.attendance) {
+                    attendanceStatus = existingAtt.attendance;
+                }
+
+                return {
+                    id: s.id || idx + 1,
+                    student_id: s.id,
+                    admission_no: s.admission_no || `ADM-${s.id}`,
+                    roll_no: s.roll_no || `${idx + 1}`,
+                    name: fullName,
+                    avatar: s.avatar || "",
+                    attendance: attendanceStatus,
+                    reason: existingAtt?.reason || (isOnLeave ? "Approved Leave" : "Manual"),
+                    entry_time: existingAtt?.entry_time || "",
+                    exit_time: existingAtt?.exit_time || "",
+                    note: existingAtt?.note || "",
+                    isOnLeave,
+                    leaveDetails: activeLeave as LeaveDetails | null,
+                };
+            });
+
+            setStudents(mappedRecords);
+
+            if (mappedRecords.length === 0) {
+                toast.info(t("no_students_found_for_class_section"));
             }
         } catch (error) {
-            console.error("Error searching students:", error);
-            toast.error(t("failed_to_load_students") || "Failed to load student roster");
+            console.error("Error during attendance search:", error);
+            toast.error(t("failed_to_fetch_attendance"));
         } finally {
             setLoading(false);
         }
     };
 
-    const getAutoEntryTime = () => {
+    const getAutoEntryTime = (): string => {
         let entryTime = "";
-        if (settings?.student_attendance_settings) {
-            const classSettings = (settings.student_attendance_settings as unknown as ClassAttendanceSetting[]).find(
-                (c) => String(c.class_id) === selectedClass
-            );
-            if (classSettings) {
-                const sectionSettings = classSettings.sections?.find(
-                    (s) => String(s.section_id) === selectedSection
-                );
-                if (sectionSettings) {
-                    const presentSetting = sectionSettings.settings?.find(
-                        (s) => s.type?.toLowerCase().startsWith("present")
-                    );
-                    if (presentSetting) {
-                        entryTime = presentSetting.from ? presentSetting.from.substring(0, 5) : "";
+        if (settings?.class_attendance_time) {
+            try {
+                const parsed: ClassAttendanceSetting[] = typeof settings.class_attendance_time === "string"
+                    ? JSON.parse(settings.class_attendance_time)
+                    : settings.class_attendance_time;
+
+                if (Array.isArray(parsed)) {
+                    const clsSetting = parsed.find(c => c.class_id.toString() === selectedClass);
+                    if (clsSetting && clsSetting.sections) {
+                        const secSetting = clsSetting.sections.find(s => s.section_id.toString() === selectedSection);
+                        if (secSetting && secSetting.settings) {
+                            const presentSetting = secSetting.settings.find(st => st.type === "present");
+                            if (presentSetting && presentSetting.from) {
+                                entryTime = presentSetting.from.substring(0, 5);
+                            }
+                        }
                     }
                 }
+            } catch (e) {
+                console.error("Failed to parse class_attendance_time", e);
             }
         }
         return entryTime;
@@ -320,7 +375,7 @@ export default function StudentAttendancePage() {
 
     const handleBulkAction = (value: string) => {
         setBulkAttendance(value);
-        let autoEntry = value === "present" ? getAutoEntryTime() : "";
+        const autoEntry = value === "present" ? getAutoEntryTime() : "";
 
         setStudents(prev => prev.map(s => {
             if (s.isOnLeave) return s;
@@ -331,7 +386,9 @@ export default function StudentAttendancePage() {
             return { ...s, ...updates };
         }));
 
-        toast.info(`Marked all students as ${value.toUpperCase()}`);
+        const optionObj = ATTENDANCE_OPTIONS.find(o => o.id === value);
+        const label = optionObj ? t(optionObj.key) : value;
+        toast.info(`${t("mark_all_as")}: ${label}`);
     };
 
     const handleInputChange = (studentId: number, field: keyof StudentAttendanceRecord, value: string) => {
@@ -405,9 +462,9 @@ export default function StudentAttendancePage() {
     }, [students]);
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-4 py-4 sm:py-6 font-sans">
+        <div className="w-full space-y-6 p-4 lg:p-6 font-sans bg-gray-50/10 min-h-screen">
             {/* Master Header Banner */}
-            <div className="rounded-2xl border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden">
+            <div className="rounded-xl border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm overflow-hidden">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] via-[#F8F9FE] to-[#EFF0FD]">
                     <div className="flex items-center gap-3">
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
@@ -415,13 +472,13 @@ export default function StudentAttendancePage() {
                         </span>
                         <div>
                             <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                                Student Daily Attendance Registry
+                                {t("student_daily_attendance_registry")}
                                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                                    Roll-Call System
+                                    {t("roll_call_system")}
                                 </span>
                             </h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                Record and update section-wise daily attendance records, arrival timestamps, and leave verifications.
+                                {t("student_attendance_subtitle")}
                             </p>
                         </div>
                     </div>
@@ -438,14 +495,14 @@ export default function StudentAttendancePage() {
             </div>
 
             {/* Criteria Selection Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
+            <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center justify-between gap-2.5 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-slate-100">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
                             <Filter className="h-4 w-4" />
                         </span>
                         <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
-                            {t("select_criteria") || "Select Attendance Criteria"}
+                            {t("select_criteria")}
                         </CardTitle>
                     </div>
                 </CardHeader>
@@ -455,16 +512,16 @@ export default function StudentAttendancePage() {
                         {/* Class */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-slate-700">
-                                {t("class") || "Class"} <span className="text-rose-500">*</span>
+                                {t("class")} <span className="text-rose-500">*</span>
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder={t("select") || "Select Class"} />
+                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg cursor-pointer">
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map((cls) => (
-                                        <SelectItem key={cls.id} value={cls.id.toString()}>
-                                            {cls.name}
+                                        <SelectItem key={cls.id} value={cls.id.toString()} className="cursor-pointer">
+                                            {getLocalizedClassName(cls.name)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -474,16 +531,16 @@ export default function StudentAttendancePage() {
                         {/* Section */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-slate-700">
-                                {t("section") || "Section"} <span className="text-rose-500">*</span>
+                                {t("section")} <span className="text-rose-500">*</span>
                             </Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
-                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg">
-                                    <SelectValue placeholder={t("select") || "Select Section"} />
+                                <SelectTrigger className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg cursor-pointer">
+                                    <SelectValue placeholder={t("select")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map((sec) => (
-                                        <SelectItem key={sec.id} value={sec.id.toString()}>
-                                            {sec.name}
+                                        <SelectItem key={sec.id} value={sec.id.toString()} className="cursor-pointer">
+                                            {getLocalizedSectionName(sec.name)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -493,13 +550,13 @@ export default function StudentAttendancePage() {
                         {/* Attendance Date */}
                         <div className="space-y-1.5">
                             <Label className="text-xs font-bold text-slate-700">
-                                {t("attendance_date") || "Attendance Date"} <span className="text-rose-500">*</span>
+                                {t("attendance_date")} <span className="text-rose-500">*</span>
                             </Label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={attendanceDate}
-                                onChange={(e) => setAttendanceDate(e.target.value)}
-                                className="h-9 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg"
+                                onChange={(val) => setAttendanceDate(val)}
+                                placeholder="DD/MM/YYYY"
+                                className="h-9 text-xs bg-white border-slate-200 focus-visible:ring-indigo-500 rounded-lg cursor-pointer shadow-xs"
                             />
                         </div>
 
@@ -511,7 +568,7 @@ export default function StudentAttendancePage() {
                                 className="w-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-xs font-bold rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer border-0"
                             >
                                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                                {t("search") || "Search Students"}
+                                {loading ? t("searching") : t("search")}
                             </Button>
                         </div>
                     </div>
@@ -522,34 +579,34 @@ export default function StudentAttendancePage() {
             {students.length > 0 && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-slate-400">Total Enrolled</p>
-                        <p className="text-base font-extrabold text-slate-800">{stats.total}</p>
+                        <p className="text-[10px] font-bold uppercase text-slate-400">{t("total_enrolled")}</p>
+                        <p className="text-base font-extrabold text-slate-800">{toLocaleNumber(stats.total, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-emerald-600">Present (P)</p>
-                        <p className="text-base font-extrabold text-emerald-700">{stats.present}</p>
+                        <p className="text-[10px] font-bold uppercase text-emerald-600">{t("present")} (P)</p>
+                        <p className="text-base font-extrabold text-emerald-700">{toLocaleNumber(stats.present, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-amber-600">Late (L)</p>
-                        <p className="text-base font-extrabold text-amber-700">{stats.late}</p>
+                        <p className="text-[10px] font-bold uppercase text-amber-600">{t("late")} (L)</p>
+                        <p className="text-base font-extrabold text-amber-700">{toLocaleNumber(stats.late, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-rose-50/60 rounded-xl border border-rose-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-rose-600">Absent (A)</p>
-                        <p className="text-base font-extrabold text-rose-700">{stats.absent}</p>
+                        <p className="text-[10px] font-bold uppercase text-rose-600">{t("absent")} (A)</p>
+                        <p className="text-base font-extrabold text-rose-700">{toLocaleNumber(stats.absent, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-sky-50/60 rounded-xl border border-sky-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-sky-600">Half Day (HD)</p>
-                        <p className="text-base font-extrabold text-sky-700">{stats.halfDay}</p>
+                        <p className="text-[10px] font-bold uppercase text-sky-600">{t("half_day")} (HD)</p>
+                        <p className="text-base font-extrabold text-sky-700">{toLocaleNumber(stats.halfDay, shortCode)}</p>
                     </div>
                     <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200 shadow-2xs">
-                        <p className="text-[10px] font-bold uppercase text-purple-600">On Leave / Holiday</p>
-                        <p className="text-base font-extrabold text-purple-700">{stats.onLeave + stats.holiday}</p>
+                        <p className="text-[10px] font-bold uppercase text-purple-600">{t("on_leave")} / {t("holiday")}</p>
+                        <p className="text-base font-extrabold text-purple-700">{toLocaleNumber(stats.onLeave + stats.holiday, shortCode)}</p>
                     </div>
                 </div>
             )}
 
             {/* Student Attendance List Card */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm rounded-2xl overflow-hidden pt-0">
+            <Card className="border border-gray-100 shadow-sm bg-card/50 backdrop-blur-sm rounded-xl overflow-hidden pt-0">
                 {/* Header with Title & Save Action */}
                 <CardHeader className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
                     <div className="flex items-center gap-2.5">
@@ -558,10 +615,10 @@ export default function StudentAttendancePage() {
                         </span>
                         <div>
                             <CardTitle className="text-sm font-bold text-slate-800">
-                                {t("student_list") || "Student Roll-Call List"} ({filteredStudents.length})
+                                {t("student_list")} ({toLocaleNumber(filteredStudents.length, shortCode)})
                             </CardTitle>
                             <p className="text-[11px] text-slate-500 font-mono">
-                                Date: {attendanceDate}
+                                {t("date")}: {formatDateDisplay(attendanceDate)}
                             </p>
                         </div>
                     </div>
@@ -572,36 +629,39 @@ export default function StudentAttendancePage() {
                                 <AlertDialogTrigger asChild>
                                     <Button
                                         disabled={saving || students.length === 0}
-                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-5 h-8.5 text-xs font-bold rounded-lg shadow-sm active:scale-95 flex items-center gap-1.5 border-0"
+                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-5 h-8.5 text-xs font-bold rounded-lg shadow-sm active:scale-95 flex items-center gap-1.5 border-0 cursor-pointer"
                                     >
                                         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                                        {t("save_attendance") || "Save Attendance"}
+                                        {t("save_attendance")}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent className="max-w-md rounded-2xl bg-white">
                                     <AlertDialogHeader>
                                         <AlertDialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
                                             <CheckCircle2 className="h-5 w-5 text-indigo-600" />
-                                            {t("confirm_attendance") || "Confirm Daily Attendance"}
+                                            {t("confirm_attendance")}
                                         </AlertDialogTitle>
                                         <AlertDialogDescription className="text-xs text-slate-500 leading-relaxed">
-                                            You are about to save attendance records for <strong className="text-indigo-600">{students.length} students</strong> on <strong className="text-slate-800">{attendanceDate}</strong>.
+                                            {t("confirm_attendance_desc", {
+                                                count: toLocaleNumber(students.length, shortCode),
+                                                date: formatDateDisplay(attendanceDate),
+                                            })}
                                             <br /><br />
-                                            Summary: <strong>{stats.present} Present</strong>, <strong>{stats.late} Late</strong>, <strong>{stats.absent} Absent</strong>.
+                                            {t("summary")}: <strong>{toLocaleNumber(stats.present, shortCode)} {t("present")}</strong>, <strong>{toLocaleNumber(stats.late, shortCode)} {t("late")}</strong>, <strong>{toLocaleNumber(stats.absent, shortCode)} {t("absent")}</strong>.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter className="gap-2 sm:gap-0">
-                                        <AlertDialogCancel className="text-xs font-semibold rounded-lg">
-                                            {t("cancel") || "Cancel"}
+                                        <AlertDialogCancel className="text-xs font-semibold rounded-lg cursor-pointer">
+                                            {t("cancel")}
                                         </AlertDialogCancel>
                                         <AlertDialogAction
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 handleSave();
                                             }}
-                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold rounded-lg shadow-sm"
+                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
                                         >
-                                            {saving ? "Saving..." : "Confirm & Save"}
+                                            {saving ? t("saving") : t("confirm_and_save")}
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
@@ -615,7 +675,7 @@ export default function StudentAttendancePage() {
                     <div className="px-5 py-3 bg-slate-50/70 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-bold text-slate-600 mr-1">
-                                Mark All As:
+                                {t("mark_all_as")}:
                             </span>
                             {ATTENDANCE_OPTIONS.map((opt) => (
                                 <button
@@ -629,16 +689,16 @@ export default function StudentAttendancePage() {
                                             : opt.color
                                     )}
                                 >
-                                    {opt.label}
+                                    {t(opt.key)}
                                 </button>
                             ))}
                         </div>
 
                         {/* Search in List */}
-                        <div className="relative w-full sm:w-56">
+                        <div className="relative w-full sm:w-64">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                             <Input
-                                placeholder="Search by name, roll, or adm..."
+                                placeholder={t("search_by_name_roll_or_adm")}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-8 h-8 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg shadow-none"
@@ -654,13 +714,13 @@ export default function StudentAttendancePage() {
                             <TableHeader className="bg-slate-50/80 border-b border-slate-200">
                                 <TableRow>
                                     <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 w-12 text-center">#</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[180px]">Student Profile</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Admission No</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">Roll No</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[280px]">Attendance Status</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[110px]">Entry Time</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[110px]">Exit Time</TableHead>
-                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[160px]">Note / Remarks</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[180px]">{t("student_profile")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("admission_no")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700">{t("roll_no")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[280px]">{t("attendance_status")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[110px]">{t("entry_time")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[110px]">{t("exit_time")}</TableHead>
+                                    <TableHead className="py-3 px-4 text-xs font-bold text-slate-700 min-w-[160px]">{t("note_remarks")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody className="divide-y divide-slate-100">
@@ -668,7 +728,7 @@ export default function StudentAttendancePage() {
                                     <TableRow>
                                         <TableCell colSpan={8} className="text-center py-16">
                                             <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500 mb-2" />
-                                            <p className="text-xs font-medium text-slate-500">Loading student roster...</p>
+                                            <p className="text-xs font-medium text-slate-500">{t("loading_student_roster")}</p>
                                         </TableCell>
                                     </TableRow>
                                 ) : students.length === 0 ? (
@@ -676,14 +736,14 @@ export default function StudentAttendancePage() {
                                         <TableCell colSpan={8} className="text-center py-16 text-slate-400">
                                             <AlertCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
                                             <p className="text-xs font-bold text-slate-600">
-                                                {hasSearched ? "No students found for this class and section" : "Select Class, Section, and Date to start attendance"}
+                                                {hasSearched ? t("no_students_found_for_class_section") : t("select_class_section_and_date_to_start_attendance")}
                                             </p>
                                         </TableCell>
                                     </TableRow>
                                 ) : filteredStudents.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={8} className="text-center py-12 text-slate-400">
-                                            <p className="text-xs font-bold text-slate-600">No students match &quot;{searchTerm}&quot;</p>
+                                            <p className="text-xs font-bold text-slate-600">{t("no_students_match_search", { search: searchTerm })}</p>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -697,7 +757,7 @@ export default function StudentAttendancePage() {
                                         >
                                             {/* Index */}
                                             <TableCell className="py-3 px-4 text-center text-xs font-medium text-slate-400">
-                                                {idx + 1}
+                                                {toLocaleNumber(idx + 1, shortCode)}
                                             </TableCell>
 
                                             {/* Student Profile */}
@@ -714,7 +774,7 @@ export default function StudentAttendancePage() {
                                                             {student.name}
                                                         </p>
                                                         <span className="text-[10px] text-slate-400">
-                                                            Source: {student.reason || "Manual"}
+                                                            {student.reason === "Manual" ? t("manual") : student.reason || t("manual")}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -723,13 +783,13 @@ export default function StudentAttendancePage() {
                                             {/* Admission No */}
                                             <TableCell className="py-3 px-4">
                                                 <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                                                    {student.admission_no}
+                                                    {toLocaleNumber(student.admission_no, shortCode)}
                                                 </span>
                                             </TableCell>
 
                                             {/* Roll No */}
                                             <TableCell className="py-3 px-4 text-xs font-semibold text-slate-600">
-                                                {student.roll_no}
+                                                {toLocaleNumber(student.roll_no, shortCode)}
                                             </TableCell>
 
                                             {/* Attendance Status Selection */}
@@ -737,10 +797,10 @@ export default function StudentAttendancePage() {
                                                 <TableCell colSpan={4} className="py-3 px-4">
                                                     <div className="flex items-center gap-2 bg-gradient-to-r from-amber-50 to-indigo-50 p-2 rounded-xl border border-amber-200/60">
                                                         <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-2xs uppercase">
-                                                            On Approved Leave
+                                                            {t("on_approved_leave")}
                                                         </span>
                                                         <span className="text-xs font-semibold text-indigo-700">
-                                                            {student.leaveDetails?.leaveType?.name || student.leaveDetails?.leave_type?.name || "Official Leave"}
+                                                            {student.leaveDetails?.leaveType?.name || student.leaveDetails?.leave_type?.name || t("on_leave")}
                                                         </span>
                                                         {student.leaveDetails?.reason && (
                                                             <span className="text-[11px] text-slate-500 italic truncate max-w-[220px]">
@@ -766,9 +826,9 @@ export default function StudentAttendancePage() {
                                                                                 ? opt.activeBg
                                                                                 : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                                                                         )}
-                                                                        title={opt.label}
+                                                                        title={t(opt.key)}
                                                                     >
-                                                                        <span>{opt.label}</span>
+                                                                        <span>{t(opt.key)}</span>
                                                                     </button>
                                                                 );
                                                             })}
@@ -798,7 +858,7 @@ export default function StudentAttendancePage() {
                                                     {/* Note */}
                                                     <TableCell className="py-3 px-4">
                                                         <Input
-                                                            placeholder={t("note_placeholder") || "Remarks..."}
+                                                            placeholder={t("note_remarks")}
                                                             value={student.note}
                                                             onChange={(e) => handleInputChange(student.id, 'note', e.target.value)}
                                                             className="h-8 text-xs bg-white border-slate-200 focus:ring-indigo-500 rounded-lg"

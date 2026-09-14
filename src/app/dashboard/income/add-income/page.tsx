@@ -15,7 +15,7 @@ import { useImageUrl, useBaseUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber } from "@/lib/utils";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -59,11 +59,13 @@ interface IncomeRecord {
 export default function AddIncomePage() {
     const { settings } = useSettings();
     const { symbol, formatCurrency } = useCurrencyFormatter();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const getImageUrl = useImageUrl();
     const baseApiUrl = useBaseUrl();
     const [searchTerm, setSearchTerm] = useState("");
     const [rowsPerPage, setRowsPerPage] = useState("50");
+    const [currentPage, setCurrentPage] = useState(1);
     const [incomes, setIncomes] = useState<IncomeRecord[]>([]);
     const [incomeHeads, setIncomeHeads] = useState<IncomeHead[]>([]);
     const [loading, setLoading] = useState(true);
@@ -296,21 +298,6 @@ export default function AddIncomePage() {
         toast.success(t("exported_to_pdf"));
     };
 
-    const loadImage = (url: string): Promise<HTMLImageElement> =>
-        new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            img.onload = () => resolve(img);
-            img.onerror = () => {
-                // Fallback without crossOrigin just in case it's on the same host but fails CORS
-                const fallbackImg = new Image();
-                fallbackImg.onload = () => resolve(fallbackImg);
-                fallbackImg.onerror = reject;
-                fallbackImg.src = url;
-            };
-            img.src = url;
-        });
-
     const downloadInvoicePDF = async (item: IncomeRecord) => {
         const doc = new jsPDF();
         let startY = 15;
@@ -329,7 +316,7 @@ export default function AddIncomePage() {
             return str.replace(/[^\x00-\x7F]/g, "").trim();
         };
 
-        const { header_image_url, footer_content } = invoicePrintSettings;
+        const { footer_content } = invoicePrintSettings;
 
         startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, t("invoice_uppercase"));
 
@@ -433,6 +420,13 @@ export default function AddIncomePage() {
         item.income_head_name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const itemsPerPage = parseInt(rowsPerPage, 10) || 50;
+    const totalRecords = filteredData.length;
+    const totalPages = Math.max(1, Math.ceil(totalRecords / itemsPerPage));
+    const activePage = Math.min(Math.max(1, currentPage), totalPages);
+    const startIndex = (activePage - 1) * itemsPerPage;
+    const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
     return (
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -465,9 +459,9 @@ export default function AddIncomePage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {incomeHeads.map((head) => (
-                                            <SelectItem key={head.id} value={head.id.toString()}>
-                                                {head.income_head}
-                                            </SelectItem>
+                                             <SelectItem key={head.id} value={head.id.toString()}>
+                                                 {head.income_head}
+                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -585,7 +579,7 @@ export default function AddIncomePage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{incomes.length} {t("income")} {incomes.length === 1 ? t("entry") : t("entries")}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(incomes.length, shortCode)} {t("income")} {incomes.length === 1 ? t("entry") : t("entries")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -595,22 +589,33 @@ export default function AddIncomePage() {
                                     <Input
                                         placeholder={t("search") + "..."}
                                         value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onChange={(e) => {
+                                            setSearchTerm(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
                                         className="pl-3 pr-10"
                                     />
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-                                    <SelectTrigger className="w-[70px]">
-                                        <SelectValue placeholder="50" />
+                                <Select
+                                    value={rowsPerPage}
+                                    onValueChange={(val) => {
+                                        setRowsPerPage(val);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <SelectTrigger className="w-[75px] h-9 text-xs">
+                                        <SelectValue placeholder={toLocaleNumber("50", shortCode)}>
+                                            {toLocaleNumber(rowsPerPage, shortCode)}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
+                                        <SelectItem value="10">{toLocaleNumber("10", shortCode)}</SelectItem>
+                                        <SelectItem value="25">{toLocaleNumber("25", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center border rounded-md p-1 bg-gray-50 text-gray-500">
@@ -668,19 +673,19 @@ export default function AddIncomePage() {
                                 <TableBody>
                                     {loading ? (
                                         <TableSkeleton rows={5} cols={8} />
-                                    ) : filteredData.length === 0 ? (
+                                    ) : paginatedData.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={8} className="px-4 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                                 {t("no_data_found")}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredData.map((item) => (
+                                        paginatedData.map((item) => (
                                             <TableRow key={item.id} className="text-sm">
                                                 <TableCell className="font-medium text-gray-700 py-3">{item.name}</TableCell>
                                                 <TableCell className="text-gray-600 text-xs">{item.description}</TableCell>
                                                 <TableCell className="text-gray-600">{item.invoice_number}</TableCell>
-                                                <TableCell className="text-gray-600">{formatDate(item.date)}</TableCell>
+                                                <TableCell className="text-gray-600">{toLocaleNumber(formatDate(item.date), shortCode)}</TableCell>
                                                 <TableCell className="text-gray-600">{item.income_head_name}</TableCell>
                                                 <TableCell>
                                                     {item.document ? (
@@ -698,7 +703,7 @@ export default function AddIncomePage() {
                                                         <span className="text-gray-300 text-xs">—</span>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-gray-600 text-right">{formatCurrency(item.amount)}</TableCell>
+                                                <TableCell className="text-gray-600 text-right">{toLocaleNumber(formatCurrency(item.amount), shortCode)}</TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex items-center justify-end gap-1">
                                                         <Button
@@ -733,12 +738,46 @@ export default function AddIncomePage() {
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-500 font-medium pt-2">
                             <div>
-                                {t("showing_x_to_y_of_z", { from: 1, to: filteredData.length, total: incomes.length })}
+                                {t("showing_x_to_y_of_z", {
+                                    from: toLocaleNumber(filteredData.length === 0 ? 0 : startIndex + 1, shortCode),
+                                    to: toLocaleNumber(Math.min(startIndex + itemsPerPage, filteredData.length), shortCode),
+                                    total: toLocaleNumber(filteredData.length, shortCode),
+                                })}
                             </div>
-                            <div className="flex gap-1">
-                                <Button variant="outline" size="sm" className="h-7 w-7 rounded-[10px] p-0 bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronLeft className="h-4 w-4" /></Button>
-                                <Button variant="default" size="sm" className="h-7 w-7 rounded-[10px] p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md">1</Button>
-                                <Button variant="outline" size="sm" className="h-7 w-7 rounded-[10px] p-0 bg-white border border-gray-200 text-gray-600 shadow-sm" disabled><ChevronRight className="h-4 w-4" /></Button>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 w-7 rounded-[10px] p-0 bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                    disabled={activePage <= 1}
+                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                    <Button
+                                        key={page}
+                                        size="sm"
+                                        onClick={() => setCurrentPage(page)}
+                                        className={cn(
+                                            "h-7 w-7 rounded-[10px] p-0 text-xs font-bold transition-all",
+                                            activePage === page
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-md"
+                                                : "bg-white border border-gray-200 text-gray-600 shadow-sm hover:bg-gray-100"
+                                        )}
+                                    >
+                                        {toLocaleNumber(page, shortCode)}
+                                    </Button>
+                                ))}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 w-7 rounded-[10px] p-0 bg-white border border-gray-200 text-gray-600 shadow-sm disabled:opacity-40"
+                                    disabled={activePage >= totalPages || totalPages === 0}
+                                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     </CardContent>

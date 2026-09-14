@@ -11,12 +11,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import {
     Pencil, Trash2, Search, Award, GraduationCap,
     BadgeCheck, Copy, FileSpreadsheet,
-    FileText, Printer, Columns, ChevronLeft, ChevronRight, Plus,
-    Sparkles, Calculator, CheckCircle2
+    FileText, Printer, ChevronLeft, ChevronRight, Plus,
+    Sparkles, Calculator
 } from "lucide-react";
 import {
     AlertDialog,
@@ -39,7 +38,7 @@ import {
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 
 interface GradeEntry {
     id: string;
@@ -137,12 +136,27 @@ function getExamTypeColor(typeName: string, allTypes: string[]): typeof EXAM_TYP
 }
 
 export default function MarksGradePage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const shortCode = language?.short_code || "en";
     const tt = useTranslateToast();
     const [searchTerm, setSearchTerm] = useState("");
     const [grades, setGrades] = useState<GradeEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    const getLocalizedExamType = (name?: string) => {
+        if (!name) return "";
+        const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const trans = t(key);
+        return trans && trans !== key ? trans : name;
+    };
+
+    const getLocalizedDescription = (desc?: string) => {
+        if (!desc) return "—";
+        const key = desc.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const trans = t(key);
+        return trans && trans !== key ? trans : desc;
+    };
 
     // Exam Types (dynamic from API)
     interface ExamTypeItem { id: number; name: string }
@@ -508,9 +522,9 @@ export default function MarksGradePage() {
                                 <div className="space-y-1.5 pt-1">
                                     <div className="flex items-center justify-between">
                                         <Label className="text-[10.5px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
-                                            <Calculator className="h-3 w-3" /> Quick Presets (5.00 Scale)
+                                            <Calculator className="h-3 w-3" /> {t("quick_presets_scale", { scale: toLocaleNumber("5.00", shortCode) })}
                                         </Label>
-                                        <span className="text-[10px] text-gray-400">1-click fill</span>
+                                        <span className="text-[10px] text-gray-400">{t("one_click_fill")}</span>
                                     </div>
                                     <div className="flex flex-wrap gap-1">
                                         {STANDARD_GRADE_SCALE.map((preset) => (
@@ -519,14 +533,14 @@ export default function MarksGradePage() {
                                                 type="button"
                                                 onClick={() => handleApplyPreset(preset)}
                                                 className={cn(
-                                                    "px-2 py-1 text-[10.5px] font-bold rounded-md border transition-all hover:scale-105 active:scale-95",
+                                                    "px-2 py-1 text-[10.5px] font-bold rounded-md border transition-all hover:scale-105 active:scale-95 cursor-pointer",
                                                     formData.name === preset.name && formData.percent_from === String(preset.min)
                                                         ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                                                         : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:border-indigo-300 hover:bg-indigo-50/50"
                                                 )}
-                                                title={`${preset.name}: ${preset.min}%-${preset.max}% (GP: ${preset.point.toFixed(2)})`}
+                                                title={`${preset.name}: ${toLocaleNumber(preset.min, shortCode)}%-${toLocaleNumber(preset.max, shortCode)}% (GP: ${toLocaleNumber(preset.point.toFixed(2), shortCode)})`}
                                             >
-                                                {preset.name} <span className="text-[9.5px] opacity-75 font-normal">({preset.point.toFixed(1)})</span>
+                                                {preset.name} <span className="text-[9.5px] opacity-75 font-normal">({toLocaleNumber(preset.point.toFixed(1), shortCode)})</span>
                                             </button>
                                         ))}
                                     </div>
@@ -543,7 +557,9 @@ export default function MarksGradePage() {
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {examTypes.map((type) => (
-                                                    <SelectItem key={type.id} value={type.name}>{type.name}</SelectItem>
+                                                    <SelectItem key={type.id} value={type.name}>
+                                                        {getLocalizedExamType(type.name)}
+                                                    </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -551,7 +567,7 @@ export default function MarksGradePage() {
                                             type="button"
                                             size="icon"
                                             variant="outline"
-                                            className="h-10 w-10 shrink-0 rounded-lg border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all"
+                                            className="h-10 w-10 shrink-0 rounded-lg border-gray-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer"
                                             onClick={() => setShowExamTypeDialog(true)}
                                             title={t("manage_exam_types")}
                                         >
@@ -567,7 +583,7 @@ export default function MarksGradePage() {
                                     <Input
                                         value={formData.name}
                                         onChange={(e) => setFormData({...formData, name: e.target.value})}
-                                        placeholder="e.g. A+"
+                                        placeholder={t("eg_grade_name")}
                                         className="h-10 border-gray-200 bg-gray-50/30 text-sm rounded-lg focus:ring-indigo-500 shadow-none"
                                     />
                                 </div>
@@ -581,7 +597,7 @@ export default function MarksGradePage() {
                                             type="number"
                                             value={formData.percent_from}
                                             onChange={(e) => handlePercentFromChange(e.target.value)}
-                                            placeholder="e.g. 80"
+                                            placeholder={t("eg_percent_from")}
                                             min="0"
                                             max="100"
                                             step="any"
@@ -596,7 +612,7 @@ export default function MarksGradePage() {
                                             type="number"
                                             value={formData.percent_upto}
                                             onChange={(e) => handlePercentUptoChange(e.target.value)}
-                                            placeholder="e.g. 100"
+                                            placeholder={t("eg_percent_upto")}
                                             min="0"
                                             max="100"
                                             step="any"
@@ -612,7 +628,7 @@ export default function MarksGradePage() {
                                         </Label>
                                         {formData.grade_point && (
                                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                                <Sparkles className="h-2.5 w-2.5" /> Auto GP
+                                                <Sparkles className="h-2.5 w-2.5" /> {t("auto_gp")}
                                             </span>
                                         )}
                                     </div>
@@ -622,7 +638,7 @@ export default function MarksGradePage() {
                                         min="0"
                                         value={formData.grade_point}
                                         onChange={(e) => setFormData({...formData, grade_point: e.target.value})}
-                                        placeholder="e.g. 5.00"
+                                        placeholder={t("eg_grade_point")}
                                         className="h-10 border-gray-200 bg-gray-50/30 text-sm font-bold text-indigo-600 rounded-lg focus:ring-indigo-500 shadow-none"
                                     />
                                 </div>
@@ -641,14 +657,14 @@ export default function MarksGradePage() {
 
                                 <div className="flex gap-2 pt-2 justify-end">
                                     {editMode && (
-                                        <Button onClick={resetForm} variant="outline" className="h-9 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-4">
+                                        <Button onClick={resetForm} variant="outline" className="h-9 rounded-full text-[10px] font-bold uppercase tracking-widest border-gray-200 px-4 cursor-pointer">
                                             {t("cancel")}
                                         </Button>
                                     )}
                                     <Button
                                         onClick={handleSave}
                                         disabled={saving}
-                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95 shadow-xs"
+                                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white h-9 text-[10px] font-bold uppercase tracking-wider rounded-full px-6 transition-all active:scale-95 shadow-xs cursor-pointer"
                                     >
                                         {saving ? t("saving") : editMode ? t("update") : t("save")}
                                     </Button>
@@ -668,19 +684,19 @@ export default function MarksGradePage() {
                                 </span>
                                 <div>
                                     <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("marks_grade")}</CardTitle>
-                                    <p className="text-[11px] text-gray-500 mt-1">{t("x_grades", { count: totalEntries })}</p>
+                                    <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(totalEntries, shortCode)} {t("grades")}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Select value={rowsPerPage} onValueChange={(v) => { setRowsPerPage(v); setCurrentPage(1); }}>
-                                    <SelectTrigger className="w-[65px] h-8 text-xs border-gray-200 rounded-lg">
-                                        <SelectValue placeholder="50" />
+                                    <SelectTrigger className="w-[75px] h-8 text-xs border-gray-200 rounded-lg bg-white">
+                                        <SelectValue placeholder={toLocaleNumber("50", shortCode)} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="20">20</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                        <SelectItem value="100">100</SelectItem>
-                                        <SelectItem value="500">500</SelectItem>
+                                        <SelectItem value="20">{toLocaleNumber("20", shortCode)}</SelectItem>
+                                        <SelectItem value="50">{toLocaleNumber("50", shortCode)}</SelectItem>
+                                        <SelectItem value="100">{toLocaleNumber("100", shortCode)}</SelectItem>
+                                        <SelectItem value="500">{toLocaleNumber("500", shortCode)}</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <div className="flex items-center gap-1 text-gray-400">
@@ -695,9 +711,6 @@ export default function MarksGradePage() {
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" onClick={() => window.print()} title={t("print")}>
                                         <Printer className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-indigo-50 hover:text-indigo-600 transition-all rounded-lg cursor-pointer" title={t("columns")}>
-                                        <Columns className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>
@@ -751,7 +764,7 @@ export default function MarksGradePage() {
                                                             >
                                                                 <div className="flex items-center gap-1.5">
                                                                     <span className={`inline-block w-2 h-2 rounded-full ${color.accent}`} />
-                                                                    {type}
+                                                                    {getLocalizedExamType(type)}
                                                                 </div>
                                                             </TableCell>
                                                         ) : null}
@@ -763,29 +776,29 @@ export default function MarksGradePage() {
                                                         <TableCell className="py-3 px-4">
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full font-bold text-[11px] border border-gray-200 dark:border-gray-700">
-                                                                    {entry.percent_from}%
+                                                                    {toLocaleNumber(entry.percent_from, shortCode)}%
                                                                 </span>
                                                                 <span className="text-gray-400 text-xs">→</span>
                                                                 <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-0.5 rounded-full font-bold text-[11px] border border-gray-200 dark:border-gray-700">
-                                                                    {entry.percent_upto}%
+                                                                    {toLocaleNumber(entry.percent_upto, shortCode)}%
                                                                 </span>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="py-3 px-4 text-center font-black text-indigo-600 dark:text-indigo-400">
                                                             <div className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 text-xs">
                                                                 <Award className="h-3 w-3 text-amber-600" />
-                                                                {parseFloat(entry.grade_point).toFixed(2)}
+                                                                {toLocaleNumber(parseFloat(entry.grade_point).toFixed(2), shortCode)}
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="py-3 px-4 text-gray-600 dark:text-gray-400 italic text-[11.5px] max-w-[200px] truncate">
-                                                            {entry.description || "—"}
+                                                            {getLocalizedDescription(entry.description)}
                                                         </TableCell>
                                                         <TableCell className="py-3 px-4 text-right">
                                                             <div className="flex items-center justify-end gap-1.5">
-                                                                <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all">
+                                                                <Button size="icon" variant="ghost" onClick={() => handleEdit(entry)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-xs transition-all cursor-pointer">
                                                                     <Pencil className="h-3.5 w-3.5" />
                                                                 </Button>
-                                                                <Button size="icon" variant="ghost" onClick={() => setDeleteId(entry.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-xs transition-all">
+                                                                <Button size="icon" variant="ghost" onClick={() => setDeleteId(entry.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-xs transition-all cursor-pointer">
                                                                     <Trash2 className="h-3.5 w-3.5" />
                                                                 </Button>
                                                             </div>
@@ -802,25 +815,25 @@ export default function MarksGradePage() {
                                 <div className="flex items-center justify-between text-[11px] text-gray-500 font-bold pt-4 uppercase tracking-tight">
                                     <div>
                                         {t("showing_x_to_y_of_z", {
-                                            from: ((currentPage - 1) * itemsPerPage) + 1,
-                                            to: Math.min(currentPage * itemsPerPage, totalEntries),
-                                            total: totalEntries
+                                            from: toLocaleNumber(((currentPage - 1) * itemsPerPage) + (totalEntries > 0 ? 1 : 0), shortCode),
+                                            to: toLocaleNumber(Math.min(currentPage * itemsPerPage, totalEntries), shortCode),
+                                            total: toLocaleNumber(totalEntries, shortCode)
                                         })}
                                     </div>
                                     <div className="flex gap-1.5">
                                         <Button
                                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                             disabled={currentPage === 1}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
                                         <Button size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm">
-                                            {currentPage}
+                                            {toLocaleNumber(currentPage, shortCode)}
                                         </Button>
                                         <Button
                                             onClick={() => setCurrentPage(p => p + 1)}
-                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40"
+                                            size="sm" className="h-8 w-8 p-0 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white border-0 rounded-[10px] shadow-sm disabled:opacity-40 cursor-pointer"
                                             disabled={currentPage >= totalPages}
                                         >
                                             <ChevronRight className="h-4 w-4" />
@@ -924,7 +937,7 @@ export default function MarksGradePage() {
                                 <Input
                                     value={newExamTypeName}
                                     onChange={(e) => setNewExamTypeName(e.target.value)}
-                                    placeholder="e.g. General Purpose (GPA)"
+                                    placeholder={t("eg_exam_type")}
                                     className="h-10 text-sm border-gray-200 rounded-lg shadow-none"
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") {

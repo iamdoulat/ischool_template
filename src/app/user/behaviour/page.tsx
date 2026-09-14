@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import {
     ShieldCheck,
     ShieldAlert,
@@ -45,7 +45,8 @@ function SkeletonRow() {
 }
 
 export default function UserBehaviourPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [data, setData] = useState<BehaviourData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -61,7 +62,7 @@ export default function UserBehaviourPage() {
                 setLoading(false);
             }
         })();
-    }, []);
+    }, [t]);
 
     const totalPoints = data?.total_points ?? 0;
     const totalIncidents = data?.total_incidents ?? 0;
@@ -100,7 +101,7 @@ export default function UserBehaviourPage() {
                                     <div>
                                         <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">{t("total_points")}</p>
                                         <p className={cn("mt-1.5 text-2xl font-bold", positivePoints ? "text-green-700" : "text-red-700")}>
-                                            {positivePoints ? "+" : ""}{totalPoints}
+                                            {positivePoints ? "+" : ""}{toLocaleNumber(totalPoints, langCode)}
                                         </p>
                                     </div>
                                     <span className={cn("flex h-9 w-9 items-center justify-center rounded-lg", positivePoints ? "bg-emerald-50 text-emerald-500" : "bg-rose-50 text-rose-500")}>
@@ -113,7 +114,7 @@ export default function UserBehaviourPage() {
                                 <div className="px-4 py-3 flex items-center justify-between">
                                     <div>
                                         <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none">{t("total_incidents")}</p>
-                                        <p className="mt-1.5 text-2xl font-bold text-indigo-700">{totalIncidents}</p>
+                                        <p className="mt-1.5 text-2xl font-bold text-indigo-700">{toLocaleNumber(totalIncidents, langCode)}</p>
                                     </div>
                                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
                                         <ShieldAlert className="h-5 w-5" />
@@ -159,7 +160,7 @@ export default function UserBehaviourPage() {
                                                     )}
                                                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-[10px] text-gray-400 font-medium">
                                                         <span className="flex items-center gap-1">
-                                                            <Calendar className="h-3 w-3" /> {item.incident_date || "—"}
+                                                            <Calendar className="h-3 w-3" /> {item.incident_date ? toLocaleNumber(item.incident_date, langCode) : "—"}
                                                         </span>
                                                         {item.assigned_by && (
                                                             <span className="flex items-center gap-1">
@@ -175,7 +176,7 @@ export default function UserBehaviourPage() {
                                                     positive ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
                                                 )}>
                                                     <Zap className="h-3 w-3" />
-                                                    {positive ? "+" : ""}{item.point}
+                                                    {positive ? "+" : ""}{toLocaleNumber(item.point, langCode)}
                                                 </span>
                                             </div>
                                         </div>

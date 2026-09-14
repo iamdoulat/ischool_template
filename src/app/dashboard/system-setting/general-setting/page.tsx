@@ -27,23 +27,16 @@ import { Textarea } from "@/components/ui/textarea";
 import {
     Sun,
     Moon,
-    Grid2X2,
     LayoutGrid,
-    MoveHorizontal,
     Maximize,
     Minimize,
     Palette,
     Image as ImageIcon,
     Loader2,
     Upload,
-    RefreshCw,
     Clock,
     Trash2,
     Settings,
-    Search,
-    ChevronDown,
-    CheckCircle2,
-    AlertTriangle,
     Save,
     MessageSquare,
     Check,
@@ -53,14 +46,56 @@ import {
     ShieldCheck
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import axios from "axios";
 import { useEffect } from "react";
 import { useSettings } from "@/components/providers/settings-provider";
 import api from "@/lib/api";
-import { getImageUrl, useImageUrl } from "@/lib/image-url";
+import { getImageUrl } from "@/lib/image-url";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/hooks/use-translation";
+import { 
+    translateRoleName, 
+    translateDayName, 
+    translateAttendanceType, 
+    translateClassName, 
+    translateSectionName, 
+    translateFeeItemName, 
+    toLocaleNumber 
+} from "@/lib/utils";
+
+interface AttendanceSetting {
+    type: string;
+    from: string;
+    upto: string;
+    total: string;
+}
+
+interface StaffAttendanceRole {
+    role: string;
+    settings: AttendanceSetting[];
+}
+
+interface StudentAttendanceSection {
+    section_id: number | string;
+    section_name: string;
+    settings: AttendanceSetting[];
+}
+
+interface StudentAttendanceClass {
+    class_id: number | string;
+    class_name: string;
+    sections: StudentAttendanceSection[];
+}
+
+interface LogoCardProps {
+    title: string;
+    field: string;
+    dimensions: string;
+    value: string;
+    onUpload: (field: string, file: File) => Promise<string | null>;
+    onSaveSuccess?: (field: string, newUrl: string) => void;
+    t: (key: string) => string;
+}
 
 const tabs = [
     "General Setting",
@@ -79,27 +114,31 @@ const tabs = [
     "Miscellaneous",
 ];
 
-function LogoCard({
-    title,
-    field,
-    dimensions,
-    value,
-    onUpload,
-    onSaveSuccess,
-    t,
-}: {
-    title: string;
-    field: string;
-    dimensions: string;
-    value: string;
-    onUpload?: (field: string, file: File) => Promise<string | null>;
-    onSaveSuccess?: (field: string, newUrl: string) => void;
-    t?: (key: string) => string;
-}) {
+const tabKeys: Record<string, string> = {
+    "General Setting": "general_setting",
+    "Logo": "logo",
+    "Login Page Background": "login_page_background",
+    "Backend Theme": "backend_theme",
+    "Mobile App": "mobile_app",
+    "Student / Guardian Panel": "student_guardian_panel",
+    "Fees": "fees",
+    "ID Auto Generation": "id_auto_generation",
+    "Attendance Type": "attendance_type",
+    "Google Drive Setting": "google_drive_setting",
+    "Whatsapp Settings": "whatsapp_settings",
+    "Chat": "chat",
+    "Maintenance": "maintenance",
+    "Miscellaneous": "miscellaneous",
+};
+
+function LogoCard({ title, field, dimensions, value, onUpload, onSaveSuccess, t }: LogoCardProps) {
     const [uploading, setUploading] = useState(false);
     const [imgErrorState, setImgErrorState] = useState<'initial' | 'proxy' | 'failed'>('initial');
-    const getImageUrl = useImageUrl();
-    const tr = t || ((key: string) => key);
+    const [prevKey, setPrevKey] = useState(`${field}_${value}`);
+    if (prevKey !== `${field}_${value}`) {
+        setPrevKey(`${field}_${value}`);
+        setImgErrorState('initial');
+    }
 
     const defaultLogos: Record<string, string> = {
         print_logo: "/logo-print.png",
@@ -114,10 +153,6 @@ function LogoCard({
         login_page_background_admin: "/bg-admin.jpg",
         login_page_background_user: "/bg-user.jpg",
     };
-
-    useEffect(() => {
-        setImgErrorState('initial');
-    }, [value, field]);
 
     const effectiveValue = value || defaultLogos[field] || "";
     const primaryUrl = effectiveValue ? getImageUrl(effectiveValue) : (defaultLogos[field] || "");
@@ -148,14 +183,15 @@ function LogoCard({
     };
 
     return (
-        <div className="bg-white border border-gray-100 rounded-lg p-4 space-y-4 flex flex-col items-center justify-between shadow-sm hover:shadow-md transition-shadow duration-300 min-h-[220px]">
+        <div className="bg-white dark:bg-card border border-gray-100 dark:border-gray-800 rounded-lg p-4 space-y-4 flex flex-col items-center justify-between shadow-sm hover:shadow-md transition-shadow duration-300 min-h-[220px]">
             <div className="w-full text-left">
-                <h3 className="text-xs font-bold text-gray-700">{title}</h3>
+                <h3 className="text-xs font-bold text-gray-700 dark:text-gray-200">{title}</h3>
             </div>
 
             <div className="flex-1 flex flex-col items-center justify-center space-y-3 w-full py-2">
-                <div className="relative group overflow-hidden rounded-md border border-gray-50 bg-gray-50/50 flex items-center justify-center p-2 min-h-[100px] w-full">
+                <div className="relative group overflow-hidden rounded-md border border-gray-50 dark:border-gray-800 bg-gray-50/50 dark:bg-muted/30 flex items-center justify-center p-2 min-h-[100px] w-full">
                     {effectiveValue && imgErrorState !== 'failed' ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img
                             key={`${field}-${effectiveValue}-${imgErrorState}`}
                             src={displaySrc}
@@ -167,13 +203,13 @@ function LogoCard({
                         <ImageIcon className="h-10 w-10 text-gray-300" />
                     )}
                     {uploading && (
-                        <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center z-10 font-bold text-xs uppercase tracking-tight text-indigo-100">
+                        <div className="absolute inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-10 font-bold text-xs uppercase tracking-tight text-indigo-100">
                             <Loader2 className="h-5 w-5 text-indigo-500 animate-spin" />
                         </div>
                     )}
                 </div>
-                <div className="px-2 py-0.5 rounded border border-indigo-100 bg-indigo-50/30">
-                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-tight">({dimensions})</span>
+                <div className="px-2 py-0.5 rounded border border-indigo-100 dark:border-indigo-950 bg-indigo-50/30 dark:bg-indigo-950/30">
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tight">({dimensions})</span>
                 </div>
             </div>
 
@@ -190,7 +226,7 @@ function LogoCard({
                     variant="ghost"
                     asChild
                     disabled={uploading}
-                    className="w-full h-8 text-xs font-bold text-[#FF9800] hover:text-[#6366F1] bg-gray-50 hover:bg-indigo-50 transition-all rounded-full shadow-sm"
+                    className="w-full h-8 text-xs font-bold text-[#FF9800] hover:text-[#6366F1] bg-gray-50 dark:bg-muted hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-all rounded-full shadow-sm"
                 >
                     <label htmlFor={`upload-${field}`} className="cursor-pointer flex items-center justify-center gap-2">
                         {uploading ? (
@@ -198,7 +234,7 @@ function LogoCard({
                         ) : (
                             <Upload className="h-3 w-3" />
                         )}
-                        {tr("update")}
+                        {t("update")}
                     </label>
                 </Button>
             </div>
@@ -207,7 +243,7 @@ function LogoCard({
 }
 
 export default function GeneralSettingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { refreshSettings, updateSettingsLocal } = useSettings();
     const [activeTab, setActiveTab] = useState("General Setting");
     const [loading, setLoading] = useState(false);
@@ -315,7 +351,7 @@ export default function GeneralSettingPage() {
                 ]
             },
         ],
-        student_attendance_settings: [] as any[],
+        student_attendance_settings: [] as StudentAttendanceClass[],
 
         // Google Drive
         google_client_id: "",
@@ -439,29 +475,29 @@ export default function GeneralSettingPage() {
         try {
             const response = await api.get("/system-setting/general-setting");
             if (response.data.status === "Success" || response.data.status === "success" || response.data.data) {
-                const incomingData = response.data.data || response.data || {};
+                const incomingData = (response.data.data || response.data || {}) as Record<string, unknown>;
 
                 setFormData(prev => {
-                    const normalizedData: any = { ...prev };
+                    const normalizedData: Record<string, unknown> = { ...prev };
 
-                    Object.keys(prev).forEach(key => {
-                        const value = incomingData[key];
+                    (Object.keys(prev) as Array<keyof typeof prev>).forEach(key => {
+                        const value = incomingData[key as string];
 
                         // Handle boolean values
-                        if (typeof (prev as any)[key] === 'boolean') {
-                            normalizedData[key] = (value === 1 || value === true || value === '1' || value === 'true');
+                        if (typeof prev[key] === 'boolean') {
+                            normalizedData[key as string] = (value === 1 || value === true || value === '1' || value === 'true');
                         }
                         // Handle array values (e.g., student_attendance_settings, fees_print_fees_receipt_for)
-                        else if (Array.isArray((prev as any)[key])) {
-                            normalizedData[key] = Array.isArray(value) ? value : [];
+                        else if (Array.isArray(prev[key])) {
+                            normalizedData[key as string] = Array.isArray(value) ? value : [];
                         }
                         // Handle numeric values
-                        else if (typeof (prev as any)[key] === 'number') {
-                            normalizedData[key] = (value !== null && value !== undefined) ? Number(value) : (prev as any)[key];
+                        else if (typeof prev[key] === 'number') {
+                            normalizedData[key as string] = (value !== null && value !== undefined) ? Number(value) : prev[key];
                         }
                         // Handle string values
                         else {
-                            normalizedData[key] = (value !== null && value !== undefined) ? String(value) : "";
+                            normalizedData[key as string] = (value !== null && value !== undefined) ? String(value) : "";
                         }
                     });
 
@@ -497,7 +533,7 @@ export default function GeneralSettingPage() {
                         if (!normalizedData.file_upload_path && savedUploadPath) normalizedData.file_upload_path = savedUploadPath;
                     }
 
-                    return normalizedData;
+                    return normalizedData as typeof prev;
                 });
             }
         } catch (error) {
@@ -511,13 +547,13 @@ export default function GeneralSettingPage() {
         fetchSettings();
     }, []);
 
-    const handleChange = (field: string, value: any) => {
+    const handleChange = (field: string, value: unknown) => {
         setFormData(prev => ({ ...prev, [field]: value }));
 
         // Real-time auto preview for theme, font size, and PWA fields
         const realTimeFields = ['theme_mode', 'skins', 'side_menu', 'primary_color', 'school_name_title_color', 'box_content', 'header_desktop_font_size', 'header_mobile_font_size', 'pwa_app_short_name', 'pwa_app_description'];
         if (realTimeFields.includes(field)) {
-            updateSettingsLocal({ [field]: value });
+            updateSettingsLocal({ [field]: value as string });
             if (field === 'primary_color' && typeof window !== 'undefined') {
                 localStorage.setItem('ischool_primary_color', String(value));
                 document.documentElement.style.setProperty('--sidebar-header-bg', String(value));
@@ -525,7 +561,7 @@ export default function GeneralSettingPage() {
                 handleSave({ ...formData, [field]: value });
             }
             if (field === 'school_name_title_color' && typeof window !== 'undefined') {
-                document.documentElement.style.setProperty('--preview-header-title-color', value || '');
+                document.documentElement.style.setProperty('--preview-header-title-color', String(value || ''));
                 localStorage.setItem('school_name_title_color', String(value));
                 handleSave({ ...formData, [field]: value });
             }
@@ -547,11 +583,10 @@ export default function GeneralSettingPage() {
         if (category === 'staff' && typeof roleIndex === 'number') {
             const currentStaffSettings = [...formData.staff_attendance_settings];
             const roleSettings = [...currentStaffSettings[roleIndex].settings];
-            roleSettings[index] = { ...roleSettings[index] as any, [field]: value };
-            currentStaffSettings[roleIndex] = { ...currentStaffSettings[roleIndex] as any, settings: roleSettings };
+            roleSettings[index] = { ...roleSettings[index], [field]: value };
+            currentStaffSettings[roleIndex] = { ...currentStaffSettings[roleIndex], settings: roleSettings };
             setFormData(prev => ({ ...prev, staff_attendance_settings: currentStaffSettings }));
         }
-        // Student handling removed from here, used dedicated function below
     };
 
     const handleStudentAttendanceChange = (classIndex: number, sectionIndex: number, settingIndex: number, field: string, value: string) => {
@@ -571,12 +606,12 @@ export default function GeneralSettingPage() {
         setFormData(prev => ({ ...prev, student_attendance_settings: currentSettings }));
     };
 
-    const handleSave = async (overrideData?: Record<string, any>) => {
+    const handleSave = async (overrideData?: Record<string, unknown>) => {
         setSaving(true);
         try {
-            const isReactEvent = overrideData && (overrideData.nativeEvent || overrideData.target || overrideData._reactName || typeof overrideData.preventDefault === 'function');
+            const isReactEvent = overrideData && ('nativeEvent' in overrideData || 'target' in overrideData || '_reactName' in overrideData || typeof (overrideData as { preventDefault?: unknown }).preventDefault === 'function');
             const dataToSave = (overrideData && !isReactEvent) ? overrideData : formData;
-            const payload = { ...dataToSave } as Record<string, any>;
+            const payload = { ...dataToSave } as Record<string, unknown>;
             
             // Persist font sizes in localStorage so font preference is preserved
             if (payload.header_desktop_font_size !== undefined && payload.header_desktop_font_size !== null && typeof window !== 'undefined') {
@@ -617,9 +652,10 @@ export default function GeneralSettingPage() {
                 setIsSaveDialogOpen(false);
                 return true;
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error saving general settings:", error);
-            toast("error", error.response?.data?.message || t("failed_to_save_general_settings"));
+            const err = error as { response?: { data?: { message?: string } } };
+            toast("error", err.response?.data?.message || t("failed_to_save_general_settings"));
         } finally {
             setSaving(false);
         }
@@ -703,13 +739,13 @@ export default function GeneralSettingPage() {
         try {
             const res = await api.post("/system-setting/clear-cache");
             if (res.data?.success || res.data?.status === "success") {
-                toast("success", "System cache cleared successfully!");
+                toast("success", t("system_cache_cleared_successfully"));
             } else {
-                toast("success", "Cache cleared!");
+                toast("success", t("system_cache_cleared_successfully"));
             }
         } catch (error) {
             console.error("Failed to clear system cache:", error);
-            toast("error", "Failed to clear system cache.");
+            toast("error", t("failed_to_clear_system_cache"));
         } finally {
             setClearingCache(false);
         }
@@ -749,101 +785,101 @@ export default function GeneralSettingPage() {
             case "General Setting":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("general_setting")}</h2>
+                        <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 pb-2 border-b border-gray-100 dark:border-gray-800">{t("general_setting")}</h2>
 
                         <div className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                                 <div className="space-y-1.5 md:col-span-6 lg:col-span-7">
-                                    <Label className="text-xs font-medium text-gray-600">{t("school_name")} <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("school_name")} <span className="text-red-500">*</span></Label>
                                     <Input
                                         value={formData.school_name}
                                         onChange={(e) => handleChange("school_name", e.target.value)}
-                                        placeholder="Enter School Name"
+                                        placeholder={t("enter_school_name")}
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded w-full"
                                     />
                                 </div>
                                 <div className="space-y-1.5 md:col-span-3 lg:col-span-2.5">
-                                    <Label className="text-xs font-medium text-gray-600 whitespace-nowrap">Desktop Header Font (px)</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">{t("desktop_header_font")}</Label>
                                     <Input
                                         type="number"
                                         value={formData.header_desktop_font_size || ""}
                                         onChange={(e) => handleChange("header_desktop_font_size", e.target.value)}
-                                        placeholder="e.g. 22"
+                                        placeholder={t("eg_22")}
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded max-w-[130px] w-full"
                                     />
                                 </div>
                                 <div className="space-y-1.5 md:col-span-3 lg:col-span-2.5">
-                                    <Label className="text-xs font-medium text-gray-600 whitespace-nowrap">Mobile Header Font (px)</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">{t("mobile_header_font")}</Label>
                                     <Input
                                         type="number"
                                         value={formData.header_mobile_font_size || ""}
                                         onChange={(e) => handleChange("header_mobile_font_size", e.target.value)}
-                                        placeholder="e.g. 14"
+                                        placeholder={t("eg_14")}
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded max-w-[130px] w-full"
                                     />
                                 </div>
                                 <div className="space-y-1.5 md:col-span-12">
-                                    <Label className="text-xs font-medium text-gray-600">{t("school_slogan")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("school_slogan")}</Label>
                                     <Input
                                         value={formData.school_slogan}
                                         onChange={(e) => handleChange("school_slogan", e.target.value)}
-                                        placeholder="Enter School Slogan"
+                                        placeholder={t("enter_school_slogan")}
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
                                 <div className="space-y-1.5 md:col-span-12">
-                                    <Label className="text-xs font-medium text-gray-600">{t("school_description")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("school_description")}</Label>
                                     <Textarea
                                         value={formData.school_description}
                                         onChange={(e) => handleChange("school_description", e.target.value)}
-                                        placeholder="Enter School Description"
+                                        placeholder={t("enter_school_description")}
                                         className="min-h-[100px] text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
                                 <div className="space-y-1.5 md:col-span-6 lg:col-span-4">
-                                    <Label className="text-xs font-medium text-gray-600">{t("school_code")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("school_code")}</Label>
                                     <Input
                                         value={formData.school_code}
                                         onChange={(e) => handleChange("school_code", e.target.value)}
-                                        placeholder="Enter School Code"
+                                        placeholder={t("enter_school_code")}
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label className="text-xs font-medium text-gray-600">{t("address")} <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("address")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={formData.address}
                                     onChange={(e) => handleChange("address", e.target.value)}
-                                    placeholder="Enter School Address"
+                                    placeholder={t("enter_school_address")}
                                     className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                 />
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50 dark:border-gray-800">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t("top_bar")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("phone")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("phone")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.phone}
                                             onChange={(e) => handleChange("phone", e.target.value)}
-                                            placeholder="Enter Phone Number"
+                                            placeholder={t("enter_phone_number")}
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("email")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("email")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.email}
                                             onChange={(e) => handleChange("email", e.target.value)}
-                                            placeholder="Enter School Email"
+                                            placeholder={t("enter_school_email")}
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("facebook_url")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("facebook_url")}</Label>
                                         <Input
                                             value={formData.facebook_url}
                                             onChange={(e) => handleChange("facebook_url", e.target.value)}
@@ -852,7 +888,7 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("twitter_url")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("twitter_url")}</Label>
                                         <Input
                                             value={formData.twitter_url}
                                             onChange={(e) => handleChange("twitter_url", e.target.value)}
@@ -861,7 +897,7 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("instagram_url")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("instagram_url")}</Label>
                                         <Input
                                             value={formData.instagram_url}
                                             onChange={(e) => handleChange("instagram_url", e.target.value)}
@@ -870,7 +906,7 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("youtube_url")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("youtube_url")}</Label>
                                         <Input
                                             value={formData.youtube_url}
                                             onChange={(e) => handleChange("youtube_url", e.target.value)}
@@ -879,7 +915,7 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("linkedin_url")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("linkedin_url")}</Label>
                                         <Input
                                             value={formData.linkedin_url}
                                             onChange={(e) => handleChange("linkedin_url", e.target.value)}
@@ -890,11 +926,11 @@ export default function GeneralSettingPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50 dark:border-gray-800">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t("contact_form")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("receiver_email")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("receiver_email")}</Label>
                                         <Input
                                             value={formData.contact_form_receiver_email}
                                             onChange={(e) => handleChange("contact_form_receiver_email", e.target.value)}
@@ -905,55 +941,48 @@ export default function GeneralSettingPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50 dark:border-gray-800">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t("academic_session")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("session")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("session")} <span className="text-red-500">*</span></Label>
                                         <Select value={formData.session} onValueChange={(val) => handleChange("session", val)}>
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select Session" />
+                                                <SelectValue placeholder={t("select_session")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="2024-25">2024-25</SelectItem>
-                                                <SelectItem value="2025-26">2025-26</SelectItem>
-                                                <SelectItem value="2026-27">2026-27</SelectItem>
+                                                <SelectItem value="2024-25">{toLocaleNumber("2024-25", language?.short_code)}</SelectItem>
+                                                <SelectItem value="2025-26">{toLocaleNumber("2025-26", language?.short_code)}</SelectItem>
+                                                <SelectItem value="2026-27">{toLocaleNumber("2026-27", language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("session_start_month")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("session_start_month")} <span className="text-red-500">*</span></Label>
                                         <Select value={formData.session_start_month} onValueChange={(val) => handleChange("session_start_month", val)}>
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select Month" />
+                                                <SelectValue placeholder={t("select_month")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="January">January</SelectItem>
-                                                <SelectItem value="February">February</SelectItem>
-                                                <SelectItem value="March">March</SelectItem>
-                                                <SelectItem value="April">April</SelectItem>
-                                                <SelectItem value="May">May</SelectItem>
-                                                <SelectItem value="June">June</SelectItem>
-                                                <SelectItem value="July">July</SelectItem>
-                                                <SelectItem value="August">August</SelectItem>
-                                                <SelectItem value="September">September</SelectItem>
-                                                <SelectItem value="October">October</SelectItem>
-                                                <SelectItem value="November">November</SelectItem>
-                                                <SelectItem value="December">December</SelectItem>
+                                                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((month) => (
+                                                    <SelectItem key={month} value={month}>
+                                                        {translateFeeItemName(month, language?.short_code)}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50 dark:border-gray-800">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t("date_time")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("date_format")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("date_format")} <span className="text-red-500">*</span></Label>
                                         <Select value={formData.date_format} onValueChange={(val) => handleChange("date_format", val)}>
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select Format" />
+                                                <SelectValue placeholder={t("select_format")} />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="dd/mm/yyyy">dd/mm/yyyy</SelectItem>
@@ -963,57 +992,55 @@ export default function GeneralSettingPage() {
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("timezone")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("timezone")} <span className="text-red-500">*</span></Label>
                                         <Select value={formData.timezone} onValueChange={(val) => handleChange("timezone", val)}>
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select Timezone" />
+                                                <SelectValue placeholder={t("select_timezone")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="Asia/Kolkata">(GMT+05:30) Asia, Kolkata</SelectItem>
-                                                <SelectItem value="Asia/Dhaka">(GMT+06:00) Asia, Dhaka</SelectItem>
-                                                <SelectItem value="UTC">UTC</SelectItem>
+                                                <SelectItem value="Asia/Kolkata">(GMT+05:30) {t("asia_kolkata")}</SelectItem>
+                                                <SelectItem value="Asia/Dhaka">(GMT+06:00) {t("asia_dhaka")}</SelectItem>
+                                                <SelectItem value="UTC">{t("utc")}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("time_format")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("time_format")} <span className="text-red-500">*</span></Label>
                                         <Select value={formData.time_format} onValueChange={(val) => handleChange("time_format", val)}>
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select Format" />
+                                                <SelectValue placeholder={t("select_format")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="12">12 Hours (AM/PM)</SelectItem>
-                                                <SelectItem value="24">24 Hours</SelectItem>
+                                                <SelectItem value="12">{t("12_hours_am_pm")}</SelectItem>
+                                                <SelectItem value="24">{t("24_hours")}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("start_day_of_week")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("start_day_of_week")} <span className="text-red-500">*</span></Label>
                                         <Select value={formData.start_day_of_week} onValueChange={(val) => handleChange("start_day_of_week", val)}>
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select Day" />
+                                                <SelectValue placeholder={t("select_day")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="Monday">Monday</SelectItem>
-                                                <SelectItem value="Tuesday">Tuesday</SelectItem>
-                                                <SelectItem value="Wednesday">Wednesday</SelectItem>
-                                                <SelectItem value="Thursday">Thursday</SelectItem>
-                                                <SelectItem value="Friday">Friday</SelectItem>
-                                                <SelectItem value="Saturday">Saturday</SelectItem>
-                                                <SelectItem value="Sunday">Sunday</SelectItem>
+                                                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                                                    <SelectItem key={day} value={day}>
+                                                        {translateDayName(day, language?.short_code)}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50 dark:border-gray-800">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t("currency")}</h3>
                                 <div className="space-y-1.5 max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("currency_format")} <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("currency_format")} <span className="text-red-500">*</span></Label>
                                     <Select value={formData.currency_format} onValueChange={(val) => handleChange("currency_format", val)}>
                                         <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                            <SelectValue placeholder="Select Format" />
+                                            <SelectValue placeholder={t("select_format")} />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="1,23,45,678.00">1,23,45,678.00</SelectItem>
@@ -1023,11 +1050,11 @@ export default function GeneralSettingPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50 dark:border-gray-800">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t("file_upload_path")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("base_url")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("base_url")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.base_url}
                                             onChange={(e) => handleChange("base_url", e.target.value)}
@@ -1036,7 +1063,7 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("file_upload_path")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("file_upload_path")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.file_upload_path}
                                             onChange={(e) => handleChange("file_upload_path", e.target.value)}
@@ -1048,53 +1075,53 @@ export default function GeneralSettingPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-4 pt-4 border-t border-gray-50/50">
+                            <div className="space-y-4 pt-4 border-t border-gray-50/50 dark:border-gray-800">
                                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t("footer_contact_information")}</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("footer_contact_title")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("footer_contact_title")}</Label>
                                         <Input
                                             value={formData.footer_contact_title}
                                             onChange={(e) => handleChange("footer_contact_title", e.target.value)}
-                                            placeholder="Contact Us"
+                                            placeholder={t("contact_us")}
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("footer_contact_info_label")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("footer_contact_info_label")}</Label>
                                         <Input
                                             value={formData.footer_contact_info_label}
                                             onChange={(e) => handleChange("footer_contact_info_label", e.target.value)}
-                                            placeholder="Contact Info"
+                                            placeholder={t("contact_info")}
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-gray-600">{t("footer_address")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("footer_address")}</Label>
                                     <Input
                                         value={formData.address}
                                         onChange={(e) => handleChange("address", e.target.value)}
-                                        placeholder="123 Education Street, Knowledge City, State - 400001"
+                                        placeholder={t("placeholder_school_address")}
                                         className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("footer_phone")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("footer_phone")}</Label>
                                         <Input
                                             value={formData.phone}
                                             onChange={(e) => handleChange("phone", e.target.value)}
-                                            placeholder="+1 234 567 8900"
+                                            placeholder={t("placeholder_school_phone")}
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("footer_email")}</Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("footer_email")}</Label>
                                         <Input
                                             value={formData.email}
                                             onChange={(e) => handleChange("email", e.target.value)}
-                                            placeholder="info@smartschool.com.bd"
+                                            placeholder={t("placeholder_school_email")}
                                             className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded"
                                         />
                                     </div>
@@ -1109,8 +1136,8 @@ export default function GeneralSettingPage() {
             case "Logo":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("logo_settings")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("logo_settings")}</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
@@ -1161,36 +1188,36 @@ export default function GeneralSettingPage() {
                             />
                         </div>
 
-                        <div className="pt-6 border-t border-gray-100 space-y-4">
+                        <div className="pt-6 border-t border-gray-100 dark:border-gray-800 space-y-4">
                             <div>
-                                <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">PWA App Details & Icons (Progressive Web App)</h3>
-                                <p className="text-[11px] text-gray-400">Configure PWA app short name, description, and mobile install logos for Android and iOS PWA installation.</p>
+                                <h3 className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">{t("pwa_app_details_and_icons")}</h3>
+                                <p className="text-[11px] text-gray-400">{t("pwa_app_details_and_icons_desc")}</p>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/60 p-4 rounded-lg border border-gray-100">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50/60 dark:bg-muted/30 p-4 rounded-lg border border-gray-100 dark:border-gray-800">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-gray-600">PWA App Short Name (App Name) <span className="text-red-500">*</span></Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("pwa_app_short_name")} <span className="text-red-500">*</span></Label>
                                     <Input
                                         value={formData.pwa_app_short_name || ""}
                                         onChange={(e) => handleChange("pwa_app_short_name", e.target.value)}
-                                        placeholder="e.g. iSchool"
-                                        className="h-8 text-xs bg-white border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        placeholder={t("placeholder_pwa_short_name")}
+                                        className="h-8 text-xs bg-white dark:bg-card border-gray-200 dark:border-gray-800 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-medium text-gray-600">PWA App Description</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("pwa_app_description")}</Label>
                                     <Input
                                         value={formData.pwa_app_description || ""}
                                         onChange={(e) => handleChange("pwa_app_description", e.target.value)}
-                                        placeholder="e.g. Comprehensive School Management System"
-                                        className="h-8 text-xs bg-white border-gray-200 focus:ring-indigo-500 shadow-none rounded"
+                                        placeholder={t("placeholder_pwa_description")}
+                                        className="h-8 text-xs bg-white dark:bg-card border-gray-200 dark:border-gray-800 focus:ring-indigo-500 shadow-none rounded"
                                     />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-2">
                                 <LogoCard
-                                    title="PWA Icon (512x512)"
+                                    title={t("pwa_icon_512")}
                                     field="pwa_icon_512"
                                     dimensions="512px x 512px (PNG)"
                                     value={formData.pwa_icon_512}
@@ -1199,7 +1226,7 @@ export default function GeneralSettingPage() {
                                     t={t}
                                 />
                                 <LogoCard
-                                    title="PWA Icon (192x192)"
+                                    title={t("pwa_icon_192")}
                                     field="pwa_icon_192"
                                     dimensions="192px x 192px (PNG)"
                                     value={formData.pwa_icon_192}
@@ -1208,7 +1235,7 @@ export default function GeneralSettingPage() {
                                     t={t}
                                 />
                                 <LogoCard
-                                    title="PWA Maskable Icon"
+                                    title={t("pwa_icon_maskable")}
                                     field="pwa_icon_maskable"
                                     dimensions="512px x 512px (PNG)"
                                     value={formData.pwa_icon_maskable}
@@ -1223,17 +1250,17 @@ export default function GeneralSettingPage() {
                                 <Button
                                     onClick={() => handleSave()}
                                     disabled={saving}
-                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 font-bold text-xs uppercase px-8 h-9 rounded-full shadow-md transition-all flex items-center gap-2"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white hover:opacity-90 font-bold text-xs uppercase px-8 h-9 rounded-full shadow-md transition-all flex items-center gap-2 cursor-pointer"
                                 >
                                     {saving ? (
                                         <>
                                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                            Saving Settings...
+                                            {t("saving_settings")}
                                         </>
                                     ) : (
                                         <>
                                             <Save className="h-3.5 w-3.5" />
-                                            Save PWA & Logo Settings
+                                            {t("save_pwa_and_logo_settings")}
                                         </>
                                     )}
                                 </Button>
@@ -1245,13 +1272,13 @@ export default function GeneralSettingPage() {
             case "Login Page Background":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("login_page_background")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("login_page_background")}</h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <LogoCard
-                                title={t("login_page_background_admin") || "Admin Login Background"}
+                                title={t("login_page_background_admin")}
                                 field="login_page_background_admin"
                                 dimensions="1920px x 1080px"
                                 value={formData.login_page_background_admin}
@@ -1260,7 +1287,7 @@ export default function GeneralSettingPage() {
                                 t={t}
                             />
                             <LogoCard
-                                title={t("login_page_background_user") || "User Login Background"}
+                                title={t("login_page_background_user")}
                                 field="login_page_background_user"
                                 dimensions="1920px x 1080px"
                                 value={formData.login_page_background_user}
@@ -1275,12 +1302,12 @@ export default function GeneralSettingPage() {
             case "Backend Theme":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("backend_theme")}</h2>
+                        <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 pb-2 border-b border-gray-100 dark:border-gray-800">{t("backend_theme")}</h2>
 
                         <div className="space-y-8 max-w-4xl">
                             {/* Theme Mode */}
                             <div className="space-y-4">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("theme_mode_light_dark")}</label>
+                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("theme_mode_light_dark")}</label>
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => handleChange('theme_mode', 'light')}
@@ -1288,7 +1315,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.theme_mode === 'light'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <Sun className="h-5 w-5" />
@@ -1299,7 +1326,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.theme_mode === 'dark'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <Moon className="h-5 w-5" />
@@ -1309,7 +1336,7 @@ export default function GeneralSettingPage() {
 
                             {/* Skins */}
                             <div className="space-y-4">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("skins_shadow_bordered")}</label>
+                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("skins_shadow_bordered")}</label>
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => handleChange('skins', 'shadow')}
@@ -1317,7 +1344,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.skins === 'shadow'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <div className="w-5 h-5 border-2 border-current rounded-sm shadow-md" />
@@ -1328,7 +1355,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.skins === 'bordered'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <div className="w-5 h-5 border-2 border-current rounded-sm" />
@@ -1338,7 +1365,7 @@ export default function GeneralSettingPage() {
 
                             {/* Side Menu */}
                             <div className="space-y-4">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("side_menu_navigation")}</label>
+                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("side_menu_navigation")}</label>
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => handleChange('side_menu', 'expanded')}
@@ -1346,7 +1373,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.side_menu === 'expanded'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <LayoutGrid className="h-5 w-5" />
@@ -1357,7 +1384,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.side_menu === 'collapsed'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <div className="w-5 h-8 border-r-2 border-current rounded-l-sm" />
@@ -1368,28 +1395,28 @@ export default function GeneralSettingPage() {
                             {/* Primary Color */}
                             <div className="space-y-3">
                                 <div>
-                                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">{t("primary_color")}</label>
-                                    <p className="text-[11px] text-gray-500 mt-0.5">Controls the top-left sidebar header background color and brand theme.</p>
+                                    <label className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">{t("primary_color")}</label>
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">{t("school_name_title_color_desc")}</p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3">
                                     {[
-                                        { color: '#ffffff', name: 'White' },
-                                        { color: '#4f46e5', name: 'Indigo' },
-                                        { color: '#3b82f6', name: 'Blue' },
-                                        { color: '#f59e0b', name: 'Amber' },
-                                        { color: '#10b981', name: 'Emerald' },
-                                        { color: '#ef4444', name: 'Red' },
-                                    ].map(({ color, name }) => {
+                                        { color: '#ffffff', key: 'color_white', defaultName: 'White' },
+                                        { color: '#4f46e5', key: 'color_indigo', defaultName: 'Indigo' },
+                                        { color: '#3b82f6', key: 'color_blue', defaultName: 'Blue' },
+                                        { color: '#f59e0b', key: 'color_amber', defaultName: 'Amber' },
+                                        { color: '#10b981', key: 'color_emerald', defaultName: 'Emerald' },
+                                        { color: '#ef4444', key: 'color_red', defaultName: 'Red' },
+                                    ].map(({ color, key, defaultName }) => {
                                         const isSelected = formData.primary_color?.toLowerCase() === color.toLowerCase();
                                         return (
                                             <button
                                                 key={color}
                                                 type="button"
-                                                title={name}
+                                                title={t(key) || defaultName}
                                                 onClick={() => handleChange('primary_color', color)}
                                                 className={cn(
                                                     "w-10 h-10 rounded-xl transition-all border-2 ring-offset-1 flex items-center justify-center cursor-pointer shadow-xs",
-                                                    color === '#ffffff' ? "border-gray-300 hover:border-gray-400 bg-white" : "border-transparent",
+                                                    color === '#ffffff' ? "border-gray-300 dark:border-gray-700 hover:border-gray-400 bg-white" : "border-transparent",
                                                     isSelected
                                                         ? (color === '#ffffff'
                                                             ? "border-indigo-600 ring-2 ring-indigo-500 shadow-md scale-105"
@@ -1410,9 +1437,9 @@ export default function GeneralSettingPage() {
                                             value={formData.primary_color || '#4f46e5'}
                                             onChange={(e) => handleChange('primary_color', e.target.value)}
                                             className="absolute inset-0 opacity-0 cursor-pointer w-10 h-10 z-10"
-                                            title="Custom Color"
+                                            title={t("custom_color")}
                                         />
-                                        <div className="w-10 h-10 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center group-hover:border-gray-300 shadow-xs">
+                                        <div className="w-10 h-10 rounded-xl bg-white dark:bg-card border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center group-hover:border-gray-300 shadow-xs">
                                             <div className="w-4 h-4 rounded-full border border-gray-300" style={{ background: 'conic-gradient(red, yellow, green, cyan, blue, magenta, red)' }} />
                                         </div>
                                     </div>
@@ -1420,21 +1447,21 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* School Name Title Color */}
-                            <div className="space-y-5 pt-3 border-t border-gray-100">
+                            <div className="space-y-5 pt-3 border-t border-gray-100 dark:border-gray-800">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <Palette className="h-4 w-4 text-indigo-600" />
-                                            <label className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                                                {t("school_name_title_color") || "School Name Title Color"}
+                                            <label className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+                                                {t("school_name_title_color")}
                                             </label>
                                         </div>
-                                        <p className="text-[11px] text-gray-500 mt-0.5">
-                                            {t("school_name_title_color_desc") || "Set a dedicated solid color or vibrant multi-color gradient for the school name in the top navigation header."}
+                                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                            {t("school_name_title_color_desc")}
                                         </p>
                                     </div>
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50/80 border border-gray-200/80 shadow-2xs self-start sm:self-auto">
-                                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Preview:</span>
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50/80 dark:bg-muted/30 border border-gray-200/80 dark:border-gray-800 shadow-2xs self-start sm:self-auto">
+                                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{t("preview")}:</span>
                                         <span 
                                             className="text-xs font-black truncate max-w-[200px]"
                                             style={
@@ -1449,7 +1476,7 @@ export default function GeneralSettingPage() {
                                                     : { color: formData.school_name_title_color || '#6366f1' }
                                             }
                                         >
-                                            {formData.school_name || "Smart School"}
+                                            {formData.school_name || t("smart_school")}
                                         </span>
                                     </div>
                                 </div>
@@ -1457,43 +1484,43 @@ export default function GeneralSettingPage() {
                                 {/* Multi-Color Gradient Plates */}
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">
-                                            ✨ Multi-Color Gradient Palettes
+                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                            ✨ {t("multi_color_gradient_palettes")}
                                         </span>
-                                        <span className="text-[10px] text-gray-400 font-medium">12 designer gradients</span>
+                                        <span className="text-[10px] text-gray-400 font-medium">{t("12_designer_gradients")}</span>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
                                         {[
-                                            { name: "Royal Violet", gradient: "linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)" },
-                                            { name: "Sunset Fire", gradient: "linear-gradient(135deg, #FF512F 0%, #F09819 50%, #DD2476 100%)" },
-                                            { name: "Ocean Cyan", gradient: "linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)" },
-                                            { name: "Emerald Mint", gradient: "linear-gradient(135deg, #0ba360 0%, #3cba92 100%)" },
-                                            { name: "Cosmic Fusion", gradient: "linear-gradient(135deg, #8A2387 0%, #E94057 50%, #F27121 100%)" },
-                                            { name: "Golden Sunrise", gradient: "linear-gradient(135deg, #f6d365 0%, #fda085 100%)" },
-                                            { name: "Cyberpunk Neon", gradient: "linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 52%, #2BFF88 100%)" },
-                                            { name: "Deep Nebula", gradient: "linear-gradient(135deg, #4A00E0 0%, #8E2DE2 100%)" },
-                                            { name: "Aurora Sky", gradient: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)" },
-                                            { name: "Flaming Amber", gradient: "linear-gradient(135deg, #FF9800 0%, #FF5722 50%, #E91E63 100%)" },
-                                            { name: "Midnight Bloom", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
-                                            { name: "Rose & Coral", gradient: "linear-gradient(135deg, #F857A6 0%, #FF5858 100%)" },
-                                        ].map(({ name, gradient }) => {
+                                            { key: "royal_violet", name: "Royal Violet", gradient: "linear-gradient(135deg, #6366F1 0%, #A855F7 50%, #EC4899 100%)" },
+                                            { key: "sunset_fire", name: "Sunset Fire", gradient: "linear-gradient(135deg, #FF512F 0%, #F09819 50%, #DD2476 100%)" },
+                                            { key: "ocean_cyan", name: "Ocean Cyan", gradient: "linear-gradient(135deg, #00c6ff 0%, #0072ff 100%)" },
+                                            { key: "emerald_mint", name: "Emerald Mint", gradient: "linear-gradient(135deg, #0ba360 0%, #3cba92 100%)" },
+                                            { key: "cosmic_fusion", name: "Cosmic Fusion", gradient: "linear-gradient(135deg, #8A2387 0%, #E94057 50%, #F27121 100%)" },
+                                            { key: "golden_sunrise", name: "Golden Sunrise", gradient: "linear-gradient(135deg, #f6d365 0%, #fda085 100%)" },
+                                            { key: "cyberpunk_neon", name: "Cyberpunk Neon", gradient: "linear-gradient(135deg, #FA8BFF 0%, #2BD2FF 52%, #2BFF88 100%)" },
+                                            { key: "deep_nebula", name: "Deep Nebula", gradient: "linear-gradient(135deg, #4A00E0 0%, #8E2DE2 100%)" },
+                                            { key: "aurora_sky", name: "Aurora Sky", gradient: "linear-gradient(135deg, #00F260 0%, #0575E6 100%)" },
+                                            { key: "flaming_amber", name: "Flaming Amber", gradient: "linear-gradient(135deg, #FF9800 0%, #FF5722 50%, #E91E63 100%)" },
+                                            { key: "midnight_bloom", name: "Midnight Bloom", gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" },
+                                            { key: "rose_coral", name: "Rose & Coral", gradient: "linear-gradient(135deg, #F857A6 0%, #FF5858 100%)" },
+                                        ].map(({ key, name, gradient }) => {
                                             const isSelected = formData.school_name_title_color === gradient;
                                             return (
                                                 <button
-                                                    key={name}
+                                                    key={key}
                                                     type="button"
-                                                    title={name}
+                                                    title={t(key) || name}
                                                     onClick={() => handleChange('school_name_title_color', gradient)}
                                                     className={cn(
                                                         "h-10 px-2 rounded-xl transition-all border-2 ring-offset-1 hover:scale-102 active:scale-98 shadow-xs flex items-center justify-between gap-1.5 cursor-pointer relative overflow-hidden group",
                                                         isSelected
                                                             ? "border-indigo-600 ring-2 ring-indigo-500 shadow-md scale-102"
-                                                            : "border-gray-200/80 hover:border-gray-300"
+                                                            : "border-gray-200/80 dark:border-gray-800 hover:border-gray-300"
                                                     )}
                                                     style={{ background: gradient }}
                                                 >
                                                     <span className="text-[10px] font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)] truncate">
-                                                        {name}
+                                                        {t(key) || name}
                                                     </span>
                                                     {isSelected ? (
                                                         <div className="h-4 w-4 rounded-full bg-white/90 shadow-sm flex items-center justify-center shrink-0">
@@ -1511,28 +1538,28 @@ export default function GeneralSettingPage() {
                                 {/* Solid Color Palettes & Custom Picker */}
                                 <div className="space-y-2 pt-1">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">
-                                            🎨 Solid Color Palettes & Custom Picker
+                                        <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                                            🎨 {t("solid_color_palettes_custom_picker")}
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-3">
                                         {[
-                                            { color: '#6366f1', label: 'Indigo' },
-                                            { color: '#2563eb', label: 'Blue' },
-                                            { color: '#0284c7', label: 'Sky' },
-                                            { color: '#059669', label: 'Emerald' },
-                                            { color: '#d97706', label: 'Amber' },
-                                            { color: '#dc2626', label: 'Red' },
-                                            { color: '#9333ea', label: 'Purple' },
-                                            { color: '#e11d48', label: 'Rose' },
-                                            { color: '#0f172a', label: 'Slate' },
-                                        ].map(({ color, label }) => {
+                                            { color: '#6366f1', key: 'color_indigo', label: 'Indigo' },
+                                            { color: '#2563eb', key: 'color_blue', label: 'Blue' },
+                                            { color: '#0284c7', key: 'color_sky', label: 'Sky' },
+                                            { color: '#059669', key: 'color_emerald', label: 'Emerald' },
+                                            { color: '#d97706', key: 'color_amber', label: 'Amber' },
+                                            { color: '#dc2626', key: 'color_red', label: 'Red' },
+                                            { color: '#9333ea', key: 'color_purple', label: 'Purple' },
+                                            { color: '#e11d48', key: 'color_rose', label: 'Rose' },
+                                            { color: '#0f172a', key: 'color_slate', label: 'Slate' },
+                                        ].map(({ color, key, label }) => {
                                             const isSelected = formData.school_name_title_color?.toLowerCase() === color.toLowerCase();
                                             return (
                                                 <button
                                                     key={color}
                                                     type="button"
-                                                    title={label}
+                                                    title={t(key) || label}
                                                     onClick={() => handleChange('school_name_title_color', color)}
                                                     className={cn(
                                                         "w-9 h-9 rounded-xl transition-all border-2 ring-offset-2 hover:scale-105 active:scale-95 shadow-xs flex items-center justify-center cursor-pointer",
@@ -1556,7 +1583,7 @@ export default function GeneralSettingPage() {
                                                     onChange={(e) => handleChange('school_name_title_color', e.target.value)}
                                                     className="absolute inset-0 opacity-0 cursor-pointer w-9 h-9 z-10"
                                                 />
-                                                <div className="w-9 h-9 rounded-xl bg-white border-2 border-gray-200 flex items-center justify-center group-hover:border-indigo-400 transition-colors shadow-xs">
+                                                <div className="w-9 h-9 rounded-xl bg-white dark:bg-card border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center group-hover:border-indigo-400 transition-colors shadow-xs">
                                                     <div className="w-4 h-4 rounded-full border border-gray-300 shadow-inner" style={{ background: 'conic-gradient(red, yellow, green, cyan, blue, magenta, red)' }} />
                                                 </div>
                                             </div>
@@ -1564,8 +1591,8 @@ export default function GeneralSettingPage() {
                                                 type="text"
                                                 value={formData.school_name_title_color || '#6366f1'}
                                                 onChange={(e) => handleChange('school_name_title_color', e.target.value)}
-                                                placeholder="#6366f1 or gradient"
-                                                className="h-8 w-36 text-[11px] font-mono bg-white border-gray-200"
+                                                placeholder={t("color_or_gradient_placeholder")}
+                                                className="h-8 w-36 text-[11px] font-mono bg-white dark:bg-card border-gray-200 dark:border-gray-800"
                                             />
                                         </div>
                                     </div>
@@ -1574,7 +1601,7 @@ export default function GeneralSettingPage() {
 
                             {/* Box Content */}
                             <div className="space-y-4">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("box_content_compact_wide")}</label>
+                                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("box_content_compact_wide")}</label>
                                 <div className="flex gap-4">
                                     <button
                                         onClick={() => handleChange('box_content', 'wide')}
@@ -1582,7 +1609,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.box_content === 'wide'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <Maximize className="h-5 w-5" />
@@ -1593,7 +1620,7 @@ export default function GeneralSettingPage() {
                                             "w-12 h-12 rounded-lg flex items-center justify-center transition-all border-2",
                                             formData.box_content === 'compact'
                                                 ? "border-primary bg-primary/10 text-primary shadow-sm"
-                                                : "border-gray-100 bg-white text-gray-400 hover:border-gray-200"
+                                                : "border-gray-100 dark:border-gray-800 bg-white dark:bg-card text-gray-400 hover:border-gray-200"
                                         )}
                                     >
                                         <Minimize className="h-5 w-5" />
@@ -1607,8 +1634,8 @@ export default function GeneralSettingPage() {
             case "Mobile App":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("mobile_app")}</h2>
+                        <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("mobile_app")}</h2>
                             <Button
                                 className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white text-xs font-bold h-8 rounded-full px-4 shadow-md transition-all border-none"
                             >
@@ -1619,10 +1646,10 @@ export default function GeneralSettingPage() {
                         <div className="space-y-6 max-w-4xl">
                             {/* User Mobile App */}
                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">{t("user_mobile_app")}</h3>
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("user_mobile_app")}</h3>
 
                                 <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] items-center gap-4">
-                                    <Label className="text-xs font-medium text-gray-600">{t("user_mobile_app_api_url")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("user_mobile_app_api_url")}</Label>
                                     <Input
                                         value={formData.mobile_api_url}
                                         onChange={(e) => handleChange('mobile_api_url', e.target.value)}
@@ -1632,7 +1659,7 @@ export default function GeneralSettingPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] items-center gap-4">
-                                    <Label className="text-xs font-medium text-gray-600">{t("user_mobile_app_primary_color_code")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("user_mobile_app_primary_color_code")}</Label>
                                     <div className="flex gap-2 items-center">
                                         <div
                                             className="w-8 h-8 rounded border border-gray-200"
@@ -1647,7 +1674,7 @@ export default function GeneralSettingPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] items-center gap-4">
-                                    <Label className="text-xs font-medium text-gray-600">{t("user_mobile_app_secondary_color_code")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("user_mobile_app_secondary_color_code")}</Label>
                                     <div className="flex gap-2 items-center">
                                         <div
                                             className="w-8 h-8 rounded border border-gray-200"
@@ -1663,16 +1690,16 @@ export default function GeneralSettingPage() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end pt-4 border-t border-gray-50">
+                        <div className="flex justify-end pt-4 border-t border-gray-50 dark:border-gray-800">
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none cursor-pointer"
                             >
                                 {saving ? (
                                     <>
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        {t("loading")}
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                                        {t("saving_settings")}
                                     </>
                                 ) : (
                                     t("save")
@@ -1686,16 +1713,16 @@ export default function GeneralSettingPage() {
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         {/* Section Header */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
                             <div>
                                 <div className="flex items-center gap-2">
                                     <Users className="h-4 w-4 text-indigo-600" />
-                                    <h2 className="text-sm font-bold text-gray-800 tracking-tight">
-                                        {t("student_guardian_panel") || "Student / Guardian Panel"}
+                                    <h2 className="text-sm font-bold text-gray-800 dark:text-gray-200 tracking-tight">
+                                        {t("student_guardian_panel")}
                                     </h2>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                    {t("student_guardian_panel_desc") || "Configure student and parent portal login options, multi-identifier credentials, and timeline access."}
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    {t("student_guardian_panel_desc")}
                                 </p>
                             </div>
                             <Button
@@ -1706,12 +1733,12 @@ export default function GeneralSettingPage() {
                                 {saving ? (
                                     <>
                                         <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                                        {t("saving") || "Saving..."}
+                                        {t("saving_settings")}
                                     </>
                                 ) : (
                                     <>
                                         <Save className="h-3.5 w-3.5 mr-1.5" />
-                                        {t("save") || "Save Settings"}
+                                        {t("save")}
                                     </>
                                 )}
                             </Button>
@@ -1719,35 +1746,35 @@ export default function GeneralSettingPage() {
 
                         <div className="grid grid-cols-1 gap-5 max-w-4xl">
                             {/* Card 1: Portal Access Options */}
-                            <div className="p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-4">
-                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                            <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-card border border-gray-200/80 dark:border-gray-800 shadow-2xs space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-800">
                                     <UserCheck className="h-4 w-4 text-indigo-600" />
-                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                                        {t("user_login_option") || "Portal Login Access"}
+                                    <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+                                        {t("user_login_option")}
                                     </h3>
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                    Enable or disable login portal access for Students and Parents/Guardians.
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {t("student_guardian_panel_desc")}
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                                     <div className={cn(
                                         "flex items-center justify-between p-3.5 rounded-lg border transition-all",
                                         formData.student_login 
-                                            ? "bg-indigo-50/40 border-indigo-200/80" 
-                                            : "bg-gray-50/60 border-gray-200"
+                                            ? "bg-indigo-50/40 dark:bg-indigo-950/30 border-indigo-200/80 dark:border-indigo-900" 
+                                            : "bg-gray-50/60 dark:bg-muted/30 border-gray-200 dark:border-gray-800"
                                     )}>
                                         <div className="flex items-center gap-3">
                                             <div className={cn(
                                                 "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold",
-                                                formData.student_login ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
+                                                formData.student_login ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-gray-800 text-gray-500"
                                             )}>
                                                 <GraduationCap className="h-4 w-4" />
                                             </div>
                                             <div>
-                                                <label htmlFor="student_login" className="text-xs font-bold text-gray-800 cursor-pointer">
-                                                    {t("student_login") || "Student Login"}
+                                                <label htmlFor="student_login" className="text-xs font-bold text-gray-800 dark:text-gray-200 cursor-pointer">
+                                                    {t("student_login")}
                                                 </label>
-                                                <p className="text-[11px] text-gray-500">Allow students to log into student dashboard</p>
+                                                <p className="text-[11px] text-gray-500 dark:text-gray-400">{t("allow_students_to_log_into_dashboard")}</p>
                                             </div>
                                         </div>
                                         <Switch
@@ -1761,21 +1788,21 @@ export default function GeneralSettingPage() {
                                     <div className={cn(
                                         "flex items-center justify-between p-3.5 rounded-lg border transition-all",
                                         formData.parent_login 
-                                            ? "bg-indigo-50/40 border-indigo-200/80" 
-                                            : "bg-gray-50/60 border-gray-200"
+                                            ? "bg-indigo-50/40 dark:bg-indigo-950/30 border-indigo-200/80 dark:border-indigo-900" 
+                                            : "bg-gray-50/60 dark:bg-muted/30 border-gray-200 dark:border-gray-800"
                                     )}>
                                         <div className="flex items-center gap-3">
                                             <div className={cn(
                                                 "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold",
-                                                formData.parent_login ? "bg-indigo-600 text-white" : "bg-gray-200 text-gray-500"
+                                                formData.parent_login ? "bg-indigo-600 text-white" : "bg-gray-200 dark:bg-gray-800 text-gray-500"
                                             )}>
                                                 <Users className="h-4 w-4" />
                                             </div>
                                             <div>
-                                                <label htmlFor="parent_login" className="text-xs font-bold text-gray-800 cursor-pointer">
-                                                    {t("parent_login") || "Parent Login"}
+                                                <label htmlFor="parent_login" className="text-xs font-bold text-gray-800 dark:text-gray-200 cursor-pointer">
+                                                    {t("parent_login")}
                                                 </label>
-                                                <p className="text-[11px] text-gray-500">Allow parents/guardians to access parent dashboard</p>
+                                                <p className="text-[11px] text-gray-500 dark:text-gray-400">{t("allow_parents_to_access_dashboard")}</p>
                                             </div>
                                         </div>
                                         <Switch
@@ -1790,50 +1817,50 @@ export default function GeneralSettingPage() {
 
                             {/* Card 2: Student Login Credentials */}
                             <div className={cn(
-                                "p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-3 transition-opacity",
+                                "p-4 sm:p-5 rounded-xl bg-white dark:bg-card border border-gray-200/80 dark:border-gray-800 shadow-2xs space-y-3 transition-opacity",
                                 !formData.student_login && "opacity-50 pointer-events-none"
                             )}>
-                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-800">
                                     <ShieldCheck className="h-4 w-4 text-indigo-600" />
-                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                                        {t("additional_username_option_for_student_login") || "Additional Username Options For Student Login"}
+                                    <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+                                        {t("additional_username_option_for_student_login")}
                                     </h3>
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                    Students can always log in with their standard Username. Select additional credentials students can use as their login identifier:
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {t("student_login_credentials_desc")}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-6 pt-1">
-                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-muted/30 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="student_login_admission_no"
                                             checked={!!formData.student_login_admission_no}
                                             onCheckedChange={(checked) => handleChange('student_login_admission_no', checked)}
                                             className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="student_login_admission_no" className="text-xs text-gray-700 font-semibold cursor-pointer">
-                                            {t("admission_no") || "Admission Number"}
+                                        <label htmlFor="student_login_admission_no" className="text-xs text-gray-700 dark:text-gray-200 font-semibold cursor-pointer">
+                                            {t("admission_no")}
                                         </label>
                                     </div>
-                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-muted/30 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="student_login_mobile_no"
                                             checked={!!formData.student_login_mobile_no}
                                             onCheckedChange={(checked) => handleChange('student_login_mobile_no', checked)}
                                             className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="student_login_mobile_no" className="text-xs text-gray-700 font-semibold cursor-pointer">
-                                            {t("mobile_number") || "Registered Mobile Number"}
+                                        <label htmlFor="student_login_mobile_no" className="text-xs text-gray-700 dark:text-gray-200 font-semibold cursor-pointer">
+                                            {t("mobile_number")}
                                         </label>
                                     </div>
-                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-muted/30 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="student_login_email"
                                             checked={!!formData.student_login_email}
                                             onCheckedChange={(checked) => handleChange('student_login_email', checked)}
                                             className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="student_login_email" className="text-xs text-gray-700 font-semibold cursor-pointer">
-                                            {t("email") || "Registered Email Address"}
+                                        <label htmlFor="student_login_email" className="text-xs text-gray-700 dark:text-gray-200 font-semibold cursor-pointer">
+                                            {t("email")}
                                         </label>
                                     </div>
                                 </div>
@@ -1841,51 +1868,51 @@ export default function GeneralSettingPage() {
 
                             {/* Card 3: Parent Login Credentials */}
                             <div className={cn(
-                                "p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-3 transition-opacity",
+                                "p-4 sm:p-5 rounded-xl bg-white dark:bg-card border border-gray-200/80 dark:border-gray-800 shadow-2xs space-y-3 transition-opacity",
                                 !formData.parent_login && "opacity-50 pointer-events-none"
                             )}>
-                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+                                <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-800">
                                     <ShieldCheck className="h-4 w-4 text-indigo-600" />
-                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                                        {t("additional_username_option_for_parent_login") || "Additional Username Options For Parent Login"}
+                                    <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+                                        {t("additional_username_option_for_parent_login")}
                                     </h3>
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                    Parents can always log in with their standard Parent Username. Select additional credentials parents can use as their login identifier:
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {t("parent_login_credentials_desc")}
                                 </p>
                                 <div className="flex flex-wrap items-center gap-6 pt-1">
-                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-muted/30 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="parent_login_mobile_no"
                                             checked={!!formData.parent_login_mobile_no}
                                             onCheckedChange={(checked) => handleChange('parent_login_mobile_no', checked)}
                                             className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="parent_login_mobile_no" className="text-xs text-gray-700 font-semibold cursor-pointer">
-                                            {t("mobile_number") || "Guardian Mobile Number"}
+                                        <label htmlFor="parent_login_mobile_no" className="text-xs text-gray-700 dark:text-gray-200 font-semibold cursor-pointer">
+                                            {t("guardian_mobile_number")}
                                         </label>
                                     </div>
-                                    <div className="flex items-center gap-2.5 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200 hover:bg-indigo-50/30 transition-colors">
+                                    <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-muted/30 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-800 hover:bg-indigo-50/30 transition-colors">
                                         <Checkbox
                                             id="parent_login_email"
                                             checked={!!formData.parent_login_email}
                                             onCheckedChange={(checked) => handleChange('parent_login_email', checked)}
                                             className="border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm h-4 w-4 cursor-pointer"
                                         />
-                                        <label htmlFor="parent_login_email" className="text-xs text-gray-700 font-semibold cursor-pointer">
-                                            {t("email") || "Guardian Email Address"}
+                                        <label htmlFor="parent_login_email" className="text-xs text-gray-700 dark:text-gray-200 font-semibold cursor-pointer">
+                                            {t("guardian_email_address")}
                                         </label>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Card 4: Student Timeline Permissions */}
-                            <div className="p-4 sm:p-5 rounded-xl bg-white border border-gray-200/80 shadow-2xs space-y-3">
+                            <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-card border border-gray-200/80 dark:border-gray-800 shadow-2xs space-y-3">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Clock className="h-4 w-4 text-indigo-600" />
-                                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                                            {t("allow_student_to_add_timeline") || "Allow Student To Add Timeline"}
+                                        <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
+                                            {t("allow_student_to_add_timeline")}
                                         </h3>
                                     </div>
                                     <Switch
@@ -1895,14 +1922,14 @@ export default function GeneralSettingPage() {
                                         className="data-[state=checked]:bg-indigo-600 scale-90 cursor-pointer"
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                    When enabled, students are permitted to create timeline milestone entries and activity records directly from their student portal profile.
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {t("allow_student_timeline_desc")}
                                 </p>
                             </div>
                         </div>
 
                         {/* Bottom Action Bar */}
-                        <div className="flex justify-end pt-4 border-t border-gray-100 max-w-4xl">
+                        <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-800 max-w-4xl">
                             <Button
                                 onClick={() => handleSave()}
                                 disabled={saving}
@@ -1911,12 +1938,12 @@ export default function GeneralSettingPage() {
                                 {saving ? (
                                     <>
                                         <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-                                        {t("saving") || "Saving..."}
+                                        {t("saving_settings")}
                                     </>
                                 ) : (
                                     <>
                                         <Save className="h-3.5 w-3.5 mr-1.5" />
-                                        {t("save") || "Save Settings"}
+                                        {t("save")}
                                     </>
                                 )}
                             </Button>
@@ -1927,14 +1954,14 @@ export default function GeneralSettingPage() {
             case "Attendance Type":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("attendance_type")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("attendance_type")}</h2>
                         </div>
 
                         <div className="space-y-8 max-w-6xl">
                             {/* Attendance Options */}
                             <div className="grid grid-cols-1 md:grid-cols-[150px_1fr_300px_1fr] items-center gap-6">
-                                <Label className="text-sm font-medium text-gray-600">{t("attendance")}</Label>
+                                <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("attendance")}</Label>
                                 <RadioGroup
                                     value={formData.attendance_type}
                                     onValueChange={(val) => handleChange('attendance_type', val)}
@@ -1942,15 +1969,15 @@ export default function GeneralSettingPage() {
                                 >
                                     <div className="flex items-center gap-2">
                                         <RadioGroupItem value="day_wise" id="day_wise" className="border-indigo-500 text-indigo-500" />
-                                        <label htmlFor="day_wise" className="text-sm text-gray-600 font-medium cursor-pointer">{t("day_wise")}</label>
+                                        <label htmlFor="day_wise" className="text-sm text-gray-600 dark:text-gray-300 font-medium cursor-pointer">{t("day_wise")}</label>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <RadioGroupItem value="period_wise" id="period_wise" className="border-indigo-500 text-indigo-500" />
-                                        <label htmlFor="period_wise" className="text-sm text-gray-600 font-medium cursor-pointer">{t("period_wise")}</label>
+                                        <label htmlFor="period_wise" className="text-sm text-gray-600 dark:text-gray-300 font-medium cursor-pointer">{t("period_wise")}</label>
                                     </div>
                                 </RadioGroup>
 
-                                <Label className="text-sm font-medium text-gray-600 text-right pr-4">{t("qr_code_barcode_biometric_attendance")}</Label>
+                                <Label className="text-sm font-medium text-gray-600 dark:text-gray-300 text-right pr-4">{t("qr_code_barcode_biometric_attendance")}</Label>
                                 <div className="flex justify-end">
                                     <Switch
                                         checked={!!formData.biometric_attendance}
@@ -1962,7 +1989,7 @@ export default function GeneralSettingPage() {
 
                             {/* Devices */}
                             <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] items-baseline gap-6">
-                                <Label className="text-sm font-medium text-gray-600">{t("devices_separate_by_comma")}</Label>
+                                <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("devices_separate_by_comma")}</Label>
                                 <Input
                                     value={formData.devices}
                                     onChange={(e) => handleChange('devices', e.target.value)}
@@ -1972,7 +1999,7 @@ export default function GeneralSettingPage() {
 
                             {/* Low Attendance Limit */}
                             <div className="grid grid-cols-1 md:grid-cols-[150px_1fr] items-center gap-6">
-                                <Label className="text-sm font-medium text-gray-600">{t("low_attendance_limit")}</Label>
+                                <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("low_attendance_limit")}</Label>
                                 <div className="flex items-center">
                                     <Input
                                         type="number"
@@ -1980,7 +2007,7 @@ export default function GeneralSettingPage() {
                                         onChange={(e) => handleChange('low_attendance_limit', e.target.value)}
                                         className="h-10 text-sm border-gray-200 focus:ring-indigo-500 shadow-none rounded-l-md rounded-r-none w-32"
                                     />
-                                    <div className="h-10 w-10 border border-l-0 border-gray-200 bg-gray-50 flex items-center justify-center rounded-r-md text-sm text-gray-500 font-medium">
+                                    <div className="h-10 w-10 border border-l-0 border-gray-200 bg-gray-50 dark:bg-muted flex items-center justify-center rounded-r-md text-sm text-gray-500 font-medium">
                                         %
                                     </div>
                                 </div>
@@ -1990,7 +2017,7 @@ export default function GeneralSettingPage() {
                                 <Button
                                     onClick={handleSave}
                                     disabled={saving}
-                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-sm font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-sm font-bold uppercase transition-all rounded-full shadow-md border-none cursor-pointer"
                                 >
                                     {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
                                     {t("save")}
@@ -1998,14 +2025,14 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* Staff / Student Settings Tabs */}
-                            <div className="mt-8 border rounded-lg overflow-hidden bg-white shadow-sm">
-                                <div className="flex bg-gray-50 border-b">
+                            <div className="mt-8 border dark:border-gray-800 rounded-lg overflow-hidden bg-white dark:bg-card shadow-sm">
+                                <div className="flex bg-gray-50 dark:bg-muted/30 border-b dark:border-gray-800">
                                     <button
                                         onClick={() => setActiveAttendanceTab("Staff")}
                                         className={cn(
-                                            "px-8 py-3 text-sm font-bold tracking-wider transition-all border-b-2",
+                                            "px-8 py-3 text-sm font-bold tracking-wider transition-all border-b-2 cursor-pointer",
                                             activeAttendanceTab === "Staff"
-                                                ? "bg-white border-indigo-500 text-indigo-600"
+                                                ? "bg-white dark:bg-card border-indigo-500 text-indigo-600"
                                                 : "border-transparent text-gray-400 hover:text-gray-600"
                                         )}
                                     >
@@ -2014,9 +2041,9 @@ export default function GeneralSettingPage() {
                                     <button
                                         onClick={() => setActiveAttendanceTab("Student")}
                                         className={cn(
-                                            "px-8 py-3 text-sm font-bold tracking-wider transition-all border-b-2",
+                                            "px-8 py-3 text-sm font-bold tracking-wider transition-all border-b-2 cursor-pointer",
                                             activeAttendanceTab === "Student"
-                                                ? "bg-white border-indigo-500 text-indigo-600"
+                                                ? "bg-white dark:bg-card border-indigo-500 text-indigo-600"
                                                 : "border-transparent text-gray-400 hover:text-gray-600"
                                         )}
                                     >
@@ -2027,17 +2054,17 @@ export default function GeneralSettingPage() {
                                 <div className="p-6">
                                     {activeAttendanceTab === 'Staff' ? (
                                         <div className="space-y-10">
-                                            {formData.staff_attendance_settings.map((roleGroup: any, roleIdx: number) => (
-                                                <div key={roleIdx} className="border border-gray-100 rounded-lg overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
-                                                    <div className="bg-gray-50/80 p-4 border-b border-gray-100 flex items-center justify-between">
-                                                        <div className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                            {formData.staff_attendance_settings.map((roleGroup: StaffAttendanceRole, roleIdx: number) => (
+                                                <div key={roleIdx} className="border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm bg-white dark:bg-card hover:shadow-md transition-shadow">
+                                                    <div className="bg-gray-50/80 dark:bg-muted/30 p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                                                        <div className="text-sm font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
                                                             <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                                                            {t("role")}: {roleGroup.role}
+                                                            {t("role")}: {translateRoleName(roleGroup.role, language?.short_code)}
                                                         </div>
                                                         <Button
                                                             onClick={handleSave}
                                                             disabled={saving}
-                                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                                            className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none cursor-pointer"
                                                         >
                                                             {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
                                                             {t("update")}
@@ -2048,7 +2075,7 @@ export default function GeneralSettingPage() {
                                                         <div className="overflow-x-auto">
                                                             <table className="w-full border-collapse">
                                                                 <thead>
-                                                                    <tr className="border-b border-gray-100">
+                                                                    <tr className="border-b border-gray-100 dark:border-gray-800">
                                                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-[28%]">{t("attendance_type")}</th>
                                                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-[24%]">{t("entry_from")}</th>
                                                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-400 uppercase tracking-wider w-[24%]">{t("entry_upto")}</th>
@@ -2056,15 +2083,17 @@ export default function GeneralSettingPage() {
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
-                                                                    {roleGroup.settings.map((setting: any, idx: number) => (
-                                                                        <tr key={idx} className="border-b border-gray-50 last:border-b-0 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                                                            <td className="py-4 px-4 text-xs font-bold text-gray-600">{setting.type}</td>
+                                                                    {roleGroup.settings.map((setting: AttendanceSetting, idx: number) => (
+                                                                        <tr key={idx} className="border-b border-gray-50 dark:border-gray-800 last:border-b-0 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 hover:shadow-sm hover:z-10 relative transition-all duration-300">
+                                                                            <td className="py-4 px-4 text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                                                {translateAttendanceType(setting.type, language?.short_code)}
+                                                                            </td>
                                                                             <td className="py-4 px-4">
                                                                                 <div className="relative group max-w-[150px]">
                                                                                     <Input
                                                                                         value={setting.from}
                                                                                         onChange={(e) => handleAttendanceSettingChange('staff', idx, 'from', e.target.value, roleIdx)}
-                                                                                        className="h-9 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-8 bg-white transition-all group-hover:border-indigo-200"
+                                                                                        className="h-9 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-8 bg-white dark:bg-card transition-all group-hover:border-indigo-200"
                                                                                     />
                                                                                     <Clock className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
                                                                                 </div>
@@ -2074,7 +2103,7 @@ export default function GeneralSettingPage() {
                                                                                     <Input
                                                                                         value={setting.upto}
                                                                                         onChange={(e) => handleAttendanceSettingChange('staff', idx, 'upto', e.target.value, roleIdx)}
-                                                                                        className="h-9 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-8 bg-white transition-all group-hover:border-indigo-200"
+                                                                                        className="h-9 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-8 bg-white dark:bg-card transition-all group-hover:border-indigo-200"
                                                                                     />
                                                                                     <Clock className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
                                                                                 </div>
@@ -2084,7 +2113,7 @@ export default function GeneralSettingPage() {
                                                                                     <Input
                                                                                         value={setting.total}
                                                                                         onChange={(e) => handleAttendanceSettingChange('staff', idx, 'total', e.target.value, roleIdx)}
-                                                                                        className="h-9 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-8 bg-white transition-all group-hover:border-indigo-200"
+                                                                                        className="h-9 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-8 bg-white dark:bg-card transition-all group-hover:border-indigo-200"
                                                                                     />
                                                                                     <Clock className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 group-hover:text-indigo-400 transition-colors" />
                                                                                 </div>
@@ -2100,24 +2129,24 @@ export default function GeneralSettingPage() {
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="bg-gray-50/80 p-4 rounded-lg mb-6 flex flex-col md:flex-row items-center justify-between border border-gray-100 gap-4">
+                                            <div className="bg-gray-50/80 dark:bg-muted/30 p-4 rounded-lg mb-6 flex flex-col md:flex-row items-center justify-between border border-gray-100 dark:border-gray-800 gap-4">
                                                 <div className="flex items-center gap-4 w-full md:w-auto">
-                                                    <div className="text-sm font-bold text-gray-600 uppercase flex items-center gap-2 whitespace-nowrap">
+                                                    <div className="text-sm font-bold text-gray-600 dark:text-gray-300 uppercase flex items-center gap-2 whitespace-nowrap">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                                                         {t("role")}: {t("student")}
                                                     </div>
 
                                                     <div className="flex items-center gap-2 w-full md:w-64">
-                                                        <Label className="text-xs font-medium text-gray-500 whitespace-nowrap">{t("class_filter")}:</Label>
+                                                        <Label className="text-xs font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">{t("class_filter")}:</Label>
                                                         <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                                                            <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none bg-white">
+                                                            <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none bg-white dark:bg-card">
                                                                 <SelectValue placeholder={t("all_classes")} />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 <SelectItem value="all" className="text-xs">{t("all_classes")}</SelectItem>
-                                                                {formData.student_attendance_settings.map((cls: any) => (
+                                                                {formData.student_attendance_settings.map((cls: StudentAttendanceClass) => (
                                                                     <SelectItem key={cls.class_id} value={String(cls.class_id)} className="text-xs">
-                                                                        {cls.class_name}
+                                                                        {translateClassName(cls.class_name, language?.short_code)}
                                                                     </SelectItem>
                                                                 ))}
                                                             </SelectContent>
@@ -2128,7 +2157,7 @@ export default function GeneralSettingPage() {
                                                 <Button
                                                     onClick={handleSave}
                                                     disabled={saving}
-                                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none w-full md:w-auto"
+                                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none w-full md:w-auto cursor-pointer"
                                                 >
                                                     {saving ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : null}
                                                     {t("update")}
@@ -2136,7 +2165,7 @@ export default function GeneralSettingPage() {
                                             </div>
 
                                             <div className="space-y-8">
-                                                {formData.student_attendance_settings.map((classItem: any, classIdx: number) => {
+                                                {formData.student_attendance_settings.map((classItem: StudentAttendanceClass, classIdx: number) => {
                                                     // Filter logic
                                                     if (selectedClassId !== "all" && String(classItem.class_id) !== selectedClassId) {
                                                         return null;
@@ -2144,22 +2173,22 @@ export default function GeneralSettingPage() {
 
                                                     return (
                                                         <div key={classItem.class_id} className="space-y-4">
-                                                            <h3 className="text-sm font-bold text-gray-700 border-b border-gray-100 pb-2">
-                                                                {classItem.class_name}
+                                                            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-800 pb-2">
+                                                                {translateClassName(classItem.class_name, language?.short_code)}
                                                             </h3>
 
                                                             <div className="grid grid-cols-1 gap-6">
-                                                                {classItem.sections.map((section: any, sectionIdx: number) => (
-                                                                    <div key={section.section_id} className="border border-gray-100 rounded-lg overflow-hidden shadow-sm bg-white hover:shadow-md transition-shadow">
-                                                                        <div className="bg-gray-50/50 p-3 border-b border-gray-100 flex items-center gap-2">
-                                                                            <span className="text-xs font-bold text-gray-500 uppercase">{t("section")}:</span>
-                                                                            <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{section.section_name}</span>
+                                                                {classItem.sections.map((section: StudentAttendanceSection, sectionIdx: number) => (
+                                                                    <div key={section.section_id} className="border border-gray-100 dark:border-gray-800 rounded-lg overflow-hidden shadow-sm bg-white dark:bg-card hover:shadow-md transition-shadow">
+                                                                        <div className="bg-gray-50/50 dark:bg-muted/30 p-3 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+                                                                            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">{t("section")}:</span>
+                                                                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded">{translateSectionName(section.section_name, language?.short_code)}</span>
                                                                         </div>
 
                                                                         <div className="p-4 overflow-x-auto">
                                                                             <table className="w-full border-collapse">
                                                                                 <thead>
-                                                                                    <tr className="border-b border-gray-100">
+                                                                                    <tr className="border-b border-gray-100 dark:border-gray-800">
                                                                                         <th className="text-left py-2 px-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[28%]">{t("attendance_type")}</th>
                                                                                         <th className="text-left py-2 px-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[24%]">{t("entry_from")}</th>
                                                                                         <th className="text-left py-2 px-3 text-xs font-bold text-gray-400 uppercase tracking-wider w-[24%]">{t("entry_upto")}</th>
@@ -2167,15 +2196,17 @@ export default function GeneralSettingPage() {
                                                                                     </tr>
                                                                                 </thead>
                                                                                 <tbody>
-                                                                                    {section.settings.map((setting: any, settingIdx: number) => (
-                                                                                        <tr key={settingIdx} className="border-b border-gray-50 last:border-b-0 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer">
-                                                                                            <td className="py-2 px-3 text-xs font-bold text-gray-600">{setting.type}</td>
+                                                                                    {section.settings.map((setting: AttendanceSetting, settingIdx: number) => (
+                                                                                        <tr key={settingIdx} className="border-b border-gray-50 dark:border-gray-800 last:border-b-0 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 hover:shadow-sm hover:z-10 relative transition-all duration-300">
+                                                                                            <td className="py-2 px-3 text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                                                                {translateAttendanceType(setting.type, language?.short_code)}
+                                                                                            </td>
                                                                                             <td className="py-2 px-3">
                                                                                                 <div className="relative group max-w-[150px]">
                                                                                                     <Input
                                                                                                         value={setting.from}
                                                                                                         onChange={(e) => handleStudentAttendanceChange(classIdx, sectionIdx, settingIdx, 'from', e.target.value)}
-                                                                                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-7 bg-white transition-all group-hover:border-indigo-200"
+                                                                                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-7 bg-white dark:bg-card transition-all group-hover:border-indigo-200"
                                                                                                     />
                                                                                                     <Clock className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                                                                                                 </div>
@@ -2185,7 +2216,7 @@ export default function GeneralSettingPage() {
                                                                                                     <Input
                                                                                                         value={setting.upto}
                                                                                                         onChange={(e) => handleStudentAttendanceChange(classIdx, sectionIdx, settingIdx, 'upto', e.target.value)}
-                                                                                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-7 bg-white transition-all group-hover:border-indigo-200"
+                                                                                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-7 bg-white dark:bg-card transition-all group-hover:border-indigo-200"
                                                                                                     />
                                                                                                     <Clock className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                                                                                                 </div>
@@ -2195,7 +2226,7 @@ export default function GeneralSettingPage() {
                                                                                                     <Input
                                                                                                         value={setting.total}
                                                                                                         onChange={(e) => handleStudentAttendanceChange(classIdx, sectionIdx, settingIdx, 'total', e.target.value)}
-                                                                                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-7 bg-white transition-all group-hover:border-indigo-200"
+                                                                                                        className="h-8 text-xs border-gray-200 focus:ring-indigo-500 shadow-none rounded-md pr-7 bg-white dark:bg-card transition-all group-hover:border-indigo-200"
                                                                                                     />
                                                                                                     <Clock className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
                                                                                                 </div>
@@ -2223,67 +2254,71 @@ export default function GeneralSettingPage() {
             case "Fees":
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("fees")}</h2>
+                        <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 pb-2 border-b border-gray-100 dark:border-gray-800">{t("fees")}</h2>
 
                         <div className="space-y-6">
                             <div className="flex items-center justify-between group">
-                                <Label className="text-xs font-medium text-gray-600">{t("offline_bank_payment_in_student_panel")}</Label>
+                                <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("offline_bank_payment_in_student_panel")}</Label>
                                 <Switch
                                     checked={formData.fees_offline_bank_payment_in_student_panel}
                                     onCheckedChange={(checked) => handleChange('fees_offline_bank_payment_in_student_panel', checked)}
-                                    className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                 />
                             </div>
 
                             <div className="space-y-3">
-                                <Label className="text-xs font-medium text-gray-600">{t("offline_bank_payment_instruction")}</Label>
-                                <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
+                                <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("offline_bank_payment_instruction")}</Label>
+                                <div className="border border-gray-200 dark:border-gray-800 rounded-md overflow-hidden bg-white dark:bg-card shadow-sm">
                                     <textarea
-                                        className="w-full h-32 p-3 text-xs text-gray-600 focus:outline-none resize-none bg-transparent"
+                                        className="w-full h-32 p-3 text-xs text-gray-600 dark:text-gray-300 focus:outline-none resize-none bg-transparent"
                                         value={formData.fees_offline_bank_payment_instruction}
                                         onChange={(e) => handleChange('fees_offline_bank_payment_instruction', e.target.value)}
-                                        placeholder="Offline mode of payment are Cash, DD, Online and Cheques"
+                                        placeholder={t("offline_mode_of_payment_instruction_placeholder")}
                                     />
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between">
-                                <Label className="text-xs font-medium text-gray-600">{t("lock_student_panel_if_fees_remaining")}</Label>
+                                <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("lock_student_panel_if_fees_remaining")}</Label>
                                 <Switch
                                     checked={formData.fees_lock_student_panel_if_fees_remaining}
                                     onCheckedChange={(checked) => handleChange('fees_lock_student_panel_if_fees_remaining', checked)}
-                                    className="data-[state=checked]:bg-indigo-500 scale-90"
+                                    className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-xs font-medium text-gray-600">{t("print_fees_receipt_for")}</Label>
+                                <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("print_fees_receipt_for")}</Label>
                                 <div className="flex items-center gap-6 pt-1">
-                                    {["Office Copy", "Student Copy", "Bank Copy"].map((label) => (
-                                        <div key={label} className="flex items-center gap-2">
+                                    {[
+                                        { key: "office_copy", val: "Office Copy" },
+                                        { key: "student_copy", val: "Student Copy" },
+                                        { key: "bank_copy", val: "Bank Copy" }
+                                    ].map(({ key, val }) => (
+                                        <div key={val} className="flex items-center gap-2">
                                             <Checkbox
-                                                id={label}
-                                                checked={formData.fees_print_fees_receipt_for?.includes(label)}
+                                                id={val}
+                                                checked={formData.fees_print_fees_receipt_for?.includes(val)}
                                                 onCheckedChange={(checked) => {
                                                     const current = formData.fees_print_fees_receipt_for || [];
                                                     let updated;
                                                     if (checked) {
-                                                        updated = [...current, label];
+                                                        updated = [...current, val];
                                                     } else {
-                                                        updated = current.filter(item => item !== label);
+                                                        updated = current.filter(item => item !== val);
                                                     }
                                                     handleChange('fees_print_fees_receipt_for', updated);
                                                 }}
-                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5"
+                                                className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm h-3.5 w-3.5 cursor-pointer"
                                             />
-                                            <label htmlFor={label} className="text-xs text-gray-600 font-medium cursor-pointer">{label}</label>
+                                            <label htmlFor={val} className="text-xs text-gray-600 dark:text-gray-300 font-medium cursor-pointer">{t(key)}</label>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
                             <div className="space-y-1.5 max-w-md">
-                                <Label className="text-xs font-medium text-gray-600">{t("carry_forward_fees_due_days")} <span className="text-red-500">*</span></Label>
+                                <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("carry_forward_fees_due_days")} <span className="text-red-500">*</span></Label>
                                 <Input
                                     value={formData.fees_due_days}
                                     onChange={(e) => handleChange('fees_due_days', parseInt(e.target.value) || 0)}
@@ -2292,18 +2327,18 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {[
-                                { label: "Single Page Fees Print", key: "fees_single_page_print" },
-                                { label: "Collect Fees In Back Date", key: "fees_collect_fees_in_back_date" },
-                                { label: "Student / Guardian Panel Fees Discount", key: "fees_student_guardian_panel_fees_discount" },
-                                { label: "Display Previous Fees", key: "fees_display_previous_fees" },
-                                { label: "Allow Student To Add Partial Payment", key: "fees_allow_student_to_add_partial_payment" }
+                                { key: "single_page_fees_print", stateKey: "fees_single_page_print" as const },
+                                { key: "collect_fees_in_back_date", stateKey: "fees_collect_fees_in_back_date" as const },
+                                { key: "student_guardian_panel_fees_discount", stateKey: "fees_student_guardian_panel_fees_discount" as const },
+                                { key: "display_previous_fees", stateKey: "fees_display_previous_fees" as const },
+                                { key: "allow_student_to_add_partial_payment", stateKey: "fees_allow_student_to_add_partial_payment" as const }
                             ].map((item) => (
-                                <div key={item.key} className="flex items-center justify-between group">
-                                    <Label className="text-xs font-medium text-gray-600">{item.label}</Label>
+                                <div key={item.stateKey} className="flex items-center justify-between group">
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t(item.key)}</Label>
                                     <Switch
-                                        checked={(formData as any)[item.key]}
-                                        onCheckedChange={(checked) => handleChange(item.key, checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        checked={Boolean(formData[item.stateKey])}
+                                        onCheckedChange={(checked) => handleChange(item.stateKey, checked)}
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                             ))}
@@ -2314,23 +2349,23 @@ export default function GeneralSettingPage() {
             case "ID Auto Generation":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <h2 className="text-sm font-bold text-gray-700 pb-2 border-b border-gray-100">{t("id_auto_generation")}</h2>
+                        <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 pb-2 border-b border-gray-100 dark:border-gray-800">{t("id_auto_generation")}</h2>
 
                         {/* Student ID */}
                         <div className="space-y-4">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("student_admission_no_auto_generation")}</h3>
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("student_admission_no_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_admission_no")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_admission_no")}</Label>
                                     <Switch
                                         checked={formData.auto_admission_no}
                                         onCheckedChange={(checked) => handleChange('auto_admission_no', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("admission_no_prefix")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("admission_no_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.admission_no_prefix}
                                             onChange={(e) => handleChange('admission_no_prefix', e.target.value)}
@@ -2338,23 +2373,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("admission_no_digit")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("admission_no_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.admission_no_digit)}
                                             onValueChange={(value) => handleChange('admission_no_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("admission_start_from")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("admission_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.admission_start_from}
                                             onChange={(e) => handleChange('admission_start_from', e.target.value)}
@@ -2366,20 +2401,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Staff ID */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("staff_id_auto_generation")}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("staff_id_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_staff_id")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_staff_id")}</Label>
                                     <Switch
                                         checked={formData.auto_staff_id}
                                         onCheckedChange={(checked) => handleChange('auto_staff_id', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("staff_id_prefix")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("staff_id_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.staff_id_prefix}
                                             onChange={(e) => handleChange('staff_id_prefix', e.target.value)}
@@ -2387,23 +2422,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("staff_no_digit")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("staff_no_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.staff_no_digit)}
                                             onValueChange={(value) => handleChange('staff_no_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("staff_id_start_from")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("staff_id_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.staff_id_start_from}
                                             onChange={(e) => handleChange('staff_id_start_from', e.target.value)}
@@ -2415,20 +2450,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Student Roll Generation */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("student_roll_auto_generation")}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("student_roll_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_roll_no")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_roll_no")}</Label>
                                     <Switch
                                         checked={formData.auto_roll_no}
                                         onCheckedChange={(checked) => handleChange('auto_roll_no', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("student_roll_prefix")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("student_roll_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.roll_no_prefix}
                                             onChange={(e) => handleChange('roll_no_prefix', e.target.value)}
@@ -2436,24 +2471,24 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("student_no_digit")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("student_no_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.roll_no_digit)}
                                             onValueChange={(value) => handleChange('roll_no_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="1">1</SelectItem>
-                                                <SelectItem value="2">2</SelectItem>
-                                                <SelectItem value="3">3</SelectItem>
-                                                <SelectItem value="4">4</SelectItem>
+                                                <SelectItem value="1">{toLocaleNumber(1, language?.short_code)}</SelectItem>
+                                                <SelectItem value="2">{toLocaleNumber(2, language?.short_code)}</SelectItem>
+                                                <SelectItem value="3">{toLocaleNumber(3, language?.short_code)}</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("student_roll_start_from")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("student_roll_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.roll_no_start_from}
                                             onChange={(e) => handleChange('roll_no_start_from', e.target.value)}
@@ -2465,20 +2500,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Username Auto Generation */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("username_auto_generation")}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("username_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_username")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_username")}</Label>
                                     <Switch
                                         checked={formData.auto_username}
                                         onCheckedChange={(checked) => handleChange('auto_username', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("username_prefix")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("username_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.username_prefix}
                                             onChange={(e) => handleChange('username_prefix', e.target.value)}
@@ -2487,23 +2522,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("username_digit")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("username_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.username_digit)}
                                             onValueChange={(value) => handleChange('username_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("username_start_from")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("username_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.username_start_from}
                                             onChange={(e) => handleChange('username_start_from', e.target.value)}
@@ -2515,20 +2550,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Income Invoice */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("income_invoice_auto_generation")}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("income_invoice_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_generate_invoice_no")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_generate_invoice_no")}</Label>
                                     <Switch
                                         checked={formData.income_invoice_enable_auto_generation}
                                         onCheckedChange={(checked) => handleChange('income_invoice_enable_auto_generation', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("invoice_no_prefix")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("invoice_no_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.income_invoice_prefix}
                                             onChange={(e) => handleChange('income_invoice_prefix', e.target.value)}
@@ -2537,23 +2572,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("invoice_no_digit")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("invoice_no_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.income_invoice_digit)}
                                             onValueChange={(value) => handleChange('income_invoice_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("invoice_start_from")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("invoice_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.income_invoice_start_from}
                                             onChange={(e) => handleChange('income_invoice_start_from', e.target.value)}
@@ -2565,20 +2600,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Parent Username Auto Generation */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("parent_username_auto_generation")}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("parent_username_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_parent_username")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_parent_username")}</Label>
                                     <Switch
                                         checked={formData.auto_parent_username}
                                         onCheckedChange={(checked) => handleChange('auto_parent_username', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("parent_username_prefix")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("parent_username_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.parent_username_prefix}
                                             onChange={(e) => handleChange('parent_username_prefix', e.target.value)}
@@ -2587,23 +2622,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("parent_username_digit")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("parent_username_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.parent_username_digit)}
                                             onValueChange={(value) => handleChange('parent_username_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("parent_username_start_from")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("parent_username_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.parent_username_start_from}
                                             onChange={(e) => handleChange('parent_username_start_from', e.target.value)}
@@ -2615,20 +2650,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Expense Invoice */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("expense_invoice_auto_generation")}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("expense_invoice_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_generate_expense_no")}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_generate_expense_no")}</Label>
                                     <Switch
                                         checked={formData.expense_invoice_enable_auto_generation}
                                         onCheckedChange={(checked) => handleChange('expense_invoice_enable_auto_generation', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("expense_no_prefix")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("expense_no_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.expense_invoice_prefix}
                                             onChange={(e) => handleChange('expense_invoice_prefix', e.target.value)}
@@ -2637,23 +2672,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("expense_no_digit")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("expense_no_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.expense_invoice_digit)}
                                             onValueChange={(value) => handleChange('expense_invoice_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("expense_start_from")} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("expense_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.expense_invoice_start_from}
                                             onChange={(e) => handleChange('expense_invoice_start_from', e.target.value)}
@@ -2665,20 +2700,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Student Certificate Auto Generation */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("student_certificate_no_auto_generation") || "Student Certificate No Auto Generation"}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("student_certificate_no_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_student_certificate_no") || "Auto Generate Certificate No"}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_student_certificate_no")}</Label>
                                     <Switch
                                         checked={formData.auto_student_certificate_no}
                                         onCheckedChange={(checked) => handleChange('auto_student_certificate_no', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("student_certificate_prefix") || "Certificate No Prefix"} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("student_certificate_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.student_certificate_prefix}
                                             onChange={(e) => handleChange('student_certificate_prefix', e.target.value)}
@@ -2687,23 +2722,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("student_certificate_digit") || "Certificate No Digit"} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("student_certificate_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.student_certificate_digit || 4)}
                                             onValueChange={(value) => handleChange('student_certificate_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("student_certificate_start_from") || "Certificate Start From"} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("student_certificate_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.student_certificate_start_from}
                                             onChange={(e) => handleChange('student_certificate_start_from', e.target.value)}
@@ -2715,20 +2750,20 @@ export default function GeneralSettingPage() {
                         </div>
 
                         {/* Transfer Certificate Auto Generation */}
-                        <div className="space-y-4 pt-4 border-t border-gray-50">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("transfer_certificate_no_auto_generation") || "Transfer Certificate No Auto Generation"}</h3>
+                        <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("transfer_certificate_no_auto_generation")}</h3>
                             <div className="grid grid-cols-1 gap-6">
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-xs font-medium text-gray-600">{t("auto_transfer_certificate_no") || "Auto Generate TC No"}</Label>
+                                    <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("auto_transfer_certificate_no")}</Label>
                                     <Switch
                                         checked={formData.auto_transfer_certificate_no}
                                         onCheckedChange={(checked) => handleChange('auto_transfer_certificate_no', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("transfer_certificate_prefix") || "TC No Prefix"} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("transfer_certificate_prefix")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.transfer_certificate_prefix}
                                             onChange={(e) => handleChange('transfer_certificate_prefix', e.target.value)}
@@ -2737,23 +2772,23 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("transfer_certificate_digit") || "TC No Digit"} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("transfer_certificate_digit")} <span className="text-red-500">*</span></Label>
                                         <Select
                                             value={String(formData.transfer_certificate_digit || 4)}
                                             onValueChange={(value) => handleChange('transfer_certificate_digit', parseInt(value))}
                                         >
                                             <SelectTrigger className="h-8 text-xs border-gray-200 shadow-none rounded">
-                                                <SelectValue placeholder="Select" />
+                                                <SelectValue placeholder={t("select")} />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="4">4</SelectItem>
-                                                <SelectItem value="5">5</SelectItem>
-                                                <SelectItem value="6">6</SelectItem>
+                                                <SelectItem value="4">{toLocaleNumber(4, language?.short_code)}</SelectItem>
+                                                <SelectItem value="5">{toLocaleNumber(5, language?.short_code)}</SelectItem>
+                                                <SelectItem value="6">{toLocaleNumber(6, language?.short_code)}</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs font-medium text-gray-600">{t("transfer_certificate_start_from") || "TC Start From"} <span className="text-red-500">*</span></Label>
+                                        <Label className="text-xs font-medium text-gray-600 dark:text-gray-300">{t("transfer_certificate_start_from")} <span className="text-red-500">*</span></Label>
                                         <Input
                                             value={formData.transfer_certificate_start_from}
                                             onChange={(e) => handleChange('transfer_certificate_start_from', e.target.value)}
@@ -2769,13 +2804,13 @@ export default function GeneralSettingPage() {
             case "Google Drive Setting":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("google_drive_setting")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("google_drive_setting")}</h2>
                         </div>
                         <div className="space-y-6 max-w-4xl">
                             <div className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <Label className="text-sm font-medium text-gray-600">{t("client_id")} <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("client_id")} <span className="text-red-500">*</span></Label>
                                     <Input
                                         value={formData.google_client_id}
                                         onChange={(e) => handleChange('google_client_id', e.target.value)}
@@ -2783,7 +2818,7 @@ export default function GeneralSettingPage() {
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-sm font-medium text-gray-600">{t("api_key")} <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("api_key")} <span className="text-red-500">*</span></Label>
                                     <Input
                                         value={formData.google_api_key}
                                         onChange={(e) => handleChange('google_api_key', e.target.value)}
@@ -2791,7 +2826,7 @@ export default function GeneralSettingPage() {
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <Label className="text-sm font-medium text-gray-600">{t("project_number_app_id")} <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("project_number_app_id")} <span className="text-red-500">*</span></Label>
                                     <Input
                                         value={formData.google_project_number}
                                         onChange={(e) => handleChange('google_project_number', e.target.value)}
@@ -2799,38 +2834,38 @@ export default function GeneralSettingPage() {
                                     />
                                 </div>
                                 <div className="flex items-center justify-between py-2">
-                                    <Label className="text-sm font-medium text-gray-600">{t("status")} <span className="text-red-500">*</span></Label>
+                                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("status")} <span className="text-red-500">*</span></Label>
                                     <Switch
                                         checked={formData.google_status}
                                         onCheckedChange={(checked) => handleChange('google_status', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
-                                <div className="pt-4 border-t border-gray-100">
-                                    <Label className="text-sm font-medium text-gray-600 block mb-4">{t("allow_students_parents_and_staff_to_upload_student_document_through_google_drive")} <span className="text-red-500">*</span></Label>
+                                <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
+                                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300 block mb-4">{t("allow_students_parents_and_staff_to_upload_student_document_through_google_drive")} <span className="text-red-500">*</span></Label>
                                     <div className="flex flex-wrap gap-8">
                                         <div className="flex items-center gap-3">
-                                            <span className="text-sm text-gray-600">{t("student")}</span>
+                                            <span className="text-sm text-gray-600 dark:text-gray-300">{t("student")}</span>
                                             <Switch
                                                 checked={formData.google_allow_student}
                                                 onCheckedChange={(checked) => handleChange('google_allow_student', checked)}
-                                                className="data-[state=checked]:bg-indigo-500 scale-90"
+                                                className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                             />
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className="text-sm text-gray-600">{t("guardian")}</span>
+                                            <span className="text-sm text-gray-600 dark:text-gray-300">{t("guardian")}</span>
                                             <Switch
                                                 checked={formData.google_allow_guardian}
                                                 onCheckedChange={(checked) => handleChange('google_allow_guardian', checked)}
-                                                className="data-[state=checked]:bg-indigo-500 scale-90"
+                                                className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                             />
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className="text-sm text-gray-600">{t("staff")}</span>
+                                            <span className="text-sm text-gray-600 dark:text-gray-300">{t("staff")}</span>
                                             <Switch
                                                 checked={formData.google_allow_staff}
                                                 onCheckedChange={(checked) => handleChange('google_allow_staff', checked)}
-                                                className="data-[state=checked]:bg-indigo-500 scale-90"
+                                                className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                             />
                                         </div>
                                     </div>
@@ -2843,16 +2878,16 @@ export default function GeneralSettingPage() {
             case "Whatsapp Settings":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("whatsapp_settings")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("whatsapp_settings")}</h2>
                         </div>
                         <div className="space-y-8 max-w-4xl">
                             {/* Front Site */}
                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t("front_site")}</h3>
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{t("front_site")}</h3>
                                 <div className="space-y-4 pl-2">
                                     <div className="flex items-center justify-between max-w-xs">
-                                        <Label className="text-sm font-medium text-gray-600">{t("whatsapp_link")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("whatsapp_link")}</Label>
                                         <Switch
                                             checked={formData.whatsapp_front_site_status}
                                             onCheckedChange={(checked) => handleChange('whatsapp_front_site_status', checked)}
@@ -2861,7 +2896,7 @@ export default function GeneralSettingPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">{t("mobile_no")}</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("mobile_no")}</Label>
                                             <Input
                                                 value={formData.whatsapp_front_site_mobile}
                                                 onChange={(e) => handleChange('whatsapp_front_site_mobile', e.target.value)}
@@ -2871,37 +2906,37 @@ export default function GeneralSettingPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">From</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("from")}</Label>
                                             <Input
                                                 type="time"
                                                 value={formData.whatsapp_front_site_from}
                                                 onChange={(e) => handleChange('whatsapp_front_site_from', e.target.value)}
                                                 className="h-8 border-gray-200 shadow-none rounded text-xs"
-                                                placeholder="From"
+                                                placeholder={t("from")}
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">To</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("to")}</Label>
                                             <Input
                                                 type="time"
                                                 value={formData.whatsapp_front_site_to}
                                                 onChange={(e) => handleChange('whatsapp_front_site_to', e.target.value)}
                                                 className="h-8 border-gray-200 shadow-none rounded text-xs"
-                                                placeholder="To"
+                                                placeholder={t("to")}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="border-t border-gray-100"></div>
+                            <div className="border-t border-gray-100 dark:border-gray-800"></div>
 
                             {/* Admin Panel */}
                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t("admin_panel")}</h3>
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{t("admin_panel")}</h3>
                                 <div className="space-y-4 pl-2">
                                     <div className="flex items-center justify-between max-w-xs">
-                                        <Label className="text-sm font-medium text-gray-600">{t("whatsapp_link")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("whatsapp_link")}</Label>
                                         <Switch
                                             checked={formData.whatsapp_admin_panel_status}
                                             onCheckedChange={(checked) => handleChange('whatsapp_admin_panel_status', checked)}
@@ -2910,7 +2945,7 @@ export default function GeneralSettingPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">{t("mobile_no")}</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("mobile_no")}</Label>
                                             <Input
                                                 value={formData.whatsapp_admin_panel_mobile}
                                                 onChange={(e) => handleChange('whatsapp_admin_panel_mobile', e.target.value)}
@@ -2920,37 +2955,37 @@ export default function GeneralSettingPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">From</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("from")}</Label>
                                             <Input
                                                 type="time"
                                                 value={formData.whatsapp_admin_panel_from}
                                                 onChange={(e) => handleChange('whatsapp_admin_panel_from', e.target.value)}
                                                 className="h-8 border-gray-200 shadow-none rounded text-xs"
-                                                placeholder="From"
+                                                placeholder={t("from")}
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">To</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("to")}</Label>
                                             <Input
                                                 type="time"
                                                 value={formData.whatsapp_admin_panel_to}
                                                 onChange={(e) => handleChange('whatsapp_admin_panel_to', e.target.value)}
                                                 className="h-8 border-gray-200 shadow-none rounded text-xs"
-                                                placeholder="To"
+                                                placeholder={t("to")}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="border-t border-gray-100"></div>
+                            <div className="border-t border-gray-100 dark:border-gray-800"></div>
 
                             {/* Student / Guardian Panel */}
                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest">{t("student_guardian_panel")}</h3>
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{t("student_guardian_panel")}</h3>
                                 <div className="space-y-4 pl-2">
                                     <div className="flex items-center justify-between max-w-xs">
-                                        <Label className="text-sm font-medium text-gray-600">{t("whatsapp_link")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("whatsapp_link")}</Label>
                                         <Switch
                                             checked={formData.whatsapp_student_panel_status}
                                             onCheckedChange={(checked) => handleChange('whatsapp_student_panel_status', checked)}
@@ -2959,7 +2994,7 @@ export default function GeneralSettingPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">{t("mobile_no")}</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("mobile_no")}</Label>
                                             <Input
                                                 value={formData.whatsapp_student_panel_mobile}
                                                 onChange={(e) => handleChange('whatsapp_student_panel_mobile', e.target.value)}
@@ -2969,23 +3004,23 @@ export default function GeneralSettingPage() {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">From</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("from")}</Label>
                                             <Input
                                                 type="time"
                                                 value={formData.whatsapp_student_panel_from}
                                                 onChange={(e) => handleChange('whatsapp_student_panel_from', e.target.value)}
                                                 className="h-8 border-gray-200 shadow-none rounded text-xs"
-                                                placeholder="From"
+                                                placeholder={t("from")}
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <Label className="text-sm font-medium text-gray-600">To</Label>
+                                            <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("to")}</Label>
                                             <Input
                                                 type="time"
                                                 value={formData.whatsapp_student_panel_to}
                                                 onChange={(e) => handleChange('whatsapp_student_panel_to', e.target.value)}
                                                 className="h-8 border-gray-200 shadow-none rounded text-xs"
-                                                placeholder="To"
+                                                placeholder={t("to")}
                                             />
                                         </div>
                                     </div>
@@ -2998,58 +3033,58 @@ export default function GeneralSettingPage() {
             case "Chat":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100 flex items-center justify-between">
-                            <h2 className="text-sm font-bold text-gray-700">{t("chat")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("chat")}</h2>
                         </div>
                         <div className="space-y-6 max-w-4xl">
                             {/* Primary Chat System Master Toggle */}
-                            <div className="border border-indigo-100 rounded-lg p-6 bg-gradient-to-r from-indigo-50/40 via-white to-purple-50/20 shadow-sm flex items-center justify-between">
+                            <div className="border border-indigo-100 dark:border-indigo-950 rounded-lg p-6 bg-gradient-to-r from-indigo-50/40 via-white dark:via-card to-purple-50/20 shadow-sm flex items-center justify-between">
                                 <div className="space-y-1">
-                                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                    <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                                         <MessageSquare className="h-4 w-4 text-indigo-600" />
-                                        Enable Chat System (ON / OFF)
+                                        {t("enable_chat_system")}
                                     </h3>
-                                    <p className="text-xs text-gray-500">
-                                        Turn the real-time internal chat system ON or OFF across the entire application (hides floating chat icon, header chat button, and messages).
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {t("enable_chat_system_desc")}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <span className={cn("text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-colors", formData.enable_chat ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-gray-100 text-gray-500 border border-gray-200")}>
-                                        {formData.enable_chat ? "ON" : "OFF"}
+                                    <span className={cn("text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-colors", formData.enable_chat ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700")}>
+                                        {formData.enable_chat ? t("on") : t("off")}
                                     </span>
                                     <Switch
                                         checked={Boolean(formData.enable_chat)}
                                         onCheckedChange={(checked) => handleChange('enable_chat', checked)}
-                                        className="data-[state=checked]:bg-indigo-600 scale-110"
+                                        className="data-[state=checked]:bg-indigo-600 scale-110 cursor-pointer"
                                     />
                                 </div>
                             </div>
 
-                            <div className="border border-gray-100 rounded-lg p-6 bg-white shadow-sm">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-6 border-b border-gray-50 pb-2">{t("student_guardian_panel")}</h3>
+                            <div className="border border-gray-100 dark:border-gray-800 rounded-lg p-6 bg-white dark:bg-card shadow-sm">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-6 border-b border-gray-50 dark:border-gray-800 pb-2">{t("student_guardian_panel")}</h3>
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("allow_student_to_delete_chat")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("allow_student_to_delete_chat")}</Label>
                                         <Switch
                                             checked={formData.chat_student_delete}
                                             onCheckedChange={(checked) => handleChange('chat_student_delete', checked)}
-                                            className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                         />
                                     </div>
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("allow_guardian_to_delete_chat")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("allow_guardian_to_delete_chat")}</Label>
                                         <Switch
                                             checked={formData.chat_guardian_delete}
                                             onCheckedChange={(checked) => handleChange('chat_guardian_delete', checked)}
-                                            className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                         />
                                     </div>
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("allow_staff_to_delete_chat")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("allow_staff_to_delete_chat")}</Label>
                                         <Switch
                                             checked={formData.chat_staff_delete}
                                             onCheckedChange={(checked) => handleChange('chat_staff_delete', checked)}
-                                            className="data-[state=checked]:bg-indigo-500 scale-90"
+                                            className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                         />
                                     </div>
                                 </div>
@@ -3061,19 +3096,19 @@ export default function GeneralSettingPage() {
             case "Maintenance":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("maintenance")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("maintenance")}</h2>
                         </div>
 
                         <div className="space-y-6 max-w-4xl">
-                            <div className="border border-gray-100 rounded-lg p-6 bg-white shadow-sm">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-6 border-b border-gray-50 pb-2">{t("maintenance")}</h3>
+                            <div className="border border-gray-100 dark:border-gray-800 rounded-lg p-6 bg-white dark:bg-card shadow-sm">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-6 border-b border-gray-50 dark:border-gray-800 pb-2">{t("maintenance")}</h3>
                                 <div className="flex items-center justify-between max-w-sm">
-                                    <Label className="text-sm font-medium text-gray-600">{t("maintenance_mode")}</Label>
+                                    <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("maintenance_mode")}</Label>
                                     <Switch
                                         checked={formData.maintenance_mode}
                                         onCheckedChange={(checked) => handleChange('maintenance_mode', checked)}
-                                        className="data-[state=checked]:bg-indigo-500 scale-90"
+                                        className="data-[state=checked]:bg-indigo-500 scale-90 cursor-pointer"
                                     />
                                 </div>
                             </div>
@@ -3084,17 +3119,17 @@ export default function GeneralSettingPage() {
             case "Miscellaneous":
                 return (
                     <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="pb-2 border-b border-gray-100">
-                            <h2 className="text-sm font-bold text-gray-700">{t("miscellaneous_settings")}</h2>
+                        <div className="pb-2 border-b border-gray-100 dark:border-gray-800">
+                            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200">{t("miscellaneous_settings")}</h2>
                         </div>
 
                         <div className="space-y-8 max-w-4xl">
                             {/* Online Exam */}
                             <div className="space-y-4">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("online_exam")}</h3>
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("online_exam")}</h3>
                                 <div className="pl-4">
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("active_online_exam_show_only_my_created_question")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("active_online_exam_show_only_my_created_question")}</Label>
                                         <Switch
                                             checked={!!formData.online_exam_show_only_my_question}
                                             onCheckedChange={(checked) => handleChange('online_exam_show_only_my_question', checked)}
@@ -3105,11 +3140,11 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* ID Card Scan Code */}
-                            <div className="space-y-4 pt-4 border-t border-gray-50">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("id_card_scan_code")}</h3>
+                            <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("id_card_scan_code")}</h3>
                                 <div className="pl-4">
                                     <div className="space-y-3">
-                                        <Label className="text-sm font-medium text-gray-600">{t("scan_code_type")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("scan_code_type")}</Label>
                                         <RadioGroup
                                             value={formData.id_card_scan_code || "barcode"}
                                             onValueChange={(val) => handleChange('id_card_scan_code', val)}
@@ -3117,11 +3152,11 @@ export default function GeneralSettingPage() {
                                         >
                                             <div className="flex items-center gap-2">
                                                 <RadioGroupItem value="barcode" id="barcode" className="border-indigo-500 text-indigo-500" />
-                                                <label htmlFor="barcode" className="text-sm text-gray-600 font-medium cursor-pointer">{t("barcode")}</label>
+                                                <label htmlFor="barcode" className="text-sm text-gray-600 dark:text-gray-300 font-medium cursor-pointer">{t("barcode")}</label>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <RadioGroupItem value="qrcode" id="qrcode" className="border-indigo-500 text-indigo-500" />
-                                                <label htmlFor="qrcode" className="text-sm text-gray-600 font-medium cursor-pointer">{t("qr_code")}</label>
+                                                <label htmlFor="qrcode" className="text-sm text-gray-600 dark:text-gray-300 font-medium cursor-pointer">{t("qr_code")}</label>
                                             </div>
                                         </RadioGroup>
                                     </div>
@@ -3129,11 +3164,11 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* Exam Result & Admit Card */}
-                            <div className="space-y-4 pt-4 border-t border-gray-50">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("exam_settings")}</h3>
+                            <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("exam_settings")}</h3>
                                 <div className="pl-4 space-y-6">
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("exam_result_page_in_front_site")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("exam_result_page_in_front_site")}</Label>
                                         <Switch
                                             checked={!!formData.exam_result_page_in_front_site}
                                             onCheckedChange={(checked) => handleChange('exam_result_page_in_front_site', checked)}
@@ -3141,7 +3176,7 @@ export default function GeneralSettingPage() {
                                         />
                                     </div>
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("exam_admit_card_download_in_student_panel")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("exam_admit_card_download_in_student_panel")}</Label>
                                         <Switch
                                             checked={!!formData.exam_admit_card_download_in_student_panel}
                                             onCheckedChange={(checked) => handleChange('exam_admit_card_download_in_student_panel', checked)}
@@ -3152,11 +3187,11 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* Teacher Restrictions */}
-                            <div className="space-y-4 pt-4 border-t border-gray-50">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("teacher_settings")}</h3>
+                            <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("teacher_settings")}</h3>
                                 <div className="pl-4">
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("teacher_restricted_mode")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("teacher_restricted_mode")}</Label>
                                         <Switch
                                             checked={!!formData.teacher_restricted_mode}
                                             onCheckedChange={(checked) => handleChange('teacher_restricted_mode', checked)}
@@ -3167,11 +3202,11 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* Superadmin Visibility */}
-                            <div className="space-y-4 pt-4 border-t border-gray-50">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("super_admin_settings")}</h3>
+                            <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("super_admin_settings")}</h3>
                                 <div className="pl-4">
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("superadmin_visibility")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("superadmin_visibility")}</Label>
                                         <Switch
                                             checked={!!formData.superadmin_visibility}
                                             onCheckedChange={(checked) => handleChange('superadmin_visibility', checked)}
@@ -3182,11 +3217,11 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* Event Reminder */}
-                            <div className="space-y-4 pt-4 border-t border-gray-50">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("event_settings")}</h3>
+                            <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("event_settings")}</h3>
                                 <div className="pl-4">
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("event_reminder")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("event_reminder")}</Label>
                                         <Switch
                                             checked={!!formData.event_reminder}
                                             onCheckedChange={(checked) => handleChange('event_reminder', checked)}
@@ -3197,27 +3232,27 @@ export default function GeneralSettingPage() {
                             </div>
 
                             {/* Staff Leave Notification */}
-                            <div className="space-y-4 pt-4 border-t border-gray-50">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("staff_leave_settings")}</h3>
+                            <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("staff_leave_settings")}</h3>
                                 <div className="pl-4">
                                     <div className="space-y-1.5 max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("staff_apply_leave_notification_email")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("staff_apply_leave_notification_email")}</Label>
                                         <Input
                                             value={formData.staff_apply_leave_notification_email || ""}
                                             onChange={(e) => handleChange('staff_apply_leave_notification_email', e.target.value)}
                                             className="h-9 text-sm border-gray-200 focus:ring-indigo-500 shadow-none rounded-md"
-                                            placeholder="Enter email for notifications"
+                                            placeholder={t("enter_email_for_notifications")}
                                         />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Multi Class Selection */}
-                            <div className="space-y-4 pt-4 border-t border-gray-50">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("admission_settings")}</h3>
+                            <div className="space-y-4 pt-4 border-t border-gray-50 dark:border-gray-800">
+                                <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-3">{t("admission_settings")}</h3>
                                 <div className="pl-4">
                                     <div className="flex items-center justify-between max-w-md">
-                                        <Label className="text-sm font-medium text-gray-600">{t("enable_multi_class_selection_in_student_admission_form")}</Label>
+                                        <Label className="text-sm font-medium text-gray-600 dark:text-gray-300">{t("enable_multi_class_selection_in_student_admission_form")}</Label>
                                         <Switch
                                             checked={!!formData.enable_multi_class_selection_in_student_admission_form}
                                             onCheckedChange={(checked) => handleChange('enable_multi_class_selection_in_student_admission_form', checked)}
@@ -3234,7 +3269,7 @@ export default function GeneralSettingPage() {
             default:
                 return (
                     <div className="flex flex-col items-center justify-center h-64 opacity-30">
-                        <h2 className="text-lg font-bold text-gray-400">{activeTab} {t("settings")}</h2>
+                        <h2 className="text-lg font-bold text-gray-400">{t(tabKeys[activeTab] || activeTab)} {t("settings")}</h2>
                         <p className="text-xs text-gray-400 uppercase tracking-widest mt-2">{t("configuration_module_pending")}</p>
                     </div>
                 );
@@ -3244,14 +3279,14 @@ export default function GeneralSettingPage() {
     return (
         <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans">
             <Card className="pt-0 overflow-hidden">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] dark:from-muted dark:to-card border-b border-gray-100 dark:border-gray-800">
                     <div className="flex items-center gap-2.5">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                             <Settings className="h-5 w-5" />
                         </span>
                         <div>
-                            <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("general_setting")}</h1>
-                            <p className="text-xs text-gray-500 mt-1">{t("configure_your_schools_general_settings")}</p>
+                            <h1 className="text-[15px] font-bold text-gray-800 dark:text-gray-100 tracking-tight leading-none">{t("general_setting")}</h1>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t("configure_your_schools_general_settings")}</p>
                         </div>
                     </div>
 
@@ -3259,52 +3294,52 @@ export default function GeneralSettingPage() {
                         variant="outline"
                         onClick={handleClearCache}
                         disabled={clearingCache}
-                        className="h-9 px-4 rounded-full text-xs font-bold gap-2 border-rose-200 bg-rose-50/50 text-rose-700 hover:bg-rose-100 hover:border-rose-300 transition-all shadow-sm shrink-0"
+                        className="h-9 px-4 rounded-full text-xs font-bold gap-2 border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 hover:border-rose-300 transition-all shadow-sm shrink-0 cursor-pointer"
                     >
                         {clearingCache ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        Clear System Cache
+                        {t("clear_system_cache")}
                     </Button>
                 </div>
                 <CardContent className="p-6 pt-4">
                     <div className="flex flex-col md:flex-row gap-6">
                         {/* Left Sidebar Tabs */}
-                        <div className="w-full md:w-64 space-y-0.5 bg-white border border-gray-100 rounded-lg shadow-sm overflow-hidden h-fit">
+                        <div className="w-full md:w-64 space-y-0.5 bg-white dark:bg-card border border-gray-100 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden h-fit">
                             {tabs.map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     className={cn(
-                                        "w-full text-left px-4 py-3 text-sm font-medium transition-all relative border-b border-gray-50 last:border-b-0",
+                                        "w-full text-left px-4 py-3 text-sm font-medium transition-all relative border-b border-gray-50 dark:border-gray-800 last:border-b-0 cursor-pointer",
                                         activeTab === tab
-                                            ? "bg-indigo-50/30 text-indigo-600 font-bold"
-                                            : "text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                                            ? "bg-indigo-50/30 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 font-bold"
+                                            : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-muted hover:text-gray-700 dark:hover:text-gray-200"
                                     )}
                                 >
                                     {activeTab === tab && (
                                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 rounded-r-full" />
                                     )}
-                                    {tab}
+                                    {t(tabKeys[tab] || tab)}
                                 </button>
                             ))}
                         </div>
 
                         {/* Right Content Area */}
-                        <div className="flex-1 bg-white border border-gray-100 rounded-lg shadow-sm p-6 flex flex-col min-h-[700px]">
+                        <div className="flex-1 bg-white dark:bg-card border border-gray-100 dark:border-gray-800 rounded-lg shadow-sm p-6 flex flex-col min-h-[700px]">
                             <div className="flex-1">
                                 {renderContent()}
                             </div>
 
                             {/* Save Button */}
-                            <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
+                            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 flex justify-end">
                                 <Button
                                     onClick={() => setIsSaveDialogOpen(true)}
                                     disabled={saving}
-                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none"
+                                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-8 h-9 text-xs font-bold uppercase transition-all rounded-full shadow-md border-none cursor-pointer"
                                 >
                                     {saving ? (
                                         <>
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                            {t("loading")}
+                                            <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                                            {t("saving_settings")}
                                         </>
                                     ) : (
                                         t("save")
@@ -3316,39 +3351,39 @@ export default function GeneralSettingPage() {
 
                     {/* Save Confirmation Dialog */}
                     <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-                        <DialogContent className="sm:max-w-[425px] border-none shadow-2xl p-0 overflow-hidden rounded-lg bg-white">
-                            <div className="bg-gradient-to-br from-indigo-50/50 to-white p-6 pt-8">
-                                <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-300">
+                        <DialogContent className="sm:max-w-[425px] border-none shadow-2xl p-0 overflow-hidden rounded-lg bg-white dark:bg-card">
+                            <div className="bg-gradient-to-br from-indigo-50/50 to-white dark:from-indigo-950/20 dark:to-card p-6 pt-8">
+                                <div className="mx-auto w-16 h-16 bg-indigo-100 dark:bg-indigo-950/50 rounded-full flex items-center justify-center mb-6 animate-in zoom-in duration-300">
                                     <Save className="h-8 w-8 text-indigo-600" />
                                 </div>
                                 <DialogHeader className="space-y-3">
-                                    <DialogTitle className="text-center text-xl font-bold text-gray-800">
+                                    <DialogTitle className="text-center text-xl font-bold text-gray-800 dark:text-gray-100">
                                         {t("save_configuration")}
                                     </DialogTitle>
-                                    <DialogDescription className="text-center text-sm text-gray-500 leading-relaxed px-4">
+                                    <DialogDescription className="text-center text-sm text-gray-500 dark:text-gray-400 leading-relaxed px-4">
                                         {t("you_are_about_to_update_the_system_settings")}
                                     </DialogDescription>
                                 </DialogHeader>
                             </div>
 
-                            <DialogFooter className="bg-gray-50/80 p-4 gap-3 sm:gap-0 flex flex-row">
+                            <DialogFooter className="bg-gray-50/80 dark:bg-muted/40 p-4 gap-3 sm:gap-0 flex flex-row">
                                 <Button
                                     variant="ghost"
                                     onClick={() => setIsSaveDialogOpen(false)}
                                     disabled={saving}
-                                    className="flex-1 h-11 font-bold text-gray-500 hover:bg-gray-100 rounded-lg"
+                                    className="flex-1 h-11 font-bold text-gray-500 hover:bg-gray-100 dark:hover:bg-muted rounded-lg cursor-pointer"
                                 >
                                     {t("review")}
                                 </Button>
                                 <Button
                                     onClick={handleSave}
                                     disabled={saving}
-                                    className="flex-1 h-11 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                                    className="flex-1 h-11 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-lg shadow-lg shadow-indigo-200 transition-all active:scale-95 cursor-pointer"
                                 >
                                     {saving ? (
                                         <>
                                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                            {t("applying")}
+                                            {t("saving_settings")}
                                         </>
                                     ) : (
                                         t("update_now")

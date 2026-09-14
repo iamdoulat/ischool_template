@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,10 +38,12 @@ export default function EditStaffPage() {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [roles, setRoles] = useState<Role[]>([]);
+    const [branches, setBranches] = useState<any[]>([]);
     const [designations, setDesignations] = useState<CommonData[]>([]);
     const [departments, setDepartments] = useState<CommonData[]>([]);
     
     const [formData, setFormData] = useState({
+        branch_id: "",
         staff_id: "",
         role: "",
         designation: "",
@@ -112,10 +114,19 @@ export default function EditStaffPage() {
         const loadData = async () => {
             setLoading(true);
             const user = await fetchCurrentUser();
-            if (user && (user.permissions?.includes("human-resource.staff.edit") || user.permissions?.includes("all") || user.staff_id === id)) {
+            const roleClean = (user?.role || "").toLowerCase().replace(/[_\s]/g, "");
+            const isSuperAdminOrAdmin = roleClean.includes("admin") || roleClean.includes("superadmin");
+            const hasPermission = isSuperAdminOrAdmin ||
+                user?.permissions?.includes("human-resource.staff.edit") ||
+                user?.permissions?.includes("all") ||
+                String(user?.staff_id) === String(id) ||
+                String(user?.id) === String(id);
+
+            if (user && hasPermission) {
                 setCurrentUser(user);
                 await Promise.all([
                     fetchRoles(),
+                    fetchBranches(),
                     fetchDesignations(),
                     fetchDepartments(),
                     fetchStaffDetails()
@@ -141,9 +152,36 @@ export default function EditStaffPage() {
             }
         } catch (error) {
             console.error("Error fetching current user:", error);
-            router.push("/login");
         }
         return null;
+    };
+
+    const hasMultipleBranches = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        return list.length > 1;
+    }, [branches]);
+
+    const branchOptions = useMemo(() => {
+        const list = Array.isArray(branches) ? branches : [];
+        if (list.length === 0) {
+            return [{ label: "Main", value: "1" }];
+        }
+        return list.map((b: any) => ({
+            label: b.branch_name,
+            value: b.id.toString(),
+        }));
+    }, [branches]);
+
+    const fetchBranches = async () => {
+        try {
+            const res = await api.get("/multi-branch/branches?all=true");
+            const list = res.data?.data?.data || res.data?.data || res.data || [];
+            if (Array.isArray(list)) {
+                setBranches(list);
+            }
+        } catch (e) {
+            console.error("Failed to load branches:", e);
+        }
     };
 
     const fetchRoles = async () => {
@@ -189,6 +227,7 @@ export default function EditStaffPage() {
                 const lastName = staff.last_name || nameParts.slice(1).join(" ") || "";
 
                 setFormData({
+                    branch_id: staff.branch_id ? staff.branch_id.toString() : "1",
                     staff_id: staff.staff_id || "",
                     role: staff.role || "",
                     designation: staff.designation || "",
@@ -269,6 +308,9 @@ export default function EditStaffPage() {
 
         if (!formData.staff_id.trim()) newErrors.staff_id = t("staff_id_required");
         if (!formData.role) newErrors.role = t("role_required");
+        if (formData.role?.toLowerCase() === "branch admin" && !formData.branch_id) {
+            newErrors.branch_id = "A Branch Admin must be assigned to a specific campus branch.";
+        }
         if (!formData.first_name.trim()) newErrors.first_name = t("first_name_required");
         if (!formData.email.trim()) {
             newErrors.email = t("email_required");
@@ -456,6 +498,29 @@ export default function EditStaffPage() {
                                     </SelectContent>
                                 </Select>
                                 {errors.role && <p className="text-xs text-red-500">{errors.role}</p>}
+                            </div>
+
+                            {/* Campus Branch */}
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-gray-500 uppercase">
+                                    {t("branch") || "Campus Branch"}
+                                    {formData.role?.toLowerCase() === "branch admin" && (
+                                        <span className="text-red-500 ml-1">*</span>
+                                    )}
+                                </Label>
+                                <Select disabled={!hasMultipleBranches} value={formData.branch_id || (branches[0]?.id?.toString() ?? "1")} onValueChange={(value) => handleInputChange("branch_id", value)}>
+                                    <SelectTrigger className={`h-11 border-gray-200 ${errors.branch_id ? "border-red-500" : ""}`}>
+                                        <SelectValue placeholder="Select Campus Branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {branchOptions.map((b) => (
+                                            <SelectItem key={b.value} value={b.value}>
+                                                {b.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.branch_id && <p className="text-xs text-red-500">{errors.branch_id}</p>}
                             </div>
 
                             {/* Status */}

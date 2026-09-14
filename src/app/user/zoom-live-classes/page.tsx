@@ -24,7 +24,7 @@ import {
     FileBox, Printer, Columns, Loader2,
     CalendarClock, Clock, GraduationCap, User, CheckCircle2, XCircle
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 
@@ -41,7 +41,8 @@ interface ZoomClass {
 }
 
 export default function UserZoomLiveClassesPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
     const [data, setData] = useState<ZoomClass[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -67,8 +68,7 @@ export default function UserZoomLiveClassesPage() {
             setTotalEntries(res.total || 0);
             setLastPage(res.last_page || 1);
             setCurrentPage(res.current_page || 1);
-        } catch (error) {
-            console.error("Failed to load classes", error);
+        } catch {
             setData([]);
             setTotalEntries(0);
             setLastPage(1);
@@ -119,7 +119,7 @@ export default function UserZoomLiveClassesPage() {
                     </span>
                     <div>
                         <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none">{t("live_classes")}</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">{t("classes_scheduled", { count: totalEntries })}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">{t("classes_scheduled", { count: toLocaleNumber(totalEntries, langCode) })}</p>
                     </div>
                 </div>
 
@@ -148,13 +148,15 @@ export default function UserZoomLiveClassesPage() {
                                 }}
                             >
                                 <SelectTrigger className="h-8 w-16 text-[11px] border-gray-200 shadow-none rounded-lg font-semibold text-gray-700 bg-white">
-                                    <SelectValue placeholder="50" />
+                                    <SelectValue placeholder={toLocaleNumber("50", langCode)}>
+                                        {toLocaleNumber(itemsPerPage, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
+                                    <SelectItem value="10">{toLocaleNumber("10", langCode)}</SelectItem>
+                                    <SelectItem value="25">{toLocaleNumber("25", langCode)}</SelectItem>
+                                    <SelectItem value="50">{toLocaleNumber("50", langCode)}</SelectItem>
+                                    <SelectItem value="100">{toLocaleNumber("100", langCode)}</SelectItem>
                                 </SelectContent>
                             </Select>
                             <div className="flex items-center gap-1 text-gray-400">
@@ -231,7 +233,7 @@ export default function UserZoomLiveClassesPage() {
                                                 {item.date_time}
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">
-                                                {item.duration}
+                                                {toLocaleNumber(item.duration, langCode)}
                                             </TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">
                                                 {item.class}
@@ -287,7 +289,7 @@ export default function UserZoomLiveClassesPage() {
                                         </div>
                                         <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] text-gray-600">
                                             <span className="flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.date_time}</span>
-                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.duration} {t("minutes_short")}</span>
+                                            <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{toLocaleNumber(item.duration, langCode)} {t("minutes_short")}</span>
                                             <span className="flex items-center gap-1.5"><GraduationCap className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.class}</span>
                                             <span className="flex items-center gap-1.5"><User className="h-3.5 w-3.5 text-indigo-400 shrink-0" />{item.host}</span>
                                         </div>
@@ -311,9 +313,9 @@ export default function UserZoomLiveClassesPage() {
                     {/* Footer Pagination */}
                     <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-2">
                         <div>
-                            {t("showing")} {totalEntries > 0 ? startIndex + 1 : 0} {t("to")}{" "}
-                            {Math.min(startIndex + parseInt(itemsPerPage, 10), totalEntries)} {t("of")}{" "}
-                            {totalEntries} {t("entries")}
+                            {t("showing")} {toLocaleNumber(totalEntries > 0 ? startIndex + 1 : 0, langCode)} {t("to")}{" "}
+                            {toLocaleNumber(Math.min(startIndex + parseInt(itemsPerPage, 10), totalEntries), langCode)} {t("of")}{" "}
+                            {toLocaleNumber(totalEntries, langCode)} {t("entries")}
                         </div>
 
                         {totalPages > 1 && (
@@ -337,7 +339,7 @@ export default function UserZoomLiveClassesPage() {
                                                 : "bg-white hover:bg-gray-50/80 text-gray-500 hover:text-gray-700 rounded-xl hover:shadow-md hover:shadow-gray-100/50 active:scale-95 border border-gray-100"
                                         )}
                                     >
-                                        {page}
+                                        {toLocaleNumber(page, langCode)}
                                     </button>
                                 ))}
 

@@ -42,11 +42,32 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { mockUserProfileData } from "@/lib/mock-user-profile";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
+import {
+  cn,
+  toLocaleNumber,
+  translateClassName,
+  translateSectionName,
+  translateClassSection,
+  translateMonthName,
+  translateSubjectName,
+  translateDivision,
+  translateExamTitle,
+  translateTimelineTitle,
+  translateDocumentTitle,
+  translateDocumentFileName,
+  translateIncidentTitle,
+  translatePaymentMode,
+  translateGender,
+  translateYesNo,
+  translateStudentCategory,
+  translateStudentHouse,
+  translateFeeName,
+} from "@/lib/utils";
 import QRCode from "qrcode";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
+import { useCurrency } from "@/components/providers/currency-provider";
 
 // ─── Fees Types ───────────────────────────────────────────────────────────────
 interface FeePayment {
@@ -76,8 +97,6 @@ interface FeeRow {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const StatusBadge = ({ status }: { status: string }) => {
   const { t } = useTranslation();
@@ -208,7 +227,11 @@ function InfoTile({
 
 // ─── Fees Tab Component ────────────────────────────────────────────────────────
 function FeesTab() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
+  const { selectedCurrency } = useCurrency();
+  const cur = selectedCurrency?.symbol || "$";
+  const formatMoney = (n: number) => toLocaleNumber(n.toFixed(2), langCode);
   const [fees, setFees] = useState<FeeRow[]>([]);
   const [session, setSession] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -251,8 +274,8 @@ function FeesTab() {
             setFees([]);
           }
         }
-      } catch (err) {
-        console.error("Error fetching student fees:", err);
+      } catch {
+        // Handled silently
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -303,13 +326,13 @@ function FeesTab() {
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
           {session && (
-            <span className="hidden sm:inline rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold px-3 py-1">{t("session")} {session}</span>
+            <span className="hidden sm:inline rounded-full bg-indigo-50 text-indigo-600 text-[11px] font-semibold px-3 py-1">{t("session")} {toLocaleNumber(session, langCode)}</span>
           )}
-          <span className="font-medium">{t("date")}: {new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</span>
+          <span className="font-medium">{t("date")}: {toLocaleNumber(new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }), langCode)}</span>
         </div>
       </div>
 
-      <PanelCard title={t("fee_statement")} subtitle={session ? `${t("session")} ${session}` : undefined} right={<ExportToolbar />}>
+      <PanelCard title={t("fee_statement")} subtitle={session ? `${t("session")} ${toLocaleNumber(session, langCode)}` : undefined} right={<ExportToolbar />}>
         {fees.length === 0 ? (
           <div className="py-12 text-center text-gray-400">
             <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-40" />
@@ -328,14 +351,14 @@ function FeesTab() {
                     <th className="px-2 py-2.5 text-left font-bold text-gray-600 min-w-[160px]">{t("fees")}</th>
                     <th className="px-2 py-2.5 text-left font-bold text-gray-600 whitespace-nowrap">{t("due_date")}</th>
                     <th className="px-2 py-2.5 text-left font-bold text-gray-600">{t("status")}</th>
-                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("amount")} ($)</th>
+                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("amount")} ({cur})</th>
                     <th className="px-2 py-2.5 text-left font-bold text-gray-600 whitespace-nowrap">{t("payment_id")}</th>
                     <th className="px-2 py-2.5 text-left font-bold text-gray-600">{t("mode")}</th>
                     <th className="px-2 py-2.5 text-left font-bold text-gray-600">{t("date")}</th>
-                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("discount")} ($)</th>
-                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("fine")} ($)</th>
-                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("paid")} ($)</th>
-                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("balance")} ($)</th>
+                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("discount")} ({cur})</th>
+                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("fine")} ({cur})</th>
+                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("paid")} ({cur})</th>
+                    <th className="px-2 py-2.5 text-right font-bold text-gray-600 whitespace-nowrap">{t("balance")} ({cur})</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -348,28 +371,28 @@ function FeesTab() {
                             <input type="checkbox" checked={selected.includes(fee.id)} onChange={() => toggleOne(fee.id)} className="rounded cursor-pointer accent-[#6366F1]" />
                           </td>
                           <td className="px-2 py-2.5">
-                            <span className="text-[#337ab7] hover:underline cursor-pointer font-medium">{fee.name} {fee.code ? `(${fee.code})` : ''}</span>
+                            <span className="text-[#337ab7] hover:underline cursor-pointer font-medium">{translateFeeName(fee.name, langCode)} {fee.code ? `(${translateFeeName(fee.code, langCode)})` : ''}</span>
                           </td>
-                          <td className="px-2 py-2.5 text-[#337ab7] whitespace-nowrap">{fee.dueDate}</td>
+                          <td className="px-2 py-2.5 text-[#337ab7] whitespace-nowrap">{toLocaleNumber(fee.dueDate, langCode)}</td>
                           <td className="px-2 py-2.5"><StatusBadge status={fee.status} /></td>
                           <td className="px-2 py-2.5 text-right whitespace-nowrap">
-                            <span className="text-gray-700">{fmt(fee.amount)}</span>
-                            {fee.fine > 0 && <span className="text-orange-500 ml-1">+ {fmt(fee.fine)}</span>}
+                            <span className="text-gray-700">{formatMoney(fee.amount)}</span>
+                            {fee.fine > 0 && <span className="text-orange-500 ml-1">+ {formatMoney(fee.fine)}</span>}
                           </td>
                           <td className="px-2 py-2.5"></td>
                           <td className="px-2 py-2.5"></td>
                           <td className="px-2 py-2.5"></td>
                           <td className="px-2 py-2.5 text-right text-gray-600">
-                            {fee.discount > 0 ? <span className="text-[#337ab7] font-semibold">{fmt(fee.discount)}</span> : <span className={isUnpaidOrPartial ? "font-bold text-gray-800" : "text-gray-600"}>0.00</span>}
+                            {fee.discount > 0 ? <span className="text-[#337ab7] font-semibold">{formatMoney(fee.discount)}</span> : <span className={isUnpaidOrPartial ? "font-bold text-gray-800" : "text-gray-600"}>{toLocaleNumber("0.00", langCode)}</span>}
                           </td>
                           <td className="px-2 py-2.5 text-right text-gray-600">
-                            <span className={isUnpaidOrPartial ? "font-bold text-gray-800" : "text-gray-600"}>{fmt(fee.fineAmount)}</span>
+                            <span className={isUnpaidOrPartial ? "font-bold text-gray-800" : "text-gray-600"}>{formatMoney(fee.fineAmount)}</span>
                           </td>
                           <td className="px-2 py-2.5 text-right text-gray-600">
-                            <span className={isUnpaidOrPartial ? "font-bold text-gray-800" : "text-gray-600"}>{fmt(fee.paidAmount)}</span>
+                            <span className={isUnpaidOrPartial ? "font-bold text-gray-800" : "text-gray-600"}>{formatMoney(fee.paidAmount)}</span>
                           </td>
                           <td className="px-2 py-2.5 text-right">
-                            {fee.balance > 0 ? <span className="font-bold text-gray-800">{fmt(fee.balance)}</span> : ""}
+                            {fee.balance > 0 ? <span className="font-bold text-gray-800">{formatMoney(fee.balance)}</span> : ""}
                           </td>
                         </tr>
                         {fee.payments.map((p) => (
@@ -379,13 +402,13 @@ function FeesTab() {
                             <td></td>
                             <td></td>
                             <td></td>
-                            <td className="px-2 py-1.5 text-[#337ab7]">{p.paymentId}</td>
-                            <td className="px-2 py-1.5">{p.mode}</td>
-                            <td className="px-2 py-1.5 whitespace-nowrap">{p.date}</td>
-                            <td className="px-2 py-1.5 text-right">{p.discount > 0 ? <span className="text-[#337ab7]">{fmt(p.discount)}</span> : "0.00"}</td>
-                            <td className="px-2 py-1.5 text-right">{p.fine > 0 ? fmt(p.fine) : "0.00"}</td>
-                            <td className="px-2 py-1.5 text-right">{fmt(p.paid)}</td>
-                            <td className="px-2 py-1.5 text-right">{fmt(p.balance)}</td>
+                            <td className="px-2 py-1.5 text-[#337ab7]">{toLocaleNumber(p.paymentId, langCode)}</td>
+                            <td className="px-2 py-1.5">{translatePaymentMode(p.mode, langCode)}</td>
+                            <td className="px-2 py-1.5 whitespace-nowrap">{toLocaleNumber(p.date, langCode)}</td>
+                            <td className="px-2 py-1.5 text-right">{p.discount > 0 ? <span className="text-[#337ab7]">{formatMoney(p.discount)}</span> : toLocaleNumber("0.00", langCode)}</td>
+                            <td className="px-2 py-1.5 text-right">{p.fine > 0 ? formatMoney(p.fine) : toLocaleNumber("0.00", langCode)}</td>
+                            <td className="px-2 py-1.5 text-right">{formatMoney(p.paid)}</td>
+                            <td className="px-2 py-1.5 text-right">{formatMoney(p.balance)}</td>
                           </tr>
                         ))}
                       </Fragment>
@@ -395,13 +418,13 @@ function FeesTab() {
                     <td></td>
                     <td className="px-2 py-2.5 text-sm font-bold text-gray-700" colSpan={3}>{t("grand_total")}</td>
                     <td className="px-2 py-2.5 text-right text-gray-800 whitespace-nowrap">
-                      ${fmt(grandAmount)}{grandFine > 0 && <span className="text-orange-500 ml-1">+ {fmt(grandFine)}</span>}
+                      {cur}{formatMoney(grandAmount)}{grandFine > 0 && <span className="text-orange-500 ml-1">+ {cur}{formatMoney(grandFine)}</span>}
                     </td>
                     <td colSpan={3}></td>
-                    <td className="px-2 py-2.5 text-right text-gray-700">${fmt(grandDiscount)}</td>
-                    <td className="px-2 py-2.5 text-right text-gray-700">${fmt(grandFineAmt)}</td>
-                    <td className="px-2 py-2.5 text-right text-gray-700">${fmt(grandPaid)}</td>
-                    <td className="px-2 py-2.5 text-right text-gray-700">${fmt(grandBalance)}</td>
+                    <td className="px-2 py-2.5 text-right text-gray-700">{cur}{formatMoney(grandDiscount)}</td>
+                    <td className="px-2 py-2.5 text-right text-gray-700">{cur}{formatMoney(grandFineAmt)}</td>
+                    <td className="px-2 py-2.5 text-right text-gray-700">{cur}{formatMoney(grandPaid)}</td>
+                    <td className="px-2 py-2.5 text-right text-gray-700">{cur}{formatMoney(grandBalance)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -414,24 +437,24 @@ function FeesTab() {
                   <div className="flex items-start justify-between gap-3">
                     <label className="flex items-start gap-2 min-w-0">
                       <input type="checkbox" checked={selected.includes(fee.id)} onChange={() => toggleOne(fee.id)} className="mt-0.5 rounded cursor-pointer accent-[#6366F1]" />
-                      <span className="text-[13px] font-semibold text-gray-800 leading-snug">{fee.name}</span>
+                      <span className="text-[13px] font-semibold text-gray-800 leading-snug">{translateFeeName(fee.name, langCode)}</span>
                     </label>
                     <StatusBadge status={fee.status} />
                   </div>
                   <div className="mt-2 rounded-lg bg-gray-50 border border-gray-100 px-3 py-1.5">
-                    <MiniField label={t("due_date")} value={fee.dueDate} className="text-[#337ab7]" />
-                    <MiniField label={t("amount")} value={<>{fmt(fee.amount)}{fee.fine > 0 && <span className="text-orange-500"> + {fmt(fee.fine)}</span>}</>} />
-                    <MiniField label={t("discount")} value={fmt(fee.discount)} className={fee.discount > 0 ? "text-[#337ab7] font-semibold" : ""} />
-                    <MiniField label={t("fine")} value={fmt(fee.fineAmount)} />
-                    <MiniField label={t("paid")} value={fmt(fee.paidAmount)} />
-                    <MiniField label={t("balance")} value={fmt(fee.balance)} className={fee.balance > 0 ? "text-red-600 font-bold" : "text-green-600"} />
+                    <MiniField label={t("due_date")} value={toLocaleNumber(fee.dueDate, langCode)} className="text-[#337ab7]" />
+                    <MiniField label={t("amount")} value={<>{cur}{formatMoney(fee.amount)}{fee.fine > 0 && <span className="text-orange-500"> + {cur}{formatMoney(fee.fine)}</span>}</>} />
+                    <MiniField label={t("discount")} value={`${cur}${formatMoney(fee.discount)}`} className={fee.discount > 0 ? "text-[#337ab7] font-semibold" : ""} />
+                    <MiniField label={t("fine")} value={`${cur}${formatMoney(fee.fineAmount)}`} />
+                    <MiniField label={t("paid")} value={`${cur}${formatMoney(fee.paidAmount)}`} />
+                    <MiniField label={t("balance")} value={`${cur}${formatMoney(fee.balance)}`} className={fee.balance > 0 ? "text-red-600 font-bold" : "text-green-600"} />
                   </div>
                   {fee.payments.length > 0 && (
                     <div className="mt-1.5 space-y-1">
                       {fee.payments.map((p) => (
                         <div key={p.id} className="flex items-center justify-between text-[11px] text-gray-500 pl-2">
-                          <span className="text-[#337ab7]">↳ {p.paymentId} · {p.mode}</span>
-                          <span>{p.date} · {t("paid")} {fmt(p.paid)}</span>
+                          <span className="text-[#337ab7]">↳ {toLocaleNumber(p.paymentId, langCode)} · {translatePaymentMode(p.mode, langCode)}</span>
+                          <span>{toLocaleNumber(p.date, langCode)} · {t("paid")} {cur}{formatMoney(p.paid)}</span>
                         </div>
                       ))}
                     </div>
@@ -441,11 +464,11 @@ function FeesTab() {
               {/* Mobile grand total */}
               <div className="p-3.5 bg-gray-50">
                 <div className="text-sm font-bold text-gray-700 mb-1">{t("grand_total")}</div>
-                <MiniField label={t("amount")} value={<>${fmt(grandAmount)}{grandFine > 0 && <span className="text-orange-500"> + {fmt(grandFine)}</span>}</>} />
-                <MiniField label={t("discount")} value={`$${fmt(grandDiscount)}`} />
-                <MiniField label={t("fine")} value={`$${fmt(grandFineAmt)}`} />
-                <MiniField label={t("paid")} value={`$${fmt(grandPaid)}`} />
-                <MiniField label={t("balance")} value={`$${fmt(grandBalance)}`} className="text-red-600 font-bold" />
+                <MiniField label={t("amount")} value={<>{cur}{formatMoney(grandAmount)}{grandFine > 0 && <span className="text-orange-500"> + {cur}{formatMoney(grandFine)}</span>}</>} />
+                <MiniField label={t("discount")} value={`${cur}${formatMoney(grandDiscount)}`} />
+                <MiniField label={t("fine")} value={`${cur}${formatMoney(grandFineAmt)}`} />
+                <MiniField label={t("paid")} value={`${cur}${formatMoney(grandPaid)}`} />
+                <MiniField label={t("balance")} value={`${cur}${formatMoney(grandBalance)}`} className="text-red-600 font-bold" />
               </div>
             </div>
           </>
@@ -484,10 +507,11 @@ interface ExamData {
 
 // ─── Exam Tab Component ────────────────────────────────────────────────────────
 function ExamTab() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
   const [exams, setExams] = useState<ExamData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const fmt = (n: number) => n.toFixed(2);
+  const fmt = (n: number) => toLocaleNumber(n.toFixed(2), langCode);
 
   useEffect(() => {
     let isMounted = true;
@@ -519,8 +543,8 @@ function ExamTab() {
             } : { percentage: 0, rank: 1, result: 'Pass', division: '-', grandTotal: 0, totalObtained: 0 },
           })));
         }
-      } catch (err) {
-        console.error("Error fetching exam results:", err);
+      } catch {
+        // Handled silently
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -535,9 +559,9 @@ function ExamTab() {
       text += exam.title + "\n";
       text += "Subject\tMax Marks\tMin Marks\tMarks Obtained\tResult/Grade\tNote\n";
       exam.subjects.forEach(s => {
-        text += `${s.name}\t${fmt(s.maxMarks)}\t${fmt(s.minMarks)}\t${fmt(s.obtained)}\t${s.result || s.grade || ""}\t${s.note || ""}\n`;
+        text += `${s.name}\t${s.maxMarks.toFixed(2)}\t${s.minMarks.toFixed(2)}\t${s.obtained.toFixed(2)}\t${s.result || s.grade || ""}\t${s.note || ""}\n`;
       });
-      text += `Percentage: ${fmt(exam.summary.percentage)}\tRank: ${exam.summary.rank}\tResult: ${exam.summary.result}\tDivision: ${exam.summary.division}\tGrand Total: ${exam.summary.grandTotal}\tTotal Obtain: ${exam.summary.totalObtained}\n\n`;
+      text += `Percentage: ${exam.summary.percentage.toFixed(2)}\tRank: ${exam.summary.rank}\tResult: ${exam.summary.result}\tDivision: ${exam.summary.division}\tGrand Total: ${exam.summary.grandTotal}\tTotal Obtain: ${exam.summary.totalObtained}\n\n`;
     });
     navigator.clipboard.writeText(text);
     toast.success(t("copied_to_clipboard"));
@@ -549,9 +573,9 @@ function ExamTab() {
       csv += `"${exam.title}"\n`;
       csv += "Subject,Max Marks,Min Marks,Marks Obtained,Result/Grade,Note\n";
       exam.subjects.forEach(s => {
-        csv += `"${s.name}",${fmt(s.maxMarks)},${fmt(s.minMarks)},${fmt(s.obtained)},"${s.result || s.grade || ""}","${s.note || ""}"\n`;
+        csv += `"${s.name}",${s.maxMarks.toFixed(2)},${s.minMarks.toFixed(2)},${s.obtained.toFixed(2)},"${s.result || s.grade || ""}","${s.note || ""}"\n`;
       });
-      csv += `Percentage: ${fmt(exam.summary.percentage)},Rank: ${exam.summary.rank},Result: ${exam.summary.result},Division: ${exam.summary.division},Grand Total: ${exam.summary.grandTotal},Total Obtain: ${exam.summary.totalObtained}\n\n`;
+      csv += `Percentage: ${exam.summary.percentage.toFixed(2)},Rank: ${exam.summary.rank},Result: ${exam.summary.result},Division: ${exam.summary.division},Grand Total: ${exam.summary.grandTotal},Total Obtain: ${exam.summary.totalObtained}\n\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -597,7 +621,7 @@ function ExamTab() {
         </PanelCard>
       ) : (
         exams.map((exam, i) => (
-          <PanelCard key={i} title={exam.title} bodyClassName="p-0">
+          <PanelCard key={i} title={translateExamTitle(exam.title, langCode)} bodyClassName="p-0">
             {/* Desktop table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-xs text-left">
@@ -614,7 +638,7 @@ function ExamTab() {
                 <tbody>
                   {exam.subjects.map((subj, idx) => (
                     <tr key={idx} className="border-b border-gray-100 text-[#333333] hover:bg-indigo-50/30 transition-colors">
-                      <td className="px-4 py-2.5 font-medium">{subj.name}</td>
+                      <td className="px-4 py-2.5 font-medium">{translateSubjectName(subj.name, langCode)}</td>
                       <td className="px-4 py-2.5">{fmt(subj.maxMarks)}</td>
                       <td className="px-4 py-2.5">{fmt(subj.minMarks)}</td>
                       <td className="px-4 py-2.5 font-semibold">{fmt(subj.obtained)}</td>
@@ -637,7 +661,7 @@ function ExamTab() {
               {exam.subjects.map((subj, idx) => (
                 <div key={idx} className="p-3.5">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-[13px] font-semibold text-gray-800">{subj.name}</span>
+                    <span className="text-[13px] font-semibold text-gray-800">{translateSubjectName(subj.name, langCode)}</span>
                     {exam.type === "result" ? (
                       <span className={cn("px-2 py-0.5 text-[10px] font-bold rounded text-white", subj.result === "Pass" ? "bg-[#5cb85c]" : "bg-red-500")}>{t((subj.result || "").toLowerCase())}</span>
                     ) : (
@@ -657,11 +681,11 @@ function ExamTab() {
             {/* Summary footer */}
             <div className="bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10 px-4 py-3 border-t border-gray-200 text-[12px] sm:text-[13px] font-bold text-[#333333] grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:justify-between gap-x-6 gap-y-2">
               <span>{t("percentage")} : {fmt(exam.summary.percentage)}</span>
-              <span>{t("rank")} : {exam.summary.rank}</span>
+              <span>{t("rank")} : {toLocaleNumber(exam.summary.rank, langCode)}</span>
               <span className="flex items-center gap-1.5">{t("result")} : <span className="bg-[#5cb85c] text-white px-2 py-0.5 text-[11px] rounded">{t(exam.summary.result.toLowerCase())}</span></span>
-              <span>{t("division")} : {exam.summary.division}</span>
-              <span>{t("grand_total")} : {exam.summary.grandTotal}</span>
-              <span>{t("total_obtain")} : {exam.summary.totalObtained}</span>
+              <span>{t("division")} : {translateDivision(exam.summary.division, langCode)}</span>
+              <span>{t("grand_total")} : {toLocaleNumber(exam.summary.grandTotal, langCode)}</span>
+              <span>{t("total_obtain")} : {toLocaleNumber(exam.summary.totalObtained, langCode)}</span>
             </div>
           </PanelCard>
         ))
@@ -699,7 +723,8 @@ interface CbseExamRecord {
 
 // ─── CBSE Exam Tab Component ──────────────────────────────────────────────────
 function CbseExamTab() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
   const [cbseExams, setCbseExams] = useState<CbseExamRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -713,8 +738,8 @@ function CbseExamTab() {
         if (isMounted && Array.isArray(list)) {
           setCbseExams(list);
         }
-      } catch (err) {
-        console.error("Error fetching cbse exam results:", err);
+      } catch {
+        // Handled silently
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -803,7 +828,7 @@ function CbseExamTab() {
                       {cols.map((col, cIdx) => (
                         <th key={cIdx} className="px-4 py-2 font-bold min-w-[120px] border-r border-gray-100">
                           <div>{col.name}</div>
-                          {col.max && <div className="text-[11px] font-normal text-gray-500">(Max {col.max})</div>}
+                          {col.max && <div className="text-[11px] font-normal text-gray-500">(Max {toLocaleNumber(col.max, langCode)})</div>}
                         </th>
                       ))}
                       <th className="px-4 py-3 font-bold min-w-[80px]">{t("total")}</th>
@@ -812,23 +837,23 @@ function CbseExamTab() {
                   <tbody>
                     {(exam.subjects || []).map((subj: CbseSubject, idx: number) => (
                       <tr key={idx} className="border-b border-gray-100 text-[#555] hover:bg-indigo-50/30 transition-colors">
-                        <td className="px-4 py-2.5 text-left border-r border-gray-100 font-medium">{subj.name}</td>
+                        <td className="px-4 py-2.5 text-left border-r border-gray-100 font-medium">{translateSubjectName(subj.name, langCode)}</td>
                         {cols.map((_, cIdx) => (
                           <td key={cIdx} className="px-4 py-2.5 border-r border-gray-100">
-                            {subj.scores && subj.scores[cIdx] !== undefined ? subj.scores[cIdx] : (subj.theory || "N/A")}
+                            {subj.scores && subj.scores[cIdx] !== undefined ? toLocaleNumber(subj.scores[cIdx], langCode) : (subj.theory ? toLocaleNumber(subj.theory, langCode) : "N/A")}
                           </td>
                         ))}
-                        <td className="px-4 py-2.5 font-bold text-[#333]">{subj.total}</td>
+                        <td className="px-4 py-2.5 font-bold text-[#333]">{toLocaleNumber(subj.total, langCode)}</td>
                       </tr>
                     ))}
                   </tbody>
                   {exam.summary && (
                     <tfoot>
                       <tr className="bg-gray-50/80 font-bold text-[#333] text-[12px] border-t border-gray-200">
-                        <td className="px-4 py-2.5 text-left border-r border-gray-100">{t("total")} : {exam.summary.totalMarks}</td>
-                        <td colSpan={Math.max(1, cols.length - 2)} className="px-4 py-2.5 text-left border-r border-gray-100">{t("percentage")} : {exam.summary.percentage}%</td>
+                        <td className="px-4 py-2.5 text-left border-r border-gray-100">{t("total")} : {toLocaleNumber(exam.summary.totalMarks, langCode)}</td>
+                        <td colSpan={Math.max(1, cols.length - 2)} className="px-4 py-2.5 text-left border-r border-gray-100">{t("percentage")} : {toLocaleNumber(exam.summary.percentage, langCode)}%</td>
                         <td className="px-4 py-2.5 text-left border-r border-gray-100">{t("grade")} : <span className="text-indigo-600">{exam.summary.grade}</span></td>
-                        <td className="px-4 py-2.5 text-left">{t("rank")} : {exam.summary.rank}</td>
+                        <td className="px-4 py-2.5 text-left">{t("rank")} : {toLocaleNumber(exam.summary.rank, langCode)}</td>
                       </tr>
                     </tfoot>
                   )}
@@ -839,16 +864,16 @@ function CbseExamTab() {
               <div className="md:hidden divide-y divide-gray-100">
                 {(exam.subjects || []).map((subj: CbseSubject, idx: number) => (
                   <div key={idx} className="p-3.5">
-                    <p className="text-[13px] font-semibold text-gray-800 mb-1.5">{subj.name}</p>
+                    <p className="text-[13px] font-semibold text-gray-800 mb-1.5">{translateSubjectName(subj.name, langCode)}</p>
                     <div className="rounded-lg bg-gray-50 border border-gray-100 px-3 py-1">
                       {cols.map((col, cIdx) => (
                         <MiniField
                           key={cIdx}
                           label={col.name}
-                          value={subj.scores && subj.scores[cIdx] !== undefined ? subj.scores[cIdx] : "N/A"}
+                          value={subj.scores && subj.scores[cIdx] !== undefined ? toLocaleNumber(subj.scores[cIdx], langCode) : "N/A"}
                         />
                       ))}
-                      <MiniField label={t("total")} value={subj.total} className="font-bold text-gray-900" />
+                      <MiniField label={t("total")} value={toLocaleNumber(subj.total, langCode)} className="font-bold text-gray-900" />
                     </div>
                   </div>
                 ))}
@@ -856,10 +881,10 @@ function CbseExamTab() {
                 {exam.summary && (
                   <div className="p-3.5 bg-gradient-to-r from-[#FF9800]/10 to-[#6366F1]/10">
                     <div className="text-[12px] font-bold text-gray-700 grid grid-cols-2 gap-x-4 gap-y-1">
-                      <span>{t("total")}: {exam.summary.totalMarks}</span>
-                      <span>{t("percentage")}: {exam.summary.percentage}%</span>
+                      <span>{t("total")}: {toLocaleNumber(exam.summary.totalMarks, langCode)}</span>
+                      <span>{t("percentage")}: {toLocaleNumber(exam.summary.percentage, langCode)}%</span>
                       <span>{t("grade")}: <span className="text-indigo-600">{exam.summary.grade}</span></span>
-                      <span>{t("rank")}: {exam.summary.rank}</span>
+                      <span>{t("rank")}: {toLocaleNumber(exam.summary.rank, langCode)}</span>
                     </div>
                   </div>
                 )}
@@ -892,7 +917,8 @@ const getAttendanceColor = (status: string) => {
 
 // ─── Attendance Tab Component ──────────────────────────────────────────────────
 function AttendanceTab({ studentId }: { studentId?: number }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState({
@@ -935,8 +961,8 @@ function AttendanceTab({ studentId }: { studentId?: number }) {
             setAttendanceRows(emptyRows);
           }
         }
-      } catch (error) {
-        console.error("Failed to fetch real student attendance data:", error);
+      } catch {
+        // Handled silently
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -989,11 +1015,11 @@ function AttendanceTab({ studentId }: { studentId?: number }) {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { title: t("total_present"), value: String(summary.total_present), color: "from-green-500 to-emerald-400", icon: "P", textColor: "text-green-700 dark:text-green-400" },
-          { title: t("total_late"), value: String(summary.total_late), color: "from-yellow-400 to-orange-400", icon: "L", textColor: "text-yellow-700 dark:text-yellow-400" },
-          { title: t("total_absent"), value: String(summary.total_absent), color: "from-red-500 to-rose-400", icon: "A", textColor: "text-red-700 dark:text-red-400" },
-          { title: t("total_half_day"), value: String(summary.total_half_day), color: "from-sky-400 to-blue-500", icon: "F", textColor: "text-sky-700 dark:text-sky-400" },
-          { title: t("total_holiday"), value: String(summary.total_holiday), color: "from-purple-400 to-indigo-500", icon: "H", textColor: "text-purple-700 dark:text-purple-400" },
+          { title: t("total_present"), value: toLocaleNumber(summary.total_present, langCode), color: "from-green-500 to-emerald-400", icon: "P", textColor: "text-green-700 dark:text-green-400" },
+          { title: t("total_late"), value: toLocaleNumber(summary.total_late, langCode), color: "from-yellow-400 to-orange-400", icon: "L", textColor: "text-yellow-700 dark:text-yellow-400" },
+          { title: t("total_absent"), value: toLocaleNumber(summary.total_absent, langCode), color: "from-red-500 to-rose-400", icon: "A", textColor: "text-red-700 dark:text-red-400" },
+          { title: t("total_half_day"), value: toLocaleNumber(summary.total_half_day, langCode), color: "from-sky-400 to-blue-500", icon: "F", textColor: "text-sky-700 dark:text-sky-400" },
+          { title: t("total_holiday"), value: toLocaleNumber(summary.total_holiday, langCode), color: "from-purple-400 to-indigo-500", icon: "H", textColor: "text-purple-700 dark:text-purple-400" },
         ].map((card, i) => (
           <div key={i} className="rounded-xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
             <div className={`h-1.5 w-full bg-gradient-to-r ${card.color}`} />
@@ -1049,14 +1075,14 @@ function AttendanceTab({ studentId }: { studentId?: number }) {
                   {t("date")} <ArrowUpDown className="inline h-3 w-3 opacity-30 ml-1" />
                 </th>
                 {attendanceMonths.map(m => (
-                  <th key={m} className="px-2 py-2.5 font-bold min-w-[70px] border-r border-gray-100 dark:border-gray-800 whitespace-nowrap">{m}</th>
+                  <th key={m} className="px-2 py-2.5 font-bold min-w-[70px] border-r border-gray-100 dark:border-gray-800 whitespace-nowrap">{translateMonthName(m, langCode)}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {attendanceRows.map((row, i) => (
                 <tr key={i} className="border-b border-gray-100 dark:border-gray-800 hover:bg-indigo-50/30 dark:hover:bg-slate-800/50 transition-colors text-foreground">
-                  <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-800 font-semibold text-gray-600 dark:text-gray-300 sticky left-0 bg-white dark:bg-slate-900">{i + 1}</td>
+                  <td className="px-3 py-2 border-r border-gray-100 dark:border-gray-800 font-semibold text-gray-600 dark:text-gray-300 sticky left-0 bg-white dark:bg-slate-900">{toLocaleNumber(i + 1, langCode)}</td>
                   {attendanceMonths.map(m => (
                     <td key={m} className={`px-2 py-2 border-r border-gray-100 dark:border-gray-800 ${getAttendanceColor(row[m])}`}>
                       {row[m] || ""}
@@ -1070,10 +1096,10 @@ function AttendanceTab({ studentId }: { studentId?: number }) {
 
         {/* Footer */}
         <div className="flex justify-between items-center text-[11px] text-gray-500 dark:text-gray-400 px-4 py-3 border-t border-gray-100 dark:border-gray-800">
-          <span>{t("showing")} 1 {t("to")} {attendanceRows.length} {t("of")} {attendanceRows.length} {t("entries")}</span>
+          <span>{t("showing")} {attendanceRows.length > 0 ? toLocaleNumber(1, langCode) : toLocaleNumber(0, langCode)} {t("to")} {toLocaleNumber(attendanceRows.length, langCode)} {t("of")} {toLocaleNumber(attendanceRows.length, langCode)} {t("entries")}</span>
           <div className="flex gap-1 items-center">
             <button className="h-7 w-7 bg-white dark:bg-slate-900 text-gray-400 rounded-[10px] border border-gray-200 dark:border-gray-700 flex items-center justify-center disabled:opacity-40" disabled>&lt;</button>
-            <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-[10px] shadow-sm">1</button>
+            <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-[10px] shadow-sm">{toLocaleNumber(1, langCode)}</button>
             <button className="h-7 w-7 bg-white dark:bg-slate-900 text-gray-400 rounded-[10px] border border-gray-200 dark:border-gray-700 flex items-center justify-center disabled:opacity-40" disabled>&gt;</button>
           </div>
         </div>
@@ -1091,7 +1117,8 @@ interface DocumentRecord {
 
 // ─── Documents Tab Component ──────────────────────────────────────────────────
 function DocumentsTab({ documents = [] }: { documents?: DocumentRecord[] }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
   const handleDownload = (doc: DocumentRecord) => {
     if (doc.fileUrl) {
       window.open(doc.fileUrl, '_blank');
@@ -1130,12 +1157,12 @@ function DocumentsTab({ documents = [] }: { documents?: DocumentRecord[] }) {
                 <tbody>
                   {documents.map((doc: DocumentRecord, index: number) => (
                     <tr key={doc.id || index} className="border-b border-gray-100 hover:bg-indigo-50/30 transition-colors text-[#555]">
-                      <td className="px-4 py-3 border-r border-gray-100 text-gray-400 font-medium">{index + 1}</td>
-                      <td className="px-4 py-3 border-r border-gray-100 font-medium text-gray-800">{doc.title}</td>
+                      <td className="px-4 py-3 border-r border-gray-100 text-gray-400 font-medium">{toLocaleNumber(index + 1, langCode)}</td>
+                      <td className="px-4 py-3 border-r border-gray-100 font-medium text-gray-800">{translateDocumentTitle(doc.title, langCode)}</td>
                       <td className="px-4 py-3 border-r border-gray-100 text-[#337ab7]">
                         <span className="flex items-center gap-1.5">
                           <FileText className="h-3.5 w-3.5 shrink-0" />
-                          {doc.fileName}
+                          {translateDocumentFileName(doc.fileName, langCode)}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -1158,9 +1185,9 @@ function DocumentsTab({ documents = [] }: { documents?: DocumentRecord[] }) {
               {documents.map((doc: DocumentRecord, index: number) => (
                 <div key={doc.id || index} className="p-3.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-gray-800">{doc.title}</p>
+                    <p className="text-[13px] font-semibold text-gray-800">{translateDocumentTitle(doc.title, langCode)}</p>
                     <p className="text-[11px] text-[#337ab7] flex items-center gap-1 mt-0.5 truncate">
-                      <FileText className="h-3 w-3 shrink-0" />{doc.fileName}
+                      <FileText className="h-3 w-3 shrink-0" />{translateDocumentFileName(doc.fileName, langCode)}
                     </p>
                   </div>
                   <button
@@ -1193,7 +1220,10 @@ interface TimelineRecord {
 
 // ─── Timeline Tab Component ───────────────────────────────────────────────────
 function TimelineTab({ timeline = [] }: { timeline?: TimelineRecord[] }) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
+  const { selectedCurrency } = useCurrency();
+  const cur = selectedCurrency?.symbol || "$";
 
   return (
     <TabPanel>
@@ -1228,14 +1258,14 @@ function TimelineTab({ timeline = [] }: { timeline?: TimelineRecord[] }) {
                   {/* Date badge */}
                   <div className="mb-2.5 flex items-center">
                     <span className="inline-block bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-sm">
-                      {entry.date}
+                      {toLocaleNumber(entry.date, langCode)}
                     </span>
                   </div>
 
                   {/* History Content Card */}
                   <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                     <div className="px-4 py-3 border-l-4 border-[#6366F1]">
-                      <p className="text-[13px] text-[#0dcaf0] font-semibold">{entry.title}</p>
+                      <p className="text-[13px] text-[#0dcaf0] font-semibold">{translateTimelineTitle(entry.title, langCode, cur)}</p>
                     </div>
                   </div>
                 </div>
@@ -1267,7 +1297,8 @@ interface BehaviourEntry {
 
 // ─── Student Behaviour Tab Component ──────────────────────────────────────────
 function StudentBehaviourTab() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
   const [searchTerm, setSearchTerm] = useState("");
   const [behaviourList, setBehaviourList] = useState<BehaviourEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -1291,8 +1322,8 @@ function StudentBehaviourTab() {
             })));
           }
         }
-      } catch (err) {
-        console.error("Error fetching student behaviour:", err);
+      } catch {
+        // Handled silently
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -1381,13 +1412,13 @@ function StudentBehaviourTab() {
                 const isNegative = b.point < 0;
                 return (
                   <tr key={b.id} className={cn("border-b border-gray-100 transition-colors", isNegative ? "bg-red-50/60 hover:bg-red-50" : "hover:bg-indigo-50/30")}>
-                    <td className={`px-4 py-2.5 border-r border-gray-100 font-semibold ${isNegative ? "text-red-700" : "text-gray-800"}`}>{b.title}</td>
+                    <td className={`px-4 py-2.5 border-r border-gray-100 font-semibold ${isNegative ? "text-red-700" : "text-gray-800"}`}>{translateIncidentTitle(b.title, langCode)}</td>
                     <td className="px-4 py-2.5 text-center border-r border-gray-100">
                       <span className={cn("inline-block font-bold text-[12px] px-2 py-0.5 rounded-full", isNegative ? "bg-red-100 text-red-600" : "bg-green-100 text-green-700")}>
-                        {b.point > 0 ? "+" : ""}{b.point}
+                        {b.point > 0 ? "+" : ""}{toLocaleNumber(b.point, langCode)}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 border-r border-gray-100 text-gray-500 whitespace-nowrap">{b.date}</td>
+                    <td className="px-4 py-2.5 border-r border-gray-100 text-gray-500 whitespace-nowrap">{toLocaleNumber(b.date, langCode)}</td>
                     <td className="px-4 py-2.5 border-r border-gray-100 text-gray-600 text-[12px] leading-relaxed">{b.description}</td>
                     <td className="px-4 py-2.5 text-center border-r border-gray-100 text-gray-500">{b.assignBy || "—"}</td>
                     <td className="px-4 py-2.5 text-center">
@@ -1412,12 +1443,12 @@ function StudentBehaviourTab() {
             return (
               <div key={b.id} className={cn("p-3.5", isNegative ? "bg-red-50/60" : "bg-white")}>
                 <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <p className={`text-[13px] font-semibold leading-snug ${isNegative ? "text-red-700" : "text-gray-800"}`}>{b.title}</p>
+                  <p className={`text-[13px] font-semibold leading-snug ${isNegative ? "text-red-700" : "text-gray-800"}`}>{translateIncidentTitle(b.title, langCode)}</p>
                   <span className={cn("shrink-0 font-bold text-[12px] px-2 py-0.5 rounded-full", isNegative ? "bg-red-100 text-red-600" : "bg-green-100 text-green-700")}>
-                    {b.point > 0 ? "+" : ""}{b.point}
+                    {b.point > 0 ? "+" : ""}{toLocaleNumber(b.point, langCode)}
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-400 mb-1">{b.date}</p>
+                <p className="text-[11px] text-gray-400 mb-1">{toLocaleNumber(b.date, langCode)}</p>
                 <p className="text-[12px] text-gray-600 leading-relaxed">{b.description}</p>
               </div>
             );
@@ -1429,10 +1460,10 @@ function StudentBehaviourTab() {
 
         {/* Footer */}
         <div className="flex justify-between items-center text-[11px] text-gray-500 px-4 py-3 border-t border-gray-100">
-          <span>{t("showing")} 1 {t("to")} {filtered.length} {t("of")} {filtered.length} {t("entries")}</span>
+          <span>{t("showing")} {filtered.length > 0 ? toLocaleNumber(1, langCode) : toLocaleNumber(0, langCode)} {t("to")} {toLocaleNumber(filtered.length, langCode)} {t("of")} {toLocaleNumber(filtered.length, langCode)} {t("entries")}</span>
           <div className="flex gap-1 items-center">
             <button className="h-7 w-7 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center disabled:opacity-40" disabled>&lt;</button>
-            <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-[10px] shadow-sm">1</button>
+            <button className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[10px] flex items-center justify-center font-bold rounded-[10px] shadow-sm">{toLocaleNumber(1, langCode)}</button>
             <button className="h-7 w-7 bg-white text-gray-400 rounded-[10px] border border-gray-200 flex items-center justify-center disabled:opacity-40" disabled>&gt;</button>
           </div>
         </div>
@@ -1448,7 +1479,8 @@ const ALL_PROFILE_TABS: TabId[] = ["Profile", "Fees", "Exam", "CBSE Examination"
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function UserProfilePage() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const langCode = language?.short_code || "en";
   const [data, setData] = useState<typeof mockUserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -1473,8 +1505,7 @@ export default function UserProfilePage() {
         if (profilePerms.status === "fulfilled") {
           setPermissions(profilePerms.value.data?.data?.permissions || []);
         }
-      } catch (error) {
-        console.error("Error fetching profile data:", error);
+      } catch {
         setData(mockUserProfileData);
       } finally {
         setLoading(false);
@@ -1627,7 +1658,7 @@ export default function UserProfilePage() {
           )}
           <div className="flex mb-1">
             <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("phone")}</div>
-            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{phone || "-"}</div>
+            <div className="w-[70%] sm:w-[75%] text-[13px] text-gray-800">{phone ? toLocaleNumber(phone, langCode) : "-"}</div>
           </div>
           <div className="flex mb-1">
             <div className="w-[30%] sm:w-[25%] font-medium text-gray-600 text-[13px]">{tt} {t("occupation")}</div>
@@ -1672,8 +1703,8 @@ export default function UserProfilePage() {
               </div>
               <h2 className="text-lg font-bold text-gray-800 mt-2 truncate max-w-full">{basic.name}</h2>
               <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-500">
-                <span>{t("adm")}: <span className="text-indigo-500 font-medium">{basic.admissionNo}</span></span>
-                <span>{t("roll")}: <span className="text-indigo-500 font-medium">{basic.rollNumber}</span></span>
+                <span>{t("adm")}: <span className="text-indigo-500 font-medium">{toLocaleNumber(basic.admissionNo, langCode)}</span></span>
+                <span>{t("roll")}: <span className="text-indigo-500 font-medium">{toLocaleNumber(basic.rollNumber, langCode)}</span></span>
               </div>
             </div>
           </div>
@@ -1681,19 +1712,19 @@ export default function UserProfilePage() {
           <div className="p-0">
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{t("class")}</span>
-              <span className="text-sm text-sky-500 font-medium">{basic.class}</span>
+              <span className="text-sm text-sky-500 font-medium">{translateClassSection(basic.class, langCode)}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{t("section")}</span>
-              <span className="text-sm text-sky-500 font-medium">{basic.section}</span>
+              <span className="text-sm text-sky-500 font-medium">{translateSectionName(basic.section, langCode)}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{t("gender")}</span>
-              <span className="text-sm text-sky-500 font-medium">{basic.gender}</span>
+              <span className="text-sm text-sky-500 font-medium">{translateGender(basic.gender, langCode)}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{t("rte")}</span>
-              <span className="text-sm text-sky-500 font-medium">{basic.rte}</span>
+              <span className="text-sm text-sky-500 font-medium">{translateYesNo(basic.rte, langCode)}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{t("barcode")}</span>
@@ -1724,7 +1755,7 @@ export default function UserProfilePage() {
                   <rect x="93" y="0" width="3" height="30" fill="black" />
                   <rect x="98" y="0" width="2" height="30" fill="black" />
                 </svg>
-                <span className="text-[10px] font-bold mt-1">{basic.barcode}</span>
+                <span className="text-[10px] font-bold mt-1">{toLocaleNumber(basic.barcode, langCode)}</span>
               </div>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
@@ -1741,7 +1772,7 @@ export default function UserProfilePage() {
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{t("behaviour_score")}</span>
-              <span className="text-sm text-sky-500 font-medium">{basic.behaviourScore}</span>
+              <span className="text-sm text-sky-500 font-medium">{toLocaleNumber(basic.behaviourScore, langCode)}</span>
             </div>
             <div className="p-4">
               <button className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-sm font-semibold px-4 py-2.5 rounded-[10px] hover:opacity-90 transition-opacity active:scale-[0.98]">
@@ -1773,10 +1804,10 @@ export default function UserProfilePage() {
                 <h3 className="text-sm font-bold text-gray-800">{t("basic_details")}</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
-                <InfoTile icon={Calendar} label={t("admission_date")} value={profileTab.basicDetails.admissionDate} />
-                <InfoTile icon={Cake} label={t("date_of_birth")} value={profileTab.basicDetails.dateOfBirth} />
-                <InfoTile icon={Tag} label={t("category")} value={profileTab.basicDetails.category} />
-                <InfoTile icon={Phone} label={t("mobile_number")} value={profileTab.basicDetails.mobileNumber} />
+                <InfoTile icon={Calendar} label={t("admission_date")} value={toLocaleNumber(profileTab.basicDetails.admissionDate, langCode)} />
+                <InfoTile icon={Cake} label={t("date_of_birth")} value={toLocaleNumber(profileTab.basicDetails.dateOfBirth, langCode)} />
+                <InfoTile icon={Tag} label={t("category")} value={translateStudentCategory(profileTab.basicDetails.category, langCode)} />
+                <InfoTile icon={Phone} label={t("mobile_number")} value={toLocaleNumber(profileTab.basicDetails.mobileNumber, langCode)} />
                 <InfoTile icon={Users} label={t("caste")} value={profileTab.basicDetails.caste} />
                 <InfoTile icon={BookOpen} label={t("religion")} value={profileTab.basicDetails.religion} />
                 <InfoTile icon={Mail} label={t("email")} value={profileTab.basicDetails.email} />
@@ -1795,7 +1826,7 @@ export default function UserProfilePage() {
               <div className="px-4">
                 <DetailRow label={t("current_address")} value={profileTab.addressDetails.currentAddress} />
                 <DetailRow label={t("permanent_address")} value={profileTab.addressDetails.permanentAddress} />
-                <DetailRow label={t("postal_code")} value={profileTab.addressDetails.postalCode} />
+                <DetailRow label={t("postal_code")} value={toLocaleNumber(profileTab.addressDetails.postalCode, langCode)} />
               </div>
 
               {/* Parent Guardian Detail */}
@@ -1811,16 +1842,16 @@ export default function UserProfilePage() {
               <div className="px-4">
                 <DetailRow label={t("pickup_point")} value={profileTab.transportDetails.pickupPoint} />
                 <DetailRow label={t("route")} value={profileTab.transportDetails.route} />
-                <DetailRow label={t("vehicle_number")} value={profileTab.transportDetails.vehicleNumber} />
+                <DetailRow label={t("vehicle_number")} value={toLocaleNumber(profileTab.transportDetails.vehicleNumber, langCode)} />
                 <DetailRow label={t("driver_name")} value={profileTab.transportDetails.driverName} />
-                <DetailRow label={t("driver_contact")} value={profileTab.transportDetails.driverContact} />
+                <DetailRow label={t("driver_contact")} value={toLocaleNumber(profileTab.transportDetails.driverContact, langCode)} />
               </div>
 
               {/* Hostel Details */}
               <SectionHeader title={t("hostel_details")} />
               <div className="px-4">
                 <DetailRow label={t("hostel")} value={profileTab.hostelDetails.hostel} />
-                <DetailRow label={t("room_no")} value={profileTab.hostelDetails.roomNo} />
+                <DetailRow label={t("room_no")} value={toLocaleNumber(profileTab.hostelDetails.roomNo, langCode)} />
                 <DetailRow label={t("room_type")} value={profileTab.hostelDetails.roomType} />
               </div>
 
@@ -1829,16 +1860,16 @@ export default function UserProfilePage() {
               <div className="px-4 mb-4">
                 <DetailRow label={t("medical_history")} value={profileTab.miscellaneousDetails.medicalHistory} />
                 <DetailRow label={t("blood_group")} value={profileTab.miscellaneousDetails.bloodGroup} />
-                <DetailRow label={t("house")} value={profileTab.miscellaneousDetails.house} />
-                <DetailRow label={t("height")} value={profileTab.miscellaneousDetails.height} />
-                <DetailRow label={t("weight")} value={profileTab.miscellaneousDetails.weight} />
-                <DetailRow label={t("measurement_date")} value={profileTab.miscellaneousDetails.measurementDate} />
+                <DetailRow label={t("house")} value={translateStudentHouse(profileTab.miscellaneousDetails.house, langCode)} />
+                <DetailRow label={t("height")} value={toLocaleNumber(profileTab.miscellaneousDetails.height, langCode)} />
+                <DetailRow label={t("weight")} value={toLocaleNumber(profileTab.miscellaneousDetails.weight, langCode)} />
+                <DetailRow label={t("measurement_date")} value={toLocaleNumber(profileTab.miscellaneousDetails.measurementDate, langCode)} />
 
-                <DetailRow label={t("national_identification_number")} value={profileTab.miscellaneousDetails.nationalIdentificationNumber} />
+                <DetailRow label={t("national_identification_number")} value={toLocaleNumber(profileTab.miscellaneousDetails.nationalIdentificationNumber, langCode)} />
 
-                <DetailRow label={t("bank_account_number")} value={profileTab.miscellaneousDetails.bankAccountNumber} />
+                <DetailRow label={t("bank_account_number")} value={toLocaleNumber(profileTab.miscellaneousDetails.bankAccountNumber, langCode)} />
                 <DetailRow label={t("bank_name")} value={profileTab.miscellaneousDetails.bankName} />
-                <DetailRow label={t("ifsc_code")} value={profileTab.miscellaneousDetails.ifscCode} />
+                <DetailRow label={t("ifsc_code")} value={toLocaleNumber(profileTab.miscellaneousDetails.ifscCode, langCode)} />
                 <DetailRow label={t("identification_marks")} value={profileTab.miscellaneousDetails.identificationMarks} />
                 <DetailRow label={t("appraisal_achievements")} value={profileTab.miscellaneousDetails.appraisalAchievements} />
                 <DetailRow label={t("general_behaviour")} value={profileTab.miscellaneousDetails.generalBehaviour} />
@@ -1872,11 +1903,11 @@ export default function UserProfilePage() {
                           {(profileTab.previousAcademicRecord || []).map((rec: { schoolName?: string; class?: string; year?: string; percentage?: string | number }, idx: number) => (
                             <tr key={idx} className="border-b border-gray-100 last:border-0 hover:bg-indigo-50/30 transition-colors">
                               <td className="px-4 py-2.5 font-medium text-gray-800">{rec.schoolName || "-"}</td>
-                              <td className="px-4 py-2.5 text-gray-600">{rec.class || "-"}</td>
-                              <td className="px-4 py-2.5 text-gray-600">{rec.year || "-"}</td>
+                              <td className="px-4 py-2.5 text-gray-600">{translateClassName(rec.class, langCode)}</td>
+                              <td className="px-4 py-2.5 text-gray-600">{toLocaleNumber(rec.year, langCode)}</td>
                               <td className="px-4 py-2.5">
                                 <span className="inline-flex items-center gap-1 font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full text-[12px]">
-                                  <Star className="h-3 w-3" />{rec.percentage || "-"}
+                                  <Star className="h-3 w-3" />{toLocaleNumber(rec.percentage, langCode)}
                                 </span>
                               </td>
                             </tr>
@@ -1897,15 +1928,15 @@ export default function UserProfilePage() {
                           <div className="grid grid-cols-3 gap-2 text-center">
                             <div className="rounded-lg bg-gray-50 border border-gray-100 px-2 py-1.5">
                               <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{t("class")}</p>
-                              <p className="text-[12px] font-semibold text-gray-800">{rec.class || "-"}</p>
+                              <p className="text-[12px] font-semibold text-gray-800">{translateClassName(rec.class, langCode)}</p>
                             </div>
                             <div className="rounded-lg bg-gray-50 border border-gray-100 px-2 py-1.5">
                               <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-0.5">{t("year")}</p>
-                              <p className="text-[12px] font-semibold text-gray-800">{rec.year || "-"}</p>
+                              <p className="text-[12px] font-semibold text-gray-800">{toLocaleNumber(rec.year, langCode)}</p>
                             </div>
                             <div className="rounded-lg bg-indigo-50 border border-indigo-100 px-2 py-1.5">
                               <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-400 mb-0.5">{t("percentage")}</p>
-                              <p className="text-[12px] font-semibold text-indigo-600">{rec.percentage || "-"}</p>
+                              <p className="text-[12px] font-semibold text-indigo-600">{toLocaleNumber(rec.percentage, langCode)}</p>
                             </div>
                           </div>
                         </div>

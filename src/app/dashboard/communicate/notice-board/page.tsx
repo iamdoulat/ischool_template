@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
+import { sanitizeHtml } from "@/lib/sanitize";
 import {
     Search,
     FileSpreadsheet,
@@ -23,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateRoleName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -82,7 +83,7 @@ interface Notice {
 }
 
 export default function NoticeBoardPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const tt = useTranslateToast();
     const ttRef = useRef(tt);
     ttRef.current = tt;
@@ -129,6 +130,11 @@ export default function NoticeBoardPage() {
             ['link', 'image'],
             ['clean'],
         ],
+    };
+
+    const formatDisplayDate = (dateVal?: string | Date | null) => {
+        if (!dateVal) return "-";
+        return formatDate(dateVal, "dd/MM/yyyy");
     };
 
     const fetchNotices = useCallback(async (page: number = 1) => {
@@ -267,7 +273,7 @@ export default function NoticeBoardPage() {
     // Export functions
     const handleCopy = () => {
         const text = notices.map(n =>
-            `${n.title}\t${n.notice_date}\t${n.publish_date}\t${n.is_published ? 'Published' : 'Pending'}\t${n.message_to || ''}`
+            `${n.title}\t${formatDisplayDate(n.notice_date)}\t${formatDisplayDate(n.publish_date)}\t${n.is_published ? t('published') : t('pending')}\t${(n.message_to ? n.message_to.split(',').map(r => translateRoleName(r, language?.short_code) || t(r.trim().toLowerCase())).join(', ') : '')}`
         ).join("\n");
         navigator.clipboard.writeText(text);
         tt.success("copied_to_clipboard");
@@ -277,11 +283,11 @@ export default function NoticeBoardPage() {
 
     const handleExportExcel = () => {
         const worksheet = XLSX.utils.json_to_sheet(notices.map(n => ({
-            Title: n.title,
-            'Notice Date': n.notice_date,
-            'Publish Date': n.publish_date,
-            Status: n.is_published ? 'Published' : 'Pending',
-            'Message To': n.message_to || ''
+            [t("title") || "Title"]: n.title,
+            [t("notice_date") || "Notice Date"]: formatDisplayDate(n.notice_date),
+            [t("publish_date") || "Publish Date"]: formatDisplayDate(n.publish_date),
+            [t("status") || "Status"]: n.is_published ? t("published") : t("pending"),
+            [t("message_to") || "Message To"]: n.message_to ? n.message_to.split(',').map(r => translateRoleName(r, language?.short_code) || t(r.trim().toLowerCase())).join(', ') : ''
         })));
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Notices");
@@ -291,11 +297,11 @@ export default function NoticeBoardPage() {
 
     const handleExportCSV = () => {
         const worksheet = XLSX.utils.json_to_sheet(notices.map(n => ({
-            Title: n.title,
-            'Notice Date': n.notice_date,
-            'Publish Date': n.publish_date,
-            Status: n.is_published ? 'Published' : 'Pending',
-            'Message To': n.message_to || ''
+            [t("title") || "Title"]: n.title,
+            [t("notice_date") || "Notice Date"]: formatDisplayDate(n.notice_date),
+            [t("publish_date") || "Publish Date"]: formatDisplayDate(n.publish_date),
+            [t("status") || "Status"]: n.is_published ? t("published") : t("pending"),
+            [t("message_to") || "Message To"]: n.message_to ? n.message_to.split(',').map(r => translateRoleName(r, language?.short_code) || t(r.trim().toLowerCase())).join(', ') : ''
         })));
         const csv = XLSX.utils.sheet_to_csv(worksheet);
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -311,25 +317,25 @@ export default function NoticeBoardPage() {
     };
 
     const handleExportPDF = async () => {
-        let invoicePrintSettings = {};
+        let invoicePrintSettings: { type?: string; footer_content?: string } = {};
         try {
             const res = await api.get("system-setting/print-settings");
             if (res.data?.status === "success") {
-                invoicePrintSettings = (res.data.data || []).find((s: any) => s.type === "General Purpose") || {};
+                invoicePrintSettings = (res.data.data || []).find((s: { type?: string }) => s.type === "General Purpose") || {};
             }
         } catch (err) {
             console.error("Could not fetch print settings", err);
         }
         const baseApiUrl = api.defaults.baseURL?.replace('/api/v1', '') || "";
         const doc = new jsPDF();
-        const startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, "NOTICES REPORT");
-        const tableColumn = ["Title", "Notice Date", "Publish Date", "Status", "Message To"];
+        const startY = await renderPdfHeader(doc, settings, invoicePrintSettings, baseApiUrl, t("notices_report") || "NOTICES REPORT");
+        const tableColumn = [t("title"), t("notice_date"), t("publish_date"), t("status"), t("message_to")];
         const tableRows = notices.map(n => [
             n.title,
-            n.notice_date,
-            n.publish_date,
-            n.is_published ? 'Published' : 'Pending',
-            n.message_to || ''
+            formatDisplayDate(n.notice_date),
+            formatDisplayDate(n.publish_date),
+            n.is_published ? t("published") : t("pending"),
+            n.message_to ? n.message_to.split(',').map(r => translateRoleName(r, language?.short_code) || t(r.trim().toLowerCase())).join(', ') : ''
         ]);
         autoTable(doc, {
             head: [tableColumn],
@@ -337,8 +343,8 @@ export default function NoticeBoardPage() {
             startY,
             headStyles: { fillColor: [99, 102, 241] },
         });
-        const finalY = (doc as any).lastAutoTable.finalY + 10;
-        renderPdfFooter(doc, (invoicePrintSettings as any).footer_content || "", finalY);
+        const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
+        renderPdfFooter(doc, invoicePrintSettings.footer_content || "", finalY);
         doc.save("notices.pdf");
         tt.success("exported_to_pdf_successfully");
     };
@@ -413,18 +419,22 @@ export default function NoticeBoardPage() {
                                     {t("message_to")}
                                 </label>
                                 <div className="flex flex-wrap gap-2 pt-1">
-                                    {['Student', 'Parent', 'Staff'].map((role) => (
+                                    {[
+                                        { key: 'student', label: 'Student' },
+                                        { key: 'parent', label: 'Parent' },
+                                        { key: 'staff', label: 'Staff' }
+                                    ].map(({ key, label }) => (
                                         <label
-                                            key={role}
+                                            key={key}
                                             className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group/label"
                                         >
                                             <Checkbox
-                                                checked={formData.message_to.includes(role.toLowerCase())}
-                                                onCheckedChange={() => toggleMessageTo(role.toLowerCase())}
+                                                checked={formData.message_to.includes(key)}
+                                                onCheckedChange={() => toggleMessageTo(key)}
                                                 className="border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
                                             />
                                             <span className="text-[11px] font-bold text-muted-foreground group-hover/label:text-indigo-600 transition-colors">
-                                                {role}
+                                                {translateRoleName(label, language?.short_code) || t(key)}
                                             </span>
                                         </label>
                                     ))}
@@ -437,18 +447,23 @@ export default function NoticeBoardPage() {
                                     {t("notify_via")}
                                 </label>
                                 <div className="flex flex-wrap gap-2 pt-1">
-                                    {['Email', 'SMS', 'WhatsApp', 'Notification'].map((ch) => (
+                                    {[
+                                        { key: 'email', label: 'Email' },
+                                        { key: 'sms', label: 'SMS' },
+                                        { key: 'whatsapp', label: 'WhatsApp' },
+                                        { key: 'notification', label: 'Notification' }
+                                    ].map(({ key, label }) => (
                                         <label
-                                            key={ch}
+                                            key={key}
                                             className="flex items-center gap-2 bg-muted/30 px-3 py-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer group/label"
                                         >
                                             <Checkbox
-                                                checked={formData.notify_to.includes(ch.toLowerCase())}
-                                                onCheckedChange={() => toggleNotifyTo(ch.toLowerCase())}
+                                                checked={formData.notify_to.includes(key)}
+                                                onCheckedChange={() => toggleNotifyTo(key)}
                                                 className="border-gray-300 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
                                             />
                                             <span className="text-[11px] font-bold text-muted-foreground group-hover/label:text-orange-600 transition-colors">
-                                                {ch}
+                                                {t(key) || label}
                                             </span>
                                         </label>
                                     ))}
@@ -466,7 +481,7 @@ export default function NoticeBoardPage() {
                                         onClick={() => setShowHtml(!showHtml)}
                                         className="inline-flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-indigo-600 transition-colors uppercase tracking-wider"
                                     >
-                                        {showHtml ? "Visual" : "HTML"}
+                                        {showHtml ? t("visual") : t("html")}
                                     </button>
                                 </div>
                                 {showHtml ? (
@@ -514,7 +529,9 @@ export default function NoticeBoardPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("notice_board")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{total} {t(total === 1 ? "notice" : "notices")}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">
+                                {toLocaleNumber(total, language?.short_code)} {t(total === 1 ? "notice" : "notices")}
+                            </p>
                         </div>
                     </CardHeader>
 
@@ -536,17 +553,17 @@ export default function NoticeBoardPage() {
                                     onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
                                     className="h-10 px-3 rounded-lg border border-muted/50 bg-muted/30 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium text-muted-foreground"
                                 >
-                                    <option value="20">20</option>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
+                                    <option value="20">{toLocaleNumber(20, language?.short_code)}</option>
+                                    <option value="50">{toLocaleNumber(50, language?.short_code)}</option>
+                                    <option value="100">{toLocaleNumber(100, language?.short_code)}</option>
                                 </select>
                                 <div className="h-8 w-px bg-muted/50 mx-2" />
                                 <div className="flex gap-1">
-                                    <IconButton icon={CopyIcon} onClick={handleCopy} />
-                                    <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} />
-                                    <IconButton icon={FileText} onClick={handleExportCSV} />
-                                    <IconButton icon={FileCode} onClick={handleExportPDF} />
-                                    <IconButton icon={Printer} onClick={handlePrint} />
+                                    <IconButton icon={CopyIcon} onClick={handleCopy} title={t("copy")} />
+                                    <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title={t("excel")} />
+                                    <IconButton icon={FileText} onClick={handleExportCSV} title={t("csv")} />
+                                    <IconButton icon={FileCode} onClick={handleExportPDF} title={t("pdf")} />
+                                    <IconButton icon={Printer} onClick={handlePrint} title={t("print")} />
                                 </div>
                             </div>
                         </div>
@@ -607,13 +624,15 @@ export default function NoticeBoardPage() {
                                                                 onCheckedChange={() => toggleSelect(notice.id)}
                                                             />
                                                         </td>
-                                                        <td className="px-6 py-4 text-xs font-medium text-muted-foreground">{startIndex + idx}</td>
+                                                        <td className="px-6 py-4 text-xs font-medium text-muted-foreground">
+                                                            {toLocaleNumber(startIndex + idx, language?.short_code)}
+                                                        </td>
                                                         <td className="px-6 py-4 text-sm font-bold text-foreground whitespace-nowrap">{notice.title}</td>
                                                         <td className="px-6 py-4 text-xs font-medium text-muted-foreground whitespace-nowrap">
-                                                            {notice.notice_date ? format(new Date(notice.notice_date), 'dd/MM/yyyy') : '-'}
+                                                            {formatDisplayDate(notice.notice_date)}
                                                         </td>
                                                         <td className="px-6 py-4 text-xs font-medium text-muted-foreground whitespace-nowrap">
-                                                            {notice.publish_date ? format(new Date(notice.publish_date), 'dd/MM/yyyy') : '-'}
+                                                            {formatDisplayDate(notice.publish_date)}
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <span className={cn(
@@ -627,7 +646,7 @@ export default function NoticeBoardPage() {
                                                             <div className="flex gap-1 flex-wrap">
                                                                 {messageTo.map((to, i) => (
                                                                     <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-semibold">
-                                                                        {to}
+                                                                        {translateRoleName(to, language?.short_code) || t(to.toLowerCase())}
                                                                     </span>
                                                                 ))}
                                                             </div>
@@ -673,7 +692,7 @@ export default function NoticeBoardPage() {
                         {total > 0 && (
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground font-medium">
                                 <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">
-                                    {t("showing")} {Math.min((currentPage - 1) * pageSize + 1, total)} {t("to")} {Math.min(currentPage * pageSize, total)} {t("of")} {total} {t("entries")}
+                                    {t("showing")} {toLocaleNumber(Math.min((currentPage - 1) * pageSize + 1, total), language?.short_code)} {t("to")} {toLocaleNumber(Math.min(currentPage * pageSize, total), language?.short_code)} {t("of")} {toLocaleNumber(total, language?.short_code)} {t("entries")}
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -687,7 +706,7 @@ export default function NoticeBoardPage() {
                                     {Array.from({ length: Math.min(lastPage, 5) }, (_, i) => {
                                         let pageNum: number;
                                         if (lastPage <= 5) {
-                                            pageNum = i + 1;
+                                             pageNum = i + 1;
                                         } else if (currentPage <= 3) {
                                             pageNum = i + 1;
                                         } else if (currentPage >= lastPage - 2) {
@@ -707,7 +726,7 @@ export default function NoticeBoardPage() {
                                                         : "bg-white border border-gray-200 text-gray-600 hover:bg-card"
                                                 )}
                                             >
-                                                {pageNum}
+                                                {toLocaleNumber(pageNum, language?.short_code)}
                                             </Button>
                                         );
                                     })}
@@ -745,11 +764,11 @@ export default function NoticeBoardPage() {
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-4 w-4" />
-                                    {t("notice")}: {format(new Date(viewNotice.notice_date), 'dd/MM/yyyy')}
+                                    {t("notice_date")}: {formatDisplayDate(viewNotice.notice_date)}
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <Calendar className="h-4 w-4" />
-                                    {t("publish")}: {format(new Date(viewNotice.publish_date), 'dd/MM/yyyy')}
+                                    {t("publish_date")}: {formatDisplayDate(viewNotice.publish_date)}
                                 </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -760,16 +779,20 @@ export default function NoticeBoardPage() {
                                     {viewNotice.is_published ? t("published") : t("pending")}
                                 </span>
                                 {(viewNotice.message_to ? viewNotice.message_to.split(',').map(s => s.trim()).filter(Boolean) : []).map((to, i) => (
-                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 text-xs font-semibold">{to}</span>
+                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-indigo-100 text-indigo-700 text-xs font-semibold">
+                                        {translateRoleName(to, language?.short_code) || t(to.toLowerCase())}
+                                    </span>
                                 ))}
                                 {(viewNotice.notify_to ? viewNotice.notify_to.split(',').map(s => s.trim()).filter(Boolean) : []).map((ch, i) => (
-                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-orange-100 text-orange-700 text-xs font-semibold">{ch}</span>
+                                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-md bg-orange-100 text-orange-700 text-xs font-semibold">
+                                        {t(ch.toLowerCase()) || ch}
+                                    </span>
                                 ))}
                             </div>
                             <div className="border-t border-gray-100 pt-6">
                                 <div
                                     className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-headings:font-bold prose-a:text-indigo-600 prose-img:max-w-full"
-                                    dangerouslySetInnerHTML={{ __html: viewNotice.message }}
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewNotice.message) }}
                                 />
                             </div>
                         </div>
@@ -788,7 +811,7 @@ export default function NoticeBoardPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("are_you_sure")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t("this_action_cannot_be_undone")}. {t("permanently_delete_notice")}
+                            {t("permanently_delete_notice")}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -804,7 +827,7 @@ export default function NoticeBoardPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("delete_selected_notices")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            {t("delete_selected_notices_confirm", { count: selectedIds.length })}
+                            {t("delete_selected_notices_confirm", { count: toLocaleNumber(selectedIds.length, language?.short_code) })}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -818,11 +841,12 @@ export default function NoticeBoardPage() {
 }
 
 // Helper component for icon buttons
-function IconButton({ icon: Icon, onClick }: { icon: React.ElementType; onClick?: () => void }) {
+function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType; onClick?: () => void; title?: string }) {
     return (
         <button
             type="button"
             onClick={onClick}
+            title={title}
             className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95"
         >
             <Icon className="h-4 w-4" />

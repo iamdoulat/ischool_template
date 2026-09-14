@@ -36,7 +36,7 @@ import {
     Tag,
     Coins,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useToast } from "@/components/ui/use-toast";
@@ -59,7 +59,7 @@ interface HostelRoom {
 const PAGE_SIZES = [10, 25, 50, 100];
 
 export default function UserHostelRoomsPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { toast } = useToast();
     const { settings } = useSettings();
     const { formatCurrency, symbol } = useCurrencyFormatter();
@@ -73,8 +73,8 @@ export default function UserHostelRoomsPage() {
 
     const money = (v: number | string) => {
         const val = typeof v === "string" ? parseFloat(v) : v;
-        if (isNaN(val)) return `${currencySymbol}0.00`;
-        return `${currencySymbol}${val.toFixed(2)}`;
+        if (isNaN(val)) return `${currencySymbol}${toLocaleNumber("0.00", language?.short_code)}`;
+        return `${currencySymbol}${toLocaleNumber(val.toFixed(2), language?.short_code)}`;
     };
 
     const fetchData = async () => {
@@ -140,7 +140,7 @@ export default function UserHostelRoomsPage() {
                 r.hostel || "",
                 r.room_type || "",
                 r.room_number || "",
-                String(r.number_of_bed),
+                toLocaleNumber(r.number_of_bed, language?.short_code),
                 r.status || t("available"),
                 money(r.cost_per_bed),
             ]),
@@ -152,7 +152,7 @@ export default function UserHostelRoomsPage() {
     const copyToClipboard = () => {
         const header = [t("hostel"), t("room_type"), t("room_number_name"), t("no_of_bed"), t("status"), t("cost_per_bed")].join("\t");
         const text = filteredRooms
-            .map((r) => `${r.hostel}\t${r.room_type}\t${r.room_number}\t${r.number_of_bed}\t${r.status || t("available")}\t${money(r.cost_per_bed)}`)
+            .map((r) => `${r.hostel}\t${r.room_type}\t${r.room_number}\t${toLocaleNumber(r.number_of_bed, language?.short_code)}\t${r.status || t("available")}\t${money(r.cost_per_bed)}`)
             .join("\n");
         navigator.clipboard.writeText(`${header}\n${text}`);
         toast({ title: t("success"), description: t("copied_to_clipboard") });
@@ -192,7 +192,7 @@ export default function UserHostelRoomsPage() {
                                 {t("hostel_rooms")}
                             </h1>
                             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
-                                {fetching ? t("loading") : `${rooms.length} room${rooms.length === 1 ? "" : "s"} listed`}
+                                {fetching ? t("loading") : `${toLocaleNumber(rooms.length, language?.short_code)} ${rooms.length === 1 ? t("room_listed") : t("rooms_listed")}`}
                             </p>
                         </div>
                     </div>
@@ -256,7 +256,7 @@ export default function UserHostelRoomsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     {PAGE_SIZES.map((s) => (
-                                        <SelectItem key={s} value={String(s)}>{s}</SelectItem>
+                                        <SelectItem key={s} value={String(s)}>{toLocaleNumber(s, language?.short_code)}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -341,7 +341,7 @@ export default function UserHostelRoomsPage() {
                                                 <TableCell className="py-3.5 px-4 font-medium text-gray-700 dark:text-gray-300">{room.room_number}</TableCell>
                                                 <TableCell className="py-3.5 px-4 text-center">
                                                     <span className="inline-flex items-center gap-1 text-gray-600 dark:text-gray-400 font-medium">
-                                                        <BedDouble className="h-3.5 w-3.5 text-gray-400" /> {room.number_of_bed}
+                                                        <BedDouble className="h-3.5 w-3.5 text-gray-400" /> {toLocaleNumber(room.number_of_bed, language?.short_code)}
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="py-3.5 px-4 text-center">{statusBadge(room.status)}</TableCell>
@@ -405,7 +405,7 @@ export default function UserHostelRoomsPage() {
                                             </span>
                                             <span className="flex items-center gap-1.5">
                                                 <BedDouble className="h-3.5 w-3.5 text-gray-400 shrink-0" />
-                                                {room.number_of_bed} bed{room.number_of_bed === 1 ? "" : "s"}
+                                                {toLocaleNumber(room.number_of_bed, language?.short_code)} {room.number_of_bed === 1 ? t("bed") : t("beds")}
                                             </span>
                                             <span className="flex items-center gap-1.5 col-span-2 pt-1 border-t border-gray-200/60 dark:border-gray-700/60">
                                                 <Coins className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
@@ -427,7 +427,7 @@ export default function UserHostelRoomsPage() {
                             <span className="text-[12px] text-gray-500 dark:text-gray-400">
                                 {filteredRooms.length === 0
                                     ? t("no_entries")
-                                    : `${t("showing")} ${startIndex + 1} ${t("to")} ${Math.min(startIndex + itemsPerPage, filteredRooms.length)} ${t("of")} ${filteredRooms.length} ${t("entries")}`}
+                                    : `${t("showing")} ${toLocaleNumber(startIndex + 1, language?.short_code)} ${t("to")} ${toLocaleNumber(Math.min(startIndex + itemsPerPage, filteredRooms.length), language?.short_code)} ${t("of")} ${toLocaleNumber(filteredRooms.length, language?.short_code)} ${t("entries")}`}
                             </span>
 
                             {totalPages > 1 && (
@@ -456,7 +456,7 @@ export default function UserHostelRoomsPage() {
                                                         : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50"
                                                 )}
                                             >
-                                                {p}
+                                                {toLocaleNumber(p as number, language?.short_code)}
                                             </Button>
                                         )
                                     )}

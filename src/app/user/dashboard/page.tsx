@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { sanitizeHtml } from "@/lib/sanitize";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,17 +28,139 @@ import {
     Award,
     ArrowRight,
     ChevronRight,
-    FileText,
-    Eye,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { mockUserDashboardData } from "@/lib/mock-user-dashboard";
 import api from "@/lib/api";
-import { cn } from "@/lib/utils";
+import {
+    cn,
+    toLocaleNumber,
+    translateClassSection,
+    translateDayName,
+    translateSubjectName,
+    translateVisitorPurpose,
+    translateStatusBadge,
+} from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
 import { InternalChatDialog } from "@/components/chat/internal-chat-dialog";
+
+// ─── Data Types ───────────────────────────────────────────────────────────────
+
+interface NoticeItem {
+    id: number | string;
+    title: string;
+    message?: string;
+    description?: string;
+    date?: string;
+    notice_date?: string;
+}
+
+interface SubjectProgressItem {
+    id: number | string;
+    subject: string;
+    progress: number;
+}
+
+interface UpcomingClassItem {
+    id: number | string;
+    teacher: string;
+    code?: string;
+    subject: string;
+    room: string;
+    time: string;
+}
+
+interface HomeworkItem {
+    id: number | string;
+    title?: string;
+    subject: string;
+    class?: string;
+    date?: string;
+    homework_date?: string;
+    submission?: string;
+    submission_date?: string;
+    evaluation_date?: string;
+    max_marks?: number;
+    marks_obtained?: number | null;
+    created_by?: string;
+    description?: string;
+    status: string;
+    attachment?: string;
+}
+
+interface DailyAssignmentItem {
+    id: number | string;
+    title?: string;
+    subject: string;
+    class?: string;
+    date?: string;
+    submission_date?: string;
+    evaluation_date?: string;
+    marks_obtained?: number | null;
+    max_marks?: number;
+    evaluator?: string;
+    description?: string;
+    evaluation_remarks?: string;
+    status: string;
+    attachment?: string;
+}
+
+interface TeacherItem {
+    id: number;
+    name: string;
+    email?: string;
+    avatar?: string | null;
+    chat_presence?: string;
+    code?: string;
+    isClassTeacher?: boolean;
+}
+
+interface VisitorItem {
+    id: number | string;
+    name: string;
+    purpose: string;
+    date: string;
+}
+
+interface LibraryBookItem {
+    id: number | string;
+    no: string;
+    title: string;
+    author: string;
+    issueDate: string;
+    returnDate: string;
+}
+
+interface ChatContact {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    avatar: string | null;
+    chat_presence: string;
+}
+
+interface DashboardData {
+    profile?: {
+        name?: string;
+        attendance_percentage?: number | string;
+        minimum_attendance?: number | string;
+        barcode?: string;
+        image?: string | null;
+        branch_id?: number | string;
+    };
+    notices?: NoticeItem[];
+    subjectProgress?: SubjectProgressItem[];
+    upcomingClasses?: UpcomingClassItem[];
+    homework?: HomeworkItem[];
+    dailyAssignments?: DailyAssignmentItem[];
+    teachers?: TeacherItem[];
+    visitors?: VisitorItem[];
+    libraryBooks?: LibraryBookItem[];
+    widgets?: Record<string, boolean>;
+}
 
 // ─── Reusable presentational helpers ────────────────────────────────────────────
 
@@ -79,6 +202,7 @@ function SectionCard({
     icon: Icon,
     title,
     count,
+    langCode = "en",
     action,
     children,
     className,
@@ -87,6 +211,7 @@ function SectionCard({
     icon: LucideIcon;
     title: React.ReactNode;
     count?: number;
+    langCode?: string;
     action?: React.ReactNode;
     children: React.ReactNode;
     className?: string;
@@ -105,7 +230,7 @@ function SectionCard({
                     {action}
                     {count != null && (
                         <span className="min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] shadow-xs shrink-0">
-                            {count}
+                            {toLocaleNumber(count, langCode)}
                         </span>
                     )}
                 </div>
@@ -128,18 +253,19 @@ function EmptyState({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
 }
 
 export default function UserDashboardPage() {
-    const { t } = useTranslation();
-    const [data, setData] = useState<any>(null);
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [qrDataUrl, setQrDataUrl] = useState<string>("");
-    const [selectedNotice, setSelectedNotice] = useState<any>(null);
-    const [selectedHomework, setSelectedHomework] = useState<any>(null);
-    const [selectedDailyAssignment, setSelectedDailyAssignment] = useState<any>(null);
+    const [selectedNotice, setSelectedNotice] = useState<NoticeItem | null>(null);
+    const [selectedHomework, setSelectedHomework] = useState<HomeworkItem | null>(null);
+    const [selectedDailyAssignment, setSelectedDailyAssignment] = useState<DailyAssignmentItem | null>(null);
     const [chatOpen, setChatOpen] = useState(false);
-    const [chatTargetContact, setChatTargetContact] = useState<any>(null);
+    const [chatTargetContact, setChatTargetContact] = useState<ChatContact | null>(null);
     const [chatTargetUserId, setChatTargetUserId] = useState<number | null>(null);
 
-    const handleStartTeacherChat = (teacher: any) => {
+    const handleStartTeacherChat = (teacher: TeacherItem) => {
         setChatTargetUserId(teacher.id);
         setChatTargetContact({
             id: teacher.id,
@@ -161,8 +287,8 @@ export default function UserDashboardPage() {
                 if (resData) {
                     setData(resData);
                 }
-            } catch (error) {
-                console.error("Error fetching dashboard data:", error);
+            } catch {
+                // Fallback handled gracefully
             } finally {
                 setLoading(false);
             }
@@ -212,7 +338,7 @@ export default function UserDashboardPage() {
     const attendance = Number(profile?.attendance_percentage) || 0;
     const minAttendance = Number(profile?.minimum_attendance) || 0;
     const isAboveMin = attendance >= minAttendance;
-    const pendingHomework = (homework || []).filter((h: any) => h.status === "Pending").length;
+    const pendingHomework = (homework || []).filter((h: HomeworkItem) => h.status === "Pending").length;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -221,33 +347,33 @@ export default function UserDashboardPage() {
                 <StatCard
                     icon={Percent}
                     label={t("attendance")}
-                    value={`${attendance}%`}
+                    value={`${toLocaleNumber(attendance, langCode)}%`}
                     gradient={isAboveMin ? "from-green-500 to-emerald-400" : "from-red-500 to-rose-400"}
                     sub={
                         <span className="inline-flex items-center gap-1 font-semibold text-white/90">
                             {isAboveMin ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                            {isAboveMin ? t("above") : t("below")} {minAttendance}% {t("min")}
+                            {isAboveMin ? t("above") : t("below")} {toLocaleNumber(minAttendance, langCode)}% {t("min")}
                         </span>
                     }
                 />
                 <StatCard
                     icon={CalendarClock}
                     label={t("upcoming_classes")}
-                    value={upcomingClasses?.length ?? 0}
+                    value={toLocaleNumber(upcomingClasses?.length ?? 0, langCode)}
                     gradient="from-[#FF9800] to-amber-400"
                     sub={<span className="text-white/80 font-medium">{t("scheduled_today")}</span>}
                 />
                 <StatCard
                     icon={ClipboardList}
                     label={t("pending_homework")}
-                    value={pendingHomework}
+                    value={toLocaleNumber(pendingHomework, langCode)}
                     gradient="from-indigo-500 to-[#6366F1]"
-                    sub={<span className="text-white/80 font-medium">{t("of")} {homework?.length ?? 0} {t("total")}</span>}
+                    sub={<span className="text-white/80 font-medium">{t("of")} {toLocaleNumber(homework?.length ?? 0, langCode)} {t("total")}</span>}
                 />
                 <StatCard
                     icon={Library}
                     label={t("books_issued")}
-                    value={libraryBooks?.length ?? 0}
+                    value={toLocaleNumber(libraryBooks?.length ?? 0, langCode)}
                     gradient="from-purple-500 to-fuchsia-400"
                     sub={<span className="text-white/80 font-medium">{t("from_library")}</span>}
                 />
@@ -284,7 +410,7 @@ export default function UserDashboardPage() {
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <span className="text-[12px] font-semibold text-gray-600">{t("current_attendance")}</span>
-                                        <span className="text-sm font-bold text-gray-800">{attendance}%</span>
+                                        <span className="text-sm font-bold text-gray-800">{toLocaleNumber(attendance, langCode)}%</span>
                                     </div>
                                     <Progress
                                         value={attendance}
@@ -292,7 +418,7 @@ export default function UserDashboardPage() {
                                     />
                                     <p className={cn("text-[11px] mt-1.5 inline-flex items-center gap-1 font-semibold", isAboveMin ? "text-green-600" : "text-red-500")}>
                                         {isAboveMin ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
-                                        {isAboveMin ? t("above") : t("below")} {t("the")} {minAttendance}% {t("minimum_mark")}
+                                        {isAboveMin ? t("above") : t("below")} {t("the")} {toLocaleNumber(minAttendance, langCode)}% {t("minimum_mark")}
                                     </p>
                                 </div>
 
@@ -348,10 +474,10 @@ export default function UserDashboardPage() {
 
                 {/* Notice Board */}
                 {showWidget("notice_board") && (
-                <SectionCard icon={Bell} title={t("notice_board")} count={notices?.length} className="h-auto lg:h-full lg:min-h-[208px]">
+                <SectionCard icon={Bell} title={t("notice_board")} count={notices?.length} langCode={langCode} className="h-auto lg:h-full lg:min-h-[208px]">
                     {notices.length > 0 ? (
                         <div className="divide-y divide-gray-100">
-                            {notices.map((notice: any) => (
+                            {notices.map((notice: NoticeItem) => (
                                 <button
                                     key={notice.id}
                                     type="button"
@@ -364,7 +490,7 @@ export default function UserDashboardPage() {
                                     <div className="min-w-0">
                                         <p className="text-[13px] font-medium text-gray-700 group-hover:text-[#337ab7] truncate">{notice.title}</p>
                                         <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-                                            <Clock className="h-3 w-3" /> {notice.date || notice.notice_date}
+                                            <Clock className="h-3 w-3" /> {toLocaleNumber(notice.date || notice.notice_date, langCode)}
                                         </p>
                                     </div>
                                 </button>
@@ -383,21 +509,23 @@ export default function UserDashboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Subject Progress */}
                 {showWidget("subject_progress") && (
-                <SectionCard icon={BookOpen} title={t("subject_progress")} count={subjectProgress?.length}>
+                <SectionCard icon={BookOpen} title={t("subject_progress")} count={subjectProgress?.length} langCode={langCode}>
                     {subjectProgress.length > 0 ? (
                         <div className="p-4 space-y-4">
-                            {subjectProgress.map((item: any) => (
+                            {subjectProgress.map((item: SubjectProgressItem) => {
+                                const translatedSubj = translateSubjectName(item.subject, langCode);
+                                return (
                                 <div key={item.id}>
                                     <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[13px] font-medium text-gray-700 truncate pr-2" title={item.subject}>{item.subject}</span>
-                                        <span className="text-[12px] font-bold text-gray-600 shrink-0">{item.progress}%</span>
+                                        <span className="text-[13px] font-medium text-gray-700 truncate pr-2" title={translatedSubj}>{translatedSubj}</span>
+                                        <span className="text-[12px] font-bold text-gray-600 shrink-0">{toLocaleNumber(item.progress, langCode)}%</span>
                                     </div>
                                     <Progress
                                         value={item.progress}
                                         className="h-2 bg-gray-100 [&>div]:bg-gradient-to-r [&>div]:from-[#FF9800] [&>div]:to-[#6366F1]"
                                     />
                                 </div>
-                            ))}
+                            );})}
                         </div>
                     ) : (
                         <EmptyState icon={BookOpen} text={t("no_subject_progress_data")} />
@@ -413,31 +541,32 @@ export default function UserDashboardPage() {
                         <div className="flex items-center gap-2">
                             <span>{t("upcoming_class")}</span>
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] shadow-xs">
-                                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()]}
+                                {translateDayName(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()], langCode)}
                             </span>
                         </div>
                     }
                     count={upcomingClasses?.length}
+                    langCode={langCode}
                 >
                     {upcomingClasses.length > 0 ? (
                         <div className="divide-y divide-gray-100">
-                            {upcomingClasses.map((item: any) => (
+                            {upcomingClasses.map((item: UpcomingClassItem) => (
                                 <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-indigo-50/30 transition-colors">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 shadow-xs">
                                             <User className="h-5 w-5" />
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="text-[13px] font-bold text-black dark:text-zinc-100 truncate">{item.subject}</p>
-                                            <p className="text-[12px] font-medium text-gray-600 dark:text-zinc-400 truncate">{item.teacher}{item.code ? ` (${item.code})` : ""}</p>
+                                            <p className="text-[13px] font-bold text-black dark:text-zinc-100 truncate">{translateSubjectName(item.subject, langCode)}</p>
+                                            <p className="text-[12px] font-medium text-gray-600 dark:text-zinc-400 truncate">{item.teacher}{item.code ? ` (${toLocaleNumber(item.code, langCode)})` : ""}</p>
                                         </div>
                                     </div>
                                     <div className="text-right shrink-0">
                                         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
-                                            <MapPin className="h-3 w-3" /> {t("room")} {item.room}
+                                            <MapPin className="h-3 w-3" /> {t("room") || "Room:"} {toLocaleNumber(item.room, langCode)}
                                         </span>
                                         <p className="text-[11px] font-bold text-black dark:text-zinc-100 mt-1 flex items-center gap-1 justify-end whitespace-nowrap">
-                                            <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> {item.time}
+                                            <Clock className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> {toLocaleNumber(item.time, langCode)}
                                         </p>
                                     </div>
                                 </div>
@@ -460,12 +589,13 @@ export default function UserDashboardPage() {
                     icon={ClipboardList}
                     title={t("homework")}
                     className="h-[420px]"
+                    langCode={langCode}
                     action={
                         <Link
                             href="/user/homework"
                             className="px-2.5 py-1 text-[11px] font-semibold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] rounded-full shadow-xs hover:shadow-md transition-all duration-200 inline-flex items-center gap-1 hover:scale-105 active:scale-95"
                         >
-                            <span>{t("view_all") || "View All"}</span>
+                            <span>{t("view_all")}</span>
                             <ChevronRight className="h-3 w-3" />
                         </Link>
                     }
@@ -473,7 +603,11 @@ export default function UserDashboardPage() {
                 >
                     {(homework || []).length > 0 ? (
                         <div className="divide-y divide-gray-100">
-                            {homework.map((item: any) => (
+                            {homework.map((item: HomeworkItem) => {
+                                const isPending = item.status?.toLowerCase() === "pending";
+                                const isSubmitted = item.status?.toLowerCase() === "submitted";
+                                const transSubj = translateSubjectName(item.subject, langCode);
+                                return (
                                 <div
                                     key={item.id}
                                     onClick={() => setSelectedHomework(item)}
@@ -482,25 +616,25 @@ export default function UserDashboardPage() {
                                     <div className="flex items-start justify-between gap-2 mb-1">
                                         <div className="min-w-0 flex-1">
                                              <p className="text-[13px] font-bold text-gray-800 dark:text-zinc-100 group-hover:text-indigo-600 transition-colors truncate">
-                                                {item.title || item.subject}
+                                                {item.title || transSubj}
                                             </p>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-                                                    {item.subject}
+                                                    {transSubj}
                                                 </span>
                                                 {item.class && (
-                                                    <span className="text-[10px] text-gray-500 font-medium">• {item.class}</span>
+                                                    <span className="text-[10px] text-gray-500 font-medium">• {translateClassSection(item.class, langCode)}</span>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
                                             <span className={cn(
                                                 "px-2 py-0.5 text-[10px] rounded-full font-bold uppercase shadow-xs",
-                                                item.status === "Pending" ? "bg-amber-500 text-white" :
-                                                item.status === "Submitted" ? "bg-blue-500 text-white" :
+                                                isPending ? "bg-amber-500 text-white" :
+                                                isSubmitted ? "bg-blue-500 text-white" :
                                                 "bg-emerald-500 text-white"
                                             )}>
-                                                {item.status === "Pending" ? t("pending") : item.status === "Completed" || item.status === "Submitted" ? t("submitted") || "Submitted" : item.status}
+                                                {translateStatusBadge(item.status, langCode)}
                                             </span>
                                         </div>
                                     </div>
@@ -515,11 +649,11 @@ export default function UserDashboardPage() {
                                         <div className="flex items-center gap-3">
                                             <span className="flex items-center gap-1 text-gray-600 dark:text-zinc-400">
                                                 <CalendarDays className="h-3 w-3 text-amber-500" />
-                                                <span className="text-gray-400">{t("assigned")}:</span> {item.date || item.homework_date}
+                                                <span className="text-gray-400">{t("assigned")}:</span> {toLocaleNumber(item.date || item.homework_date, langCode)}
                                             </span>
                                             <span className="flex items-center gap-1 text-gray-600 dark:text-zinc-400">
                                                 <Clock className="h-3 w-3 text-indigo-500" />
-                                                <span className="text-gray-400">{t("submission")}:</span> {item.submission || item.submission_date}
+                                                <span className="text-gray-400">{t("submission")}:</span> {toLocaleNumber(item.submission || item.submission_date, langCode)}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2 ml-auto">
@@ -531,7 +665,7 @@ export default function UserDashboardPage() {
                                             {item.max_marks != null && (
                                                 <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                                                     <Award className="h-2.5 w-2.5" />
-                                                    {item.marks_obtained != null ? `${item.marks_obtained}/${item.max_marks}` : `Max: ${item.max_marks}`}
+                                                    {item.marks_obtained != null ? `${toLocaleNumber(item.marks_obtained, langCode)}/${toLocaleNumber(item.max_marks, langCode)}` : `${t("max")}: ${toLocaleNumber(item.max_marks, langCode)}`}
                                                 </span>
                                             )}
                                             {item.attachment && (
@@ -540,7 +674,7 @@ export default function UserDashboardPage() {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            );})}
                         </div>
                     ) : (
                         <EmptyState icon={ClipboardList} text={t("no_homework_assigned")} />
@@ -554,12 +688,13 @@ export default function UserDashboardPage() {
                     icon={ClipboardList}
                     title={t("daily_assignment") || "Daily Assignment"}
                     className="h-[420px]"
+                    langCode={langCode}
                     action={
                         <Link
                             href="/user/homework/daily-assignment"
                             className="px-2.5 py-1 text-[11px] font-semibold text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] rounded-full shadow-xs hover:shadow-md transition-all duration-200 inline-flex items-center gap-1 hover:scale-105 active:scale-95"
                         >
-                            <span>{t("view_all") || "View All"}</span>
+                            <span>{t("view_all")}</span>
                             <ChevronRight className="h-3 w-3" />
                         </Link>
                     }
@@ -567,7 +702,11 @@ export default function UserDashboardPage() {
                 >
                     {(dailyAssignments || []).length > 0 ? (
                         <div className="divide-y divide-gray-100">
-                            {dailyAssignments.map((item: any) => (
+                            {dailyAssignments.map((item: DailyAssignmentItem) => {
+                                const isPending = item.status?.toLowerCase() === "pending";
+                                const isSubmitted = item.status?.toLowerCase() === "submitted";
+                                const transSubj = translateSubjectName(item.subject, langCode);
+                                return (
                                 <div
                                     key={item.id}
                                     onClick={() => setSelectedDailyAssignment(item)}
@@ -576,25 +715,25 @@ export default function UserDashboardPage() {
                                     <div className="flex items-start justify-between gap-2 mb-1">
                                         <div className="min-w-0 flex-1">
                                             <p className="text-[13px] font-bold text-gray-800 dark:text-zinc-100 group-hover:text-indigo-600 transition-colors truncate">
-                                                {item.title || item.subject}
+                                                {item.title || transSubj}
                                             </p>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-                                                    {item.subject}
+                                                    {transSubj}
                                                 </span>
                                                 {item.class && (
-                                                    <span className="text-[10px] text-gray-500 font-medium">• {item.class}</span>
+                                                    <span className="text-[10px] text-gray-500 font-medium">• {translateClassSection(item.class, langCode)}</span>
                                                 )}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
                                             <span className={cn(
                                                 "px-2 py-0.5 text-[10px] rounded-full font-bold uppercase shadow-xs",
-                                                item.status === "Pending" ? "bg-amber-500 text-white" :
-                                                item.status === "Submitted" ? "bg-blue-500 text-white" :
+                                                isPending ? "bg-amber-500 text-white" :
+                                                isSubmitted ? "bg-blue-500 text-white" :
                                                 "bg-emerald-500 text-white"
                                             )}>
-                                                {item.status === "Pending" ? t("pending") : item.status === "Completed" || item.status === "Evaluated" ? t("evaluated") || "Evaluated" : item.status}
+                                                {translateStatusBadge(item.status, langCode)}
                                             </span>
                                         </div>
                                     </div>
@@ -609,7 +748,7 @@ export default function UserDashboardPage() {
                                         <div className="flex items-center gap-3">
                                             <span className="flex items-center gap-1 text-gray-600 dark:text-zinc-400">
                                                 <CalendarDays className="h-3 w-3 text-indigo-500" />
-                                                <span className="text-gray-400">{t("submission") || "Date"}:</span> {item.date || item.submission_date}
+                                                <span className="text-gray-400">{t("submission") || "Date"}:</span> {toLocaleNumber(item.date || item.submission_date, langCode)}
                                             </span>
                                         </div>
                                         <div className="flex items-center gap-2 ml-auto">
@@ -621,7 +760,7 @@ export default function UserDashboardPage() {
                                             {item.marks_obtained != null && (
                                                 <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                                                     <Award className="h-2.5 w-2.5" />
-                                                    {item.marks_obtained} Marks
+                                                    {toLocaleNumber(item.marks_obtained, langCode)} {t("marks")}
                                                 </span>
                                             )}
                                             {item.attachment && (
@@ -630,7 +769,7 @@ export default function UserDashboardPage() {
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            );})}
                         </div>
                     ) : (
                         <EmptyState icon={ClipboardList} text={t("no_assignments_found") || "No daily assignments assigned"} />
@@ -645,10 +784,10 @@ export default function UserDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {/* Teacher List */}
                 {showWidget("teacher_list") && (
-                <SectionCard icon={GraduationCap} title={t("teacher_list")} count={teachers?.length} className="h-[395px]">
+                <SectionCard icon={GraduationCap} title={t("teacher_list")} count={teachers?.length} langCode={langCode} className="h-[395px]">
                     {teachers.length > 0 ? (
                         <div className="divide-y divide-gray-100">
-                            {teachers.map((item: any) => (
+                            {teachers.map((item: TeacherItem) => (
                                 <div key={item.id} className="p-3.5 flex items-center justify-between gap-3 hover:bg-indigo-50/30 transition-colors">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="h-10 w-10 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-500 flex items-center justify-center shrink-0">
@@ -657,7 +796,7 @@ export default function UserDashboardPage() {
                                         <div className="min-w-0 flex flex-col items-start">
                                             <p className="text-[13px] font-semibold text-gray-800 truncate">{item.name}</p>
                                             <div className="flex items-center gap-1.5 mt-0.5">
-                                                <span className="text-[11px] text-gray-500">({item.code})</span>
+                                                {item.code && <span className="text-[11px] text-gray-500">({toLocaleNumber(item.code, langCode)})</span>}
                                                 {item.isClassTeacher && (
                                                     <span className="bg-[#5cb85c] text-white text-[9px] px-1.5 py-0.5 rounded-full uppercase font-bold">
                                                         {t("class_teacher")}
@@ -685,19 +824,19 @@ export default function UserDashboardPage() {
 
                 {/* Visitor List */}
                 {showWidget("visitor_list") && (
-                <SectionCard icon={UserCheck} title={t("visitor_list")} count={visitors?.length} className="h-[395px]">
+                <SectionCard icon={UserCheck} title={t("visitor_list")} count={visitors?.length} langCode={langCode} className="h-[395px]">
                     {visitors.length > 0 ? (
                         <div className="divide-y divide-gray-100">
-                            {visitors.map((item: any) => (
+                            {visitors.map((item: VisitorItem) => (
                                 <div key={item.id} className="p-3.5 flex items-start gap-3 hover:bg-indigo-50/30 transition-colors">
                                     <div className="h-9 w-9 rounded-full bg-gradient-to-br from-orange-100 to-indigo-100 text-indigo-500 flex items-center justify-center shrink-0">
                                         <UserCheck className="h-4 w-4" />
                                     </div>
                                     <div className="min-w-0">
                                         <p className="text-[13px] font-semibold text-gray-800 truncate">{item.name}</p>
-                                        <p className="text-[11px] text-gray-500">{t("purpose")}: {item.purpose}</p>
+                                        <p className="text-[11px] text-gray-500">{t("purpose")}: {translateVisitorPurpose(item.purpose, langCode)}</p>
                                         <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
-                                            <Clock className="h-3 w-3" /> {item.date}
+                                            <Clock className="h-3 w-3" /> {toLocaleNumber(item.date, langCode)}
                                         </p>
                                     </div>
                                 </div>
@@ -711,7 +850,7 @@ export default function UserDashboardPage() {
 
                 {/* Library Book Issue List */}
                 {showWidget("library") && (
-                <SectionCard icon={Library} title={t("library_books")} count={libraryBooks?.length} className="h-[395px]">
+                <SectionCard icon={Library} title={t("library_books")} count={libraryBooks?.length} langCode={langCode} className="h-[395px]">
                     {libraryBooks.length > 0 ? (
                         <table className="w-full text-xs">
                             <thead className="sticky top-0 bg-gray-50/95 backdrop-blur z-10">
@@ -723,15 +862,15 @@ export default function UserDashboardPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {libraryBooks.map((item: any) => (
+                                {libraryBooks.map((item: LibraryBookItem) => (
                                     <tr key={item.id} className="border-b border-gray-100 last:border-0 hover:bg-indigo-50/30 transition-colors">
-                                        <td className="py-2.5 px-3 text-gray-500 font-medium align-top">{item.no}</td>
+                                        <td className="py-2.5 px-3 text-gray-500 font-medium align-top">{toLocaleNumber(item.no, langCode)}</td>
                                         <td className="py-2.5 px-3 align-top">
                                             <p className="text-gray-800 font-medium truncate max-w-[140px]" title={item.title}>{item.title}</p>
                                             <p className="text-gray-400">({item.author})</p>
                                         </td>
-                                        <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap align-top">{item.issueDate}</td>
-                                        <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap align-top">{item.returnDate}</td>
+                                        <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap align-top">{toLocaleNumber(item.issueDate, langCode)}</td>
+                                        <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap align-top">{toLocaleNumber(item.returnDate, langCode)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -754,13 +893,13 @@ export default function UserDashboardPage() {
                         </DialogTitle>
                         <DialogDescription className="flex items-center gap-1 text-[#337ab7] pt-1">
                             <Clock className="h-[14px] w-[14px]" />
-                            {selectedNotice?.date || selectedNotice?.notice_date}
+                            {toLocaleNumber(selectedNotice?.date || selectedNotice?.notice_date, langCode)}
                         </DialogDescription>
                     </DialogHeader>
                     {selectedNotice?.message ? (
                         <div
                             className="prose prose-sm w-full max-w-full break-words whitespace-normal overflow-x-hidden overflow-y-auto max-h-[72vh] min-h-[200px] prose-headings:text-gray-900 prose-p:text-gray-700 prose-p:whitespace-normal prose-p:break-words prose-a:text-indigo-600 prose-a:break-all prose-img:max-w-full prose-img:h-auto prose-pre:whitespace-pre-wrap prose-pre:break-words"
-                            dangerouslySetInnerHTML={{ __html: selectedNotice.message }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedNotice.message) }}
                         />
                     ) : (
                         <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-words min-h-[200px]">
@@ -778,10 +917,10 @@ export default function UserDashboardPage() {
                             <span className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
                                 <ClipboardList className="h-4 w-4" />
                             </span>
-                            <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">{selectedHomework?.subject}</span>
+                            <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">{translateSubjectName(selectedHomework?.subject, langCode)}</span>
                         </div>
                         <DialogTitle className="text-lg font-bold text-white leading-tight">
-                            {selectedHomework?.title || selectedHomework?.subject || "Homework Details"}
+                            {selectedHomework?.title || translateSubjectName(selectedHomework?.subject, langCode) || t("homework_details")}
                         </DialogTitle>
                         <DialogDescription className="sr-only">Homework assignment details and submission information</DialogDescription>
                     </DialogHeader>
@@ -791,23 +930,23 @@ export default function UserDashboardPage() {
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className={cn(
                                     "px-2.5 py-1 text-[11px] rounded-full font-bold uppercase",
-                                    selectedHomework.status === "Pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" :
-                                    selectedHomework.status === "Submitted" ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" :
+                                    selectedHomework.status?.toLowerCase() === "pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" :
+                                    selectedHomework.status?.toLowerCase() === "submitted" ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" :
                                     "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                                 )}>
-                                    {selectedHomework.status}
+                                    {translateStatusBadge(selectedHomework.status, langCode)}
                                 </span>
                                 {selectedHomework.class && (
                                     <span className="px-2.5 py-1 text-[11px] font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-full">
-                                        {selectedHomework.class}
+                                        {translateClassSection(selectedHomework.class, langCode)}
                                     </span>
                                 )}
                                 {selectedHomework.max_marks != null && (
                                     <span className="px-2.5 py-1 text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 rounded-full flex items-center gap-1">
                                         <Award className="h-3.5 w-3.5" />
                                         {selectedHomework.marks_obtained != null
-                                            ? `Marks: ${selectedHomework.marks_obtained} / ${selectedHomework.max_marks}`
-                                            : `Max Marks: ${selectedHomework.max_marks}`}
+                                            ? `${t("marks")}: ${toLocaleNumber(selectedHomework.marks_obtained, langCode)} / ${toLocaleNumber(selectedHomework.max_marks, langCode)}`
+                                            : `${t("max_marks")}: ${toLocaleNumber(selectedHomework.max_marks, langCode)}`}
                                     </span>
                                 )}
                             </div>
@@ -815,22 +954,22 @@ export default function UserDashboardPage() {
                             {/* Key Info Grid */}
                             <div className="grid grid-cols-2 gap-3 p-3.5 bg-gray-50/80 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs">
                                 <div>
-                                    <p className="text-[10px] uppercase font-bold text-gray-400">Homework Date</p>
-                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedHomework.date || selectedHomework.homework_date || "—"}</p>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400">{t("homework_date")}</p>
+                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{toLocaleNumber(selectedHomework.date || selectedHomework.homework_date, langCode) || "—"}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] uppercase font-bold text-gray-400">Submission Date</p>
-                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedHomework.submission || selectedHomework.submission_date || "—"}</p>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400">{t("submission_date")}</p>
+                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{toLocaleNumber(selectedHomework.submission || selectedHomework.submission_date, langCode) || "—"}</p>
                                 </div>
                                 {selectedHomework.evaluation_date && (
                                     <div>
-                                        <p className="text-[10px] uppercase font-bold text-gray-400">Evaluation Date</p>
-                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedHomework.evaluation_date}</p>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">{t("evaluation_date")}</p>
+                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{toLocaleNumber(selectedHomework.evaluation_date, langCode)}</p>
                                     </div>
                                 )}
                                 {selectedHomework.created_by && (
                                     <div>
-                                        <p className="text-[10px] uppercase font-bold text-gray-400">Assigned By</p>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">{t("assigned_by")}</p>
                                         <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1">
                                             <User className="h-3 w-3 text-indigo-500" />
                                             {selectedHomework.created_by}
@@ -842,7 +981,7 @@ export default function UserDashboardPage() {
                             {/* Description / Instructions */}
                             {selectedHomework.description && (
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Description / Instructions</p>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">{t("description_instructions")}</p>
                                     <div className="p-3.5 bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs text-gray-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
                                         {selectedHomework.description}
                                     </div>
@@ -852,7 +991,7 @@ export default function UserDashboardPage() {
                             {/* Attachment Link */}
                             {selectedHomework.attachment && (
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Attachment</p>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">{t("attachment")}</p>
                                     <a
                                         href={selectedHomework.attachment.startsWith("http") ? selectedHomework.attachment : `/storage/${selectedHomework.attachment}`}
                                         target="_blank"
@@ -860,7 +999,7 @@ export default function UserDashboardPage() {
                                         className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-lg transition-colors"
                                     >
                                         <Paperclip className="h-3.5 w-3.5" />
-                                        Download / View Attachment
+                                        {t("download_view_attachment")}
                                     </a>
                                 </div>
                             )}
@@ -873,13 +1012,13 @@ export default function UserDashboardPage() {
                                     onClick={() => setSelectedHomework(null)}
                                     className="rounded-lg text-xs"
                                 >
-                                    Close
+                                    {t("close")}
                                 </Button>
                                 <Link
                                     href="/user/homework"
                                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity"
                                 >
-                                    Go to Homework Portal <ArrowRight className="h-3.5 w-3.5" />
+                                    {t("go_to_homework_portal")} <ArrowRight className="h-3.5 w-3.5" />
                                 </Link>
                             </div>
                         </div>
@@ -895,10 +1034,10 @@ export default function UserDashboardPage() {
                             <span className="p-1.5 rounded-lg bg-white/20 backdrop-blur-sm">
                                 <ClipboardList className="h-4 w-4" />
                             </span>
-                            <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">{selectedDailyAssignment?.subject}</span>
+                            <span className="text-xs font-semibold text-white/90 uppercase tracking-wider">{translateSubjectName(selectedDailyAssignment?.subject, langCode)}</span>
                         </div>
                         <DialogTitle className="text-lg font-bold text-white leading-tight">
-                            {selectedDailyAssignment?.title || selectedDailyAssignment?.subject || "Daily Assignment Details"}
+                            {selectedDailyAssignment?.title || translateSubjectName(selectedDailyAssignment?.subject, langCode) || t("daily_assignment_details")}
                         </DialogTitle>
                         <DialogDescription className="sr-only">Daily assignment details and submission information</DialogDescription>
                     </DialogHeader>
@@ -908,21 +1047,21 @@ export default function UserDashboardPage() {
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className={cn(
                                     "px-2.5 py-1 text-[11px] rounded-full font-bold uppercase",
-                                    selectedDailyAssignment.status === "Pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" :
-                                    selectedDailyAssignment.status === "Submitted" ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" :
+                                    selectedDailyAssignment.status?.toLowerCase() === "pending" ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300" :
+                                    selectedDailyAssignment.status?.toLowerCase() === "submitted" ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300" :
                                     "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                                 )}>
-                                    {selectedDailyAssignment.status}
+                                    {translateStatusBadge(selectedDailyAssignment.status, langCode)}
                                 </span>
                                 {selectedDailyAssignment.class && (
                                     <span className="px-2.5 py-1 text-[11px] font-semibold bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 rounded-full">
-                                        {selectedDailyAssignment.class}
+                                        {translateClassSection(selectedDailyAssignment.class, langCode)}
                                     </span>
                                 )}
                                 {selectedDailyAssignment.marks_obtained != null && (
                                     <span className="px-2.5 py-1 text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-full flex items-center gap-1">
                                         <Award className="h-3.5 w-3.5" />
-                                        Marks Obtained: {selectedDailyAssignment.marks_obtained}
+                                        {t("marks_obtained")}: {toLocaleNumber(selectedDailyAssignment.marks_obtained, langCode)}
                                     </span>
                                 )}
                             </div>
@@ -930,18 +1069,18 @@ export default function UserDashboardPage() {
                             {/* Key Info Grid */}
                             <div className="grid grid-cols-2 gap-3 p-3.5 bg-gray-50/80 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs">
                                 <div>
-                                    <p className="text-[10px] uppercase font-bold text-gray-400">Submission Date</p>
-                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedDailyAssignment.date || selectedDailyAssignment.submission_date || "—"}</p>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400">{t("submission_date")}</p>
+                                    <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{toLocaleNumber(selectedDailyAssignment.date || selectedDailyAssignment.submission_date, langCode) || "—"}</p>
                                 </div>
                                 {selectedDailyAssignment.evaluation_date && (
                                     <div>
-                                        <p className="text-[10px] uppercase font-bold text-gray-400">Evaluation Date</p>
-                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{selectedDailyAssignment.evaluation_date}</p>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">{t("evaluation_date")}</p>
+                                        <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5">{toLocaleNumber(selectedDailyAssignment.evaluation_date, langCode)}</p>
                                     </div>
                                 )}
                                 {selectedDailyAssignment.evaluator && (
                                     <div>
-                                        <p className="text-[10px] uppercase font-bold text-gray-400">Evaluated By</p>
+                                        <p className="text-[10px] uppercase font-bold text-gray-400">{t("evaluated_by")}</p>
                                         <p className="font-semibold text-gray-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1">
                                             <User className="h-3 w-3 text-indigo-500" />
                                             {selectedDailyAssignment.evaluator}
@@ -953,7 +1092,7 @@ export default function UserDashboardPage() {
                             {/* Description / Instructions */}
                             {selectedDailyAssignment.description && (
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Description / Assignment Details</p>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">{t("description_assignment_details")}</p>
                                     <div className="p-3.5 bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800 text-xs text-gray-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
                                         {selectedDailyAssignment.description}
                                     </div>
@@ -963,7 +1102,7 @@ export default function UserDashboardPage() {
                             {/* Evaluation Remarks */}
                             {selectedDailyAssignment.evaluation_remarks && (
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Teacher Evaluation Remarks</p>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">{t("teacher_evaluation_remarks")}</p>
                                     <div className="p-3.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-900 text-xs text-emerald-800 dark:text-emerald-300 whitespace-pre-wrap leading-relaxed">
                                         {selectedDailyAssignment.evaluation_remarks}
                                     </div>
@@ -973,7 +1112,7 @@ export default function UserDashboardPage() {
                             {/* Attachment Link */}
                             {selectedDailyAssignment.attachment && (
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">Attachment</p>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1.5">{t("attachment")}</p>
                                     <a
                                         href={selectedDailyAssignment.attachment.startsWith("http") ? selectedDailyAssignment.attachment : `/storage/${selectedDailyAssignment.attachment.replace(/^\/?storage\/?/, "")}`}
                                         target="_blank"
@@ -981,7 +1120,7 @@ export default function UserDashboardPage() {
                                         className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-lg transition-colors"
                                     >
                                         <Paperclip className="h-3.5 w-3.5" />
-                                        Download / View Attachment
+                                        {t("download_view_attachment")}
                                     </a>
                                 </div>
                             )}
@@ -994,13 +1133,13 @@ export default function UserDashboardPage() {
                                     onClick={() => setSelectedDailyAssignment(null)}
                                     className="rounded-lg text-xs"
                                 >
-                                    Close
+                                    {t("close")}
                                 </Button>
                                 <Link
                                     href="/user/homework/daily-assignment"
                                     className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-xs font-bold rounded-lg shadow-sm hover:opacity-90 transition-opacity"
                                 >
-                                    Go to Daily Assignment Portal <ArrowRight className="h-3.5 w-3.5" />
+                                    {t("go_to_daily_assignment_portal")} <ArrowRight className="h-3.5 w-3.5" />
                                 </Link>
                             </div>
                         </div>

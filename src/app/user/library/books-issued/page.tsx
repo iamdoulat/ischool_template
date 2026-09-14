@@ -18,12 +18,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
     Search, ChevronLeft, ChevronRight, ArrowUpDown,
-    Copy, FileSpreadsheet, FileDown, Printer, Loader2, BookOpen,
+    Copy, FileSpreadsheet, FileDown, Printer, Columns, Loader2, BookOpen,
     BookMarked, Calendar, CalendarCheck, User, Hash, AlertTriangle,
     RotateCcw, XCircle, Clock,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateBookTitle } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -40,12 +40,13 @@ type BookIssued = {
 };
 
 const PAGE_SIZES = [10, 25, 50, 100];
-const fmt = (d: string) => (d ? formatDate(d) : "—");
 
 type SortKey = keyof Omit<BookIssued, "id">;
 
 export default function UserBooksIssuedPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const langCode = language?.short_code || "en";
+    const fmt = (d: string) => (d ? toLocaleNumber(formatDate(d), langCode) : "—");
     const [books, setBooks] = useState<BookIssued[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -76,8 +77,7 @@ export default function UserBooksIssuedPage() {
                     });
                     setBooks(normalized);
                 }
-            } catch (err) {
-                console.error("Error loading issued books:", err);
+            } catch {
                 toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_issued_books") });
             } finally {
                 setLoading(false);
@@ -218,6 +218,17 @@ export default function UserBooksIssuedPage() {
         </TableHead>
     );
 
+    const summaryText = overdueCount > 0
+        ? t("books_issued_summary")
+            .replace("{total}", toLocaleNumber(books.length, langCode))
+            .replace("{outstanding}", toLocaleNumber(outstandingCount, langCode))
+            .replace("{overdue}", toLocaleNumber(overdueCount, langCode))
+        : t("books_issued_summary_no_overdue")
+            .replace("{total}", toLocaleNumber(books.length, langCode))
+            .replace("{outstanding}", toLocaleNumber(outstandingCount, langCode));
+
+    const warningText = t("overdue_books_warning").replace("{count}", toLocaleNumber(overdueCount, langCode));
+
     return (
         <div className="p-4 lg:p-6 animate-in fade-in duration-500">
             <Card className="shadow-sm border border-gray-200 rounded-xl overflow-hidden p-0 gap-0">
@@ -229,16 +240,14 @@ export default function UserBooksIssuedPage() {
                         <div className="min-w-0">
                             <h1 className="text-[16px] font-bold text-gray-800 tracking-tight leading-none truncate">{t("books_issued")}</h1>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {loading
-                                    ? t("loading")
-                                    : `${books.length} ${t("record").toLowerCase()}${books.length === 1 ? "" : "s"} · ${outstandingCount} ${t("outstanding").toLowerCase()}${overdueCount ? ` · ${overdueCount} ${t("overdue").toLowerCase()}` : ""}`}
+                                {loading ? t("loading") : summaryText}
                             </p>
                         </div>
                     </div>
                     <Button
                         onClick={() => window.print()}
                         title={t("print")}
-                        className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden"
+                        className="h-9 shrink-0 px-3.5 gap-1.5 rounded-[10px] text-white text-[12px] font-semibold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity active:scale-95 print:hidden cursor-pointer"
                     >
                         <Printer className="h-4 w-4" />
                         <span className="hidden sm:inline">{t("print")}</span>
@@ -249,47 +258,48 @@ export default function UserBooksIssuedPage() {
                     {!loading && overdueCount > 0 && (
                         <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700 text-xs font-medium print:hidden">
                             <AlertTriangle className="h-4 w-4 shrink-0 text-red-500" />
-                            <span>
-                                {t("you_have")} <strong>{overdueCount}</strong> {t("overdue_book")}{overdueCount === 1 ? "" : "s"}. {t("please_return_prompt")}
-                            </span>
+                            <span>{warningText}</span>
                         </div>
                     )}
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 print:hidden">
-                        <div className="relative w-full sm:w-72">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                        <div className="relative w-full sm:w-80">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
                             <Input
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder={t("search_title_bookno_author") || "Search Title, Book No, Author..."}
+                                placeholder={t("search_title_book_no_author")}
                                 className="pl-9 h-9 text-[12px] bg-gray-50 border-gray-200 rounded-[10px] focus:bg-white transition-colors"
                             />
                         </div>
-                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <div className="flex items-center gap-2 flex-nowrap shrink-0 self-end sm:self-auto">
                             <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
-                                <SelectTrigger className="h-9 text-[12px] w-20 border-gray-200 rounded-[10px] bg-gray-50">
-                                    <SelectValue />
+                                <SelectTrigger className="h-9 w-16 px-2 text-[12px] border-gray-200 rounded-[10px] bg-white font-medium shrink-0 shadow-none">
+                                    <SelectValue placeholder={toLocaleNumber(10, langCode)}>
+                                        {toLocaleNumber(pageSize, langCode)}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {[10, 25, 50, 100].map((n) => (
+                                    {PAGE_SIZES.map((n) => (
                                         <SelectItem key={n} value={String(n)} className="text-[12px]">
-                                            {n}
+                                            {toLocaleNumber(n, langCode)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <div className="flex items-center rounded-[10px] border border-gray-200 bg-gray-50 overflow-hidden shrink-0">
+                            <div className="flex items-center rounded-[10px] border border-gray-200 bg-white overflow-hidden shrink-0">
                                 {[
-                                    { icon: Copy, fn: copyToClipboard, title: t("copy") || "Copy" },
-                                    { icon: FileSpreadsheet, fn: exportToExcel, title: t("excel") || "Excel" },
-                                    { icon: FileDown, fn: exportToPDF, title: t("pdf") || "PDF" },
-                                    { icon: Printer, fn: () => window.print(), title: t("print") || "Print" },
+                                    { icon: Copy, fn: copyToClipboard, title: t("copy") },
+                                    { icon: FileSpreadsheet, fn: exportToExcel, title: t("excel") },
+                                    { icon: FileDown, fn: exportToPDF, title: t("pdf") },
+                                    { icon: Printer, fn: () => window.print(), title: t("print") },
+                                    { icon: Columns, fn: () => {}, title: t("columns") || "Columns" },
                                 ].map(({ icon: Icon, fn, title }, i, arr) => (
                                     <Button
-                                        key={i}
+                                        key={title || i}
                                         type="button"
                                         variant="ghost"
-                                        size="sm"
+                                        size="icon"
                                         onClick={fn}
                                         title={title}
                                         className={cn(
@@ -315,7 +325,7 @@ export default function UserBooksIssuedPage() {
                                     <SortHead label={t("due_return_date")} field="dueReturnDate" />
                                     <TableHead className="font-bold text-gray-700 py-3 px-4">{t("return_date")}</TableHead>
                                     <TableHead className="font-bold text-gray-700 py-3 px-4 text-center">{t("status")}</TableHead>
-                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center min-w-[140px]">Action</TableHead>
+                                    <TableHead className="font-bold text-gray-700 py-3 px-4 text-center min-w-[140px]">{t("action")}</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -357,10 +367,10 @@ export default function UserBooksIssuedPage() {
                                                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-[#6366F1]">
                                                         <BookOpen className="h-3.5 w-3.5" />
                                                     </span>
-                                                    <span className="truncate max-w-[200px]">{b.title}</span>
+                                                    <span className="truncate max-w-[200px]">{translateBookTitle(b.title, langCode)}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="py-3 px-4 text-gray-600">{b.bookNumber || "—"}</TableCell>
+                                            <TableCell className="py-3 px-4 text-gray-600">{b.bookNumber ? toLocaleNumber(b.bookNumber, langCode) : "—"}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">{b.author || "—"}</TableCell>
                                             <TableCell className="py-3 px-4 text-gray-600">{fmt(b.issueDate)}</TableCell>
                                             <TableCell className={cn(
@@ -387,10 +397,10 @@ export default function UserBooksIssuedPage() {
                                                         variant="outline"
                                                         onClick={(e) => { e.stopPropagation(); handleCancelReturn(b.id); }}
                                                         className="h-8 px-3 border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold gap-1.5 rounded-lg shadow-sm cursor-pointer whitespace-nowrap"
-                                                        title={t("cancel_return_request") || "Cancel Return Request"}
+                                                        title={t("cancel_return_request") || t("cancel_return")}
                                                     >
                                                         <XCircle className="h-3.5 w-3.5 text-red-500" />
-                                                        <span>Cancel</span>
+                                                        <span>{t("cancel_return")}</span>
                                                     </Button>
                                                 ) : (
                                                     <Button
@@ -398,10 +408,10 @@ export default function UserBooksIssuedPage() {
                                                         size="sm"
                                                         onClick={(e) => { e.stopPropagation(); handleRequestReturn(b.id); }}
                                                         className="h-8 px-3 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white text-[11px] font-bold gap-1.5 rounded-lg shadow-sm active:scale-95 cursor-pointer whitespace-nowrap"
-                                                        title={t("request_return") || "Return Book"}
+                                                        title={t("request_return") || t("return_book")}
                                                     >
                                                         <RotateCcw className="h-3.5 w-3.5" />
-                                                        <span>Return Book</span>
+                                                        <span>{t("return_book")}</span>
                                                     </Button>
                                                 )}
                                             </TableCell>
@@ -444,10 +454,10 @@ export default function UserBooksIssuedPage() {
                                                 <BookOpen className="h-4.5 w-4.5 text-[#6366F1]" />
                                             </span>
                                             <div className="min-w-0">
-                                                <p className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2">{b.title}</p>
+                                                <p className="text-[13px] font-bold text-gray-800 leading-snug line-clamp-2">{translateBookTitle(b.title, langCode)}</p>
                                                 {b.bookNumber && (
                                                     <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5">
-                                                        <Hash className="h-3 w-3" /> {b.bookNumber}
+                                                        <Hash className="h-3 w-3" /> {toLocaleNumber(b.bookNumber, langCode)}
                                                     </p>
                                                 )}
                                             </div>
@@ -482,19 +492,19 @@ export default function UserBooksIssuedPage() {
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={() => handleCancelReturn(b.id)}
-                                                    className="h-7 px-2.5 border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold gap-1 rounded-md"
+                                                    className="h-7 px-2.5 border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold gap-1 rounded-md cursor-pointer"
                                                 >
                                                     <XCircle className="h-3.5 w-3.5 text-red-500" />
-                                                    <span>Cancel</span>
+                                                    <span>{t("cancel_return")}</span>
                                                 </Button>
                                             ) : (
                                                 <Button
                                                     size="sm"
                                                     onClick={() => handleRequestReturn(b.id)}
-                                                    className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[11px] font-bold gap-1 rounded-md"
+                                                    className="h-7 px-2.5 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white text-[11px] font-bold gap-1 rounded-md cursor-pointer"
                                                 >
                                                     <RotateCcw className="h-3.5 w-3.5" />
-                                                    <span>Return</span>
+                                                    <span>{t("return_book")}</span>
                                                 </Button>
                                             )
                                         )}
@@ -510,16 +520,19 @@ export default function UserBooksIssuedPage() {
                             <span className="text-[12px] text-gray-500">
                                 {sorted.length === 0
                                     ? t("no_entries")
-                                    : `${t("showing")} ${start} ${t("to")} ${end} ${t("of")} ${sorted.length} ${t("entries")}`}
+                                    : t("showing_x_to_y_of_z_entries")
+                                        .replace("{from}", toLocaleNumber(start, langCode))
+                                        .replace("{to}", toLocaleNumber(end, langCode))
+                                        .replace("{total}", toLocaleNumber(sorted.length, langCode))}
                             </span>
                             <div className="flex items-center gap-1.5">
                                 <Button
                                     size="icon"
                                     disabled={currentPage <= 1}
-                                    onClick={() => setCurrentPage((p) => p - 1)}
-                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40 cursor-pointer"
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
                                 </Button>
 
                                 {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -538,13 +551,13 @@ export default function UserBooksIssuedPage() {
                                                 size="icon"
                                                 onClick={() => setCurrentPage(p as number)}
                                                 className={cn(
-                                                    "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity",
+                                                    "h-8 w-8 rounded-[10px] text-[12px] font-medium transition-opacity cursor-pointer",
                                                     currentPage === p
                                                         ? "text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90"
                                                         : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                                                 )}
                                             >
-                                                {p}
+                                                {toLocaleNumber(p, langCode)}
                                             </Button>
                                         )
                                     )}
@@ -552,10 +565,10 @@ export default function UserBooksIssuedPage() {
                                 <Button
                                     size="icon"
                                     disabled={currentPage >= totalPages}
-                                    onClick={() => setCurrentPage((p) => p + 1)}
-                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40"
+                                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                    className="h-8 w-8 rounded-[10px] text-white bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 transition-opacity disabled:opacity-40 cursor-pointer"
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="h-4 w-4 rtl:rotate-180" />
                                 </Button>
                             </div>
                         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSettings } from "@/components/providers/settings-provider";
 import { getImageUrl } from "@/lib/image-url";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export interface MarksheetData {
     student: {
@@ -139,7 +140,7 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
 
                 {/* Body Text */}
                 {template.body_text && (
-                    <div className="mb-6 text-center text-sm font-medium" dangerouslySetInnerHTML={{ __html: template.body_text }} />
+                    <div className="mb-6 text-center text-sm font-medium" dangerouslySetInnerHTML={{ __html: sanitizeHtml(template.body_text) }} />
                 )}
 
                 {isDesign2 ? (
@@ -279,7 +280,7 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
                         {/* Footer & Signatures */}
                         <div className="mt-16 pt-8 border-t border-dashed border-gray-200">
                             {(print_setting?.footer_content || template.footer_text) && (
-                                <div className="mb-16 text-center text-xs text-gray-500 max-w-2xl mx-auto" dangerouslySetInnerHTML={{ __html: print_setting?.footer_content || template.footer_text || '' }} />
+                                <div className="mb-16 text-center text-xs text-gray-500 max-w-2xl mx-auto" dangerouslySetInnerHTML={{ __html: sanitizeHtml(print_setting?.footer_content || template.footer_text || '') }} />
                             )}
 
                             <div className="flex justify-between items-end px-4">
@@ -437,7 +438,7 @@ export const MarksheetTemplateLayout = React.forwardRef<HTMLDivElement, { data: 
 
                         {/* Footer Section */}
                         {(print_setting?.footer_content || template.footer_text) && (
-                            <div className="mb-12 text-center text-xs whitespace-pre-wrap" style={{ color: '#4b5563' }} dangerouslySetInnerHTML={{ __html: print_setting?.footer_content || template.footer_text || '' }} />
+                            <div className="mb-12 text-center text-xs whitespace-pre-wrap" style={{ color: '#4b5563' }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(print_setting?.footer_content || template.footer_text || '') }} />
                         )}
 
                         {/* Signatures */}

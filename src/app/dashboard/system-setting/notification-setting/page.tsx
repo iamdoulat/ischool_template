@@ -22,11 +22,12 @@ import "react-quill-new/dist/quill.snow.css";
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false });
 import api from "@/lib/api";
-import { useToast } from "@/components/ui/use-toast";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { useTranslation } from "@/hooks/use-translation";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
 import { QueueMonitorCard } from "@/components/queue/queue-monitor-card";
+import { translateNotificationEvent, toLocaleNumber } from "@/lib/utils";
 
 interface NotificationEvent {
     id: number;
@@ -221,7 +222,6 @@ function VariableChip({ name, onClick }: { name: string; onClick: (v: string) =>
     );
 }
 
-
 // ─── Template Editor Modal ─────────────────────────────────────────────────────────────
 function TemplateEditorModal({
     item,
@@ -234,8 +234,8 @@ function TemplateEditorModal({
     onClose: () => void;
     onSaved: (updated: NotificationEvent) => void;
 }) {
-    const { t } = useTranslation();
-    const { toast } = useToast();
+    const { t, language } = useTranslation();
+    const tt = useTranslateToast();
     const { settings } = useSettings();
     const getImageUrl = useImageUrl();
     const [form, setForm] = useState({
@@ -268,75 +268,77 @@ function TemplateEditorModal({
             const payload = { settings: [{ id: item.id, ...form }] };
             const res = await api.post('/system-setting/notification-settings/bulk-update', payload);
             if (res.data.status === "success") {
-                toast({ title: t("success_title"), description: t("template_updated_successfully") });
+                tt.success("template_updated_successfully");
                 onSaved({ ...item, ...form });
                 onClose();
             }
         } catch {
-            toast({ variant: "destructive", title: t("error"), description: t("failed_to_update_template") });
+            tt.error("failed_to_update_template");
         } finally {
             setSaving(false);
         }
     };
 
     const getTitle = () => {
-        if (type === "email") return "Email Template";
-        if (type === "sms") return "SMS Template";
-        if (type === "whatsapp") return "WhatsApp Template";
-        if (type === "mobile_app") return "Mobile App Template";
-        return "Template";
+        if (type === "email") return t("email_template");
+        if (type === "sms") return t("sms_template");
+        if (type === "whatsapp") return t("whatsapp_template");
+        if (type === "mobile_app") return t("mobile_app_template");
+        return t("template");
     };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
-            <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[90vh]">
-                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] shrink-0">
-                    <h2 className="text-gray-800 font-semibold text-sm tracking-tight">{getTitle()} - {item.event_name}</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors">
+            <div className="relative bg-white dark:bg-card rounded-2xl shadow-2xl w-full max-w-3xl mx-4 flex flex-col max-h-[90vh] overflow-hidden border border-border/80">
+                <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] shrink-0 border-b border-gray-200/70">
+                    <h2 className="text-slate-800 font-bold text-sm tracking-tight leading-none">
+                        {getTitle()} — {translateNotificationEvent(item.event_name, language?.short_code)}
+                    </h2>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer">
                         <X className="h-4 w-4" />
                     </button>
                 </div>
 
                 <div className="px-5 py-5 space-y-4 text-xs overflow-y-auto flex-1 custom-scrollbar">
                     {type === "sms" && (
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                                SMS Template ID <span className="ml-1 text-gray-400 font-normal normal-case">({t("required_only_for_indian_sms_gateway")})</span>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                                {t("sms_template_id")} <span className="ml-1 text-gray-400 font-normal normal-case">({t("required_only_for_indian_sms_gateway")})</span>
                             </label>
                             <input
                                 type="text"
                                 value={form.sms_template_id}
                                 onChange={(e) => setForm({ ...form, sms_template_id: e.target.value })}
-                                placeholder="Enter SMS Template ID"
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+                                placeholder={t("enter_sms_template_id")}
+                                className="w-full border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
                             />
                         </div>
                     )}
 
                     {type === "whatsapp" && (
-                        <div className="space-y-1">
-                            <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">WhatsApp Template ID</label>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">{t("whatsapp_template_id")}</label>
                             <input
                                 type="text"
                                 value={form.whatsapp_template_id}
                                 onChange={(e) => setForm({ ...form, whatsapp_template_id: e.target.value })}
-                                placeholder="Enter WhatsApp Template ID"
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition"
+                                placeholder={t("enter_whatsapp_template_id")}
+                                className="w-full border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition"
                             />
                         </div>
                     )}
 
                     {type === "email" && (
-                        <div className="border border-gray-200 rounded-lg overflow-hidden flex flex-col bg-white mb-4">
+                        <div className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden flex flex-col bg-white dark:bg-card mb-4 shadow-sm">
                             {/* Email Header Wrapper */}
                             <div className="bg-[#1f2937] p-4 flex justify-between items-center text-white relative overflow-hidden">
-                                {/* Envelope background pattern simulation */}
                                 <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 100% 50%, transparent 20%, #ffffff 21%, #ffffff 34%, transparent 35%, transparent), radial-gradient(circle at 0% 50%, transparent 20%, #ffffff 21%, #ffffff 34%, transparent 35%, transparent)', backgroundSize: '40px 40px' }}></div>
                                 
                                 <div className="relative z-10 space-y-2">
                                     {settings?.admin_logo || settings?.app_logo || settings?.print_logo ? (
                                         <div className="bg-white/10 p-2 rounded-lg w-max backdrop-blur-sm border border-white/20">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img 
                                                 src={getImageUrl(settings.admin_logo || settings.app_logo || settings.print_logo)} 
                                                 alt={settings.school_name || "School Logo"} 
@@ -351,30 +353,30 @@ function TemplateEditorModal({
                                             <span className="font-black text-white text-sm tracking-wide drop-shadow-md">{settings?.school_name || "iSCHOOL"}</span>
                                         </div>
                                     )}
-                                    <h3 className="text-xl font-bold border-b border-gray-400 pb-1">{settings?.school_name || "Your School Name Here"}</h3>
+                                    <h3 className="text-lg font-bold border-b border-gray-400 pb-1">{settings?.school_name || "Your School Name Here"}</h3>
                                 </div>
-                                <div className="relative z-10 text-right text-[11px] space-y-0.5 font-medium">
-                                    <p>Address: {settings?.address || "N/A"}</p>
-                                    <p>Phone No.: {settings?.phone || "N/A"}</p>
-                                    <p>Email: {settings?.email || "N/A"}</p>
-                                    <p>Website: {(settings as { frontend_url?: string } | null)?.frontend_url || (typeof window !== "undefined" ? window.location.origin : "") || (settings as { website?: string } | null)?.website || "N/A"}</p>
+                                <div className="relative z-10 text-right text-[11px] space-y-0.5 font-medium opacity-90">
+                                    <p>{t("address")}: {settings?.address || "N/A"}</p>
+                                    <p>{t("phone")}: {settings?.phone || "N/A"}</p>
+                                    <p>{t("email")}: {settings?.email || "N/A"}</p>
+                                    <p>{t("website")}: {(settings as { frontend_url?: string } | null)?.frontend_url || (typeof window !== "undefined" ? window.location.origin : "") || (settings as { website?: string } | null)?.website || "N/A"}</p>
                                 </div>
                             </div>
 
                             {/* Email Subject & Body */}
                             <div className="p-4 space-y-4">
-                                <div className="flex items-center gap-2 border border-dashed border-gray-300 p-2 rounded">
-                                    <span className="font-bold text-gray-700 text-sm">Subject:</span>
+                                <div className="flex items-center gap-2 border border-dashed border-gray-300 dark:border-gray-700 p-2.5 rounded-xl">
+                                    <span className="font-bold text-gray-700 dark:text-gray-300 text-xs">{t("subject")}:</span>
                                     <input
                                         type="text"
                                         value={form.email_subject}
                                         onChange={(e) => setForm({ ...form, email_subject: e.target.value })}
-                                        placeholder="Subject..."
-                                        className="w-full text-sm font-semibold text-gray-800 bg-transparent focus:outline-none placeholder:font-normal"
+                                        placeholder={`${t("subject")}...`}
+                                        className="w-full text-xs font-semibold text-gray-800 dark:text-gray-200 bg-transparent focus:outline-none placeholder:font-normal"
                                     />
                                 </div>
 
-                                <div className="bg-white [&_.ql-container]:min-h-[150px] [&_.ql-editor]:min-h-[150px] border border-gray-200 rounded">
+                                <div className="bg-white dark:bg-muted/20 [&_.ql-container]:min-h-[150px] [&_.ql-editor]:min-h-[150px] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                                     <ReactQuill 
                                         theme="snow" 
                                         value={form.email_template} 
@@ -384,33 +386,35 @@ function TemplateEditorModal({
                             </div>
 
                             {/* Email Footer */}
-                            <div className="bg-[#f8f9fa] border-t-4 border-t-[#2196f3] border-b-4 border-b-[#ff9800] p-4 text-center mt-2">
-                                <p className="text-[11px] text-gray-600 font-medium">Note: This email was sent from an email address that can&apos;t receive emails. Please don&apos;t reply to this email</p>
+                            <div className="bg-[#f8f9fa] dark:bg-muted/40 border-t-4 border-t-[#2196f3] border-b-4 border-b-[#ff9800] p-4 text-center mt-2">
+                                <p className="text-[11px] text-gray-600 dark:text-gray-400 font-medium">
+                                    {t("email_do_not_reply_note")}
+                                </p>
                             </div>
                         </div>
                     )}
-                        {type !== "email" && (
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide">
-                                    Message Body <span className="text-red-500">*</span>
-                                </label>
-                                <textarea
-                                    rows={8}
-                                    value={type === "sms" ? form.sms_template : type === "whatsapp" ? form.whatsapp_template : form.mobile_app_template}
-                                    onChange={(e) => {
-                                        if (type === "sms") setForm({ ...form, sms_template: e.target.value });
-                                        else if (type === "whatsapp") setForm({ ...form, whatsapp_template: e.target.value });
-                                        else setForm({ ...form, mobile_app_template: e.target.value });
-                                    }}
-                                    placeholder="Type your message here..."
-                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[11px] text-gray-700 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent resize-none transition"
-                                />
-                            </div>
-                        )}
+                    {type !== "email" && (
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                                {t("message_body")} <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                                rows={8}
+                                value={type === "sms" ? form.sms_template : type === "whatsapp" ? form.whatsapp_template : form.mobile_app_template}
+                                onChange={(e) => {
+                                    if (type === "sms") setForm({ ...form, sms_template: e.target.value });
+                                    else if (type === "whatsapp") setForm({ ...form, whatsapp_template: e.target.value });
+                                    else setForm({ ...form, mobile_app_template: e.target.value });
+                                }}
+                                placeholder={t("type_your_message_here")}
+                                className="w-full border border-gray-200 dark:border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none transition"
+                            />
+                        </div>
+                    )}
 
                     {availableVars.length > 0 && (
-                        <div className="bg-indigo-50 rounded-lg px-3 py-2.5 space-y-2">
-                            <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wide flex items-center gap-1.5">
+                        <div className="bg-indigo-50/80 dark:bg-indigo-950/30 rounded-xl px-3.5 py-3 space-y-2 border border-indigo-100 dark:border-indigo-900/50">
+                            <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide flex items-center gap-1.5">
                                 <Variable className="h-3 w-3" />
                                 {t("available_variables")}
                             </p>
@@ -419,18 +423,18 @@ function TemplateEditorModal({
                                     <VariableChip key={v} name={v} onClick={insertVariable} />
                                 ))}
                             </div>
-                            <p className="text-[9px] text-indigo-400 mt-1">{t("click_variable_to_insert")}</p>
+                            <p className="text-[10px] text-indigo-500/80 mt-1 font-medium">{t("click_variable_to_insert")}</p>
                         </div>
                     )}
                 </div>
 
-                <div className="px-5 py-3 border-t border-gray-100 flex justify-end bg-gray-50/50 shrink-0">
+                <div className="px-5 py-3.5 border-t border-gray-200/70 flex justify-end bg-gray-50/50 dark:bg-muted/20 shrink-0">
                     <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white h-9 px-7 text-[11px] font-bold rounded-full shadow-md disabled:opacity-50 transition-opacity"
+                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white h-9 px-7 text-xs font-bold rounded-xl shadow-md disabled:opacity-50 active:scale-95 transition-all cursor-pointer border-none"
                     >
-                        {saving ? <><Loader2 className="mr-1 h-3 w-3 animate-spin" />{t("loading")}</> : t("save")}
+                        {saving ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{t("loading")}</> : t("save")}
                     </Button>
                 </div>
             </div>
@@ -457,23 +461,23 @@ function TableSkeleton() {
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 export default function NotificationSettingPage() {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const tt = useTranslateToast();
     const [events, setEvents] = useState<NotificationEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editModal, setEditModal] = useState<{ item: NotificationEvent; type: TemplateType } | null>(null);
-    const { toast } = useToast();
 
     const fetchEvents = useCallback(async () => {
         try {
             const res = await api.get('/system-setting/notification-settings');
             if (res.data.status === "success") setEvents(res.data.data);
         } catch {
-            toast({ variant: "destructive", title: t("error"), description: t("failed_to_load_notification_settings") });
+            tt.error("failed_to_load_notification_settings");
         } finally {
             setLoading(false);
         }
-    }, [t, toast]);
+    }, [tt]);
 
     useEffect(() => {
         fetchEvents();
@@ -504,10 +508,10 @@ export default function NotificationSettingPage() {
         try {
             const res = await api.post('/system-setting/notification-settings/bulk-update', { settings: events });
             if (res.data.status === "success") {
-                toast({ title: t("success_title"), description: t("notification_settings_saved_successfully") });
+                tt.success("notification_settings_saved_successfully");
             }
         } catch {
-            toast({ variant: "destructive", title: t("error"), description: t("failed_to_save_notification_settings") });
+            tt.error("failed_to_save_notification_settings");
         } finally {
             setSaving(false);
         }
@@ -517,58 +521,77 @@ export default function NotificationSettingPage() {
         setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
     };
 
+    const getDestinationLabel = (opt: string) => {
+        switch (opt) {
+            case "Email": return t("destination_email");
+            case "SMS": return t("destination_sms");
+            case "Mobile App": return t("destination_mobile_app");
+            case "WhatsApp": return t("destination_whatsapp");
+            default: return opt;
+        }
+    };
+
+    const getRecipientLabel = (opt: string) => {
+        switch (opt) {
+            case "Student": return t("recipient_student");
+            case "Guardian": return t("recipient_guardian");
+            case "Staff": return t("recipient_staff");
+            default: return opt;
+        }
+    };
+
     return (
         <>
             {editModal && <TemplateEditorModal item={editModal.item} type={editModal.type} onClose={() => setEditModal(null)} onSaved={handleEditSaved} />}
 
-            <div className="p-4 space-y-6 bg-gray-50/10 min-h-screen font-sans text-xs">
+            <div className="p-3 sm:p-5 pt-1 sm:pt-2 space-y-4 max-w-[1600px] mx-auto animate-in fade-in duration-300 pb-20 font-sans text-xs">
                 {/* Live Notification Queue Monitor & Emergency Cancellation */}
-                <QueueMonitorCard channelFilter="all" title="System Notification Queue & Emergency Stop" />
+                <QueueMonitorCard channelFilter="all" title={t("system_notification_queue_and_emergency_stop")} />
 
-                <Card className="pt-0 overflow-hidden">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
-                        <div className="flex items-center gap-2.5">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                <Bell className="h-5 w-5" />
+                <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card overflow-hidden pt-0">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-3.5 sm:px-6 sm:py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-200/70">
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md">
+                                <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
                             </span>
                             <div>
-                                <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">{t("notification_setting")}</h1>
-                                <p className="text-[11px] text-gray-500 mt-1">{t("configure_event_notifications_and_message_templates")}</p>
+                                <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight leading-none">{t("notification_setting")}</h1>
+                                <p className="text-xs text-slate-600 mt-1 font-medium">{t("configure_event_notifications_and_message_templates")}</p>
                             </div>
                         </div>
                         {!loading && (
                             <Button
                                 onClick={handleBulkSave}
                                 disabled={saving}
-                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white px-6 h-8 text-[11px] font-bold uppercase rounded-full shadow-md border-none transition-all"
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-95 text-white px-6 h-9 text-xs font-bold rounded-xl shadow-md active:scale-95 border-none transition-all cursor-pointer"
                             >
-                                {saving ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : null}
-                                {saving ? t("loading") : t("save_changes")}
+                                {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                                <span>{saving ? t("loading") : t("save_changes")}</span>
                             </Button>
                         )}
                     </div>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto custom-scrollbar">
                             <Table className="min-w-[1500px]">
-                                <TableHeader className="bg-gray-100 border-b border-gray-200">
-                                    <TableRow className="hover:bg-transparent text-[10px] font-bold uppercase text-gray-500">
-                                        <TableHead className="py-3 px-4 w-[200px]">{t("event")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[80px]">{t("active")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[180px]">
-                                            <div className="flex items-center gap-1">
-                                                {t("destination")}
+                                <TableHeader className="bg-muted/40 border-b border-border/70">
+                                    <TableRow className="hover:bg-transparent text-xs font-bold uppercase tracking-wider text-foreground">
+                                        <TableHead className="py-3.5 px-4 w-[220px]">{t("event")}</TableHead>
+                                        <TableHead className="py-3.5 px-4 w-[80px] text-center">{t("active")}</TableHead>
+                                        <TableHead className="py-3.5 px-4 w-[180px]">
+                                            <div className="flex items-center gap-1.5">
+                                                <span>{t("destination")}</span>
                                                 <div className="group/tooltip relative">
-                                                    <Info className="h-3 w-3 text-muted-foreground hover:text-indigo-500 cursor-pointer" />
-                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 hidden group-hover/tooltip:block w-48 p-2 bg-gray-800 text-white text-[10px] rounded shadow-lg normal-case font-medium z-50 text-center">
-                                                        &quot;Mobile App&quot; triggers in-app notifications (Bell icon).
+                                                    <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-indigo-500 cursor-pointer" />
+                                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 hidden group-hover/tooltip:block w-56 p-2.5 bg-gray-900 text-white text-[11px] rounded-xl shadow-xl normal-case font-medium z-50 text-center leading-relaxed">
+                                                        {t("mobile_app_notification_tooltip")}
                                                     </div>
                                                 </div>
                                             </div>
                                         </TableHead>
-                                        <TableHead className="py-3 px-4 w-[150px]">{t("recipient")}</TableHead>
-                                        <TableHead className="py-3 px-4 min-w-[320px]">{t("templates")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[180px]">{t("sms_template_id")}</TableHead>
-                                        <TableHead className="py-3 px-4 w-[220px]">{t("whatsapp_template_id")}</TableHead>
+                                        <TableHead className="py-3.5 px-4 w-[160px]">{t("recipient")}</TableHead>
+                                        <TableHead className="py-3.5 px-4 min-w-[340px]">{t("templates")}</TableHead>
+                                        <TableHead className="py-3.5 px-4 w-[180px]">{t("sms_template_id")}</TableHead>
+                                        <TableHead className="py-3.5 px-4 w-[220px]">{t("whatsapp_template_id")}</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -578,16 +601,18 @@ export default function NotificationSettingPage() {
                                         events.map((item, idx) => {
                                             const vars = eventVariables[item.event_name] || [];
                                             return (
-                                                <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer align-top">
-                                                    <TableCell className="py-4 px-4 font-medium text-gray-700 leading-relaxed">{item.event_name}</TableCell>
+                                                <TableRow key={item.id} className="text-xs border-b border-border/50 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20 transition-all duration-200 align-top">
+                                                    <TableCell className="py-4 px-4 font-bold text-foreground leading-relaxed">
+                                                        {translateNotificationEvent(item.event_name, language?.short_code)}
+                                                    </TableCell>
 
-                                                    <TableCell className="py-4 px-4">
+                                                    <TableCell className="py-4 px-4 text-center">
                                                         <div className="flex items-center justify-center">
                                                             <Checkbox
                                                                 id={`${idx}-active`}
                                                                 checked={item.is_active}
                                                                 onCheckedChange={(c) => handleActiveToggle(idx, !!c)}
-                                                                className="h-4 w-4 border-gray-300 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500 rounded-sm"
+                                                                className="h-4 w-4 border-gray-300 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 rounded-sm"
                                                             />
                                                         </div>
                                                     </TableCell>
@@ -600,10 +625,10 @@ export default function NotificationSettingPage() {
                                                                         id={`${idx}-dest-${opt}`}
                                                                         checked={item.destinations.includes(opt)}
                                                                         onCheckedChange={(c) => handleCheckboxChange(idx, "destinations", opt, !!c)}
-                                                                        className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm"
+                                                                        className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm"
                                                                     />
-                                                                    <label htmlFor={`${idx}-dest-${opt}`} className="text-[10px] text-gray-500 font-medium cursor-pointer group-hover:text-indigo-600 transition-colors">
-                                                                        {opt}
+                                                                    <label htmlFor={`${idx}-dest-${opt}`} className="text-xs text-muted-foreground font-semibold cursor-pointer group-hover:text-indigo-600 transition-colors">
+                                                                        {getDestinationLabel(opt)}
                                                                     </label>
                                                                 </div>
                                                             ))}
@@ -618,10 +643,10 @@ export default function NotificationSettingPage() {
                                                                         id={`${idx}-rec-${opt}`}
                                                                         checked={item.recipients.includes(opt)}
                                                                         onCheckedChange={(c) => handleCheckboxChange(idx, "recipients", opt, !!c)}
-                                                                        className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500 rounded-sm"
+                                                                        className="h-3.5 w-3.5 border-gray-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 rounded-sm"
                                                                     />
-                                                                    <label htmlFor={`${idx}-rec-${opt}`} className="text-[10px] text-gray-500 font-medium cursor-pointer group-hover:text-indigo-600 transition-colors">
-                                                                        {opt}
+                                                                    <label htmlFor={`${idx}-rec-${opt}`} className="text-xs text-muted-foreground font-semibold cursor-pointer group-hover:text-indigo-600 transition-colors">
+                                                                        {getRecipientLabel(opt)}
                                                                     </label>
                                                                 </div>
                                                             ))}
@@ -630,18 +655,20 @@ export default function NotificationSettingPage() {
 
                                                     <TableCell className="py-4 px-4">
                                                         <div className="space-y-2">
-                                                            <p className="text-[10px] text-gray-500 leading-normal line-clamp-3 italic opacity-80">
+                                                            <p className="text-[11px] text-muted-foreground leading-normal line-clamp-3 italic opacity-90">
                                                                 {item.sample_message}
                                                             </p>
                                                             {vars.length > 0 && (
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {vars.slice(0, 4).map((v) => (
-                                                                        <span key={v} className="inline-block px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] font-mono rounded border border-indigo-100">
+                                                                        <span key={v} className="inline-block px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[9px] font-mono rounded border border-indigo-100 dark:border-indigo-900/40">
                                                                             {`{{${v}}}`}
                                                                         </span>
                                                                     ))}
                                                                     {vars.length > 4 && (
-                                                                        <span className="text-[8px] text-gray-400">+{vars.length - 4}</span>
+                                                                        <span className="text-[9px] text-muted-foreground font-bold">
+                                                                            +{toLocaleNumber(vars.length - 4, language?.short_code)}
+                                                                        </span>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -649,48 +676,48 @@ export default function NotificationSettingPage() {
                                                                 <Button
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    title="Email Template"
+                                                                    title={t("email_template")}
                                                                     onClick={() => setEditModal({ item, type: "email" })}
-                                                                    className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                                    className="h-7 w-7 rounded-lg border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm cursor-pointer"
                                                                 >
-                                                                    <Mail className="h-3 w-3" />
+                                                                    <Mail className="h-3.5 w-3.5" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    title="SMS Template"
+                                                                    title={t("sms_template")}
                                                                     onClick={() => setEditModal({ item, type: "sms" })}
-                                                                    className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                                    className="h-7 w-7 rounded-lg border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm cursor-pointer"
                                                                 >
-                                                                    <MessageSquare className="h-3 w-3" />
+                                                                    <MessageSquare className="h-3.5 w-3.5" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    title="Mobile App Template"
+                                                                    title={t("mobile_app_template")}
                                                                     onClick={() => setEditModal({ item, type: "mobile_app" })}
-                                                                    className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                                    className="h-7 w-7 rounded-lg border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm cursor-pointer"
                                                                 >
-                                                                    <Smartphone className="h-3 w-3" />
+                                                                    <Smartphone className="h-3.5 w-3.5" />
                                                                 </Button>
                                                                 <Button
                                                                     variant="outline"
                                                                     size="icon"
-                                                                    title="WhatsApp Template"
+                                                                    title={t("whatsapp_template")}
                                                                     onClick={() => setEditModal({ item, type: "whatsapp" })}
-                                                                    className="h-6 w-6 border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm"
+                                                                    className="h-7 w-7 rounded-lg border-transparent bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white shadow-sm cursor-pointer"
                                                                 >
-                                                                    <MessageCircle className="h-3 w-3" />
+                                                                    <MessageCircle className="h-3.5 w-3.5" />
                                                                 </Button>
                                                             </div>
                                                         </div>
                                                     </TableCell>
 
-                                                    <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[150px]">
+                                                    <TableCell className="py-4 px-4 text-muted-foreground font-mono text-[11px] truncate max-w-[150px]">
                                                         {item.sms_template_id || "-"}
                                                     </TableCell>
 
-                                                    <TableCell className="py-4 px-4 text-gray-400 font-mono text-[10px] truncate max-w-[200px]">
+                                                    <TableCell className="py-4 px-4 text-muted-foreground font-mono text-[11px] truncate max-w-[200px]">
                                                         {item.whatsapp_template_id || "-"}
                                                     </TableCell>
                                                 </TableRow>
@@ -698,7 +725,7 @@ export default function NotificationSettingPage() {
                                         })
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={7} className="text-center py-10 text-gray-400">
+                                            <TableCell colSpan={7} className="text-center py-12 text-muted-foreground font-semibold">
                                                 {t("no_notification_events_found")}
                                             </TableCell>
                                         </TableRow>
@@ -712,3 +739,4 @@ export default function NotificationSettingPage() {
         </>
     );
 }
+

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-    Plus, Edit2, Trash2, FileText, RefreshCw, Search, Eye,
+    Plus, Edit2, Trash2, FileText, Search, Eye,
     Copy as CopyIcon, FileSpreadsheet, Printer, ChevronLeft, ChevronRight,
-    FileCode, MessageSquare
+    FileCode, MessageSquare, Loader2, ChevronsLeft, ChevronsRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,25 +29,20 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useToast } from "@/components/ui/use-toast";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
 import { useTranslation } from "@/hooks/use-translation";
+import { useTranslateToast } from "@/hooks/use-translate-toast";
 import api from "@/lib/api";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-function IconButton({ icon: Icon, onClick, title }: { icon: React.ElementType; onClick?: () => void; title?: string }) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            title={title}
-            className="p-2 hover:bg-muted rounded-lg transition-colors border border-muted/50 text-muted-foreground hover:text-foreground shadow-sm active:scale-95 bg-background"
-        >
-            <Icon className="h-4 w-4" />
-        </button>
-    );
-}
 
 interface NotificationTemplate {
     id: number;
@@ -66,8 +61,8 @@ interface PaginationData {
 }
 
 export default function NotificationTemplatePage() {
-    const { t } = useTranslation();
-    const { toast } = useToast();
+    const { t, language } = useTranslation();
+    const tt = useTranslateToast();
 
     const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
@@ -117,8 +112,7 @@ export default function NotificationTemplatePage() {
             } else {
                 setTemplates([]);
             }
-        } catch (error) {
-            console.error("Failed to fetch notification templates", error);
+        } catch {
             setTemplates([]);
         } finally {
             setLoading(false);
@@ -154,11 +148,7 @@ export default function NotificationTemplatePage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formTitle.trim() || !formMessage.trim()) {
-            toast({
-                title: "Validation Error",
-                description: "Title and message are required.",
-                variant: "destructive",
-            });
+            tt.toast("error", "fill_all_required_fields");
             return;
         }
 
@@ -172,20 +162,16 @@ export default function NotificationTemplatePage() {
 
             if (editingTemplate) {
                 await api.put(`/communicate/notification-templates/${editingTemplate.id}`, payload);
-                toast({ title: "Success", description: "Notification template updated successfully!" });
+                tt.success("notification_template_updated");
             } else {
                 await api.post("/communicate/notification-templates", payload);
-                toast({ title: "Success", description: "Notification template created successfully!" });
+                tt.success("notification_template_created");
             }
 
             setIsDialogOpen(false);
             fetchTemplates();
-        } catch (err: any) {
-            toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to save notification template.",
-                variant: "destructive",
-            });
+        } catch {
+            tt.toast("error", "failed_to_save_notification_template");
         } finally {
             setSaving(false);
         }
@@ -196,15 +182,11 @@ export default function NotificationTemplatePage() {
         setDeleting(true);
         try {
             await api.delete(`/communicate/notification-templates/${deleteId}`);
-            toast({ title: "Success", description: "Notification template deleted successfully!" });
+            tt.success("notification_template_deleted");
             setDeleteId(null);
             fetchTemplates();
-        } catch (err: any) {
-            toast({
-                title: "Error",
-                description: err.response?.data?.message || "Failed to delete notification template.",
-                variant: "destructive",
-            });
+        } catch {
+            tt.toast("error", "failed_to_delete_notification_template");
         } finally {
             setDeleting(false);
         }
@@ -214,23 +196,23 @@ export default function NotificationTemplatePage() {
     const handleCopy = () => {
         const text = templates.map(t => `${t.title}\t${t.template_id || ''}\t${t.message}`).join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied to clipboard" });
+        tt.success("data_copied_to_clipboard");
     };
 
     const handleExportExcel = () => {
         const worksheet = XLSX.utils.json_to_sheet(templates.map(t => ({
-            Title: t.title,
-            TemplateID: t.template_id || '',
-            Message: t.message,
+            [t("title") || "Title"]: t.title,
+            [t("template_id") || "Template ID"]: t.template_id || '',
+            [t("message_body") || "Message Body"]: t.message,
         })));
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Notification Templates");
+        XLSX.utils.book_append_sheet(workbook, worksheet, t("notification_template_list") || "Notification Templates");
         XLSX.writeFile(workbook, "notification_templates.xlsx");
-        toast({ title: "Exported to Excel" });
+        tt.success("exported_successfully");
     };
 
     const handleExportCSV = () => {
-        const headers = ["Title", "Template ID", "Message"];
+        const headers = [t("title") || "Title", t("template_id") || "Template ID", t("message_body") || "Message Body"];
         const rows = templates.map(t => [`"${t.title}"`, `"${t.template_id || ''}"`, `"${t.message.replace(/"/g, '""')}"`]);
         const csvContent = [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -242,168 +224,226 @@ export default function NotificationTemplatePage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast({ title: "Exported to CSV" });
+        tt.success("exported_successfully");
     };
 
     const handleExportPDF = () => {
         const doc = new jsPDF();
-        doc.text("Notification Templates Report", 14, 15);
-        const tableColumn = ["Title", "Template ID", "Message"];
+        doc.text(t("notification_templates_report") || "Notification Templates Report", 14, 15);
+        const tableColumn = [t("title") || "Title", t("template_id") || "Template ID", t("message_body") || "Message Body"];
         const tableRows = templates.map(t => [t.title, t.template_id || '--', t.message]);
         autoTable(doc, { head: [tableColumn], body: tableRows, startY: 20 });
         doc.save("notification_templates.pdf");
-        toast({ title: "Exported to PDF" });
+        tt.success("exported_successfully");
     };
 
     const filteredTemplates = templates.filter((t) =>
         t.title.toLowerCase().includes(search.toLowerCase()) ||
-        t.message.toLowerCase().includes(search.toLowerCase())
+        t.message.toLowerCase().includes(search.toLowerCase()) ||
+        (t.template_id && t.template_id.toLowerCase().includes(search.toLowerCase()))
     );
 
     return (
-        <div className="flex flex-col gap-6 p-4 lg:p-6 animate-in fade-in duration-300">
-            {/* Page Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-4 space-y-5 bg-gray-50/10 min-h-screen font-sans">
+            {/* Page Header Banner */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-xl shadow-sm overflow-hidden">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl">
-                        <FileText className="h-6 w-6 text-primary" />
-                    </div>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-100">
+                        <MessageSquare className="h-5 w-5" />
+                    </span>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground uppercase">
-                            {t("notification_template") || "Notification Template List"}
+                        <h1 className="text-base font-bold text-gray-800 tracking-tight leading-none">
+                            {t("notification_template_list") || "Notification Templates"}
                         </h1>
-                        <p className="text-xs text-muted-foreground">
-                            Manage pre-defined in-app notification templates for quick dispatching.
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("notification_template_subtitle") || "Manage pre-defined in-app notification templates for quick dispatching"}
                         </p>
                     </div>
                 </div>
 
                 <Button
                     onClick={handleOpenCreate}
-                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 px-5 h-10 text-xs uppercase tracking-wide"
+                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] text-white font-bold rounded-lg shadow-md shadow-indigo-200/50 transition-all flex items-center gap-2 px-6 h-10 text-xs uppercase tracking-wider shrink-0 active:scale-95 border-none"
                 >
                     <Plus className="h-4 w-4" />
-                    Add Notification Template
+                    {t("add_notification_template") || "Add Notification Template"}
                 </Button>
             </div>
 
             {/* Content Table Card */}
-            <Card className="border shadow-sm overflow-hidden pt-0">
-                {/* Fully top-filled gradient header from #FEF4E7 to #EFF0FC */}
-                <CardHeader className="flex flex-row items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FEF4E7] to-[#EFF0FC] dark:from-[#29221a] dark:to-[#1a1b2d] border-b">
-                    <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <FileText className="h-5 w-5" />
+            <Card className="border border-gray-200/80 shadow-[0_4px_24px_rgb(0,0,0,0.05)] bg-white rounded-xl overflow-hidden pt-0">
+                <CardHeader className="flex flex-row items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                            <FileText className="h-4 w-4" />
                         </span>
                         <div>
-                            <CardTitle className="text-base font-bold tracking-tight text-foreground leading-none">
-                                Notification Templates
+                            <CardTitle className="text-sm font-bold tracking-tight text-slate-800 leading-none">
+                                {t("notification_template_list") || "Notification Templates"}
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1 font-medium">
-                                {pagination?.total || filteredTemplates.length} {t("templates").toLowerCase()}
+                            <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                                {toLocaleNumber(pagination?.total || filteredTemplates.length, language?.short_code)} {t("templates") || "templates"}
                             </p>
                         </div>
                     </div>
                 </CardHeader>
 
-                <CardContent className="p-6 space-y-4">
+                <CardContent className="p-5 md:p-6 space-y-4">
                     {/* Toolbar: Search + Page size + Export Controls */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="relative w-full max-w-sm group">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+                        <div className="relative flex-1 sm:max-w-xs">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
                             <Input
                                 placeholder={t("search_templates") || "Search templates..."}
-                                className="pl-10 h-10 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium text-xs"
+                                className="pl-9 h-9 text-xs border-gray-200 focus-visible:ring-2 focus-visible:ring-indigo-500/20 rounded-lg shadow-none bg-gray-50/50 hover:bg-gray-50 font-medium"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                         </div>
 
-                        <div className="flex items-center gap-2 self-end md:self-auto">
-                            {/* Page size selector dropdown: 10, 20, 50, 100 (Default 20) */}
-                            <select
-                                value={limit}
-                                onChange={(e) => {
-                                    setLimit(e.target.value);
-                                    setCurrentPage(1);
-                                }}
-                                className="h-9 px-3 rounded-lg border border-muted/50 bg-background text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-bold text-foreground"
-                            >
-                                <option value="10">10</option>
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                            </select>
+                        <div className="flex items-center justify-between sm:justify-end gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-gray-400 font-medium whitespace-nowrap">{t("per_page") || "Per Page"}:</span>
+                                <Select value={limit} onValueChange={(v) => { setLimit(v); setCurrentPage(1); }}>
+                                    <SelectTrigger className="h-8 w-[72px] text-xs border-gray-200 bg-white rounded-lg shadow-none px-2.5 font-bold">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10" className="text-xs">{toLocaleNumber(10, language?.short_code)}</SelectItem>
+                                        <SelectItem value="20" className="text-xs">{toLocaleNumber(20, language?.short_code)}</SelectItem>
+                                        <SelectItem value="50" className="text-xs">{toLocaleNumber(50, language?.short_code)}</SelectItem>
+                                        <SelectItem value="100" className="text-xs">{toLocaleNumber(100, language?.short_code)}</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                            <div className="h-7 w-px bg-muted/50 mx-1" />
-
-                            <div className="flex gap-1">
-                                <IconButton icon={CopyIcon} onClick={handleCopy} title={t("copy") || "Copy"} />
-                                <IconButton icon={FileSpreadsheet} onClick={handleExportExcel} title={t("excel") || "Excel"} />
-                                <IconButton icon={FileText} onClick={handleExportCSV} title={t("csv") || "CSV"} />
-                                <IconButton icon={FileCode} onClick={handleExportPDF} title={t("pdf") || "PDF"} />
-                                <IconButton icon={Printer} onClick={() => window.print()} title={t("print") || "Print"} />
+                            <div className="flex items-center gap-1 border-l border-gray-100 pl-3 text-gray-500">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleCopy}
+                                    title={t("copy") || "Copy"}
+                                    className="h-8 w-8 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-indigo-600"
+                                >
+                                    <CopyIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleExportExcel}
+                                    title={t("excel") || "Excel"}
+                                    className="h-8 w-8 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-indigo-600"
+                                >
+                                    <FileSpreadsheet className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleExportCSV}
+                                    title={t("csv") || "CSV"}
+                                    className="h-8 w-8 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-indigo-600"
+                                >
+                                    <FileText className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleExportPDF}
+                                    title={t("pdf") || "PDF"}
+                                    className="h-8 w-8 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-indigo-600"
+                                >
+                                    <FileCode className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => window.print()}
+                                    title={t("print") || "Print"}
+                                    className="h-8 w-8 hover:bg-gray-100 rounded-lg transition-colors text-gray-500 hover:text-indigo-600"
+                                >
+                                    <Printer className="h-4 w-4" />
+                                </Button>
                             </div>
                         </div>
                     </div>
 
                     {/* Table Container */}
-                    <div className="rounded-xl border border-muted/50 overflow-hidden bg-muted/10 shadow-inner">
+                    <div className="rounded-xl border border-gray-200/80 overflow-hidden bg-white shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse text-xs">
                                 <thead>
-                                    <tr className="bg-muted/30 border-b border-muted/50 font-black uppercase text-muted-foreground/70 tracking-wider">
-                                        <th className="px-5 py-3.5 min-w-[200px]">Title</th>
-                                        <th className="px-5 py-3.5 min-w-[150px]">Template ID</th>
-                                        <th className="px-5 py-3.5 min-w-[300px]">Message Body</th>
-                                        <th className="px-5 py-3.5 text-right min-w-[120px]">Action</th>
+                                    <tr className="bg-slate-50/90 border-b border-gray-200/80 uppercase text-slate-600 tracking-wider font-bold">
+                                        <th className="px-5 py-3.5 min-w-[200px]">{t("title") || "Title"}</th>
+                                        <th className="px-5 py-3.5 min-w-[150px]">{t("template_id") || "Template ID"}</th>
+                                        <th className="px-5 py-3.5 min-w-[300px]">{t("message_body") || "Message Body"}</th>
+                                        <th className="px-5 py-3.5 text-right min-w-[120px] pr-6">{t("action") || "Action"}</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border">
+                                <tbody className="divide-y divide-gray-100">
                                     {loading ? (
                                         <tr>
-                                            <td colSpan={4} className="text-center py-10 text-muted-foreground">
-                                                <RefreshCw className="h-5 w-5 animate-spin inline mr-2 text-primary" />
-                                                Loading templates...
+                                            <td colSpan={4} className="text-center py-12 text-gray-400">
+                                                <Loader2 className="h-6 w-6 animate-spin inline mr-2 text-indigo-500" />
+                                                <span className="text-xs font-medium">{t("loading") || "Loading..."}</span>
                                             </td>
                                         </tr>
                                     ) : filteredTemplates.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="text-center py-10 text-muted-foreground italic">
-                                                No notification templates found. Click "Add Notification Template" to create one.
+                                            <td colSpan={4} className="text-center py-14">
+                                                <div className="flex flex-col items-center justify-center space-y-2 text-gray-400">
+                                                    <MessageSquare className="h-10 w-10 text-gray-300 stroke-[1.5]" />
+                                                    <p className="text-xs font-semibold text-gray-600">
+                                                        {t("no_notification_templates_found") || "No notification templates found. Click \"Add Notification Template\" to create one."}
+                                                    </p>
+                                                </div>
                                             </td>
                                         </tr>
                                     ) : (
                                         filteredTemplates.map((tmpl) => (
-                                            <tr key={tmpl.id} className="hover:bg-muted/30 transition-colors">
-                                                <td className="px-5 py-3.5 font-bold text-foreground">{tmpl.title}</td>
-                                                <td className="px-5 py-3.5 font-mono text-xs">{tmpl.template_id || "—"}</td>
-                                                <td className="px-5 py-3.5 text-muted-foreground line-clamp-2 max-w-md">{tmpl.message}</td>
-                                                <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                                            <tr key={tmpl.id} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="px-5 py-3.5 font-bold text-gray-800">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="flex h-2 w-2 rounded-full bg-indigo-500" />
+                                                        <span>{tmpl.title}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-5 py-3.5">
+                                                    {tmpl.template_id ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[11px] font-mono font-semibold">
+                                                            {tmpl.template_id}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-300 font-mono">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-5 py-3.5 text-gray-500 line-clamp-2 max-w-md leading-relaxed">
+                                                    {tmpl.message}
+                                                </td>
+                                                <td className="px-5 py-3.5 text-right whitespace-nowrap pr-6">
                                                     <div className="flex items-center justify-end gap-1.5">
                                                         <Button
                                                             size="icon"
                                                             onClick={() => handleOpenView(tmpl)}
-                                                            className="h-8 w-8 bg-gradient-to-r from-sky-400 to-blue-500 hover:opacity-90 text-white border-0 shadow-sm rounded-lg"
-                                                            title="View Template"
+                                                            className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-md transition-all shadow-xs"
+                                                            title={t("view") || "View"}
                                                         >
-                                                            <Eye className="h-4 w-4" />
+                                                            <Eye className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             size="icon"
                                                             onClick={() => handleOpenEdit(tmpl)}
-                                                            className="h-8 w-8 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:opacity-90 text-white border-0 shadow-sm rounded-lg"
-                                                            title="Edit Template"
+                                                            className="h-7 w-7 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] text-white rounded-md transition-all shadow-xs"
+                                                            title={t("edit") || "Edit"}
                                                         >
-                                                            <Edit2 className="h-4 w-4" />
+                                                            <Edit2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <Button
                                                             size="icon"
                                                             onClick={() => setDeleteId(tmpl.id)}
-                                                            className="h-8 w-8 bg-gradient-to-r from-red-500 to-rose-600 hover:opacity-90 text-white border-0 shadow-sm rounded-lg"
-                                                            title="Delete Template"
+                                                            className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-md transition-all shadow-xs"
+                                                            title={t("delete") || "Delete"}
                                                         >
-                                                            <Trash2 className="h-4 w-4" />
+                                                            <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
                                                 </td>
@@ -417,21 +457,36 @@ export default function NotificationTemplatePage() {
 
                     {/* Pagination Footer */}
                     {pagination && (
-                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-black tracking-wider text-muted-foreground/70 uppercase">
+                        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-medium text-gray-500">
                             <span>
-                                SHOWING {pagination.from || 0} TO {pagination.to || 0} OF {pagination.total || 0} ENTRIES
+                                {t("showing_x_to_y_of_z", {
+                                    from: toLocaleNumber(pagination.from || 0, language?.short_code),
+                                    to: toLocaleNumber(pagination.to || 0, language?.short_code),
+                                    total: toLocaleNumber(pagination.total || 0, language?.short_code)
+                                }) || `Showing ${pagination.from || 0} to ${pagination.to || 0} of ${pagination.total || 0} entries`}
                             </span>
 
                             <div className="flex items-center gap-1.5">
-                                <button
-                                    type="button"
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    disabled={currentPage <= 1 || loading}
+                                    onClick={() => setCurrentPage(1)}
+                                    className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 disabled:opacity-30"
+                                    title={t("first") || "First"}
+                                >
+                                    <ChevronsLeft className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="outline"
                                     disabled={currentPage <= 1 || loading}
                                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                                    className="h-8 w-8 rounded-full border border-muted/60 flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40 transition-colors shadow-sm"
-                                    title="Previous"
+                                    className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 disabled:opacity-30"
+                                    title={t("previous") || "Previous"}
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
+                                    <ChevronLeft className="h-3.5 w-3.5" />
+                                </Button>
 
                                 <div className="flex items-center gap-1">
                                     {Array.from({ length: pagination.last_page || 1 }, (_, i) => i + 1).map((p) => (
@@ -439,26 +494,38 @@ export default function NotificationTemplatePage() {
                                             key={p}
                                             type="button"
                                             onClick={() => setCurrentPage(p)}
-                                            className={`h-8 w-8 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                            className={cn(
+                                                "h-8 min-w-[32px] px-2 text-xs font-bold rounded-lg transition-all",
                                                 p === currentPage
-                                                    ? "bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-indigo-200/50"
-                                                    : "border border-muted/40 hover:bg-muted text-muted-foreground"
-                                            }`}
+                                                    ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-md shadow-indigo-100"
+                                                    : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                            )}
                                         >
-                                            {p}
+                                            {toLocaleNumber(p, language?.short_code)}
                                         </button>
                                     ))}
                                 </div>
 
-                                <button
-                                    type="button"
+                                <Button
+                                    size="icon"
+                                    variant="outline"
                                     disabled={currentPage >= (pagination.last_page || 1) || loading}
                                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, pagination.last_page))}
-                                    className="h-8 w-8 rounded-full border border-muted/60 flex items-center justify-center text-muted-foreground hover:bg-muted disabled:opacity-40 transition-colors shadow-sm"
-                                    title="Next"
+                                    className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 disabled:opacity-30"
+                                    title={t("next") || "Next"}
                                 >
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    variant="outline"
+                                    disabled={currentPage >= (pagination.last_page || 1) || loading}
+                                    onClick={() => setCurrentPage(pagination.last_page)}
+                                    className="h-8 w-8 rounded-lg border-gray-200 text-gray-600 disabled:opacity-30"
+                                    title={t("last") || "Last"}
+                                >
+                                    <ChevronsRight className="h-3.5 w-3.5" />
+                                </Button>
                             </div>
                         </div>
                     )}
@@ -467,56 +534,79 @@ export default function NotificationTemplatePage() {
 
             {/* Add / Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>
-                            {editingTemplate ? "Edit Notification Template" : "Add Notification Template"}
-                        </DialogTitle>
-                        <DialogDescription>
-                            Create standard messages to reuse when sending in-app notifications.
-                        </DialogDescription>
-                    </DialogHeader>
+                <DialogContent className="sm:max-w-md rounded-xl shadow-2xl p-0 border-none overflow-hidden">
+                    <div className="bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] p-6 border-b border-gray-100">
+                        <DialogHeader className="p-0">
+                            <DialogTitle className="text-base font-bold text-gray-800 tracking-tight flex items-center gap-2">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <MessageSquare className="h-4 w-4" />
+                                </span>
+                                {editingTemplate ? (t("edit_notification_template") || "Edit Notification Template") : (t("add_notification_template") || "Add Notification Template")}
+                            </DialogTitle>
+                            <DialogDescription className="text-xs text-gray-500 mt-1">
+                                {t("notification_template_dialog_desc") || "Create standard messages to reuse when sending in-app notifications."}
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
 
-                    <form onSubmit={handleSave} className="space-y-4 py-2">
+                    <form onSubmit={handleSave} className="p-6 space-y-4 bg-white">
                         <div className="space-y-1.5">
-                            <Label htmlFor="title" className="text-xs font-semibold">Title *</Label>
+                            <Label htmlFor="title" className="text-xs font-bold text-gray-700">
+                                {t("title") || "Title"} <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                                 id="title"
-                                placeholder="Template Title"
+                                placeholder={t("notification_template_title_placeholder") || t("enter_title") || "Enter title..."}
                                 value={formTitle}
                                 onChange={(e) => setFormTitle(e.target.value)}
+                                className="h-10 text-xs border-gray-200 focus-visible:ring-2 focus-visible:ring-indigo-500/20 rounded-lg shadow-none"
                                 required
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="message" className="text-xs font-semibold">Message Body *</Label>
+                            <Label htmlFor="message" className="text-xs font-bold text-gray-700">
+                                {t("message_body") || "Message Body"} <span className="text-red-500">*</span>
+                            </Label>
                             <Textarea
                                 id="message"
                                 rows={4}
-                                placeholder="Template Content..."
+                                placeholder={t("enter_message") || "Template Content..."}
                                 value={formMessage}
                                 onChange={(e) => setFormMessage(e.target.value)}
+                                className="text-xs border-gray-200 focus-visible:ring-2 focus-visible:ring-indigo-500/20 rounded-lg shadow-none resize-none leading-relaxed"
                                 required
                             />
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="template_id" className="text-xs font-semibold">Template ID (Optional)</Label>
+                            <Label htmlFor="template_id" className="text-xs font-bold text-gray-700">
+                                {t("template_id_optional") || "Template ID (Optional)"}
+                            </Label>
                             <Input
                                 id="template_id"
                                 placeholder="e.g. NOTIF-001"
                                 value={formTemplateId}
                                 onChange={(e) => setFormTemplateId(e.target.value)}
+                                className="h-10 text-xs border-gray-200 focus-visible:ring-2 focus-visible:ring-indigo-500/20 rounded-lg shadow-none font-mono"
                             />
                         </div>
 
-                        <DialogFooter className="pt-2">
-                            <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                                Cancel
+                        <DialogFooter className="pt-4 border-t border-gray-100 flex items-center justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsDialogOpen(false)}
+                                className="h-9 px-5 text-xs font-bold uppercase rounded-lg border-gray-200"
+                            >
+                                {t("cancel") || "Cancel"}
                             </Button>
-                            <Button type="submit" disabled={saving} className="bg-primary text-primary-foreground font-bold">
-                                {saving ? "Saving..." : "Save Template"}
+                            <Button
+                                type="submit"
+                                disabled={saving}
+                                className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f57c00] hover:to-[#4f46e5] text-white h-9 px-6 text-xs font-bold uppercase rounded-lg shadow-md shadow-indigo-200/50 border-none"
+                            >
+                                {saving ? (t("saving") || "Saving...") : (t("save_template") || "Save Template")}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -525,55 +615,60 @@ export default function NotificationTemplatePage() {
 
             {/* View Dialog */}
             <Dialog open={!!viewingTemplate} onOpenChange={() => setViewingTemplate(null)}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="text-lg font-bold">Template Details</DialogTitle>
-                    </DialogHeader>
+                <DialogContent className="sm:max-w-md rounded-xl shadow-2xl p-0 border-none overflow-hidden">
+                    <div className="bg-emerald-600 p-6 text-white flex items-center justify-between">
+                        <DialogHeader className="p-0">
+                            <DialogTitle className="text-base font-bold tracking-tight uppercase flex items-center gap-2">
+                                <Eye className="h-5 w-5" />
+                                {t("template_details") || "Template Details"}
+                            </DialogTitle>
+                        </DialogHeader>
+                    </div>
                     {viewingTemplate && (
-                        <div className="space-y-3 py-2 text-xs">
+                        <div className="p-6 space-y-4 text-xs bg-white">
                             <div>
-                                <span className="font-semibold text-muted-foreground uppercase text-[10px]">Title</span>
-                                <p className="font-bold text-sm text-foreground">{viewingTemplate.title}</p>
+                                <span className="font-bold text-gray-400 uppercase text-[10px] tracking-wider">{t("title") || "Title"}</span>
+                                <p className="font-bold text-sm text-gray-800 mt-0.5">{viewingTemplate.title}</p>
                             </div>
                             {viewingTemplate.template_id && (
                                 <div>
-                                    <span className="font-semibold text-muted-foreground uppercase text-[10px]">Template ID</span>
-                                    <p className="font-mono text-foreground">{viewingTemplate.template_id}</p>
+                                    <span className="font-bold text-gray-400 uppercase text-[10px] tracking-wider">{t("template_id") || "Template ID"}</span>
+                                    <p className="font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded inline-block mt-0.5">{viewingTemplate.template_id}</p>
                                 </div>
                             )}
                             <div>
-                                <span className="font-semibold text-muted-foreground uppercase text-[10px]">Message Content</span>
-                                <p className="p-3 rounded-lg bg-muted/40 text-foreground whitespace-pre-wrap leading-relaxed">
+                                <span className="font-bold text-gray-400 uppercase text-[10px] tracking-wider">{t("message_body") || "Message Body"}</span>
+                                <p className="p-3.5 rounded-lg bg-gray-50 text-gray-700 border border-gray-100 whitespace-pre-wrap leading-relaxed mt-0.5">
                                     {viewingTemplate.message}
                                 </p>
                             </div>
                         </div>
                     )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setViewingTemplate(null)}>
-                            Close
+                    <div className="p-4 bg-gray-50/50 border-t border-gray-100 flex justify-end">
+                        <Button variant="outline" onClick={() => setViewingTemplate(null)} className="h-9 px-6 text-xs font-bold uppercase rounded-lg border-gray-200 bg-white">
+                            {t("close") || "Close"}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Delete Confirmation Alert */}
             <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-                <AlertDialogContent>
+                <AlertDialogContent className="rounded-xl border-none shadow-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will permanently delete this notification template.
+                        <AlertDialogTitle className="text-lg font-bold text-gray-800">{t("delete") || "Delete"}</AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-gray-500 leading-relaxed mt-2">
+                            {t("delete_notification_template_confirm") || "Are you sure you want to permanently delete this notification template?"}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogFooter className="mt-6">
+                        <AlertDialogCancel className="h-9 rounded-lg text-xs font-bold uppercase tracking-wider border-gray-200">{t("cancel") || "Cancel"}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={handleDelete}
                             disabled={deleting}
-                            className="bg-destructive text-destructive-foreground font-bold hover:bg-destructive/90"
+                            className="bg-red-500 hover:bg-red-600 h-9 rounded-lg text-xs font-bold uppercase tracking-wider border-0 shadow-md text-white"
                         >
-                            {deleting ? "Deleting..." : "Delete"}
+                            {deleting ? (t("deleting") || "Deleting...") : (t("yes_delete") || "Yes, Delete")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

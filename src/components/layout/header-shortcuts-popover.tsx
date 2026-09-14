@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
     LayoutGrid,
@@ -161,12 +161,23 @@ const DEFAULT_SHORTCUTS: HeaderShortcutItem[] = [
 
 export function HeaderShortcutsPopover() {
     const router = useRouter();
+    const pathname = usePathname();
     const { t } = useLanguage();
     const [mounted, setMounted] = useState(false);
     const [shortcuts, setShortcuts] = useState<HeaderShortcutItem[]>(DEFAULT_SHORTCUTS);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
+
+    const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : null;
+    const branchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
+    const branchPrefix = (branchSlug && branchSlug !== "main") ? `/br/${branchSlug}` : "";
+
+    const toBranchHref = (href?: string) => {
+        if (!href || href === "#" || href.startsWith("http")) return href || "#";
+        if (href.startsWith("/br/")) return href;
+        return branchPrefix ? `${branchPrefix}${href}` : href;
+    };
 
     useEffect(() => {
         setMounted(true);
@@ -233,7 +244,7 @@ export function HeaderShortcutsPopover() {
     const handleShortcutClick = (path: string) => {
         setIsOpen(false);
         if (path) {
-            router.push(path);
+            router.push(toBranchHref(path));
         }
     };
 
@@ -280,7 +291,7 @@ export function HeaderShortcutsPopover() {
                                     type="button"
                                     onClick={() => {
                                         setIsOpen(false);
-                                        router.push("/dashboard/system-setting/header-shortcuts");
+                                        router.push(toBranchHref("/dashboard/system-setting/header-shortcuts"));
                                     }}
                                     className="text-xs font-bold text-primary hover:underline flex items-center gap-1.5 cursor-pointer bg-primary/10 px-3 py-1.5 rounded-full transition-colors"
                                 >

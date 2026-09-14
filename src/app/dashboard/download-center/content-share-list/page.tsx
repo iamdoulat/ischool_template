@@ -1,11 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDate } from "@/lib/utils";
+import { useLanguage } from "@/components/providers/language-provider";
+import {
+    formatDate,
+    toLocaleNumber,
+    translateSendTo,
+    cn,
+} from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import {
     Table,
     TableBody,
@@ -20,13 +28,17 @@ import {
     FileSpreadsheet,
     FileText,
     Printer,
-    Columns,
     ChevronLeft,
     ChevronRight,
     Eye,
     Trash2,
     ArrowUpDown,
     Share2,
+    Calendar,
+    User,
+    Users,
+    Clock,
+    Loader2,
 } from "lucide-react";
 import {
     Select,
@@ -35,7 +47,23 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
 
 interface SharedContent {
     id: number;
@@ -56,129 +84,188 @@ interface PaginationData {
 }
 
 export default function ContentShareListPage() {
+    const { t, language } = useLanguage();
+    const langCode = language?.short_code || "en";
     const { toast } = useToast();
+
     const [searchTerm, setSearchTerm] = useState("");
     const [sharedContent, setSharedContent] = useState<SharedContent[]>([]);
     const [pagination, setPagination] = useState<PaginationData | null>(null);
     const [loading, setLoading] = useState(false);
     const [limit, setLimit] = useState("50");
 
-    useEffect(() => {
-        fetchSharedContent();
-    }, [searchTerm, limit]);
+    const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [viewItem, setViewItem] = useState<SharedContent | null>(null);
 
-    const fetchSharedContent = async (page = 1) => {
+    const fetchSharedContent = useCallback(async (page = 1) => {
         setLoading(true);
         try {
-            const response = await api.get(`/download-center/shared-contents?page=${page}&limit=${limit}&search=${searchTerm}`);
-            setSharedContent(response.data.data);
+            const response = await api.get(
+                `/download-center/shared-contents?page=${page}&limit=${limit}&search=${encodeURIComponent(searchTerm)}`
+            );
+            const data = response.data;
+            setSharedContent(data.data || []);
             setPagination({
-                current_page: response.data.current_page,
-                last_page: response.data.last_page,
-                total: response.data.total,
-                from: response.data.from,
-                to: response.data.to
+                current_page: data.current_page || 1,
+                last_page: data.last_page || 1,
+                total: data.total || 0,
+                from: data.from || 0,
+                to: data.to || 0,
             });
         } catch (error) {
             console.error("Error fetching shared content:", error);
-            toast({ title: "Error", description: "Failed to fetch shared content", variant: "destructive" });
+            toast({
+                title: t("error"),
+                description: t("failed_to_fetch_shared_content"),
+                variant: "destructive",
+            });
         } finally {
             setLoading(false);
         }
+    }, [limit, searchTerm, t, toast]);
+
+    useEffect(() => {
+        fetchSharedContent(1);
+    }, [fetchSharedContent]);
+
+    const promptDelete = (id: number) => {
+        setDeleteId(id);
+        setIsDeleteDialogOpen(true);
     };
 
-    const handleDelete = async (id: number) => {
-        if (confirm("Are you sure you want to delete this shared content?")) {
-            try {
-                await api.delete(`/download-center/shared-contents/${id}`);
-                toast({ title: "Success", description: "Shared content deleted successfully" });
-                fetchSharedContent();
-            } catch (error) {
-                toast({ title: "Error", description: "Failed to delete shared content", variant: "destructive" });
-            }
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        try {
+            await api.delete(`/download-center/shared-contents/${deleteId}`);
+            toast({
+                title: t("success"),
+                description: t("shared_content_deleted_successfully"),
+            });
+            fetchSharedContent(pagination?.current_page || 1);
+        } catch (error) {
+            console.error("Error deleting shared content:", error);
+            toast({
+                title: t("error"),
+                description: t("failed_to_delete_shared_content"),
+                variant: "destructive",
+            });
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDeleteId(null);
         }
     };
 
     const handleCopy = () => {
-        const text = sharedContent.map(t => `${t.title}\t${t.send_to}`).join('\n');
+        const text = sharedContent
+            .map((item) => `${item.title}\t${translateSendTo(item.send_to, langCode)}\t${formatDate(item.share_date)}\t${item.valid_upto ? formatDate(item.valid_upto) : "-"}\t${item.sender?.name || "-"}`)
+            .join("\n");
         navigator.clipboard.writeText(text);
-        toast({ title: "Copied", description: "Data copied to clipboard" });
+        toast({
+            title: t("success"),
+            description: t("copied_to_clipboard") || "Data copied to clipboard",
+        });
     };
 
     const handleExportCSV = () => {
-        const headers = ["Title", "Send To", "Share Date", "Valid Upto", "Shared By"];
-        const rows = sharedContent.map(t => [t.title, t.send_to, t.share_date, t.valid_upto, t.sender?.name]);
-        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const headers = [
+            t("title"),
+            t("send_to"),
+            t("share_date"),
+            t("valid_upto"),
+            t("shared_by"),
+            t("description"),
+        ];
+        const rows = sharedContent.map((item) => [
+            item.title,
+            translateSendTo(item.send_to, langCode),
+            toLocaleNumber(formatDate(item.share_date), langCode),
+            item.valid_upto ? toLocaleNumber(formatDate(item.valid_upto), langCode) : "-",
+            item.sender?.name || "-",
+            item.description || "-",
+        ]);
+        const csvContent = [headers, ...rows].map((e) => e.map((cell) => `"${cell}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", "shared_content.csv");
-        link.style.visibility = 'hidden';
+        link.setAttribute("download", "content_share_list.csv");
+        link.style.visibility = "hidden";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: "Copy" },
-        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: "Excel" },
-        { Icon: FileText, onClick: handleExportCSV, title: "CSV" },
-        { Icon: Printer, onClick: () => window.print(), title: "Print" },
-        { Icon: Columns, onClick: () => {}, title: "Columns" },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") },
+        { Icon: FileSpreadsheet, onClick: handleExportCSV, title: t("excel") },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") },
     ];
 
+    const isExpired = (dateStr?: string) => {
+        if (!dateStr) return false;
+        return new Date(dateStr).getTime() < new Date().setHours(0, 0, 0, 0);
+    };
+
     return (
-        <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans text-xs">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
+        <div className="space-y-6">
+            {/* Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden">
                 <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
                         <Share2 className="h-5 w-5" />
                     </span>
                     <div>
-                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">Content Share List</h1>
-                        <p className="text-[11px] text-gray-500 mt-1">Shared documents and recipient records</p>
+                        <h1 className="text-[15px] font-bold text-gray-800 tracking-tight leading-none">
+                            {t("content_share_list")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1 font-medium">
+                            {t("shared_documents_and_recipient_records")}
+                        </p>
                     </div>
                 </div>
             </div>
 
-             {/* Main Content Area */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 space-y-4">
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-gray-50 pb-4">
-                    <div className="relative w-full md:w-64">
+            {/* Main Content Area */}
+            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden p-4 space-y-4">
+                {/* Search & Export Toolbar */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pb-4 border-b border-gray-100">
+                    <div className="relative w-full sm:w-72">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                         <Input
-                            placeholder="Search shared content..."
+                            placeholder={t("search_shared_content")}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-3 h-9 text-[11px] border-gray-200 focus-visible:ring-indigo-500 rounded-full shadow-none bg-gray-50/50"
+                            className="h-9 pl-9 pr-4 text-xs bg-white border-gray-200 focus-visible:ring-indigo-500 rounded-lg shadow-2xs"
                         />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 mr-2">
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <div className="flex items-center gap-1.5">
                             <Select value={limit} onValueChange={setLimit}>
-                                <SelectTrigger className="h-7 w-16 text-[10px] border-gray-200 bg-transparent shadow-none rounded-md px-2">
-                                    <SelectValue />
+                                <SelectTrigger className="h-8 w-20 text-xs bg-white border-gray-200 rounded-lg shadow-2xs">
+                                    <SelectValue placeholder={toLocaleNumber(limit, langCode)} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
+                                    {["10", "25", "50", "100"].map((n) => (
+                                        <SelectItem key={n} value={n} className="text-xs">
+                                            {toLocaleNumber(n, langCode)}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
-                            <ChevronLeft className="h-3 w-3 text-gray-400 rotate-90" />
                         </div>
-                        <div className="flex items-center gap-1 text-gray-400">
+
+                        <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-gray-50/60 shadow-2xs">
                             {toolbarActions.map((action, i) => (
-                                <Button 
-                                    key={i} 
-                                    variant="ghost" 
-                                    size="icon" 
+                                <Button
+                                    key={i}
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={action.onClick}
                                     title={action.title}
-                                    className="h-7 w-7 hover:bg-gray-100 rounded"
+                                    className="h-7 w-7 text-gray-500 hover:text-[#6366f1] hover:bg-white rounded-md transition-all"
                                 >
                                     <action.Icon className="h-3.5 w-3.5" />
                                 </Button>
@@ -187,104 +274,318 @@ export default function ContentShareListPage() {
                     </div>
                 </div>
 
-                {/* Content Table */}
-                <div className="rounded border border-gray-50 overflow-hidden">
+                {/* Table */}
+                <div className="rounded-lg border border-gray-200/80 overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-gray-50/50">
-                            <TableRow className="hover:bg-transparent border-b border-gray-100">
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Title <ArrowUpDown className="h-2.5 w-2.5" /></div>
+                        <TableHeader>
+                            <TableRow className="bg-gray-50/80 hover:bg-gray-50 text-xs">
+                                <TableHead className="font-semibold text-gray-600 py-3">
+                                    <div className="flex items-center gap-1">
+                                        {t("title")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />
+                                    </div>
                                 </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Send To <ArrowUpDown className="h-2.5 w-2.5" /></div>
+                                <TableHead className="font-semibold text-gray-600 py-3">
+                                    <div className="flex items-center gap-1">
+                                        {t("send_to")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />
+                                    </div>
                                 </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Share Date <ArrowUpDown className="h-2.5 w-2.5" /></div>
+                                <TableHead className="font-semibold text-gray-600 py-3">
+                                    <div className="flex items-center gap-1">
+                                        {t("share_date")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />
+                                    </div>
                                 </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Valid Upto <ArrowUpDown className="h-2.5 w-2.5" /></div>
+                                <TableHead className="font-semibold text-gray-600 py-3">
+                                    <div className="flex items-center gap-1">
+                                        {t("valid_upto")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />
+                                    </div>
                                 </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">
-                                    <div className="flex items-center gap-1">Shared By <ArrowUpDown className="h-2.5 w-2.5" /></div>
+                                <TableHead className="font-semibold text-gray-600 py-3">
+                                    <div className="flex items-center gap-1">
+                                        {t("shared_by")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />
+                                    </div>
                                 </TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3">Description</TableHead>
-                                <TableHead className="text-[10px] font-bold uppercase text-gray-600 py-3 text-right">Action</TableHead>
+                                <TableHead className="font-semibold text-gray-600 py-3">{t("description")}</TableHead>
+                                <TableHead className="text-right font-semibold text-gray-600 py-3">{t("action")}</TableHead>
                             </TableRow>
                         </TableHeader>
-                         <TableBody>
-                            {sharedContent.length === 0 ? (
+                        <TableBody>
+                            {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-32 text-center text-gray-400 text-xs">
-                                        No shared content found.
+                                    <TableCell colSpan={7} className="h-40 text-center text-gray-400 text-xs">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <Loader2 className="h-6 w-6 animate-spin text-[#6366f1]" />
+                                            <span>{t("loading")}...</span>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : sharedContent.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="h-48 text-center text-gray-400 text-xs">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <div className="h-12 w-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-400 mb-1">
+                                                <Share2 className="h-6 w-6 opacity-50" />
+                                            </div>
+                                            <p className="font-semibold text-gray-500">{t("no_shared_content_found")}</p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                sharedContent.map((item) => (
-                                    <TableRow key={item.id} className="text-[11px] border-b border-gray-50 hover:bg-indigo-50/40 hover:shadow-sm hover:z-10 relative transition-all duration-300 cursor-pointer whitespace-nowrap">
-                                        <TableCell className="py-3 text-gray-700 font-medium">{item.title}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.send_to}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{formatDate(item.share_date)}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.valid_upto ? formatDate(item.valid_upto) : "-"}</TableCell>
-                                        <TableCell className="py-3 text-gray-500">{item.sender?.name}</TableCell>
-                                        <TableCell className="py-3 text-gray-500 truncate max-w-[200px]">{item.description || "-"}</TableCell>
-                                        <TableCell className="py-3 text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                <Button size="icon" variant="ghost" className="h-7 w-7 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-full">
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" onClick={() => handleDelete(item.id)} className="h-7 w-7 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-full">
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                sharedContent.map((item) => {
+                                    const expired = isExpired(item.valid_upto);
+                                    return (
+                                        <TableRow
+                                            key={item.id}
+                                            className="text-xs hover:bg-indigo-50/30 transition-colors"
+                                        >
+                                            <TableCell className="py-3 font-semibold text-gray-800">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-[#6366f1] shrink-0">
+                                                        <FileText className="h-3.5 w-3.5" />
+                                                    </span>
+                                                    <span className="truncate max-w-[200px]" title={item.title}>
+                                                        {item.title}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-3">
+                                                <Badge
+                                                    variant="outline"
+                                                    className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 border-indigo-100 rounded-full"
+                                                >
+                                                    <Users className="h-2.5 w-2.5 mr-1" />
+                                                    {translateSendTo(item.send_to, langCode)}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-gray-600">
+                                                <div className="flex items-center gap-1.5">
+                                                    <Calendar className="h-3 w-3 text-gray-400" />
+                                                    <span>{toLocaleNumber(formatDate(item.share_date), langCode)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-gray-600">
+                                                {item.valid_upto ? (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Clock className={cn("h-3 w-3", expired ? "text-rose-500" : "text-gray-400")} />
+                                                        <span className={cn(expired && "text-rose-600 font-semibold")}>
+                                                            {toLocaleNumber(formatDate(item.valid_upto), langCode)}
+                                                        </span>
+                                                        {expired && (
+                                                            <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[8px] font-bold px-1.5 py-0 uppercase">
+                                                                {t("expired") || "Expired"}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    "-"
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-3 text-gray-600">
+                                                <div className="flex items-center gap-1.5">
+                                                    <User className="h-3 w-3 text-gray-400" />
+                                                    <span>{item.sender?.name || "-"}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-gray-500 max-w-[220px]">
+                                                <span className="truncate block" title={item.description}>
+                                                    {item.description || "-"}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <Button
+                                                        size="icon"
+                                                        onClick={() => setViewItem(item)}
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs shadow-emerald-500/20 active:scale-95 transition-all"
+                                                        title={t("view")}
+                                                    >
+                                                        <Eye className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        onClick={() => promptDelete(item.id)}
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white shadow-xs shadow-rose-500/20 active:scale-95 transition-all"
+                                                        title={t("delete")}
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             )}
                         </TableBody>
                     </Table>
                 </div>
 
-                 {/* Footer / Pagination */}
-                <div className="flex items-center justify-between text-[10px] text-gray-500 font-medium pt-4 border-t border-gray-50">
-                    <div>
-                        Showing {pagination?.from || 0} to {pagination?.to || 0} of {pagination?.total || 0} entries
+                {/* Footer & Pagination */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-gray-100">
+                    <div className="text-[11px] text-gray-500 font-medium">
+                        {t("showing_x_to_y_of_z", {
+                            from: toLocaleNumber(pagination?.from || 0, langCode),
+                            to: toLocaleNumber(pagination?.to || 0, langCode),
+                            total: toLocaleNumber(pagination?.total || 0, langCode),
+                        })}
                     </div>
-                    <div className="flex gap-2 items-center">
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === 1}
-                            onClick={() => fetchSharedContent(pagination!.current_page - 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!pagination || pagination.current_page <= 1}
+                            onClick={() => fetchSharedContent((pagination?.current_page || 2) - 1)}
+                            className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1"
                         >
-                            <ChevronLeft className="h-3.5 w-3.5" />
+                            <ChevronLeft className="h-3.5 w-3.5" /> {t("previous")}
                         </Button>
-                        {[...Array(pagination?.last_page || 0)].map((_, i) => (
-                            <Button 
-                                key={i + 1}
-                                onClick={() => fetchSharedContent(i + 1)}
-                                className={cn(
-                                    "h-7 w-7 p-0 text-[11px] font-bold rounded-lg shadow-sm transition-all duration-300",
-                                    pagination?.current_page === i + 1 
-                                        ? "btn-gradient" 
-                                        : "bg-white text-gray-400 hover:bg-gray-50 border border-gray-100"
-                                )}
-                            >
-                                {i + 1}
-                            </Button>
-                        ))}
-                        <Button 
-                            variant="outline" 
-                            size="icon" 
-                            disabled={pagination?.current_page === pagination?.last_page}
-                            onClick={() => fetchSharedContent(pagination!.current_page + 1)}
-                            className="h-7 w-7 rounded-lg border-gray-100 hover:bg-gray-50 transition-colors shadow-none disabled:opacity-30"
+
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: pagination?.last_page || 1 }).map((_, i) => {
+                                const pageNum = i + 1;
+                                const isActive = pagination?.current_page === pageNum;
+                                return (
+                                    <Button
+                                        key={pageNum}
+                                        size="sm"
+                                        onClick={() => fetchSharedContent(pageNum)}
+                                        className={cn(
+                                            "h-8 w-8 p-0 text-xs font-bold rounded-full transition-all",
+                                            isActive
+                                                ? "bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs"
+                                                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                                        )}
+                                    >
+                                        {toLocaleNumber(pageNum, langCode)}
+                                    </Button>
+                                );
+                            })}
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!pagination || pagination.current_page >= pagination.last_page}
+                            onClick={() => fetchSharedContent((pagination?.current_page || 1) + 1)}
+                            className="h-8 px-3 text-xs text-gray-600 border-gray-200 hover:bg-gray-50 rounded-full shadow-2xs gap-1"
                         >
-                            <ChevronRight className="h-3.5 w-3.5" />
+                            {t("next")} <ChevronRight className="h-3.5 w-3.5" />
                         </Button>
                     </div>
                 </div>
-            </div>
+            </Card>
+
+            {/* View Shared Content Details Dialog */}
+            <Dialog open={!!viewItem} onOpenChange={(open) => !open && setViewItem(null)}>
+                <DialogContent className="sm:max-w-[480px] rounded-2xl p-0 overflow-hidden">
+                    <DialogHeader className="px-6 py-4 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-xs">
+                                <Share2 className="h-4 w-4" />
+                            </span>
+                            <DialogTitle className="text-base font-bold text-gray-800">
+                                {t("shared_content")}
+                            </DialogTitle>
+                        </div>
+                    </DialogHeader>
+
+                    {viewItem && (
+                        <div className="px-6 py-4 space-y-3.5 text-xs">
+                            <div>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-0.5">
+                                    {t("title")}
+                                </span>
+                                <p className="font-bold text-gray-800 text-sm">{viewItem.title}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                                <div>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-0.5">
+                                        {t("send_to")}
+                                    </span>
+                                    <Badge
+                                        variant="outline"
+                                        className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 border-indigo-100"
+                                    >
+                                        {translateSendTo(viewItem.send_to, langCode)}
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-0.5">
+                                        {t("shared_by")}
+                                    </span>
+                                    <p className="font-semibold text-gray-700">{viewItem.sender?.name || "-"}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                                <div>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-0.5">
+                                        {t("share_date")}
+                                    </span>
+                                    <p className="text-gray-700">
+                                        {toLocaleNumber(formatDate(viewItem.share_date), langCode)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-0.5">
+                                        {t("valid_upto")}
+                                    </span>
+                                    <p className="text-gray-700">
+                                        {viewItem.valid_upto ? toLocaleNumber(formatDate(viewItem.valid_upto), langCode) : "-"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {viewItem.description && (
+                                <div className="pt-2 border-t border-gray-100">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-0.5">
+                                        {t("description")}
+                                    </span>
+                                    <p className="text-gray-600 bg-gray-50/70 p-3 rounded-lg border border-gray-100 leading-relaxed">
+                                        {viewItem.description}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter className="px-6 py-3 bg-gray-50/80 border-t border-gray-100">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setViewItem(null)}
+                            className="h-8 px-4 text-xs font-bold rounded-full"
+                        >
+                            {t("close")}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Alert Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent className="rounded-2xl max-w-[400px]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-base font-bold text-gray-900">
+                            {t("delete")}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-xs text-gray-500">
+                            {t("delete_shared_content_confirm")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="h-9 text-xs font-bold rounded-full">
+                            {t("cancel")}
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDelete}
+                            className="h-9 text-xs font-bold rounded-full bg-rose-600 hover:bg-rose-700 text-white"
+                        >
+                            {t("delete")}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

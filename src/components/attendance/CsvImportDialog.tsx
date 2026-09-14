@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef } from "react";
 import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
     Select,
     SelectContent,
@@ -36,12 +35,11 @@ import {
     CheckCircle2,
     AlertTriangle,
     Download,
-    X,
-    Loader2,
     MapPin,
     Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/use-translation";
 
 // The fields that our system expects
 const SYSTEM_FIELDS = [
@@ -57,27 +55,40 @@ const SYSTEM_FIELDS = [
 
 const VALID_ATTENDANCE = ["present", "late", "absent", "holiday", "half_day"];
 
+export interface ImportedAttendanceRecord {
+    id: number;
+    student_id: number;
+    admission_no: string;
+    roll_no: string;
+    name: string;
+    avatar?: string;
+    attendance: "present" | "late" | "absent" | "holiday" | "half_day" | "on_leave";
+    reason: string;
+    entry_time: string;
+    exit_time: string;
+    note: string;
+    isOnLeave?: boolean;
+}
+
 interface CsvImportDialogProps {
-    onImport: (records: any[]) => void;
-    attendanceDate: string;
-    selectedClass: string;
-    selectedSection: string;
+    onImport: (records: ImportedAttendanceRecord[]) => void;
+    attendanceDate?: string;
+    selectedClass?: string;
+    selectedSection?: string;
 }
 
 type ImportStep = "upload" | "mapping" | "preview" | "done";
 
 export default function CsvImportDialog({
     onImport,
-    attendanceDate,
-    selectedClass,
-    selectedSection,
 }: CsvImportDialogProps) {
+    const { t } = useTranslation();
     const [open, setOpen] = useState(false);
     const [step, setStep] = useState<ImportStep>("upload");
     const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
     const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
     const [mapping, setMapping] = useState<Record<string, string>>({});
-    const [previewData, setPreviewData] = useState<any[]>([]);
+    const [previewData, setPreviewData] = useState<ImportedAttendanceRecord[]>([]);
     const [errors, setErrors] = useState<string[]>([]);
     const [isDragging, setIsDragging] = useState(false);
     const [fileName, setFileName] = useState("");
@@ -212,7 +223,7 @@ export default function CsvImportDialog({
                 admission_no: admNo || "-",
                 roll_no: rollNo || "-",
                 name: name || `Student ${idx + 1}`,
-                attendance: att as any,
+                attendance: att as ImportedAttendanceRecord["attendance"],
                 reason: "CSV Import",
                 entry_time: entryTime,
                 exit_time: exitTime,
@@ -252,10 +263,10 @@ export default function CsvImportDialog({
             <DialogTrigger asChild>
                 <Button
                     variant="outline"
-                    className="h-9 text-xs font-bold uppercase border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 rounded-full px-5 gap-2 transition-all"
+                    className="h-9 text-xs font-bold uppercase border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 rounded-full px-5 gap-2 transition-all cursor-pointer"
                 >
                     <Upload className="h-3.5 w-3.5" />
-                    Import CSV
+                    {t("import_csv") || "Import CSV"}
                 </Button>
             </DialogTrigger>
 
