@@ -368,7 +368,15 @@ export function StaffRequisitionDialog({
                             </Label>
                             <Select value={department} onValueChange={setDepartment}>
                                 <SelectTrigger className="h-10 rounded-xl bg-background border-muted text-sm">
-                                    <SelectValue />
+                                    <SelectValue>
+                                        {department === "Academic" ? (t("academic_teaching") || "Academic / Teaching")
+                                            : department === "Administration" ? (t("administration") || "Administration")
+                                            : department === "Accounts & Finance" ? (t("accounts_finance") || "Accounts & Finance")
+                                            : department === "IT & Technical" ? (t("it_technical") || "IT & Technical")
+                                            : department === "Operations & Maintenance" ? (t("operations_maintenance") || "Operations & Maintenance")
+                                            : department === "Support Staff" ? (t("support_staff") || "Support Staff")
+                                            : department}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
                                     <SelectItem value="Academic">{t("academic_teaching") || "Academic / Teaching"}</SelectItem>
@@ -406,7 +414,12 @@ export function StaffRequisitionDialog({
                             </Label>
                             <Select value={priority} onValueChange={(val: "Low" | "Medium" | "High" | "Urgent") => setPriority(val)}>
                                 <SelectTrigger className="h-10 rounded-xl bg-background border-muted text-sm">
-                                    <SelectValue />
+                                    <SelectValue>
+                                        {priority === "Urgent" ? (t("urgent_priority") || "Urgent")
+                                            : priority === "High" ? (t("high_priority") || "High")
+                                            : priority === "Medium" ? (t("medium_priority") || "Medium")
+                                            : (t("low_priority") || "Low")}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
                                     <SelectItem value="Low">{t("low_priority") || "Low"}</SelectItem>
@@ -423,7 +436,12 @@ export function StaffRequisitionDialog({
                             </Label>
                             <Select value={employmentType} onValueChange={setEmploymentType}>
                                 <SelectTrigger className="h-10 rounded-xl bg-background border-muted text-sm">
-                                    <SelectValue />
+                                    <SelectValue>
+                                        {employmentType === "Full-Time" ? (t("full_time") || "Full-Time")
+                                            : employmentType === "Part-Time" ? (t("part_time") || "Part-Time")
+                                            : employmentType === "Contractual" ? (t("contractual") || "Contractual")
+                                            : employmentType}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
                                     <SelectItem value="Full-Time">{t("full_time") || "Full-Time"}</SelectItem>

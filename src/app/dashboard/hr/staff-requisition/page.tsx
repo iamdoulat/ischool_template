@@ -71,7 +71,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
-import { toLocaleNumber, translateDepartmentName } from "@/lib/utils";
+import { toLocaleNumber, translateDepartmentName, translateRoleName } from "@/lib/utils";
 import {
     StaffRequisition,
     StaffRequisitionDialog,
@@ -217,56 +217,66 @@ export default function StaffRequisitionPage() {
     // Export Excel
     const handleExportExcel = () => {
         const exportData = filteredRequisitions.map((r) => ({
-            "Requisition ID": r.requisition_no,
-            "Branch": r.branch_name,
-            "Role": r.role,
-            "Department": r.department,
-            "Vacancies": r.vacancies,
-            "Priority": r.priority,
-            "Employment Type": r.employment_type,
-            "Expected Joining Date": r.expected_joining_date,
-            "Status": r.status,
-            "Reason": r.reason,
-            "Date Submitted": new Date(r.created_at).toLocaleDateString()
+            [t("requisition_id") || "Requisition ID"]: r.requisition_no,
+            [t("campus_branch") || "Branch"]: r.branch_name,
+            [t("role") || "Role"]: translateRoleName(r.role, shortCode),
+            [t("department") || "Department"]: translateDepartmentName(r.department, shortCode),
+            [t("vacancies") || "Vacancies"]: toLocaleNumber(r.vacancies, shortCode),
+            [t("priority") || "Priority"]: r.priority === "Urgent" ? (t("urgent_priority") || "Urgent") : r.priority === "High" ? (t("high_priority") || "High") : r.priority === "Medium" ? (t("medium_priority") || "Medium") : (t("low_priority") || "Low"),
+            [t("employment_type") || "Employment Type"]: r.employment_type === "Full-Time" ? (t("full_time") || "Full-Time") : r.employment_type === "Part-Time" ? (t("part_time") || "Part-Time") : r.employment_type === "Contractual" ? (t("contractual") || "Contractual") : r.employment_type,
+            [t("expected_joining_date") || "Expected Joining Date"]: r.expected_joining_date,
+            [t("status") || "Status"]: r.status === "Approved" ? (t("approved") || "Approved") : r.status === "Rejected" ? (t("rejected") || "Rejected") : (t("pending") || "Pending"),
+            [t("justification_notes") || "Reason"]: r.reason,
+            [t("submission_date") || "Date Submitted"]: new Date(r.created_at).toLocaleDateString()
         }));
         const ws = XLSX.utils.json_to_sheet(exportData);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Requisitions");
+        XLSX.utils.book_append_sheet(wb, ws, t("staff_requisition") || "Requisitions");
         XLSX.writeFile(wb, `Staff_Requisitions_${new Date().toISOString().split("T")[0]}.xlsx`);
-        toast.success("Excel sheet exported successfully!");
+        toast.success(t("excel_exported_success") || "Excel sheet exported successfully!");
     };
 
     // Export PDF
     const handleExportPDF = () => {
         const doc = new jsPDF("landscape");
-        doc.text("Staff Requisition List", 14, 15);
+        doc.text(t("requisition_list") || "Staff Requisition List", 14, 15);
         const tableBody = filteredRequisitions.map((r) => [
             r.requisition_no,
             r.branch_name,
-            r.role,
-            r.department,
-            r.vacancies.toString(),
-            r.priority,
+            translateRoleName(r.role, shortCode),
+            translateDepartmentName(r.department, shortCode),
+            toLocaleNumber(r.vacancies, shortCode),
+            r.priority === "Urgent" ? (t("urgent_priority") || "Urgent") : r.priority === "High" ? (t("high_priority") || "High") : r.priority === "Medium" ? (t("medium_priority") || "Medium") : (t("low_priority") || "Low"),
             r.expected_joining_date,
-            r.status,
+            r.status === "Approved" ? (t("approved") || "Approved") : r.status === "Rejected" ? (t("rejected") || "Rejected") : (t("pending") || "Pending"),
             new Date(r.created_at).toLocaleDateString()
         ]);
         autoTable(doc, {
-            head: [["Req ID", "Branch", "Role", "Department", "Vacancies", "Priority", "Joining Date", "Status", "Date"]],
+            head: [[
+                t("requisition_id") || "Req ID",
+                t("campus_branch") || "Branch",
+                t("role") || "Role",
+                t("department") || "Department",
+                t("vacancies") || "Vacancies",
+                t("priority") || "Priority",
+                t("expected_joining_date") || "Joining Date",
+                t("status") || "Status",
+                t("submission_date") || "Date"
+            ]],
             body: tableBody,
             startY: 20
         });
         doc.save(`Staff_Requisitions_${new Date().toISOString().split("T")[0]}.pdf`);
-        toast.success("PDF document exported successfully!");
+        toast.success(t("pdf_exported_success") || "PDF document exported successfully!");
     };
 
     // Export Copy
     const handleCopy = () => {
         const text = filteredRequisitions
-            .map((r) => `${r.requisition_no} | ${r.branch_name} | ${r.role} | ${r.department} | Vacancies: ${r.vacancies} | ${r.status}`)
+            .map((r) => `${r.requisition_no} | ${r.branch_name} | ${translateRoleName(r.role, shortCode)} | ${translateDepartmentName(r.department, shortCode)} | ${t("vacancies") || "Vacancies"}: ${toLocaleNumber(r.vacancies, shortCode)} | ${r.status === "Approved" ? (t("approved") || "Approved") : r.status === "Rejected" ? (t("rejected") || "Rejected") : (t("pending") || "Pending")}`)
             .join("\n");
         navigator.clipboard.writeText(text);
-        toast.success("Requisitions copied to clipboard!");
+        toast.success(t("requisition_copied_success") || "Requisitions copied to clipboard!");
     };
 
     // Print
@@ -508,7 +518,7 @@ export default function StaffRequisitionPage() {
                                         )}
 
                                         <TableCell>
-                                            <div className="font-bold text-xs text-gray-900">{req.role}</div>
+                                            <div className="font-bold text-xs text-gray-900">{translateRoleName(req.role, shortCode)}</div>
                                             <div className="text-[10px] text-gray-400">
                                                 {req.employment_type === "Full-Time"
                                                     ? (t("full_time") || "Full-Time")
@@ -693,7 +703,7 @@ export default function StaffRequisitionPage() {
                                 </div>
                                 <div>
                                     <DialogTitle className="text-lg font-bold text-white">
-                                        {viewingRequisition?.role}
+                                        {translateRoleName(viewingRequisition?.role || "", shortCode)}
                                     </DialogTitle>
                                     <DialogDescription className="text-white/80 text-xs mt-0.5">
                                         {viewingRequisition?.requisition_no} • {viewingRequisition?.branch_name}
@@ -707,7 +717,7 @@ export default function StaffRequisitionPage() {
                                     ? "bg-rose-500 text-white"
                                     : "bg-amber-400 text-slate-900"
                             }`}>
-                                {viewingRequisition?.status}
+                                {viewingRequisition?.status === "Approved" ? (t("approved") || "Approved") : viewingRequisition?.status === "Rejected" ? (t("rejected") || "Rejected") : (t("pending") || "Pending")}
                             </span>
                         </div>
                     </div>
@@ -716,15 +726,23 @@ export default function StaffRequisitionPage() {
                         <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-2xl">
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">{t("department") || "Department"}</span>
-                                <span className="font-semibold text-foreground">{viewingRequisition?.department}</span>
+                                <span className="font-semibold text-foreground">{translateDepartmentName(viewingRequisition?.department, shortCode)}</span>
                             </div>
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">{t("vacancies") || "Vacancies"}</span>
-                                <span className="font-semibold text-foreground">{viewingRequisition?.vacancies} Position(s)</span>
+                                <span className="font-semibold text-foreground">{toLocaleNumber(viewingRequisition?.vacancies, shortCode)} {t("positions_count") || "Position(s)"}</span>
                             </div>
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">{t("priority") || "Priority"}</span>
-                                <span className="font-semibold text-foreground">{viewingRequisition?.priority}</span>
+                                <span className="font-semibold text-foreground">
+                                    {viewingRequisition?.priority === "Urgent"
+                                        ? (t("urgent_priority") || "Urgent")
+                                        : viewingRequisition?.priority === "High"
+                                        ? (t("high_priority") || "High")
+                                        : viewingRequisition?.priority === "Medium"
+                                        ? (t("medium_priority") || "Medium")
+                                        : (t("low_priority") || "Low")}
+                                </span>
                             </div>
                             <div>
                                 <span className="text-[10px] uppercase font-bold text-muted-foreground block">{t("expected_joining_date") || "Expected Joining"}</span>
@@ -747,13 +765,13 @@ export default function StaffRequisitionPage() {
                         {/* Approval / Rejection Feedback if available */}
                         {viewingRequisition?.approval_remarks && (
                             <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs">
-                                <strong className="block font-bold mb-0.5">Central HR Approval Note:</strong>
+                                <strong className="block font-bold mb-0.5">{t("central_hr_approval_note") || "Central HR Approval Note"}:</strong>
                                 {viewingRequisition.approval_remarks}
                             </div>
                         )}
                         {viewingRequisition?.rejection_reason && (
                             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
-                                <strong className="block font-bold mb-0.5">Central HR Rejection Reason:</strong>
+                                <strong className="block font-bold mb-0.5">{t("central_hr_rejection_reason") || "Central HR Rejection Reason"}:</strong>
                                 {viewingRequisition.rejection_reason}
                             </div>
                         )}
@@ -781,7 +799,7 @@ export default function StaffRequisitionPage() {
                             {t("approve_requisition") || "Approve Staff Requisition"}
                         </DialogTitle>
                         <DialogDescription className="text-xs">
-                            Confirm approval for <strong>{approveDialogReq?.role}</strong> ({approveDialogReq?.vacancies} vacancies) for <strong>{approveDialogReq?.branch_name}</strong>.
+                            {t("confirm_approval") || "Confirm approval"}: <strong>{translateRoleName(approveDialogReq?.role || "", shortCode)}</strong> ({toLocaleNumber(approveDialogReq?.vacancies, shortCode)} {t("vacancies") || "vacancies"}) — <strong>{approveDialogReq?.branch_name}</strong>.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -792,7 +810,7 @@ export default function StaffRequisitionPage() {
                         <Textarea
                             value={approvalRemarks}
                             onChange={(e) => setApprovalRemarks(e.target.value)}
-                            placeholder="Add any recruitment instructions, approval notes, or HR reference..."
+                            placeholder={t("approval_remarks_placeholder") || "Add any recruitment instructions, approval notes, or HR reference..."}
                             rows={3}
                             className="rounded-xl text-xs resize-none"
                         />
@@ -804,7 +822,7 @@ export default function StaffRequisitionPage() {
                         </Button>
                         <Button onClick={handleApproveConfirm} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 font-bold gap-2">
                             <CheckCheck className="h-4 w-4" />
-                            {t("approve") || "Confirm Approval"}
+                            {t("confirm_approval") || t("approve") || "Confirm Approval"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -819,7 +837,7 @@ export default function StaffRequisitionPage() {
                             {t("reject_requisition") || "Reject Staff Requisition"}
                         </DialogTitle>
                         <DialogDescription className="text-xs">
-                            Rejecting request for <strong>{rejectDialogReq?.role}</strong> from <strong>{rejectDialogReq?.branch_name}</strong>.
+                            {t("confirm_rejection") || "Rejecting request"}: <strong>{translateRoleName(rejectDialogReq?.role || "", shortCode)}</strong> — <strong>{rejectDialogReq?.branch_name}</strong>.
                         </DialogDescription>
                     </DialogHeader>
 
@@ -830,7 +848,7 @@ export default function StaffRequisitionPage() {
                         <Textarea
                             value={rejectionReason}
                             onChange={(e) => setRejectionReason(e.target.value)}
-                            placeholder="Please specify why this requisition cannot be approved at this time..."
+                            placeholder={t("rejection_reason_placeholder") || "Please specify why this requisition cannot be approved at this time..."}
                             rows={3}
                             required
                             className="rounded-xl text-xs resize-none"
@@ -843,7 +861,7 @@ export default function StaffRequisitionPage() {
                         </Button>
                         <Button onClick={handleRejectConfirm} className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl h-10 font-bold gap-2">
                             <Ban className="h-4 w-4" />
-                            {t("reject") || "Confirm Rejection"}
+                            {t("confirm_rejection") || t("reject") || "Confirm Rejection"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -855,7 +873,7 @@ export default function StaffRequisitionPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t("are_you_absolutely_sure") || "Are you sure?"}</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will delete requisition <strong>{deleteRequisition?.requisition_no}</strong> ({deleteRequisition?.role}). This action cannot be undone.
+                            {deleteRequisition?.requisition_no} ({translateRoleName(deleteRequisition?.role || "", shortCode)}) — {t("delete_requisition_confirm_desc") || "This will delete requisition. This action cannot be undone."}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

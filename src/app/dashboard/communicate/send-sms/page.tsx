@@ -28,7 +28,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn, translateClassName, toLocaleNumber } from "@/lib/utils";
+import { cn, translateClassName, toLocaleNumber, translateRoleName } from "@/lib/utils";
 import {
     MessageSquare, Users, User, GraduationCap, Cake, Send, Clock, Layout, Calendar, Search
 } from "lucide-react";
@@ -320,20 +320,20 @@ export default function SendSMSPage() {
     };
 
     const roles = [
-        { id: "Student", label: t("student") !== "student" ? t("student") : (t("students") !== "students" ? t("students") : "Students") },
-        { id: "Parent", label: t("parent") !== "parent" ? t("parent") : (t("guardians") !== "guardians" ? t("guardians") : "Guardians") },
-        { id: "Admin", label: t("admin") !== "admin" ? t("admin") : "Admin" },
-        { id: "Teacher", label: t("teacher") !== "teacher" ? t("teacher") : "Teacher" },
-        { id: "Accountant", label: t("accountant") !== "accountant" ? t("accountant") : "Accountant" },
-        { id: "Librarian", label: t("librarian") !== "librarian" ? t("librarian") : "Librarian" },
-        { id: "Receptionist", label: t("receptionist") !== "receptionist" ? t("receptionist") : "Receptionist" },
+        { id: "Student", label: translateRoleName("Student", langCode) || t("student") || t("students") || "Student" },
+        { id: "Parent", label: translateRoleName("Parent", langCode) || t("parent") || t("guardians") || "Parent" },
+        { id: "Admin", label: translateRoleName("Admin", langCode) || t("admin") || "Admin" },
+        { id: "Teacher", label: translateRoleName("Teacher", langCode) || t("teacher") || "Teacher" },
+        { id: "Accountant", label: translateRoleName("Accountant", langCode) || t("accountant") || "Accountant" },
+        { id: "Librarian", label: translateRoleName("Librarian", langCode) || t("librarian") || "Librarian" },
+        { id: "Receptionist", label: translateRoleName("Receptionist", langCode) || t("receptionist") || "Receptionist" },
     ];
 
     const tabs = [
-        { id: "Group", label: t("group") !== "group" ? t("group") : "Group", Icon: Users },
-        { id: "Individual", label: t("individual") !== "individual" ? t("individual") : "Individual", Icon: User },
-        { id: "Class", label: t("class") !== "class" ? t("class") : "Class", Icon: GraduationCap },
-        { id: "Today's Birthday", label: t("birthday") !== "birthday" ? t("birthday") : (t("todays_birthday") !== "todays_birthday" ? t("todays_birthday") : "Today's Birthday"), Icon: Cake }
+        { id: "Group", label: t("group") || "Group", Icon: Users },
+        { id: "Individual", label: t("individual") || "Individual", Icon: User },
+        { id: "Class", label: t("class") || "Class", Icon: GraduationCap },
+        { id: "Today's Birthday", label: t("todays_birthday") || t("birthday") || "Today's Birthday", Icon: Cake }
     ];
 
     const filteredUsers = useMemo(() => {
@@ -456,7 +456,7 @@ export default function SendSMSPage() {
 
                                 <div className="space-y-2">
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-                                        {t("dlt_template_id")} <span className="text-[9px] lowercase font-medium text-gray-300 normal-case">(India Only)</span>
+                                        {t("dlt_template_id")} <span className="text-[9px] lowercase font-medium text-gray-300 normal-case">({t("india_only")})</span>
                                     </Label>
                                     <Input className="h-11 border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none placeholder:text-gray-200" placeholder="120716..." />
                                 </div>
@@ -477,8 +477,8 @@ export default function SendSMSPage() {
                                     className="min-h-[160px] border-gray-100 bg-gray-50/30 text-sm focus-visible:ring-indigo-500 rounded-lg shadow-none resize-none leading-relaxed"
                                 />
                                 <div className="flex justify-between items-center text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                                    <span>{toLocaleNumber(formData.message.length, langCode)} {t("characters") || "characters"}</span>
-                                    <span>{toLocaleNumber(Math.ceil(formData.message.length / 160) || 1, langCode)} {t("sms_parts") || "SMS parts (160 char/part)"}</span>
+                                    <span>{toLocaleNumber(formData.message.length, langCode)} {t("characters")}</span>
+                                    <span>{toLocaleNumber(Math.ceil(formData.message.length / 160) || 1, langCode)} {t("sms_parts_info")}</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -500,7 +500,7 @@ export default function SendSMSPage() {
                         <CardContent className="p-6 min-h-[400px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold uppercase">
-                                    {activeTab === "Today's Birthday" ? (t("birthday") !== "birthday" ? t("birthday") : "Birthday") : (t(activeTab.toLowerCase()) !== activeTab.toLowerCase() ? t(activeTab.toLowerCase()) : t(activeTab))}
+                                    {tabs.find(t => t.id === activeTab)?.label || activeTab}
                                 </span>
                                 <span className="text-[10px] font-bold text-indigo-600">{toLocaleNumber(getRecipientCount(), langCode)} {t("selected")}</span>
                             </div>
@@ -579,7 +579,7 @@ export default function SendSMSPage() {
                                                         />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone") || "No Phone"} {u.role ? `· ${t(u.role?.toLowerCase()) || u.role}` : ''}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone") || "No Phone"} {u.role ? `· ${translateRoleName(u.role, langCode) || t(u.role.toLowerCase()) || u.role}` : ''}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -663,7 +663,7 @@ export default function SendSMSPage() {
                                                         <Cake className="h-4 w-4 text-orange-500 shrink-0" />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone") || "No Phone"} · {t(u.role?.toLowerCase() || "") || u.role}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.phone || t("no_phone") || "No Phone"} · {translateRoleName(u.role || '', langCode) || t(u.role?.toLowerCase() || "") || u.role}</p>
                                                         </div>
                                                     </div>
                                                 ))

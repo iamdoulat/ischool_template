@@ -143,12 +143,12 @@ export default function TeachersRatingPage() {
     // Export Functions
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(ratings.map(r => ({
-            "Staff ID": r.staff_id,
-            "Staff Name": r.staff_name,
-            "Rating": r.rating,
-            "Comment": r.comment,
-            "Status": r.status,
-            "Student Name": r.student_name
+            [t("staff_id")]: toLocaleNumber(r.staff_id, shortCode),
+            [t("staff_name")]: r.staff_name,
+            [t("rating")]: toLocaleNumber(r.rating, shortCode),
+            [t("comment")]: r.comment,
+            [t("status")]: r.status === "Pending" ? t("pending") : t("approved"),
+            [t("student_name")]: r.student_name
         })));
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, t("teacher_ratings"));
@@ -160,14 +160,20 @@ export default function TeachersRatingPage() {
         doc.text(t("teacher_ratings_list"), 14, 15);
         autoTable(doc, {
             head: [[t("staff_id"), t("staff_name"), t("rating"), t("status"), t("student_name")]],
-            body: ratings.map(r => [r.staff_id, r.staff_name, r.rating, r.status, r.student_name]),
+            body: ratings.map(r => [
+                toLocaleNumber(r.staff_id, shortCode),
+                r.staff_name,
+                toLocaleNumber(r.rating, shortCode),
+                r.status === "Pending" ? t("pending") : t("approved"),
+                r.student_name
+            ]),
             startY: 20,
         });
         doc.save("teacher_ratings.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = ratings.map(r => `${r.staff_id} - ${r.staff_name} (${r.rating}*): ${r.status}`).join('\n');
+        const text = ratings.map(r => `${toLocaleNumber(r.staff_id, shortCode)} - ${r.staff_name} (${toLocaleNumber(r.rating, shortCode)}*): ${r.status === "Pending" ? t("pending") : t("approved")}`).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("data_copied_to_clipboard");
     };
@@ -219,19 +225,19 @@ export default function TeachersRatingPage() {
                                 </Select>
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("copy")} onClick={copyToClipboard}>
                                     <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("excel")} onClick={exportToExcel}>
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("pdf")} onClick={exportToPDF}>
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("print")} onClick={() => window.print()}>
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("columns")}>
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -280,6 +286,7 @@ export default function TeachersRatingPage() {
                                                         <Button
                                                             onClick={() => handleApprove(item.id)}
                                                             className="h-7 px-3 text-[10px] font-bold uppercase rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer border-0"
+                                                            title={t("approve")}
                                                         >
                                                             <CheckCircle className="h-3 w-3" />
                                                             {t("approve")}
@@ -290,6 +297,7 @@ export default function TeachersRatingPage() {
                                                         size="icon"
                                                         variant="ghost"
                                                         className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer"
+                                                        title={t("delete")}
                                                     >
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>

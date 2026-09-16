@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import api from "@/lib/api";
 import * as faceapi from "face-api.js";
 import jsQR from "jsqr";
+import { acquireCameraStream, stopCameraStream } from "@/lib/camera";
 import {
   ScanFace, ScanLine, Smartphone, Loader2, CheckCircle2, AlertCircle,
   Clock, UserCheck, QrCode, SmartphoneNfc, RefreshCw, Camera, Wifi, WifiOff,
@@ -30,7 +31,7 @@ interface User {
   staff_id?: string;
   school_class?: { id: number; name: string };
   section?: { id: number; name: string };
-  face_descriptor?: any;
+  face_descriptor?: string | number[] | null;
   qr_code?: string | null;
   nfc_uid?: string | null;
 }
@@ -217,6 +218,7 @@ export default function SmartAttendanceTerminalPage() {
 
   const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   const [isWebcamPlaying, setIsWebcamPlaying] = useState(false);
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [matchedUser, setMatchedUser] = useState<User | null>(null);
@@ -349,51 +351,40 @@ export default function SmartAttendanceTerminalPage() {
   }, [isModelsLoaded, users]);
 
   // 3. Camera Controls (Webcam / Mobile Front & Back Cameras)
-  const startWebcam = async (retries = 3, forcedFacing?: 'environment' | 'user') => {
-    stopWebcam();
+  const startWebcam = async (forcedFacing?: 'environment' | 'user') => {
     const targetFacing = forcedFacing || facingMode;
-
-    for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        let stream: MediaStream | null = null;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: targetFacing, width: { ideal: 1280 }, height: { ideal: 720 } }
-          });
-        } catch {
-          if (attempt < retries) {
-            await new Promise(r => setTimeout(r, 400 * attempt));
-            stream = await navigator.mediaDevices.getUserMedia({ video: true }).catch(() => null);
-          }
-        }
-        if (stream && videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-          setCameraSource('webcam');
-          setIsWebcamPlaying(true);
-          setCameraError(false);
-          return;
-        }
-      } catch (err) {
-        console.error(`Webcam attempt ${attempt}/${retries} failed:`, err);
+    setIsSwitchingCamera(true);
+    try {
+      const stream = await acquireCameraStream({
+        targetFacing,
+        videoElement: videoRef.current,
+        currentStream: videoRef.current?.srcObject as MediaStream | null,
+        cooldownMs: 200,
+      });
+      if (stream && videoRef.current) {
+        setCameraSource('webcam');
+        setIsWebcamPlaying(true);
+        setCameraError(false);
       }
+    } catch (err) {
+      console.error("Webcam acquisition failed:", err);
+      toast.error(t("could_not_access_camera_after_attempts") || "Could not access camera. Please check camera permissions.");
+      setIsWebcamPlaying(false);
+    } finally {
+      setIsSwitchingCamera(false);
     }
-    toast.error(t("could_not_access_camera_after_attempts"));
   };
 
   const stopWebcam = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(t => t.stop());
-      videoRef.current.srcObject = null;
-      setIsWebcamPlaying(false);
-    }
+    stopCameraStream(videoRef.current?.srcObject as MediaStream | null, videoRef.current);
+    setIsWebcamPlaying(false);
   };
 
-  const toggleFacingMode = () => {
+  const toggleFacingMode = async () => {
+    if (isSwitchingCamera) return;
     const nextFacing = facingMode === "environment" ? "user" : "environment";
     setFacingMode(nextFacing);
-    startWebcam(3, nextFacing);
+    await startWebcam(nextFacing);
   };
 
   useEffect(() => {
@@ -449,9 +440,10 @@ export default function SmartAttendanceTerminalPage() {
           setIsProcessing(false);
         }, 3200);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.response?.data?.message || t("failed_to_mark_attendance"));
+      const errObj = err as { response?: { data?: { message?: string } } };
+      toast.error(errObj?.response?.data?.message || t("failed_to_mark_attendance"));
       playAudio('error');
       setTimeout(() => setIsProcessing(false), 2000);
     }
@@ -468,9 +460,14 @@ export default function SmartAttendanceTerminalPage() {
       if (activeMode === 'face' && isModelsLoaded && labeledDescriptors.length > 0) {
         const source = cameraSource === 'ip' ? cameraImgRef.current : videoRef.current;
         if (!source) return;
+        if (source instanceof HTMLVideoElement) {
+          if (source.videoWidth === 0 || source.videoHeight === 0 || source.readyState < 2) return;
+        } else if (source instanceof HTMLImageElement) {
+          if (source.naturalWidth === 0 || !source.complete) return;
+        }
         const displaySize = {
-          width: (source as any).videoWidth || (source as HTMLImageElement).naturalWidth || 640,
-          height: (source as any).videoHeight || (source as HTMLImageElement).naturalHeight || 480
+          width: source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth || 640,
+          height: source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight || 480
         };
         if (displaySize.width === 0 || displaySize.height === 0) return;
         if (canvasRef.current) faceapi.matchDimensions(canvasRef.current, displaySize);
@@ -508,11 +505,13 @@ export default function SmartAttendanceTerminalPage() {
             imageData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
           }
         } else if (videoRef.current && isWebcamPlaying) {
-          tmpCanvas.width = videoRef.current.videoWidth;
-          tmpCanvas.height = videoRef.current.videoHeight;
+          const video = videoRef.current;
+          if (video.videoWidth === 0 || video.videoHeight === 0 || video.readyState < 2) return;
+          tmpCanvas.width = video.videoWidth;
+          tmpCanvas.height = video.videoHeight;
           const ctx = tmpCanvas.getContext('2d');
           if (ctx) {
-            ctx.drawImage(videoRef.current, 0, 0);
+            ctx.drawImage(video, 0, 0);
             imageData = ctx.getImageData(0, 0, tmpCanvas.width, tmpCanvas.height);
           }
         }
@@ -585,12 +584,21 @@ export default function SmartAttendanceTerminalPage() {
   // Web NFC Reader
   useEffect(() => {
     if (activeMode !== 'nfc') return;
-    if (!('NDEFReader' in window)) return;
-    let ndef: any;
+    interface NDEFReadingEvent extends Event {
+      serialNumber: string;
+    }
+    interface NDEFReaderInstance {
+      scan: () => Promise<void>;
+      onreading: ((event: NDEFReadingEvent) => void) | null;
+    }
+    const NDEFReaderClass = (window as unknown as { NDEFReader?: new () => NDEFReaderInstance }).NDEFReader;
+    if (!NDEFReaderClass) return;
+    let ndef: NDEFReaderInstance | null = null;
     try {
-      ndef = new (window as any).NDEFReader();
+      ndef = new NDEFReaderClass();
       ndef.scan().then(() => {
-        ndef.onreading = (event: any) => {
+        if (!ndef) return;
+        ndef.onreading = (event: NDEFReadingEvent) => {
           if (processingRef.current || matchedUserRef.current) return;
           const serialNumber: string = event.serialNumber;
           const matched = nfcLookup.current.get(serialNumber);
@@ -870,11 +878,18 @@ export default function SmartAttendanceTerminalPage() {
                   ) : isWebcamPlaying && (
                     <button
                       onClick={toggleFacingMode}
-                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-black/60 text-white/90 text-xs font-bold flex items-center gap-1.5 hover:bg-black/90 transition-all backdrop-blur-sm shadow border border-white/10"
+                      disabled={isSwitchingCamera}
+                      className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-black/60 text-white/90 text-xs font-bold flex items-center gap-1.5 hover:bg-black/90 active:scale-95 transition-all backdrop-blur-sm shadow border border-white/10 disabled:opacity-60"
                       title={facingMode === 'user' ? (t("back_cam") || "Back Cam 📷") : (t("front_cam") || "Front Cam 🤳")}
                     >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      <span className="hidden xs:inline sm:inline">{facingMode === 'user' ? (t("front_cam") || 'Front Cam 🤳') : (t("back_cam") || 'Back Cam 📷')}</span>
+                      {isSwitchingCamera ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                      <span>
+                        {facingMode === 'user' ? (t("front_cam") || 'Front 🤳') : (t("back_cam") || 'Back 📷')}
+                      </span>
                     </button>
                   )}
 
@@ -929,7 +944,7 @@ export default function SmartAttendanceTerminalPage() {
                             </div>
                             <Button
                               size="sm"
-                              onClick={() => startWebcam(3, facingMode)}
+                              onClick={() => startWebcam(facingMode)}
                               className="h-8 text-xs font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white gap-1.5 shadow"
                             >
                               <Camera className="w-3.5 h-3.5" /> {t("turn_on_camera") || "Turn On Camera"}

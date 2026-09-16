@@ -7,7 +7,8 @@ import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatDate, translateClassName, toLocaleNumber, cn } from "@/lib/utils";
+import { formatDate, translateClassName, translateSectionName, toLocaleNumber, cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     Table,
     TableBody,
@@ -353,8 +354,24 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                 { label: member?.member_type === "student" ? t("admission_no") : t("staff_id"), value: member?.user?.admission_no || member?.user?.staff_id || "-" },
                                 { label: t("gender"), value: member?.user?.gender ? (t(member.user.gender.toLowerCase()) || member.user.gender) : "-" },
                                 { label: t("member_type"), value: member?.member_type ? (t(member.member_type.toLowerCase()) || member.member_type) : "-" },
-                                { label: t("mobile_number"), value: member?.user?.phone || "-", color: "text-indigo-400" },
-                                { label: t("class_section"), value: member?.member_type === "staff" ? (t("none") || "None") : ((member?.user?.schoolClass || member?.user?.school_class) ? `${translateClassName((member?.user?.schoolClass || member?.user?.school_class)?.name, language?.short_code)} (${member.user.section?.name || ""})` : "-"), color: "text-indigo-400" },
+                                {
+                                    label: t("mobile_number"),
+                                    value: member?.user?.phone ? (
+                                        <span dir="ltr" className="inline-block font-mono">
+                                            {toLocaleNumber(member.user.phone, language?.short_code)}
+                                        </span>
+                                    ) : "-",
+                                    color: "text-indigo-400"
+                                },
+                                {
+                                    label: t("class_section"),
+                                    value: member?.member_type === "staff"
+                                        ? (t("none") || "None")
+                                        : ((member?.user?.schoolClass || member?.user?.school_class)
+                                            ? `${translateClassName((member?.user?.schoolClass || member?.user?.school_class)?.name, language?.short_code)}${member.user.section?.name ? ` (${translateSectionName(member.user.section.name, language?.short_code)})` : ""}`
+                                            : "-"),
+                                    color: "text-indigo-400"
+                                },
                             ].map((item, i) => (
                                 <div key={i} className="flex justify-between items-center py-2.5 px-4">
                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">{item.label}</span>
@@ -419,12 +436,10 @@ export default function MemberIssuePage({ params }: { params: Promise<{ id: stri
                                     <Label className="text-[11px] font-bold text-gray-400 uppercase tracking-tight">
                                         {t("due_return_date")} <span className="text-red-500 font-bold">*</span>
                                     </Label>
-                                    <Input
-                                        type="date"
+                                    <DatePicker
                                         value={dueDate}
-                                        onChange={(e) => setDueDate(e.target.value)}
-                                        min={today}
-                                        className="h-9 border-gray-200 text-xs focus-visible:ring-indigo-500 rounded shadow-none"
+                                        onChange={(dateStr) => setDueDate(dateStr)}
+                                        className="h-9 border-gray-200 text-xs rounded shadow-none"
                                     />
                                 </div>
                             </div>

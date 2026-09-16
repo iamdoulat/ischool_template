@@ -53,7 +53,8 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useImageUrl } from "@/lib/image-url";
-import { cn, toLocaleNumber, translateClassName } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface LibraryMember {
     id: number;
@@ -152,16 +153,16 @@ function getMemberDisplayName(m: any): string {
     );
 }
 
-function getMemberCardInfo(m: any): string {
+function getMemberCardInfo(m: any, t: (k: string) => string, langCode: string = "en"): string {
     if (!m) return "";
     const memberCode = m.member_id || m.library_member?.member_id || m.user?.admission_no || m.user?.staff_id || m.admission_no || m.staff_id || "";
     const cardNo = m.library_card_no || m.library_member?.library_card_no || "";
     const rawType = m.member_type || m.type || (m.admission_no || m.user?.admission_no ? "student" : "member");
-    const typeStr = String(rawType).toUpperCase();
+    const translatedType = t(String(rawType).toLowerCase()) || String(rawType);
 
-    const parts = [typeStr];
+    const parts = [translatedType];
     if (memberCode) parts.push(`ID: ${memberCode}`);
-    if (cardNo) parts.push(`Card: ${cardNo}`);
+    if (cardNo) parts.push(`${t("card") || "Card"}: ${toLocaleNumber(cardNo, langCode)}`);
     return parts.join(" | ");
 }
 
@@ -469,7 +470,7 @@ export default function LibraryMembersPage() {
                     {/* Members Table */}
                     <div className="rounded-xl border border-gray-200/80 overflow-x-auto custom-scrollbar shadow-xs bg-white">
                         <Table className="min-w-[900px]">
-                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] uppercase tracking-wider border-b border-gray-200/80">
+                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] tracking-wider border-b border-gray-200/80">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
                                     <TableHead className="font-bold text-gray-700 py-3.5 px-4"><div className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-indigo-500" /> {t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-slate-500" /> {t("library_card_no")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
@@ -570,9 +571,9 @@ export default function LibraryMembersPage() {
                                             {/* Phone */}
                                             <TableCell className="py-3 px-3 text-gray-600 font-medium">
                                                 {member.user?.phone ? (
-                                                    <span className="inline-flex items-center gap-1.5 text-gray-700">
-                                                        <Phone className="h-3 w-3 text-emerald-500" />
-                                                        {member.user.phone}
+                                                    <span className="inline-flex items-center gap-1.5 text-gray-700 font-mono text-[11px]" dir="ltr">
+                                                        <Phone className="h-3 w-3 text-emerald-500 shrink-0" />
+                                                        {toLocaleNumber(member.user.phone, language?.short_code)}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-300">—</span>
@@ -682,7 +683,7 @@ export default function LibraryMembersPage() {
                             {/* Class & Section Filter */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("class")}</Label>
+                                    <Label className="text-[11px] font-bold text-gray-500 tracking-tight">{t("class")}</Label>
                                     <Select value={selectedClass} onValueChange={handleClassChange}>
                                         <SelectTrigger className="h-9 border-gray-200 text-xs rounded">
                                             <SelectValue placeholder={t("all_classes")} />
@@ -699,7 +700,7 @@ export default function LibraryMembersPage() {
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("section")}</Label>
+                                    <Label className="text-[11px] font-bold text-gray-500 tracking-tight">{t("section")}</Label>
                                     <Select value={selectedSection} onValueChange={handleSectionChange} disabled={selectedClass === "all"}>
                                         <SelectTrigger className="h-9 border-gray-200 text-xs rounded">
                                             <SelectValue placeholder={t("all_sections")} />
@@ -708,7 +709,7 @@ export default function LibraryMembersPage() {
                                             <SelectItem value="all">{t("all_sections")}</SelectItem>
                                             {sections.map((sec) => (
                                                 <SelectItem key={sec.id} value={String(sec.id)}>
-                                                    {sec.name}
+                                                    {translateSectionName(sec.name, language?.short_code) || sec.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -718,7 +719,7 @@ export default function LibraryMembersPage() {
 
                             {/* Member Selection */}
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">
+                                <Label className="text-[11px] font-bold text-gray-500 tracking-tight">
                                     {t("select_member_student")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
@@ -732,7 +733,7 @@ export default function LibraryMembersPage() {
                                             return (
                                                 <SelectItem key={m.id || idx} value={memValue}>
                                                     <span className="font-semibold text-gray-800">{getMemberDisplayName(m)}</span>
-                                                    <span className="text-[10px] text-gray-500 ml-1.5">({getMemberCardInfo(m)})</span>
+                                                    <span className="text-[10px] text-gray-500 ml-1.5">({getMemberCardInfo(m, t, language?.short_code)})</span>
                                                 </SelectItem>
                                             );
                                         })}
@@ -742,7 +743,7 @@ export default function LibraryMembersPage() {
 
                             {/* Book Selection */}
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">
+                                <Label className="text-[11px] font-bold text-gray-500 tracking-tight">
                                     {t("select_book")} <span className="text-red-500">*</span>
                                 </Label>
                                 <Select value={selectedBookId} onValueChange={setSelectedBookId}>
@@ -766,24 +767,21 @@ export default function LibraryMembersPage() {
                             {/* Dates */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("issue_date")}</Label>
-                                    <Input
-                                        type="date"
+                                    <Label className="text-[11px] font-bold text-gray-500 tracking-tight">{t("issue_date")}</Label>
+                                    <DatePicker
                                         value={issueDate}
-                                        onChange={(e) => setIssueDate(e.target.value)}
+                                        onChange={(dateStr) => setIssueDate(dateStr)}
                                         className="h-9 border-gray-200 text-xs rounded"
                                     />
                                 </div>
 
                                 <div className="space-y-1.5">
-                                    <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">
+                                    <Label className="text-[11px] font-bold text-gray-500 tracking-tight">
                                         {t("due_return_date")} <span className="text-red-500">*</span>
                                     </Label>
-                                    <Input
-                                        type="date"
+                                    <DatePicker
                                         value={dueDate}
-                                        min={issueDate}
-                                        onChange={(e) => setDueDate(e.target.value)}
+                                        onChange={(dateStr) => setDueDate(dateStr)}
                                         className="h-9 border-gray-200 text-xs rounded"
                                     />
                                 </div>

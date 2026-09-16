@@ -28,6 +28,7 @@ import { cn, formatDate, toLocaleNumber, translateRoleName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
     Dialog,
     DialogContent,
@@ -134,7 +135,7 @@ export default function NoticeBoardPage() {
 
     const formatDisplayDate = (dateVal?: string | Date | null) => {
         if (!dateVal) return "-";
-        return formatDate(dateVal, "dd/MM/yyyy");
+        return toLocaleNumber(formatDate(dateVal, "dd/MM/yyyy"), language?.short_code);
     };
 
     const fetchNotices = useCallback(async (page: number = 1) => {
@@ -391,24 +392,22 @@ export default function NoticeBoardPage() {
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
                                         {t("notice_date")} <span className="text-destructive font-black">*</span>
                                     </label>
-                                    <Input
-                                        type="date"
-                                        required
-                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    <DatePicker
                                         value={formData.notice_date}
-                                        onChange={(e) => setFormData({ ...formData, notice_date: e.target.value })}
+                                        onChange={(date) => setFormData({ ...formData, notice_date: date })}
+                                        placeholder="DD/MM/YYYY"
+                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium text-xs"
                                     />
                                 </div>
                                 <div className="space-y-2 group">
                                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest ml-1 group-focus-within:text-primary transition-colors">
                                         {t("publish_date")} <span className="text-destructive font-black">*</span>
                                     </label>
-                                    <Input
-                                        type="date"
-                                        required
-                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium"
+                                    <DatePicker
                                         value={formData.publish_date}
-                                        onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
+                                        onChange={(date) => setFormData({ ...formData, publish_date: date })}
+                                        placeholder="DD/MM/YYYY"
+                                        className="h-11 rounded-lg bg-muted/30 border-muted/50 focus-visible:bg-card focus-visible:ring-primary/20 transition-all font-medium text-xs"
                                     />
                                 </div>
                             </div>

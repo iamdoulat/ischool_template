@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useTranslation } from "@/hooks/use-translation";
-import { formatDate, toLocaleNumber, cn } from "@/lib/utils";
+import { formatDate, toLocaleNumber, translateClassName, translateSubjectName, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,6 +136,8 @@ export default function DailyAssignmentPage() {
 
     const getLocalizedClassName = (name?: string) => {
         if (!name) return "";
+        const translated = translateClassName(name, shortCode);
+        if (translated && translated !== name) return translated;
         const num = name.replace(/[^0-9]/g, "");
         if (num) {
             const locNum = toLocaleNumber(num, shortCode);
@@ -152,14 +154,17 @@ export default function DailyAssignmentPage() {
     const getLocalizedSectionName = (name?: string) => {
         if (!name) return "";
         const secLabel = shortCode === "bn" ? "শাখা" : shortCode === "hi" ? "अनुभाग" : shortCode === "ar" ? "قسم" : "Section";
-        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
+        const trimmed = name.trim();
+        const key = trimmed.toLowerCase().replace(/[\s-]+/g, "_");
         const trans = t(key);
-        if (trans !== key) return `${secLabel} ${trans}`;
-        return `${secLabel} ${name}`;
+        const sectionVal = trans !== key ? trans : toLocaleNumber(trimmed, shortCode);
+        return `${secLabel} ${sectionVal}`;
     };
 
     const getLocalizedSubjectName = (name?: string) => {
         if (!name) return "";
+        const translated = translateSubjectName(name, shortCode);
+        if (translated && translated !== name) return translated;
         const key = name.toLowerCase().replace(/[\s-]+/g, "_");
         const trans = t(key);
         return trans !== key ? trans : name;
@@ -167,9 +172,27 @@ export default function DailyAssignmentPage() {
 
     const getLocalizedSubjectGroupName = (name?: string) => {
         if (!name) return "";
+        // Extract any class number in group name, e.g. "Class 1 Subject" -> "الصف ١ مجموعة المواد"
+        const lower = name.toLowerCase();
+        const classMatch = lower.match(/class\s*(\d+)\s*subject/i);
+        if (classMatch) {
+            const clsNum = toLocaleNumber(classMatch[1], shortCode);
+            if (shortCode === "ar") return `مجموعة مواد الصف ${clsNum}`;
+            if (shortCode === "bn") return `ক্লাস ${clsNum} বিষয়সমূহ`;
+            if (shortCode === "hi") return `कक्षा ${clsNum} विषय समूह`;
+            return `Class ${clsNum} Subject`;
+        }
         const key = name.toLowerCase().replace(/[\s-]+/g, "_");
         const trans = t(key);
         return trans !== key ? trans : name;
+    };
+
+    const getLocalizedRecordsLabel = (count: number) => {
+        const locNum = toLocaleNumber(count, shortCode);
+        if (shortCode === "ar") return `${locNum} سجلات`;
+        if (shortCode === "bn") return `${locNum} টি রেকর্ড`;
+        if (shortCode === "hi") return `${locNum} रिकॉर्ड`;
+        return `${locNum} ${t("records") || "records"}`;
     };
 
     const [searchTerm, setSearchTerm] = useState("");
@@ -519,7 +542,7 @@ export default function DailyAssignmentPage() {
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("daily_assignment")}</CardTitle>
                             <p className="text-[11px] text-gray-500 mt-1">
-                                {toLocaleNumber(pagination?.total ?? assignments.length, shortCode)} {t("records")}
+                                {getLocalizedRecordsLabel(pagination?.total ?? assignments.length)}
                             </p>
                         </div>
                     </div>
@@ -608,7 +631,7 @@ export default function DailyAssignmentPage() {
                                             <TableCell className="py-3 px-3.5 text-gray-600 font-medium">{getLocalizedSectionName(a.section?.name)}</TableCell>
                                             <TableCell className="py-3 px-3.5 text-gray-600 font-medium">{getLocalizedSubjectName(a.subject?.name)}</TableCell>
                                             <TableCell className="py-3 px-3.5 text-gray-800 font-medium max-w-[200px] truncate">{a.title || "—"}</TableCell>
-                                            <TableCell className="py-3 px-3.5 text-gray-600 font-medium">{a.submission_date ? formatDate(a.submission_date) : "—"}</TableCell>
+                                            <TableCell className="py-3 px-3.5 text-gray-600 font-medium">{a.submission_date ? toLocaleNumber(formatDate(a.submission_date), shortCode) : "—"}</TableCell>
                                             <TableCell className="py-3 px-3.5">
                                                 {(() => {
                                                     const isEvaluated = a.status === "evaluated";
@@ -633,19 +656,19 @@ export default function DailyAssignmentPage() {
                                             <TableCell className="py-3 px-3.5 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <Button size="icon" variant="ghost" onClick={() => { setViewAssignment(a); setIsViewOpen(true); }}
-                                                        className="h-7 w-7 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full shadow-sm cursor-pointer" title={t("view")}>
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer" title={t("view")}>
                                                         <Eye className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" onClick={() => openEvaluate(a)}
-                                                        className="h-7 w-7 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-sm cursor-pointer" title={t("evaluate")}>
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer" title={t("evaluate")}>
                                                         <Star className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" onClick={() => openEdit(a)}
-                                                        className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-sm cursor-pointer" title={t("edit")}>
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer" title={t("edit")}>
                                                         <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
                                                     <Button size="icon" variant="ghost" onClick={() => { setDeleteId(a.id); setIsDeleteOpen(true); }}
-                                                        className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-sm cursor-pointer" title={t("delete")}>
+                                                        className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer" title={t("delete")}>
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>
@@ -910,11 +933,11 @@ export default function DailyAssignmentPage() {
                                 </div>
                                 <div>
                                     <span className="font-bold text-gray-500 uppercase block mb-1">{t("submission_date")}</span>
-                                    <span className="text-gray-900 font-medium">{viewAssignment.submission_date ? formatDate(viewAssignment.submission_date) : "—"}</span>
+                                    <span className="text-gray-900 font-medium">{viewAssignment.submission_date ? toLocaleNumber(formatDate(viewAssignment.submission_date), shortCode) : "—"}</span>
                                 </div>
                                 <div>
                                     <span className="font-bold text-gray-500 uppercase block mb-1">{t("evaluation_date")}</span>
-                                    <span className="text-gray-900 font-medium">{viewAssignment.evaluation_date ? formatDate(viewAssignment.evaluation_date) : "—"}</span>
+                                    <span className="text-gray-900 font-medium">{viewAssignment.evaluation_date ? toLocaleNumber(formatDate(viewAssignment.evaluation_date), shortCode) : "—"}</span>
                                 </div>
                                 <div>
                                     <span className="font-bold text-gray-500 uppercase block mb-1">{t("evaluated_by")}</span>

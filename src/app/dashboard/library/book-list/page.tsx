@@ -5,7 +5,7 @@ import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -16,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import { formatDate, toLocaleNumber, cn } from "@/lib/utils";
+import { formatDate, toLocaleNumber, translateSubjectName, cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -431,7 +431,7 @@ export default function BookListPage() {
                                         <TableCell className="py-3 px-3">
                                             {book.subject ? (
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-200/60">
-                                                    {book.subject}
+                                                    {translateSubjectName(book.subject, language?.short_code) || book.subject}
                                                 </span>
                                             ) : (
                                                 <span className="text-gray-300">—</span>
@@ -476,7 +476,7 @@ export default function BookListPage() {
 
                                         {/* Post Date */}
                                         <TableCell className="py-3 px-3 text-gray-500 text-[11px]">
-                                            {book.post_date ? formatDate(book.post_date) : <span className="text-gray-300">—</span>}
+                                            {book.post_date ? toLocaleNumber(formatDate(book.post_date, "dd/MM/yyyy"), language?.short_code) : <span className="text-gray-300">—</span>}
                                         </TableCell>
 
                                         {/* Action Buttons */}

@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, toLocaleNumber, translateLeaveTypeName } from "@/lib/utils";
+import { cn, toLocaleNumber, translateLeaveTypeName, translateHalfDay, translateLeaveStatus } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -311,7 +311,7 @@ export default function ApproveLeaveRequestPage() {
                                     <TableRow key={req.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
                                         <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{req.staff}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{translateLeaveTypeName(req.leaveType, shortCode)}</TableCell>
-                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.halfDay}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{translateHalfDay(req.halfDay, shortCode) || "-"}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveDate}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{toLocaleNumber(req.days, shortCode)}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.applyDate}</TableCell>
@@ -322,7 +322,7 @@ export default function ApproveLeaveRequestPage() {
                                                 req.status === "Approved" && "bg-green-600 text-white",
                                                 req.status === "Disapproved" && "bg-red-600 text-white"
                                             )}>
-                                                {req.status === "Pending" ? t("pending") : req.status === "Approved" ? t("approved") : t("disapproved")}
+                                                {translateLeaveStatus(req.status, shortCode)}
                                             </span>
                                         </TableCell>
                                         <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
@@ -420,7 +420,7 @@ export default function ApproveLeaveRequestPage() {
                                         selectedRequest.status === "Approved" && "bg-green-600 text-white",
                                         selectedRequest.status === "Disapproved" && "bg-red-600 text-white"
                                     )}>
-                                        {selectedRequest.status === "Pending" ? t("pending") : selectedRequest.status === "Approved" ? t("approved") : t("disapproved")}
+                                        {translateLeaveStatus(selectedRequest.status, shortCode)}
                                     </span>
                                 </div>
                             </div>

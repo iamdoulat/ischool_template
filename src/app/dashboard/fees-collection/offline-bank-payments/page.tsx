@@ -27,7 +27,7 @@ import {
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn, formatDate, toLocaleNumber } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import api from "@/lib/api";
@@ -130,26 +130,12 @@ export default function OfflineBankPaymentsPage() {
 
     const getLocalizedClassName = (name?: string) => {
         if (!name || name === "-") return "-";
-        const num = name.replace(/[^0-9]/g, "");
-        if (num) {
-            const locNum = toLocaleNumber(num, shortCode);
-            if (shortCode === "bn") return `ক্লাস ${locNum}`;
-            if (shortCode === "hi") return `कक्षा ${locNum}`;
-            if (shortCode === "ar") return `الصف ${locNum}`;
-            return `Class ${locNum}`;
-        }
-        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
-        const trans = t(key);
-        return trans !== key ? trans : name;
+        return translateClassName(name, shortCode);
     };
 
     const getLocalizedSectionName = (name?: string) => {
         if (!name || name === "-") return "-";
-        const secLabel = shortCode === "bn" ? "শাখা" : shortCode === "hi" ? "अनुभाग" : shortCode === "ar" ? "قسم" : "Section";
-        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
-        const trans = t(key);
-        if (trans !== key) return `${secLabel} ${trans}`;
-        return `${secLabel} ${name}`;
+        return translateSectionName(name, shortCode);
     };
 
     const [invoiceData, setInvoiceData] = useState<{
@@ -500,7 +486,7 @@ export default function OfflineBankPaymentsPage() {
                             {toLocaleNumber(stats.totalCount, shortCode)}
                         </div>
                         <p className="text-xs text-white/80 font-semibold mt-1.5 flex items-center gap-1">
-                            <span>{formatCurrency(stats.totalAmount)}</span>
+                            <span>{toLocaleNumber(formatCurrency(stats.totalAmount), shortCode)}</span>
                             <span>{t("total_x", { amount: "" })?.replace(":", "")}</span>
                         </p>
                     </div>
@@ -531,7 +517,7 @@ export default function OfflineBankPaymentsPage() {
                             {toLocaleNumber(stats.pendingCount, shortCode)}
                         </div>
                         <p className="text-xs text-white/85 font-semibold mt-1.5 flex items-center gap-1">
-                            <span>{formatCurrency(stats.pendingAmount)}</span>
+                            <span>{toLocaleNumber(formatCurrency(stats.pendingAmount), shortCode)}</span>
                             <span>{t("pending")}</span>
                         </p>
                     </div>
@@ -561,7 +547,7 @@ export default function OfflineBankPaymentsPage() {
                             {toLocaleNumber(stats.approvedCount, shortCode)}
                         </div>
                         <p className="text-xs text-white/85 font-semibold mt-1.5 flex items-center gap-1">
-                            <span>{formatCurrency(stats.approvedAmount)}</span>
+                            <span>{toLocaleNumber(formatCurrency(stats.approvedAmount), shortCode)}</span>
                             <span>{t("total_collected")}</span>
                         </p>
                     </div>
@@ -683,9 +669,9 @@ export default function OfflineBankPaymentsPage() {
                                     }}
                                     className="h-9 px-2.5 rounded-lg border border-border/80 bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
                                 >
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                    <option value="100">100</option>
+                                    <option value="25">{toLocaleNumber(25, shortCode)}</option>
+                                    <option value="50">{toLocaleNumber(50, shortCode)}</option>
+                                    <option value="100">{toLocaleNumber(100, shortCode)}</option>
                                     <option value="All">{t("all")}</option>
                                 </select>
                             </div>
@@ -855,7 +841,7 @@ export default function OfflineBankPaymentsPage() {
                                                                 </span>
                                                                 <span>•</span>
                                                                 <span>
-                                                                    {payment.payment_date ? formatDate(payment.payment_date) : 'N/A'}
+                                                                    {payment.payment_date ? toLocaleNumber(formatDate(payment.payment_date), shortCode) : 'N/A'}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -863,7 +849,7 @@ export default function OfflineBankPaymentsPage() {
 
                                                     {/* Amount */}
                                                     <TableCell className="py-3.5 text-right font-black text-sm text-foreground">
-                                                        {formatCurrency(payment.amount || 0)}
+                                                        {toLocaleNumber(formatCurrency(payment.amount || 0), shortCode)}
                                                     </TableCell>
 
                                                     {/* Status Badge */}
@@ -976,7 +962,7 @@ export default function OfflineBankPaymentsPage() {
                             </div>
                             <div className="flex flex-col items-end shrink-0">
                                 <span className="text-xl sm:text-2xl font-black text-white leading-none">
-                                    {formatCurrency(selectedPayment?.amount || 0)}
+                                    {toLocaleNumber(formatCurrency(selectedPayment?.amount || 0), shortCode)}
                                 </span>
                                 <div className="mt-1.5">
                                     {getStatusBadge(selectedPayment?.status || '')}
@@ -1092,7 +1078,7 @@ export default function OfflineBankPaymentsPage() {
                                     <div>
                                         <span className="text-[11px] text-muted-foreground block">{t("payment_date")}</span>
                                         <p className="font-semibold text-foreground">
-                                            {selectedPayment?.payment_date ? formatDate(selectedPayment.payment_date) : 'N/A'}
+                                            {selectedPayment?.payment_date ? toLocaleNumber(formatDate(selectedPayment.payment_date), shortCode) : 'N/A'}
                                         </p>
                                     </div>
                                 </div>
@@ -1151,7 +1137,7 @@ export default function OfflineBankPaymentsPage() {
                                     <strong className="font-bold">{t("payment_approved_status_desc")}</strong>
                                     {selectedPayment?.status_date && (
                                         <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
-                                            {formatDate(selectedPayment.status_date)}
+                                            {toLocaleNumber(formatDate(selectedPayment.status_date), shortCode)}
                                         </span>
                                     )}
                                 </div>
@@ -1168,7 +1154,7 @@ export default function OfflineBankPaymentsPage() {
                                     </p>
                                     {selectedPayment?.status_date && (
                                         <span className="block text-[10px] text-rose-600 dark:text-rose-400">
-                                            {formatDate(selectedPayment.status_date)}
+                                            {toLocaleNumber(formatDate(selectedPayment.status_date), shortCode)}
                                         </span>
                                     )}
                                 </div>

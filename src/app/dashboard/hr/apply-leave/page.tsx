@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn, toLocaleNumber, translateLeaveTypeName } from "@/lib/utils";
+import { cn, toLocaleNumber, translateLeaveTypeName, translateHalfDay, translateLeaveStatus, translateRoleName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -251,11 +251,11 @@ export default function ApplyLeavePage() {
     // Export Functions
     const exportToExcel = () => {
         const ws = XLSX.utils.json_to_sheet(requests.map(r => ({
-            "Staff": r.staff,
-            "Type": r.leaveType,
-            "Dates": r.leaveDate,
-            "Days": r.days,
-            "Status": r.status
+            [t("staff")]: r.staff,
+            [t("leave_type")]: translateLeaveTypeName(r.leaveType, shortCode),
+            [t("leave_dates")]: r.leaveDate,
+            [t("days")]: toLocaleNumber(r.days, shortCode),
+            [t("status")]: translateLeaveStatus(r.status, shortCode)
         })));
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, t("leave_requests"));
@@ -267,44 +267,48 @@ export default function ApplyLeavePage() {
         doc.text(t("leave_request_list"), 14, 15);
         autoTable(doc, {
             head: [[t("staff"), t("leave_type"), t("leave_dates"), t("days"), t("status")]],
-            body: requests.map(r => [r.staff, r.leaveType, r.leaveDate, r.days, r.status]),
+            body: requests.map(r => [
+                r.staff,
+                translateLeaveTypeName(r.leaveType, shortCode),
+                r.leaveDate,
+                toLocaleNumber(r.days, shortCode),
+                translateLeaveStatus(r.status, shortCode)
+            ]),
             startY: 20,
         });
         doc.save("leave_requests.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = requests.map(r => `${r.staff} - ${r.leaveType} (${r.leaveDate}): ${r.status}`).join('\n');
+        const text = requests.map(r => `${r.staff} - ${translateLeaveTypeName(r.leaveType, shortCode)} (${r.leaveDate}): ${translateLeaveStatus(r.status, shortCode)}`).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("data_copied_to_clipboard");
     };
 
     return (
         <div className="p-4 space-y-4 bg-gray-50/10 min-h-screen font-sans">
-            {/* ── Page Header Card with Gradient Colors ──────────────────────── */}
-            <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] overflow-hidden py-0 gap-0">
-                <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 space-y-0 px-4 py-2.5 bg-transparent border-0">
-                    <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                            <CalendarPlus className="h-4.5 w-4.5" />
-                        </span>
-                        <div>
-                            <CardTitle className="text-sm font-bold tracking-tight text-slate-800 leading-none">
-                                {t("apply_leave")}
-                            </CardTitle>
-                            <p className="text-[10.5px] text-gray-500 mt-0.5">
-                                {t("apply_leave_description")}
-                            </p>
-                        </div>
+            {/* ── Page Header Banner (Mandatory Rule) ──────────────────────── */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] border border-gray-100 rounded-lg shadow-sm overflow-hidden px-5 py-4">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                        <CalendarPlus className="h-5 w-5" />
+                    </span>
+                    <div>
+                        <h1 className="text-sm font-bold tracking-tight text-slate-800 leading-none">
+                            {t("apply_leave")}
+                        </h1>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                            {t("apply_leave_description")}
+                        </p>
                     </div>
-                    <Button
-                        onClick={() => setIsAddOpen(true)}
-                        className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white gap-2 h-8 px-5 text-[10.5px] font-bold uppercase rounded-full shadow-md active:scale-95 transition-all cursor-pointer border-0"
-                    >
-                        <Plus className="h-3.5 w-3.5" /> {t("apply_leave")}
-                    </Button>
-                </CardHeader>
-            </Card>
+                </div>
+                <Button
+                    onClick={() => setIsAddOpen(true)}
+                    className="bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white gap-2 h-8 px-5 text-[10.5px] font-bold uppercase rounded-full shadow-md active:scale-95 transition-all cursor-pointer border-0"
+                >
+                    <Plus className="h-3.5 w-3.5" /> {t("apply_leave")}
+                </Button>
+            </div>
 
             <Card className="border-[0.5px] border-gray-300 shadow-[0_4px_24px_rgb(0,0,0,0.08)] bg-card/50 backdrop-blur-sm overflow-hidden pt-0">
                 <CardHeader className="flex flex-row items-center gap-2.5 space-y-0 px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD]">
@@ -354,16 +358,16 @@ export default function ApplyLeavePage() {
                                 </Select>
                             </div>
                             <div className="flex items-center gap-1 text-gray-400">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
-                                    <Copy className="h-3.5 w-3.5" />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("copy")} onClick={copyToClipboard}>
+                                <Copy className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("excel")} onClick={exportToExcel}>
                                     <FileSpreadsheet className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("pdf")} onClick={exportToPDF}>
                                     <FileText className="h-3.5 w-3.5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("columns")}>
                                     <Columns className="h-3.5 w-3.5" />
                                 </Button>
                             </div>
@@ -388,7 +392,7 @@ export default function ApplyLeavePage() {
                                     <TableRow key={req.id} className="border-b border-gray-100 hover:bg-indigo-50/40 hover:shadow-xs transition-all duration-200 text-[11px] bg-white">
                                         <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{req.staff}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{translateLeaveTypeName(req.leaveType, shortCode)}</TableCell>
-                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.halfDay}</TableCell>
+                                        <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{translateHalfDay(req.halfDay, shortCode) || "-"}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.leaveDate}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{toLocaleNumber(req.days, shortCode)}</TableCell>
                                         <TableCell className="py-3.5 px-4 text-gray-600 whitespace-nowrap">{req.applyDate}</TableCell>
@@ -399,7 +403,7 @@ export default function ApplyLeavePage() {
                                                 req.status === "Approved" && "bg-green-600 text-white",
                                                 req.status === "Disapproved" && "bg-red-600 text-white"
                                             )}>
-                                                {req.status === "Pending" ? t("pending") : req.status === "Approved" ? t("approved") : t("disapproved")}
+                                                {translateLeaveStatus(req.status, shortCode)}
                                             </span>
                                         </TableCell>
                                         <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
@@ -471,7 +475,7 @@ export default function ApplyLeavePage() {
                                     <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg shadow-none focus:ring-1 focus:ring-indigo-500"><SelectValue placeholder={t("select")} /></SelectTrigger>
                                     <SelectContent>
                                         {roles.map(r => (
-                                            <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>
+                                            <SelectItem key={r.name} value={r.name}>{translateRoleName(r.name, shortCode)}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -483,7 +487,7 @@ export default function ApplyLeavePage() {
                                     <SelectContent>
                                         {staffList.filter(s => addForm.role === "Select" || s.role === addForm.role).map(s => (
                                             <SelectItem key={s.id} value={String(s.user_id || s.id)}>
-                                                {s.name} {s.staff_id ? `(${s.staff_id})` : ''}
+                                                {s.name} {s.staff_id ? `(${toLocaleNumber(s.staff_id, shortCode)})` : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -551,7 +555,7 @@ export default function ApplyLeavePage() {
                                     {["Pending", "Approved", "Disapproved"].map(st => (
                                         <label key={st} className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer group">
                                             <input type="radio" name="status" checked={addForm.status === st} onChange={() => setAddForm({ ...addForm, status: st as "Pending" | "Approved" | "Disapproved" })} className="h-4 w-4 accent-indigo-600" />
-                                            <span className="group-hover:text-indigo-600 transition-colors">{st === "Pending" ? t("pending") : st === "Approved" ? t("approved") : t("disapproved")}</span>
+                                            <span className="group-hover:text-indigo-600 transition-colors">{translateLeaveStatus(st, shortCode)}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -599,7 +603,7 @@ export default function ApplyLeavePage() {
                                 </div>
                                 <div className="space-y-1">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("half_day")}</span>
-                                    <span className="text-gray-800 font-medium">{selectedRequest.halfDay || t("no")}</span>
+                                    <span className="text-gray-800 font-medium">{translateHalfDay(selectedRequest.halfDay, shortCode) || t("no")}</span>
                                 </div>
                                 <div className="col-span-2 space-y-1.5">
                                     <span className="font-bold text-gray-400 block text-[9px] uppercase tracking-widest">{t("status")}</span>
@@ -609,7 +613,7 @@ export default function ApplyLeavePage() {
                                         selectedRequest.status === "Approved" && "bg-green-600 text-white",
                                         selectedRequest.status === "Disapproved" && "bg-red-600 text-white"
                                     )}>
-                                        {selectedRequest.status === "Pending" ? t("pending") : selectedRequest.status === "Approved" ? t("approved") : t("disapproved")}
+                                        {translateLeaveStatus(selectedRequest.status, shortCode)}
                                     </span>
                                 </div>
                             </div>

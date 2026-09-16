@@ -14,7 +14,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { formatDate, translateClassName, toLocaleNumber, cn } from "@/lib/utils";
+import { formatDate, translateClassName, translateSectionName, toLocaleNumber, cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
     Table,
@@ -342,7 +342,7 @@ export default function AddStudentLibraryPage() {
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue placeholder={t("select")} />
+                                    <SelectValue placeholder={t("select_class") || t("select_option")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {classes.map((cls) => (
@@ -356,11 +356,11 @@ export default function AddStudentLibraryPage() {
                             <Label className="text-xs font-semibold text-gray-600">{t("section")}</Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                                 <SelectTrigger className="h-9 text-xs">
-                                    <SelectValue placeholder={t("select")} />
+                                    <SelectValue placeholder={t("select_section") || t("select_option")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {sections.map((sec) => (
-                                        <SelectItem key={sec.id} value={String(sec.id)}>{sec.name}</SelectItem>
+                                        <SelectItem key={sec.id} value={String(sec.id)}>{translateSectionName(sec.name, language?.short_code) || sec.name}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -437,7 +437,7 @@ export default function AddStudentLibraryPage() {
 
                     <div className="rounded-xl border border-gray-200/80 overflow-x-auto custom-scrollbar shadow-xs bg-white">
                         <Table className="min-w-[1200px]">
-                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] uppercase tracking-wider border-b border-gray-200/80">
+                            <TableHeader className="bg-gradient-to-r from-gray-50/90 via-slate-50/80 to-indigo-50/30 text-[11px] tracking-wider border-b border-gray-200/80">
                                 <TableRow className="hover:bg-transparent whitespace-nowrap">
                                     <TableHead className="font-bold text-gray-700 py-3.5 px-4"><div className="flex items-center gap-1.5"><BadgeCheck className="h-3.5 w-3.5 text-indigo-500" /> {t("member_id")} <ArrowUpDown className="h-2.5 w-2.5 opacity-30" /></div></TableHead>
                                     <TableHead className="font-bold text-gray-700 py-3.5 px-3"><div className="flex items-center gap-1.5"><CreditCard className="h-3.5 w-3.5 text-slate-500" /> {t("library_card_no")}</div></TableHead>
@@ -503,9 +503,13 @@ export default function AddStudentLibraryPage() {
 
                                             {/* Admission No */}
                                             <TableCell className="py-3 px-3">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-mono font-medium text-[11px]">
-                                                    {student.admission_no}
-                                                </span>
+                                                {student.admission_no ? (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-700 font-mono text-[11px]">
+                                                        {student.admission_no}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300">—</span>
+                                                )}
                                             </TableCell>
 
                                             {/* Student Name with Avatar */}
@@ -513,7 +517,7 @@ export default function AddStudentLibraryPage() {
                                                 <div className="flex items-center gap-2.5">
                                                     <Avatar className="h-8 w-8 rounded-full border border-gray-200 shadow-2xs shrink-0 overflow-hidden">
                                                         <AvatarImage
-                                                            src={getImageUrl(student.avatar || student.student_photo || student.photo || student.image || student.user?.avatar || student.user?.photo)}
+                                                            src={getImageUrl(student.student_photo || student.photo || student.image || student.user?.avatar || student.user?.student_photo || student.user?.photo || student.user?.image)}
                                                             alt={studentName}
                                                             className="object-cover h-full w-full"
                                                         />
@@ -521,7 +525,7 @@ export default function AddStudentLibraryPage() {
                                                             "text-white font-bold text-[11px] flex items-center justify-center h-full w-full",
                                                             isMember
                                                                 ? "bg-gradient-to-br from-emerald-500 to-teal-600"
-                                                                : "bg-gradient-to-br from-indigo-500 to-purple-600"
+                                                                : "bg-gradient-to-br from-purple-500 to-indigo-600"
                                                         )}>
                                                             {initials}
                                                         </AvatarFallback>
@@ -531,7 +535,7 @@ export default function AddStudentLibraryPage() {
                                                             {studentName}
                                                         </p>
                                                         {student.email && (
-                                                            <p className="text-[10px] text-gray-400 truncate max-w-[160px]">
+                                                            <p className="text-[10px] text-gray-400 truncate max-w-[180px]">
                                                                 {student.email}
                                                             </p>
                                                         )}
@@ -543,7 +547,7 @@ export default function AddStudentLibraryPage() {
                                             <TableCell className="py-3 px-3">
                                                 {student.school_class?.name ? (
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold text-[10px] border border-indigo-200/60">
-                                                        {translateClassName(student.school_class.name, language?.short_code)} {student.section?.name && `(${student.section.name})`}
+                                                        {translateClassName(student.school_class.name, language?.short_code)} {student.section?.name && `(${translateSectionName(student.section.name, language?.short_code) || student.section.name})`}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-300">—</span>
@@ -557,7 +561,7 @@ export default function AddStudentLibraryPage() {
 
                                             {/* DOB */}
                                             <TableCell className="py-3 px-3 text-gray-500 text-[11px]">
-                                                {student.dob ? formatDate(student.dob) : <span className="text-gray-300">—</span>}
+                                                {student.dob ? toLocaleNumber(formatDate(student.dob), language?.short_code) : <span className="text-gray-300">—</span>}
                                             </TableCell>
 
                                             {/* Gender */}
@@ -574,9 +578,9 @@ export default function AddStudentLibraryPage() {
                                             {/* Phone */}
                                             <TableCell className="py-3 px-3 text-gray-600 font-medium">
                                                 {student.phone ? (
-                                                    <span className="inline-flex items-center gap-1 text-gray-700">
-                                                        <Phone className="h-3 w-3 text-emerald-500" />
-                                                        {student.phone}
+                                                    <span className="inline-flex items-center gap-1 text-gray-700 font-mono text-[11px]" dir="ltr">
+                                                        <Phone className="h-3 w-3 text-emerald-500 shrink-0" />
+                                                        {toLocaleNumber(student.phone, language?.short_code)}
                                                     </span>
                                                 ) : (
                                                     <span className="text-gray-300">—</span>
@@ -624,6 +628,7 @@ export default function AddStudentLibraryPage() {
                         </Table>
                     </div>
 
+                    {/* Pagination */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500 font-medium pt-2">
                         <div>
                             {t("showing_x_to_y_of_z", {
@@ -678,12 +683,12 @@ export default function AddStudentLibraryPage() {
                     </DialogHeader>
                     <div className="grid gap-4 p-6 overflow-y-auto">
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("student_name")}</Label>
+                            <Label className="text-[11px] font-bold text-gray-500 tracking-tight">{t("student_name")}</Label>
                             <Input value={selectedStudent?.name || ""} disabled className="h-9 bg-gray-50 border-gray-200 text-xs shadow-none" />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">{t("library_card_no")}</Label>
+                                <Label className="text-[11px] font-bold text-gray-500 tracking-tight">{t("library_card_no")}</Label>
                                 <Input
                                     value={memberFormData.library_card_no}
                                     onChange={(e) => setMemberFormData({ ...memberFormData, library_card_no: e.target.value })}
@@ -692,7 +697,7 @@ export default function AddStudentLibraryPage() {
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <Label className="text-[11px] font-bold text-gray-500 uppercase tracking-tight">
+                                <Label className="text-[11px] font-bold text-gray-500 tracking-tight">
                                     {t("member_id")} <span className="text-red-500 font-bold">*</span>
                                 </Label>
                                 <Input
@@ -705,8 +710,8 @@ export default function AddStudentLibraryPage() {
                         </div>
                     </div>
                     <DialogFooter className="px-6 py-4 border-t border-gray-100 shrink-0 bg-gray-50/50 rounded-b-lg">
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] uppercase font-bold rounded-full" disabled={saving}>{t("cancel")}</Button>
-                        <Button onClick={isEditing ? updateMembership : saveMembership} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] uppercase font-bold shadow-lg active:scale-95 transition-all" disabled={saving}>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-9 text-[11px] font-bold rounded-full" disabled={saving}>{t("cancel")}</Button>
+                        <Button onClick={isEditing ? updateMembership : saveMembership} className="h-9 px-8 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-[11px] font-bold shadow-lg active:scale-95 transition-all" disabled={saving}>
                             {saving ? t("saving") : isEditing ? t("update_member") : t("add_member")}
                         </Button>
                     </DialogFooter>

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import jsQR from "jsqr";
 import * as faceapi from "face-api.js";
+import { acquireCameraStream, stopCameraStream } from "@/lib/camera";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
@@ -84,6 +85,16 @@ interface ScannedUser {
     avatar?: string;
     time: string;
     status?: string;
+}
+
+interface FaceUser {
+    id: number;
+    name: string;
+    role: string;
+    admission_no?: string;
+    staff_id?: string;
+    avatar?: string;
+    face_descriptor?: string | number[];
 }
 
 export default function QrCodeSettingPage() {
@@ -184,7 +195,10 @@ export default function QrCodeSettingPage() {
     const [modelsLoaded, setModelsLoaded] = useState(false);
     const [loadingModels, setLoadingModels] = useState(false);
     const [webcamActive, setWebcamActive] = useState(false);
+    const [isSwitchingTestingCam, setIsSwitchingTestingCam] = useState(false);
     const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+    const [faceUsers, setFaceUsers] = useState<FaceUser[]>([]);
+    const [labeledFaceDescriptors, setLabeledFaceDescriptors] = useState<faceapi.LabeledFaceDescriptors[]>([]);
     const [scanValue, setScanValue] = useState("");
     const [processing, setProcessing] = useState(false);
     const [scanCooldown, setScanCooldown] = useState(false);
@@ -195,6 +209,7 @@ export default function QrCodeSettingPage() {
     const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const faceBusyRef = useRef(false);
 
     // Live Clock synced with School Timezone
     useEffect(() => {
@@ -347,36 +362,24 @@ export default function QrCodeSettingPage() {
         setCameraTesting(true);
         setCameraError(null);
 
-        if (testingStream) {
-            testingStream.getTracks().forEach(track => track.stop());
-            setTestingStream(null);
-        }
-
         try {
-            let stream: MediaStream | null = null;
             const facing = type === 'secondary' ? 'user' : 'environment';
-
-            if (deviceId) {
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: { deviceId: { exact: deviceId } }
-                });
-            } else {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: { ideal: facing } }
-                    });
-                } catch {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                }
-            }
+            const stream = await acquireCameraStream({
+                targetFacing: facing,
+                deviceId: deviceId || undefined,
+                currentStream: testingStream,
+                videoElement: previewVideoRef.current,
+                cooldownMs: 200,
+            });
 
             setTestingStream(stream);
             await enumerateCameras();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Camera access error:", err);
-            const msg = err.name === "NotAllowedError"
+            const errObj = err as { name?: string; message?: string };
+            const msg = errObj?.name === "NotAllowedError"
                 ? "Camera permission was denied. Please allow camera permissions in browser settings."
-                : (err.message || "Could not access video feed from selected camera.");
+                : (errObj?.message || "Could not access video feed from selected camera.");
             setCameraError(msg);
             toast.error(msg);
         } finally {
@@ -410,13 +413,8 @@ export default function QrCodeSettingPage() {
     };
 
     const stopCameraTest = () => {
-        if (testingStream) {
-            testingStream.getTracks().forEach(track => track.stop());
-            setTestingStream(null);
-        }
-        if (previewVideoRef.current) {
-            previewVideoRef.current.srcObject = null;
-        }
+        stopCameraStream(testingStream, previewVideoRef.current);
+        setTestingStream(null);
         setCameraTestOpen(false);
         setCameraError(null);
     };
@@ -639,44 +637,34 @@ export default function QrCodeSettingPage() {
     };
 
     // ── Live Scanner / Testing Helper ─────────────────────────────
-    const startScannerWebcam = async (targetFacing = facingMode) => {
-        stopScannerWebcam();
+    const startScannerWebcam = useCallback(async (targetFacing = facingMode) => {
+        setIsSwitchingTestingCam(true);
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: targetFacing, width: { ideal: 1280 }, height: { ideal: 720 } }
+            const stream = await acquireCameraStream({
+                targetFacing,
+                videoElement: videoRef.current,
+                currentStream: videoRef.current?.srcObject as MediaStream | null,
+                cooldownMs: 200,
             });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-                videoRef.current.play().catch(() => {});
-            }
-            setWebcamActive(true);
-        } catch {
-            try {
-                const fbStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = fbStream;
-                    videoRef.current.play().catch(() => {});
-                }
+            if (stream && videoRef.current) {
                 setWebcamActive(true);
-            } catch {
-                setWebcamActive(false);
             }
+        } catch (err) {
+            console.error("Scanner webcam failed:", err);
+            setWebcamActive(false);
+        } finally {
+            setIsSwitchingTestingCam(false);
         }
-    };
+    }, [facingMode]);
 
-    const stopScannerWebcam = () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(t => t.stop());
-            videoRef.current.srcObject = null;
-        }
+    const stopScannerWebcam = useCallback(() => {
+        stopCameraStream(videoRef.current?.srcObject as MediaStream | null, videoRef.current);
         setWebcamActive(false);
-    };
+    }, []);
 
     const toggleTestingFacingMode = () => {
-        const next = facingMode === "environment" ? "user" : "environment";
-        setFacingMode(next);
-        startScannerWebcam(next);
+        if (isSwitchingTestingCam) return;
+        setFacingMode(prev => prev === "environment" ? "user" : "environment");
     };
 
     // Start/Stop scanner webcam when on testing tab
@@ -687,10 +675,166 @@ export default function QrCodeSettingPage() {
             stopScannerWebcam();
         }
         return () => stopScannerWebcam();
-    }, [activeTab, testingMode, facingMode]);
+    }, [activeTab, testingMode, facingMode, startScannerWebcam, stopScannerWebcam]);
+
+    // Load AI Face Models when Testing Tab and Face mode active
+    useEffect(() => {
+        if (activeTab !== "testing" || testingMode !== "camera" || testingLensMode !== "face") return;
+        let isMounted = true;
+        const loadModels = async () => {
+            setLoadingModels(true);
+            try {
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+                    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
+                ]);
+                if (isMounted) setModelsLoaded(true);
+            } catch (err) {
+                console.error("Error loading face models:", err);
+            } finally {
+                if (isMounted) setLoadingModels(false);
+            }
+        };
+        if (!modelsLoaded) {
+            loadModels();
+        }
+        return () => { isMounted = false; };
+    }, [activeTab, testingMode, testingLensMode, modelsLoaded]);
+
+    // Load registered face users for live recognition verification
+    useEffect(() => {
+        if (!modelsLoaded) return;
+        const fetchFaceUsers = async () => {
+            try {
+                const res = await api.get('/smart-attendance/users').catch(() => null);
+                const uData: FaceUser[] = res?.data?.data?.data || res?.data?.data || [];
+                setFaceUsers(uData);
+
+                const descriptors = uData
+                    .filter((u: FaceUser) => Boolean(u.face_descriptor))
+                    .map((u: FaceUser) => {
+                        try {
+                            const desc = typeof u.face_descriptor === 'string' ? JSON.parse(u.face_descriptor) : u.face_descriptor;
+                            if (Array.isArray(desc) && desc.length === 128) {
+                                return new faceapi.LabeledFaceDescriptors(String(u.id), [new Float32Array(desc)]);
+                            }
+                        } catch {}
+                        return null;
+                    })
+                    .filter(Boolean) as faceapi.LabeledFaceDescriptors[];
+
+                setLabeledFaceDescriptors(descriptors);
+            } catch (e) {
+                console.error("Error loading face users in settings:", e);
+            }
+        };
+        fetchFaceUsers();
+    }, [modelsLoaded]);
+
+    const handleFaceMatch = useCallback(async (userId: number) => {
+        if (processing || scanCooldown) return;
+        setProcessing(true);
+        setScanErrorMsg(null);
+        try {
+            const res = await api.post('/smart-attendance/mark', { user_id: userId, method: 'face' });
+            const data = res.data?.data?.data || res.data?.data;
+            const userData = data?.user || faceUsers.find((u: FaceUser) => u.id === userId);
+            const status = data?.status || "In";
+            const isAlready = data?.already_marked;
+            if (userData) {
+                setLastUser({
+                    name: userData.name || "Unknown",
+                    role: userData.role || "Student",
+                    admission_no: userData.admission_no,
+                    staff_id: userData.staff_id,
+                    avatar: userData.avatar,
+                    time: data?.time || new Date().toLocaleTimeString(),
+                    status: isAlready ? "Already Marked" : status,
+                });
+                if (isAlready) {
+                    toast.info(t("present_already_provided") || "Today present Already Provided.");
+                } else if (status === 'Out') {
+                    toast.success(`Exit recorded: ${userData.name}`);
+                } else {
+                    toast.success(`Entry recorded: ${userData.name}`);
+                }
+                playAudio('success');
+                setScanCooldown(true);
+                setTimeout(() => setScanCooldown(false), 2500);
+            }
+        } catch (err: unknown) {
+            console.error("Face attendance error:", err);
+            const errObj = err as { response?: { data?: { message?: string } } };
+            const msg = errObj?.response?.data?.message || "Failed to mark attendance";
+            setScanErrorMsg(msg);
+            toast.error(msg);
+            playAudio('error');
+        } finally {
+            setProcessing(false);
+        }
+    }, [processing, scanCooldown, faceUsers, playAudio, t]);
+
+    // AI Face Vision Detection & Matching Loop
+    useEffect(() => {
+        if (activeTab !== "testing" || testingMode !== "camera" || testingLensMode !== "face" || !webcamActive || !modelsLoaded || scanCooldown || processing) return;
+
+        const interval = setInterval(async () => {
+            if (faceBusyRef.current || !videoRef.current || videoRef.current.readyState < 2) return;
+            const video = videoRef.current;
+            if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+            faceBusyRef.current = true;
+            try {
+                const displaySize = { width: video.videoWidth, height: video.videoHeight };
+                if (canvasRef.current) {
+                    if (canvasRef.current.width !== displaySize.width || canvasRef.current.height !== displaySize.height) {
+                        faceapi.matchDimensions(canvasRef.current, displaySize);
+                    }
+                }
+
+                const detection = await faceapi
+                    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (canvasRef.current) {
+                    const ctx = canvasRef.current.getContext('2d');
+                    ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+
+                    if (detection) {
+                        const resized = faceapi.resizeResults(detection, displaySize);
+                        faceapi.draw.drawDetections(canvasRef.current, resized);
+                        faceapi.draw.drawFaceLandmarks(canvasRef.current, resized);
+
+                        if (labeledFaceDescriptors.length > 0 && detection.descriptor) {
+                            const matcher = new faceapi.FaceMatcher(labeledFaceDescriptors, 0.55);
+                            const match = matcher.findBestMatch(detection.descriptor);
+                            if (match.label !== 'unknown' && match.distance < 0.55) {
+                                handleFaceMatch(parseInt(match.label));
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Face loop error:", err);
+            } finally {
+                faceBusyRef.current = false;
+            }
+        }, 300);
+
+        const currentCanvas = canvasRef.current;
+        return () => {
+            clearInterval(interval);
+            if (currentCanvas) {
+                const ctx = currentCanvas.getContext('2d');
+                ctx?.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
+            }
+        };
+    }, [activeTab, testingMode, testingLensMode, webcamActive, modelsLoaded, labeledFaceDescriptors, scanCooldown, processing, handleFaceMatch]);
 
     // Process Attendance Scan (Testing Tab)
-    const handleScan = async (code: string) => {
+    const handleScan = useCallback(async (code: string) => {
         if (!code || processing || scanCooldown) return;
         setProcessing(true);
         setScanErrorMsg(null);
@@ -722,8 +866,9 @@ export default function QrCodeSettingPage() {
                 setTimeout(() => setScanCooldown(false), 2000);
             }
             setScanValue("");
-        } catch (err: any) {
-            const msg = err.response?.data?.message || "Failed to mark attendance";
+        } catch (err: unknown) {
+            const errObj = err as { response?: { data?: { message?: string } } };
+            const msg = errObj?.response?.data?.message || "Failed to mark attendance";
             setScanErrorMsg(msg);
             toast.error(msg);
             playAudio('error');
@@ -731,17 +876,18 @@ export default function QrCodeSettingPage() {
             setProcessing(false);
             if (inputRef.current) inputRef.current.focus();
         }
-    };
+    }, [processing, scanCooldown, playAudio, t]);
 
     // Camera Frame Real-Time QR Scanner Loop
     useEffect(() => {
         if (activeTab !== "testing" || testingMode !== "camera" || testingLensMode !== "qr" || scanCooldown || processing) return;
 
         const interval = setInterval(() => {
-            if (!videoRef.current || !webcamActive || videoRef.current.readyState !== 4) return;
+            if (!videoRef.current || !webcamActive || videoRef.current.readyState < 2) return;
             const video = videoRef.current;
+            if (video.videoWidth === 0 || video.videoHeight === 0) return;
             const canvas = canvasRef.current || document.createElement('canvas');
-            if (canvas.width !== video.videoWidth) {
+            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
             }
@@ -755,8 +901,15 @@ export default function QrCodeSettingPage() {
             }
         }, 300);
 
-        return () => clearInterval(interval);
-    }, [activeTab, testingMode, testingLensMode, webcamActive, scanCooldown, processing]);
+        const currentCanvas = canvasRef.current;
+        return () => {
+            clearInterval(interval);
+            if (currentCanvas) {
+                const ctx = currentCanvas.getContext('2d');
+                ctx?.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
+            }
+        };
+    }, [activeTab, testingMode, testingLensMode, webcamActive, scanCooldown, processing, handleScan]);
 
     // Biometric methods list
     const SMART_METHODS = [
@@ -1837,7 +1990,14 @@ export default function QrCodeSettingPage() {
 
                                                 {/* Video Camera Viewport */}
                                                 <div className="relative aspect-video bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-inner group flex items-center justify-center">
-                                                    <canvas ref={canvasRef} className="hidden" />
+                                                    <canvas
+                                                        ref={canvasRef}
+                                                        className={cn(
+                                                            "absolute inset-0 w-full h-full object-cover pointer-events-none z-10",
+                                                            facingMode === "user" && "scale-x-[-1]",
+                                                            !webcamActive && "hidden"
+                                                        )}
+                                                    />
 
                                                     {settings.ip_camera_url && settings.use_camera_device ? (
                                                         <img
@@ -1872,24 +2032,37 @@ export default function QrCodeSettingPage() {
                                                                 </div>
                                                             )}
 
+                                                            {/* AI Face Models Loading Badge */}
+                                                            {webcamActive && testingLensMode === "face" && (!modelsLoaded || loadingModels) && (
+                                                                <div className="absolute top-3 left-3 z-30 bg-black/70 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow">
+                                                                    <Loader2 className="h-3 w-3 animate-spin text-indigo-400" />
+                                                                    <span>{t("loading_face_models") || "Loading AI Face Models..."}</span>
+                                                                </div>
+                                                            )}
+
                                                             {/* Mobile Camera Flip Button */}
                                                             {webcamActive && (
                                                                 <button
                                                                     type="button"
                                                                     onClick={toggleTestingFacingMode}
-                                                                    className="absolute top-3 right-3 z-20 px-2.5 py-1 bg-black/60 hover:bg-black/80 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow transition-all active:scale-95"
-                                                                    title="Flip camera lens"
+                                                                    disabled={isSwitchingTestingCam}
+                                                                    className="absolute top-3 right-3 z-30 px-3 py-1.5 bg-black/70 hover:bg-black/90 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md backdrop-blur-sm border border-white/10 transition-all disabled:opacity-60"
+                                                                    title={facingMode === "user" ? (t("back_cam") || "Back Cam 📷") : (t("front_cam") || "Front Cam 🤳")}
                                                                 >
-                                                                    <RefreshCw className="h-3 w-3" />
-                                                                    <span>{facingMode === "environment" ? (t("camera_back") || "Back 📷") : (t("camera_front") || "Front 🤳")}</span>
+                                                                    {isSwitchingTestingCam ? (
+                                                                        <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                                                                    ) : (
+                                                                        <RefreshCw className="h-3.5 w-3.5" />
+                                                                    )}
+                                                                    <span>{facingMode === "user" ? (t("front_cam") || "Front 🤳") : (t("back_cam") || "Back 📷")}</span>
                                                                 </button>
                                                             )}
                                                         </>
                                                     )}
 
-                                                    {/* Scanner Overlay Matrix */}
-                                                    {webcamActive && (
-                                                        <div className="absolute inset-0 border-[35px] border-black/40 pointer-events-none flex items-center justify-center">
+                                                    {/* Scanner Overlay Matrix for QR mode */}
+                                                    {webcamActive && testingLensMode === "qr" && (
+                                                        <div className="absolute inset-0 border-[35px] border-black/40 pointer-events-none flex items-center justify-center z-20">
                                                             <div className={cn(
                                                                 "w-48 h-48 border-2 rounded-xl transition-all duration-300 relative overflow-hidden",
                                                                 scanCooldown ? "border-emerald-500 bg-emerald-500/10" : "border-indigo-400/80"

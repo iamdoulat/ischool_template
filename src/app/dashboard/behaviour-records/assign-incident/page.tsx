@@ -43,7 +43,7 @@ import {
     AlertTriangle,
     Layers,
 } from "lucide-react";
-import { cn, toLocaleNumber, translateClassName } from "@/lib/utils";
+import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import {
     Dialog,
     DialogContent,
@@ -272,7 +272,11 @@ export default function AssignIncidentPage() {
                             </Label>
                             <Select value={selectedClass} onValueChange={setSelectedClass}>
                                 <SelectTrigger className="h-10 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-2xs rounded-xl focus:ring-2 focus:ring-indigo-500/20">
-                                    <SelectValue placeholder={t("select_class")} />
+                                    <SelectValue placeholder={t("select_class")}>
+                                        {selectedClass && criteria.classes.find((c) => c.id.toString() === selectedClass)
+                                            ? translateClassName(criteria.classes.find((c) => c.id.toString() === selectedClass)?.name, shortCode)
+                                            : undefined}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60">
                                     {criteria.classes.map((cls) => (
@@ -293,12 +297,16 @@ export default function AssignIncidentPage() {
                             </Label>
                             <Select value={selectedSection} onValueChange={setSelectedSection} disabled={!selectedClass}>
                                 <SelectTrigger className="h-10 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-2xs rounded-xl focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50">
-                                    <SelectValue placeholder={t("select_section")} />
+                                    <SelectValue placeholder={t("select_section")}>
+                                        {selectedSection && sections.find((sec) => sec.id.toString() === selectedSection)
+                                            ? translateSectionName(sections.find((sec) => sec.id.toString() === selectedSection)?.name, shortCode)
+                                            : undefined}
+                                    </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="max-h-60">
                                     {sections.map((sec) => (
                                         <SelectItem key={sec.id} value={sec.id.toString()} className="text-xs font-medium">
-                                            {sec.name}
+                                            {translateSectionName(sec.name, shortCode)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -495,7 +503,7 @@ export default function AssignIncidentPage() {
                                                 <TableCell className="px-4 py-3">
                                                     {student.admission_no ? (
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 font-mono font-bold text-[11px] border border-indigo-200/60 dark:border-indigo-800">
-                                                            {student.admission_no}
+                                                            {toLocaleNumber(student.admission_no, shortCode)}
                                                         </span>
                                                     ) : (
                                                         <span className="text-gray-300">—</span>
@@ -506,7 +514,7 @@ export default function AssignIncidentPage() {
                                                 <TableCell className="px-4 py-3">
                                                     {student.roll_no ? (
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-mono font-medium text-[11px]">
-                                                            #{student.roll_no}
+                                                            #{toLocaleNumber(student.roll_no, shortCode)}
                                                         </span>
                                                     ) : (
                                                         <span className="text-gray-300">—</span>

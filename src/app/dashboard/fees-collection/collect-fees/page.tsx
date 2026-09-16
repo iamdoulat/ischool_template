@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn, formatDate, toLocaleNumber } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 import api from "@/lib/api";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -71,23 +71,24 @@ interface Student {
     father_name?: string;
     schoolClass?: { name?: string; class?: string };
     school_class?: { name?: string; class?: string };
-    section?: { name?: string; section?: string };
+    section?: { name?: string; section?: string } | string;
+    class?: { name?: string; class?: string } | string;
     class_name?: string;
     section_name?: string;
 }
 
 const getClassDisplay = (student: Student): string => {
-    const sc = student.schoolClass || student.school_class || (student as any).class;
-    if (!sc) return (student as any).class_name || (student as any).class || "-";
+    const sc = student.schoolClass || student.school_class || student.class;
+    if (!sc) return student.class_name || "-";
     if (typeof sc === 'string') return sc;
-    return sc.name || sc.class || (student as any).class_name || (student as any).class || "-";
+    return sc.name || sc.class || student.class_name || "-";
 };
 
 const getSectionDisplay = (student: Student): string => {
     const sec = student.section;
-    if (!sec) return (student as any).section_name || (student as any).section || "-";
+    if (!sec) return student.section_name || "-";
     if (typeof sec === 'string') return sec;
-    return sec.name || sec.section || (student as any).section_name || (student as any).section || "-";
+    return sec.name || sec.section || student.section_name || "-";
 };
 
 function CollectFeesContent() {
@@ -107,26 +108,12 @@ function CollectFeesContent() {
 
     const getLocalizedClassName = (name?: string) => {
         if (!name || name === "-") return "-";
-        const num = name.replace(/[^0-9]/g, "");
-        if (num) {
-            const locNum = toLocaleNumber(num, shortCode);
-            if (shortCode === "bn") return `ক্লাস ${locNum}`;
-            if (shortCode === "hi") return `कक्षा ${locNum}`;
-            if (shortCode === "ar") return `الصف ${locNum}`;
-            return `Class ${locNum}`;
-        }
-        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
-        const trans = t(key);
-        return trans !== key ? trans : name;
+        return translateClassName(name, shortCode);
     };
 
     const getLocalizedSectionName = (name?: string) => {
         if (!name || name === "-") return "-";
-        const secLabel = shortCode === "bn" ? "শাখা" : shortCode === "hi" ? "अनुभाग" : shortCode === "ar" ? "قسم" : "Section";
-        const key = name.toLowerCase().replace(/[\s-]+/g, "_");
-        const trans = t(key);
-        if (trans !== key) return `${secLabel} ${trans}`;
-        return `${secLabel} ${name}`;
+        return translateSectionName(name, shortCode);
     };
 
     const fetchInitialData = useCallback(async () => {
@@ -208,8 +195,8 @@ function CollectFeesContent() {
             "Admission No": s.admission_no || "",
             "Student Name": `${s.name || ""} ${s.last_name || ""}`.trim(),
             "Father Name": s.father_name || "",
-            "Date of Birth": s.dob ? formatDate(s.dob) : "-",
-            "Mobile No": s.phone || ""
+            "Date of Birth": s.dob ? toLocaleNumber(formatDate(s.dob), shortCode) : "-",
+            "Mobile No": s.phone ? toLocaleNumber(s.phone, shortCode) : ""
         }));
 
         if (format === 'excel' || format === 'csv') {
@@ -434,8 +421,14 @@ function CollectFeesContent() {
                                         <TableCell className="py-3.5 px-4 font-bold text-gray-800">{student.admission_no || '-'}</TableCell>
                                         <TableCell className="py-3.5 px-4 font-bold text-gray-900 capitalize">{`${student.name || ''} ${student.last_name || ''}`.trim() || '-'}</TableCell>
                                         <TableCell className="py-3.5 px-4 font-medium text-gray-600 capitalize">{student.father_name || '-'}</TableCell>
-                                        <TableCell className="py-3.5 px-4 font-medium text-gray-600">{student.dob ? formatDate(student.dob) : '-'}</TableCell>
-                                        <TableCell className="py-3.5 px-4 font-medium text-gray-600">{student.phone || '-'}</TableCell>
+                                        <TableCell className="py-3.5 px-4 font-medium text-gray-600">{student.dob ? toLocaleNumber(formatDate(student.dob), shortCode) : '-'}</TableCell>
+                                        <TableCell className="py-3.5 px-4 font-medium text-gray-600">
+                                            {student.phone ? (
+                                                <span dir="ltr" className="inline-block">
+                                                    {toLocaleNumber(student.phone, shortCode)}
+                                                </span>
+                                            ) : '-'}
+                                        </TableCell>
                                         <TableCell className="py-3.5 px-4 pr-6 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <Button

@@ -43,7 +43,7 @@ import {
     Calendar,
     Search
 } from "lucide-react";
-import { cn, translateClassName, toLocaleNumber } from "@/lib/utils";
+import { cn, translateClassName, toLocaleNumber, translateRoleName } from "@/lib/utils";
 import { format } from "date-fns";
 import VariablePicker from "@/components/ui/variable-picker";
 
@@ -346,20 +346,20 @@ export default function SendEmailPage() {
     };
 
     const roles = [
-        { id: "Student", label: t("student") !== "student" ? t("student") : (t("students") !== "students" ? t("students") : "Students") },
-        { id: "Parent", label: t("parent") !== "parent" ? t("parent") : (t("guardians") !== "guardians" ? t("guardians") : "Guardians") },
-        { id: "Admin", label: t("admin") !== "admin" ? t("admin") : "Admin" },
-        { id: "Teacher", label: t("teacher") !== "teacher" ? t("teacher") : "Teacher" },
-        { id: "Accountant", label: t("accountant") !== "accountant" ? t("accountant") : "Accountant" },
-        { id: "Librarian", label: t("librarian") !== "librarian" ? t("librarian") : "Librarian" },
-        { id: "Receptionist", label: t("receptionist") !== "receptionist" ? t("receptionist") : "Receptionist" },
+        { id: "Student", label: translateRoleName("Student", langCode) || t("student") || t("students") || "Student" },
+        { id: "Parent", label: translateRoleName("Parent", langCode) || t("parent") || t("guardians") || "Parent" },
+        { id: "Admin", label: translateRoleName("Admin", langCode) || t("admin") || "Admin" },
+        { id: "Teacher", label: translateRoleName("Teacher", langCode) || t("teacher") || "Teacher" },
+        { id: "Accountant", label: translateRoleName("Accountant", langCode) || t("accountant") || "Accountant" },
+        { id: "Librarian", label: translateRoleName("Librarian", langCode) || t("librarian") || "Librarian" },
+        { id: "Receptionist", label: translateRoleName("Receptionist", langCode) || t("receptionist") || "Receptionist" },
     ];
 
     const tabs = [
-        { id: "Group", label: t("group") !== "group" ? t("group") : "Group", Icon: Users },
-        { id: "Individual", label: t("individual") !== "individual" ? t("individual") : "Individual", Icon: User },
-        { id: "Class", label: t("class") !== "class" ? t("class") : "Class", Icon: GraduationCap },
-        { id: "Today's Birthday", label: t("birthday") !== "birthday" ? t("birthday") : (t("todays_birthday") !== "todays_birthday" ? t("todays_birthday") : "Today's Birthday"), Icon: Cake }
+        { id: "Group", label: t("group") || "Group", Icon: Users },
+        { id: "Individual", label: t("individual") || "Individual", Icon: User },
+        { id: "Class", label: t("class") || "Class", Icon: GraduationCap },
+        { id: "Today's Birthday", label: t("todays_birthday") || t("birthday") || "Today's Birthday", Icon: Cake }
     ];
 
     const getRecipientCount = (): number => {
@@ -551,7 +551,7 @@ export default function SendEmailPage() {
                         <CardContent className="p-6 min-h-[400px] flex flex-col">
                             <div className="flex items-center justify-between mb-6">
                                 <span className="text-[10px] bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full font-bold uppercase">
-                                    {activeTab === "Today's Birthday" ? (t("birthday") !== "birthday" ? t("birthday") : "Birthday") : (t(activeTab.toLowerCase()) !== activeTab.toLowerCase() ? t(activeTab.toLowerCase()) : t(activeTab))}
+                                    {tabs.find(t => t.id === activeTab)?.label || activeTab}
                                 </span>
                                 <span className="text-[10px] font-bold text-indigo-600">{toLocaleNumber(getRecipientCount(), langCode)} {t("selected")}</span>
                             </div>
@@ -630,7 +630,7 @@ export default function SendEmailPage() {
                                                         />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.email} {u.role ? `· ${t(u.role?.toLowerCase()) || u.role}` : ''}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.email} {u.role ? `· ${translateRoleName(u.role, langCode) || t(u.role.toLowerCase()) || u.role}` : ''}</p>
                                                         </div>
                                                     </div>
                                                 ))
@@ -717,7 +717,7 @@ export default function SendEmailPage() {
                                                         <Cake className="h-4 w-4 text-orange-500 shrink-0" />
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-xs font-bold text-gray-700 truncate">{u.name} {u.last_name || ''}</p>
-                                                            <p className="text-[10px] text-gray-400 truncate">{u.email} · {t(u.role?.toLowerCase() || "") || u.role}</p>
+                                                            <p className="text-[10px] text-gray-400 truncate">{u.email} · {translateRoleName(u.role || '', langCode) || t(u.role?.toLowerCase() || "") || u.role}</p>
                                                         </div>
                                                     </div>
                                                 ))

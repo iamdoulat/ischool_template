@@ -273,12 +273,12 @@ export default function AddItemPage() {
     };
 
     const toolbarActions = [
-        { Icon: Copy, onClick: handleCopy, title: t("copy") },
-        { Icon: FileSpreadsheet, onClick: handleExportExcel, title: t("excel") },
-        { Icon: FileText, onClick: handleExportCSV, title: t("csv") },
+        { Icon: Copy, onClick: handleCopy, title: t("copy") || "Copy" },
+        { Icon: FileSpreadsheet, onClick: handleExportExcel, title: t("excel") || "Excel" },
+        { Icon: FileText, onClick: handleExportCSV, title: t("csv") || "CSV" },
         { Icon: FileCode, onClick: handleExportPDF, title: t("pdf") || "PDF" },
-        { Icon: Printer, onClick: () => window.print(), title: t("print") },
-        { Icon: Columns, onClick: () => {}, title: t("columns") },
+        { Icon: Printer, onClick: () => window.print(), title: t("print") || "Print" },
+        { Icon: Columns, onClick: () => {}, title: t("columns") || "Columns" },
     ];
 
     const totalCount = pagination?.total ?? items.length;
@@ -344,7 +344,7 @@ export default function AddItemPage() {
                     <CardContent className="space-y-4">
                         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
                             <form onSubmit={handleSearch} className="flex items-center gap-2 w-full md:w-auto">
-                                <Input placeholder={t("search_placeholder") || t("search")} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
+                                <Input placeholder={t("search") + "..."} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 text-xs w-full md:w-64" />
                                 <Button type="submit" className="h-9 px-5 rounded-full bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white text-xs font-bold gap-2 shadow-md active:scale-95 transition-all">
                                     <Search className="h-4 w-4" /> {t("search")}
                                 </Button>
@@ -399,8 +399,22 @@ export default function AddItemPage() {
                                             <TableCell className="py-3 text-right font-bold text-indigo-600">{toLocaleNumber(item.available_quantity ?? item.available_qty ?? 0, shortCode)}</TableCell>
                                             <TableCell className="py-3 text-right">
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <Button size="sm" onClick={() => handleEdit(item)} className="h-7 w-7 bg-amber-500 hover:bg-amber-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Pencil className="h-4 w-4" /></Button>
-                                                    <Button size="sm" onClick={() => handleDelete(item.id)} className="h-7 w-7 bg-red-500 hover:bg-red-600 text-white rounded p-0 shadow-sm active:scale-95 transition-all"><Trash2 className="h-4 w-4" /></Button>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleEdit(item)}
+                                                        className="h-7 w-7 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg p-0 shadow-xs active:scale-95 transition-all"
+                                                        title={t("edit") || "Edit"}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => handleDelete(item.id)}
+                                                        className="h-7 w-7 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white rounded-lg p-0 shadow-xs active:scale-95 transition-all"
+                                                        title={t("delete") || "Delete"}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
                                                 </div>
                                             </TableCell>
                                         </TableRow>

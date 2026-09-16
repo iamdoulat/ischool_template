@@ -637,7 +637,8 @@ export function translateSubjectName(name?: string | null, langCode: string = "e
       "art": "চারুকলা",
       "music": "সঙ্গীত",
       "arabic": "আরবি",
-      "hindi": "হিন্দি",
+      "english book": "ইংরেজি বই",
+      "bangla book": "বাংলা বই",
       "general knowledge": "সাধারণ জ্ঞান",
       "gk": "সাধারণ জ্ঞান",
     };
@@ -675,6 +676,8 @@ export function translateSubjectName(name?: string | null, langCode: string = "e
       "physical education": "التربية البدنية",
       "art": "التربية الفنية",
       "arabic": "اللغة العربية",
+      "english book": "كتاب اللغة الإنجليزية",
+      "bangla book": "كتاب اللغة البنغالية",
     };
     if (arMap[lower]) return arMap[lower];
   }
@@ -684,6 +687,8 @@ export function translateSubjectName(name?: string | null, langCode: string = "e
       "bangla": "बंगाली",
       "bengali": "बंगाली",
       "english": "अंग्रेजी",
+      "english book": "अंग्रेजी पुस्तक",
+      "bangla book": "बंगाली पुस्तक",
       "mathematics": "गणित",
       "math": "गणित",
       "maths": "गणित",
@@ -1633,6 +1638,72 @@ export function translateLeaveTypeName(name?: string | null, langCode: string = 
     if (hiMap[lower]) return hiMap[lower];
   }
 
+  return trimmed;
+}
+
+/**
+ * Translates half day options ("First Half", "Second Half", etc.) across supported languages.
+ */
+export function translateHalfDay(val?: string | null, langCode: string = "en"): string {
+  if (!val) return "";
+  const trimmed = val.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (langCode === "bn") {
+    if (lower === "first half" || lower === "first_half") return "অর্ধদিবস (প্রথম ভাগ)";
+    if (lower === "second half" || lower === "second_half") return "অর্ধদিবস (দ্বিতীয় ভাগ)";
+    if (lower === "no") return "না";
+    if (lower === "yes") return "হ্যাঁ";
+  }
+
+  if (langCode === "ar") {
+    if (lower === "first half" || lower === "first_half") return "نصف يوم (النصف الأول)";
+    if (lower === "second half" || lower === "second_half") return "نصف يوم (النصف الثاني)";
+    if (lower === "no") return "لا";
+    if (lower === "yes") return "نعم";
+  }
+
+  if (langCode === "hi") {
+    if (lower === "first half" || lower === "first_half") return "आधा दिन (पहला भाग)";
+    if (lower === "second half" || lower === "second_half") return "आधा दिन (दूसरा भाग)";
+    if (lower === "no") return "नहीं";
+    if (lower === "yes") return "हाँ";
+  }
+
+  if (lower === "first half" || lower === "first_half") return "Half Day First Half";
+  if (lower === "second half" || lower === "second_half") return "Half Day Second Half";
+  return trimmed;
+}
+
+/**
+ * Translates leave request status across supported languages.
+ */
+export function translateLeaveStatus(status?: string | null, langCode: string = "en"): string {
+  if (!status) return "";
+  const trimmed = status.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (langCode === "bn") {
+    if (lower === "pending") return "বিবেচনাধীন";
+    if (lower === "approved") return "অনুমোদিত";
+    if (lower === "disapproved" || lower === "rejected") return "প্রত্যাখ্যাত";
+  }
+
+  if (langCode === "ar") {
+    if (lower === "pending") return "قيد الانتظار";
+    if (lower === "approved") return "معتمد";
+    if (lower === "disapproved" || lower === "rejected") return "مرفوض";
+  }
+
+  if (langCode === "hi") {
+    if (lower === "pending") return "लंबित";
+    if (lower === "approved") return "स्वीकृत";
+    if (lower === "disapproved" || lower === "rejected") return "अस्वीकृत";
+  }
+
+  if (lower === "pending") return "Pending";
+  if (lower === "approved") return "Approved";
+  if (lower === "disapproved" || lower === "rejected") return "Disapproved";
   return trimmed;
 }
 

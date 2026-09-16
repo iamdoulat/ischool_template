@@ -148,7 +148,10 @@ export default function LeaveTypePage() {
 
     // Export Functions
     const exportToExcel = () => {
-        const ws = XLSX.utils.json_to_sheet(leaveTypes.map(lt => ({ "Leave Type": lt.name })));
+        const ws = XLSX.utils.json_to_sheet(leaveTypes.map((lt, idx) => ({
+            [t("sl_no")]: toLocaleNumber(idx + 1, shortCode),
+            [t("leave_type")]: translateLeaveTypeName(lt.name, shortCode)
+        })));
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, t("leave_types"));
         XLSX.writeFile(wb, "leave_types.xlsx");
@@ -158,15 +161,15 @@ export default function LeaveTypePage() {
         const doc = new jsPDF();
         doc.text(t("leave_type_list"), 14, 15);
         autoTable(doc, {
-            head: [[t("no"), t("leave_type_name")]],
-            body: leaveTypes.map((lt, idx) => [idx + 1, lt.name]),
+            head: [[t("sl_no"), t("leave_type_name")]],
+            body: leaveTypes.map((lt, idx) => [toLocaleNumber(idx + 1, shortCode), translateLeaveTypeName(lt.name, shortCode)]),
             startY: 20,
         });
         doc.save("leave_types.pdf");
     };
 
     const copyToClipboard = () => {
-        const text = leaveTypes.map(lt => lt.name).join('\n');
+        const text = leaveTypes.map((lt, idx) => `${toLocaleNumber(idx + 1, shortCode)}. ${translateLeaveTypeName(lt.name, shortCode)}`).join('\n');
         navigator.clipboard.writeText(text);
         tt.success("data_copied_to_clipboard");
     };
@@ -241,7 +244,7 @@ export default function LeaveTypePage() {
                             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                                 <div className="relative w-full md:w-64">
                                     <Input
-                                        placeholder={t("search")}
+                                        placeholder={`${t("search")}...`}
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-3 h-8 text-xs border-gray-200 focus-visible:ring-indigo-500 rounded-lg"
@@ -272,19 +275,19 @@ export default function LeaveTypePage() {
                                         </Select>
                                     </div>
                                     <div className="flex items-center gap-1 text-gray-400">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={copyToClipboard}>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("copy")} onClick={copyToClipboard}>
                                             <Copy className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToExcel}>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("excel")} onClick={exportToExcel}>
                                             <FileSpreadsheet className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={exportToPDF}>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("pdf")} onClick={exportToPDF}>
                                             <FileText className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" onClick={() => window.print()}>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("print")} onClick={() => window.print()}>
                                             <Printer className="h-3.5 w-3.5" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-indigo-600 hover:bg-gray-100 rounded transition-colors" title={t("columns")}>
                                             <Columns className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
@@ -295,7 +298,7 @@ export default function LeaveTypePage() {
                                 <Table>
                                     <TableHeader className="!bg-[#f1f5f9] dark:!bg-slate-800 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-200 border-b border-gray-200">
                                         <TableRow className="hover:bg-transparent border-b border-gray-200">
-                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 w-[60px] text-center whitespace-nowrap">{t("no")}</TableHead>
+                                            <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 w-[60px] text-center whitespace-nowrap">{t("sl_no")}</TableHead>
                                             <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 whitespace-nowrap">{t("leave_type")}</TableHead>
                                             <TableHead className="text-[11px] font-bold uppercase text-slate-700 py-3.5 px-4 text-right whitespace-nowrap">{t("action")}</TableHead>
                                         </TableRow>
@@ -314,10 +317,10 @@ export default function LeaveTypePage() {
                                                     <TableCell className="py-3.5 px-4 text-gray-800 font-medium whitespace-nowrap">{translateLeaveTypeName(lt.name, shortCode)}</TableCell>
                                                     <TableCell className="py-3.5 px-4 text-right whitespace-nowrap">
                                                         <div className="flex items-center justify-end gap-1.5">
-                                                            <Button onClick={() => handleEdit(lt)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer">
+                                                            <Button onClick={() => handleEdit(lt)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer" title={t("edit")}>
                                                                 <Pencil className="h-3.5 w-3.5" />
                                                             </Button>
-                                                            <Button onClick={() => handleDelete(lt.id)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer">
+                                                            <Button onClick={() => handleDelete(lt.id)} size="icon" variant="ghost" className="h-7 w-7 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all cursor-pointer" title={t("delete")}>
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </div>
