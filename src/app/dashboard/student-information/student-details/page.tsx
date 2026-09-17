@@ -121,6 +121,8 @@ interface Student {
     school_class?: { name: string };
     section?: { name: string };
     student_category?: { category_name: string };
+    academic_session_id?: number;
+    academic_session?: { id: number; session: string; is_active?: boolean };
     active: boolean;
 }
 
@@ -145,9 +147,11 @@ export default function StudentDetailsPage() {
 
     const [classes, setClasses] = useState<{ id: number; name: string; sections?: { id: number; name: string }[] }[]>([]);
     const [categories, setCategories] = useState<{ id: number; category_name?: string; name?: string }[]>([]);
+    const [sessions, setSessions] = useState<{ id: number; session: string; is_active?: boolean }[]>([]);
     const [students, setStudents] = useState<Student[]>([]);
 
     const [filters, setFilters] = useState({
+        academic_session_id: searchParams.get("academic_session_id") || "",
         school_class_id: searchParams.get("school_class_id") || "",
         section_id: searchParams.get("section_id") || "",
         search: searchParams.get("search") || "",
@@ -220,6 +224,7 @@ export default function StudentDetailsPage() {
             t("student_name"),
             t("class"),
             t("section"),
+            t("session"),
             t("roll_no"),
             t("father_name"),
             t("date_of_birth"),
@@ -234,6 +239,10 @@ export default function StudentDetailsPage() {
             `${s.name || ""} ${s.last_name || ""}`.trim() || "-",
             s.school_class?.name ? translateClassName(s.school_class.name, langCode) : "-",
             s.section?.name ? translateSectionName(s.section.name, langCode) : "-",
+            (() => {
+                const sessYear = s.academic_session?.session || (s as any).academicSession?.session || sessions.find(sess => sess.id?.toString() === s.academic_session_id?.toString())?.session;
+                return sessYear ? toLocaleNumber(sessYear, langCode) : "-";
+            })(),
             s.roll_no ? toLocaleNumber(s.roll_no, langCode) : "-",
             s.father_name || "-",
             formatDate(s.dob, langCode),
@@ -277,6 +286,7 @@ export default function StudentDetailsPage() {
 
     // Sync URL search params into filters state when URL changes
     useEffect(() => {
+        const urlSession = searchParams.get("academic_session_id") || "";
         const urlSearch = searchParams.get("search") || "";
         const urlClass = searchParams.get("school_class_id") || "";
         const urlSection = searchParams.get("section_id") || "";
@@ -284,9 +294,10 @@ export default function StudentDetailsPage() {
         const urlGender = searchParams.get("gender") || "";
         const urlCategory = searchParams.get("category") || "";
 
-        if (urlSearch || urlClass || urlSection || urlStatus || urlGender || urlCategory) {
+        if (urlSession || urlSearch || urlClass || urlSection || urlStatus || urlGender || urlCategory) {
             setFilters(prev => ({
                 ...prev,
+                academic_session_id: urlSession || prev.academic_session_id,
                 search: urlSearch,
                 school_class_id: urlClass,
                 section_id: urlSection,
@@ -307,12 +318,23 @@ export default function StudentDetailsPage() {
 
     const fetchPrerequisites = async () => {
         try {
-            const [classesRes, categoriesRes] = await Promise.all([
+            const [classesRes, categoriesRes, sessionsRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true").catch(() => ({ data: { data: [] } })),
-                api.get("/student-categories").catch(() => ({ data: { data: [] } }))
+                api.get("/student-categories").catch(() => ({ data: { data: [] } })),
+                api.get("/system-setting/sessions").catch(() => ({ data: { data: [] } })),
             ]);
             setClasses(classesRes.data?.data?.data || classesRes.data?.data || []);
             setCategories(categoriesRes.data?.data?.data || categoriesRes.data?.data || []);
+            const sessData = sessionsRes.data?.data || sessionsRes.data || [];
+            const validSessions = Array.isArray(sessData) ? sessData : [];
+            setSessions(validSessions);
+            const activeSess = validSessions.find((s: any) => s.is_active) || validSessions[0];
+            if (activeSess) {
+                setFilters(prev => ({
+                    ...prev,
+                    academic_session_id: prev.academic_session_id || activeSess.id.toString(),
+                }));
+            }
         } catch (error) {
             console.error("Error fetching prerequisites:", error);
             tt.error("failed_to_load_classes");
@@ -344,7 +366,9 @@ export default function StudentDetailsPage() {
     };
 
     const handleReset = () => {
+        const activeSess = sessions.find((s: any) => s.is_active) || sessions[0];
         setFilters({
+            academic_session_id: activeSess ? activeSess.id.toString() : "",
             school_class_id: "",
             section_id: "",
             search: "",
@@ -493,6 +517,7 @@ export default function StudentDetailsPage() {
         const limit = customLimit || perPage;
         try {
             const params: Record<string, any> = { limit, page };
+            if (filters.academic_session_id) params.academic_session_id = filters.academic_session_id;
             if (filters.school_class_id) params.school_class_id = filters.school_class_id;
             if (filters.section_id) params.section_id = filters.section_id;
             if (filters.status) params.status = filters.status;
@@ -523,6 +548,7 @@ export default function StudentDetailsPage() {
 
     const tableHeaders = [
         "#", t("avatar"), t("admission_no"), t("student_name"), t("roll_no"), t("class"),
+        t("session"),
         t("father_name"), t("date_of_birth"), t("gender"), t("category"),
         t("mobile_number"), t("status"), t("action")
     ];
@@ -541,7 +567,29 @@ export default function StudentDetailsPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Session */}
+                        <div className="space-y-1.5 group">
+                            <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
+                                {t("session")}
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={filters.academic_session_id}
+                                    onChange={(e) => setFilters(prev => ({ ...prev, academic_session_id: e.target.value }))}
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 pe-9 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="" className="text-gray-400">{t("select_session")}</option>
+                                    {sessions.map(s => (
+                                        <option key={s.id} value={s.id.toString()} className="text-gray-900 font-medium">
+                                            {toLocaleNumber(s.session, langCode)}{s.is_active ? ` (${t("active")})` : ""}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                            </div>
+                        </div>
+
                         {/* Class */}
                         <div className="space-y-1.5 group">
                             <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
@@ -554,12 +602,12 @@ export default function StudentDetailsPage() {
                                         const val = e.target.value;
                                         setFilters(prev => ({ ...prev, school_class_id: val, section_id: "" }));
                                     }}
-                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 pe-9 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="" className="text-gray-400">{t("select_class")}</option>
                                     {classes.map(c => <option key={c.id} value={c.id} className="text-gray-900 font-medium">{translateClassName(c.name, langCode)}</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <ChevronDown className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
@@ -572,12 +620,12 @@ export default function StudentDetailsPage() {
                                 <select
                                     value={filters.section_id}
                                     onChange={(e) => setFilters(prev => ({ ...prev, section_id: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 pe-9 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="" className="text-gray-400">{t("select_section")}</option>
                                     {getClassSections(filters.school_class_id).map(s => <option key={s.id} value={s.id} className="text-gray-900 font-medium">{translateSectionName(s.name, langCode)}</option>)}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <ChevronDown className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
@@ -590,7 +638,7 @@ export default function StudentDetailsPage() {
                                 <select
                                     value={filters.category}
                                     onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 pe-9 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="" className="text-gray-400">{t("select_category")}</option>
                                     {categories.map(cat => {
@@ -603,7 +651,7 @@ export default function StudentDetailsPage() {
                                         );
                                     })}
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <ChevronDown className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
@@ -616,14 +664,14 @@ export default function StudentDetailsPage() {
                                 <select
                                     value={filters.gender}
                                     onChange={(e) => setFilters(prev => ({ ...prev, gender: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 pe-9 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="" className="text-gray-400">{t("select_gender")}</option>
                                     <option value="Male" className="text-gray-900 font-medium">{t("male")}</option>
                                     <option value="Female" className="text-gray-900 font-medium">{t("female")}</option>
                                     <option value="Other" className="text-gray-900 font-medium">{t("other")}</option>
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <ChevronDown className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
@@ -636,28 +684,28 @@ export default function StudentDetailsPage() {
                                 <select
                                     value={filters.status}
                                     onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
+                                    className="flex h-11 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 px-3.5 pe-9 py-2 text-xs text-gray-900 dark:text-gray-100 font-semibold ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:bg-white dark:focus-visible:bg-gray-800 transition-all appearance-none cursor-pointer"
                                 >
                                     <option value="" className="text-gray-400">{t("select_status")}</option>
                                     <option value="active" className="text-gray-900 font-medium">{t("active")}</option>
                                     <option value="disabled" className="text-gray-900 font-medium">{t("disabled")}</option>
                                 </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                                <ChevronDown className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                             </div>
                         </div>
 
                         {/* Search By Keyword */}
-                        <div className="space-y-1.5 group">
+                        <div className="space-y-1.5 group sm:col-span-2 lg:col-span-2">
                             <label className="text-[11.5px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider ml-0.5 group-focus-within:text-indigo-600 transition-colors">
                                 {t("search_by_keyword")}
                             </label>
                             <div className="relative">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-indigo-600 transition-colors" />
+                                <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-indigo-600 transition-colors pointer-events-none" />
                                 <Input
                                     placeholder={t("search_by_student_name_roll_number_etc")}
                                     value={filters.search}
                                     onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                                    className="h-11 pl-10 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 font-semibold placeholder:text-gray-400 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:ring-indigo-500 transition-all text-xs"
+                                    className="h-11 ps-10 pe-3.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 font-semibold placeholder:text-gray-400 focus-visible:bg-white dark:focus-visible:bg-gray-800 focus-visible:ring-indigo-500 transition-all text-xs"
                                     onKeyDown={(e) => e.key === "Enter" && handleSearch(1)}
                                 />
                             </div>
@@ -841,7 +889,7 @@ export default function StudentDetailsPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <TableSkeleton rows={8} cols={13} />
+                                        <TableSkeleton rows={8} cols={14} />
                                     </tbody>
                                 </table>
                             </div>
@@ -911,6 +959,12 @@ export default function StudentDetailsPage() {
                                                             </div>
                                                         )}
                                                     </div>
+                                                </td>
+                                                <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                                                    {(() => {
+                                                        const sessYear = student.academic_session?.session || (student as any).academicSession?.session || sessions.find(s => s.id?.toString() === student.academic_session_id?.toString())?.session;
+                                                        return sessYear ? toLocaleNumber(sessYear, langCode) : "-";
+                                                    })()}
                                                 </td>
                                                 <td className="px-4 py-3.5 text-xs font-semibold text-gray-800 dark:text-gray-200">{student.father_name || "-"}</td>
                                                 <td className="px-4 py-3.5 text-xs font-medium text-gray-700 dark:text-gray-300">{formatDate(student.dob, langCode)}</td>

@@ -49,7 +49,7 @@ export function DistributionChart({ title, data }: DistributionChartProps) {
     return (
         <Card className="group hover:shadow-2xl transition-all duration-300 ease-in-out border-none cursor-pointer hover:-translate-y-1 hover:scale-[1.005] flex flex-col h-full bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-0">
-                <CardTitle className="text-sm font-bold text-foreground/80 uppercase tracking-widest">{title}</CardTitle>
+                <CardTitle className="text-sm font-bold text-foreground/80 uppercase tracking-normal">{title}</CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-center relative pb-6 px-0">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0 relative">

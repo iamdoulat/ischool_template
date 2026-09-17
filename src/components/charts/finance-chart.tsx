@@ -47,8 +47,8 @@ export function FinanceChart({ title, data, type }: FinanceChartProps) {
     return (
         <Card className="group hover:shadow-2xl transition-all duration-300 ease-in-out border-none cursor-pointer hover:-translate-y-1 hover:scale-[1.005] h-full bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
-                <CardTitle className="text-sm font-bold text-foreground/80 uppercase tracking-widest">{title}</CardTitle>
-                <Badge variant="secondary" className="font-bold text-[10px] py-1 px-3 bg-primary/10 text-primary border-primary/20 uppercase tracking-tighter">{sessionLabel}</Badge>
+                <CardTitle className="text-sm font-bold text-foreground/80 uppercase tracking-normal">{title}</CardTitle>
+                <Badge variant="secondary" className="font-bold text-[10px] py-1 px-3 bg-primary/10 text-primary border-primary/20 uppercase tracking-normal">{sessionLabel}</Badge>
             </CardHeader>
             <CardContent className="pb-0">
                 <div className="h-[320px] min-h-[320px] w-full min-w-0">

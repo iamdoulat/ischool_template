@@ -24,7 +24,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -44,7 +44,7 @@ export default function StudentAdmissionPage() {
     const pathname = usePathname();
     const getImageUrl = useImageUrl();
     const tt = useTranslateToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { settings } = useSettings();
     const { symbol } = useCurrencyFormatter();
     const [loading, setLoading] = useState(false);
@@ -55,6 +55,7 @@ export default function StudentAdmissionPage() {
     const [isBranchLocked, setIsBranchLocked] = useState(false);
     const [categories, setCategories] = useState<any[]>([]);
     const [houses, setHouses] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<{ id: number; session: string; is_active?: boolean | number }[]>([]);
     const [showSiblingModal, setShowSiblingModal] = useState(false);
     const [siblingClassId, setSiblingClassId] = useState("");
     const [siblingSectionId, setSiblingSectionId] = useState("");
@@ -67,6 +68,7 @@ export default function StudentAdmissionPage() {
 
     const [formData, setFormData] = useState<{ [key: string]: any }>({
         branch_id: "1",
+        academic_session_id: "",
         admission_no: "",
         roll_no: "",
         username: "",
@@ -277,7 +279,7 @@ export default function StudentAdmissionPage() {
     const fetchPrerequisites = async () => {
         setFetchingPrereqs(true);
         try {
-            const [classesRes, categoriesRes, housesRes, routesRes, pickupsRes, hostelsRes, roomsRes, feeGroupsRes, feeDiscountsRes, admissionFormRes, branchesRes] = await Promise.all([
+            const [classesRes, categoriesRes, housesRes, routesRes, pickupsRes, hostelsRes, roomsRes, feeGroupsRes, feeDiscountsRes, admissionFormRes, branchesRes, sessionsRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
                 api.get("/student-categories"),
                 api.get("/student-houses"),
@@ -288,7 +290,8 @@ export default function StudentAdmissionPage() {
                 api.get("/fees-groups"),
                 api.get("/fee-discounts"),
                 api.get("/system-setting/admission-form"),
-                api.get("/multi-branch/branches?all=true")
+                api.get("/multi-branch/branches?all=true"),
+                api.get("/system-setting/sessions").catch(() => ({ data: { data: [] } }))
             ]);
             setClasses(classesRes.data.data?.data || classesRes.data.data || []);
             setCategories(categoriesRes.data.data?.data || categoriesRes.data.data || []);
@@ -301,6 +304,16 @@ export default function StudentAdmissionPage() {
             setFeeDiscounts(feeDiscountsRes.data.data?.data || feeDiscountsRes.data.data || []);
             const branchList = branchesRes.data.data?.data || branchesRes.data.data || [];
             setBranches(Array.isArray(branchList) ? branchList : []);
+            const sessData = sessionsRes.data?.data || sessionsRes.data || [];
+            const validSessions = Array.isArray(sessData) ? sessData : [];
+            setSessions(validSessions);
+            const activeSess = validSessions.find((s: any) => s.is_active) || validSessions[0];
+            if (activeSess) {
+                setFormData(prev => ({
+                    ...prev,
+                    academic_session_id: prev.academic_session_id || activeSess.id.toString(),
+                }));
+            }
 
             // Auto-detect branch from URL (/br/:slug/...) or localStorage/user
             const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : (typeof window !== "undefined" ? window.location.pathname.match(/^\/br\/([^\/]+)/) : null);
@@ -678,6 +691,16 @@ export default function StudentAdmissionPage() {
                 {/* Student Admission Card */}
                 <SectionCard title={t("student_admission")} icon={GraduationCap}>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <SelectField
+                            label={t("session")}
+                            required
+                            value={formData.academic_session_id || ""}
+                            onChange={(val) => handleChange("academic_session_id", val)}
+                            options={sessions.map(s => ({
+                                label: `${toLocaleNumber(s.session, language?.short_code)}${s.is_active ? ` (${t("active")})` : ""}`,
+                                value: s.id.toString()
+                            }))}
+                        />
                         <InputField label={t("admission_no")} required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} readOnly={autoAdmissionEnabled} helperText={autoAdmissionEnabled ? t("auto_generated") : ""} />
                         <InputField label={t("roll_number")} value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} readOnly={autoRollEnabled} helperText={autoRollEnabled ? t("auto_generated") : ""} />
                         <div className="relative">

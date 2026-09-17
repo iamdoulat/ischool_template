@@ -104,7 +104,7 @@ const SAMPLE_PERSON = {
     name: "John Doe", admission_no: "10024", roll_no: "5", class: "Class 1", section: "A",
     father_name: "Richard Doe", mother_name: "Jane Doe", dob: "01/01/2015",
     blood_group: "O+", house: "Red", phone: "9000000000", address: "123 Main St",
-    session: "2024-25",
+    session: "2026-27",
 };
 
 const emptyForm = {

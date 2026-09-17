@@ -27,7 +27,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber } from "@/lib/utils";
 import { useCurrencyFormatter } from "@/hooks/use-currency-formatter";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -46,7 +46,7 @@ export default function StudentEditPage() {
     const { id } = useParams();
     const router = useRouter();
     const tt = useTranslateToast();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { symbol } = useCurrencyFormatter();
     const getImageUrl = useImageUrl();
     const [loading, setLoading] = useState(false);
@@ -64,6 +64,7 @@ export default function StudentEditPage() {
     const [pickupPoints, setPickupPoints] = useState<any[]>([]);
     const [hostels, setHostels] = useState<any[]>([]);
     const [rooms, setRooms] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<{ id: number; session: string; is_active?: boolean | number }[]>([]);
     const [showSiblingModal, setShowSiblingModal] = useState(false);
     const [siblingClassId, setSiblingClassId] = useState("");
     const [siblingSectionId, setSiblingSectionId] = useState("");
@@ -75,6 +76,7 @@ export default function StudentEditPage() {
 
     const [formData, setFormData] = useState<{ [key: string]: any }>({
         branch_id: "1",
+        academic_session_id: "",
         admission_no: "",
         roll_no: "",
         username: "",
@@ -224,7 +226,7 @@ export default function StudentEditPage() {
 
     const fetchPrerequisites = async () => {
         try {
-            const [classesRes, categoriesRes, housesRes, disableReasonsRes, feeGroupsRes, feeDiscountsRes, routesRes, pickupsRes, hostelsRes, roomsRes, branchesRes] = await Promise.all([
+            const [classesRes, categoriesRes, housesRes, disableReasonsRes, feeGroupsRes, feeDiscountsRes, routesRes, pickupsRes, hostelsRes, roomsRes, branchesRes, sessionsRes] = await Promise.all([
                 api.get("/academics/classes?no_paginate=true"),
                 api.get("/student-categories"),
                 api.get("/student-houses"),
@@ -235,7 +237,8 @@ export default function StudentEditPage() {
                 api.get("/transport/pickup-points"),
                 api.get("/hostels"),
                 api.get("/rooms"),
-                api.get("/multi-branch/branches?all=true")
+                api.get("/multi-branch/branches?all=true"),
+                api.get("/system-setting/sessions").catch(() => ({ data: { data: [] } }))
             ]);
             setClasses(classesRes.data.data?.data || classesRes.data.data || []);
             setCategories(categoriesRes.data.data?.data || categoriesRes.data.data || []);
@@ -249,6 +252,9 @@ export default function StudentEditPage() {
             setRooms(roomsRes.data.data?.data || roomsRes.data.data || []);
             const bList = branchesRes.data.data?.data || branchesRes.data.data || [];
             setBranches(Array.isArray(bList) ? bList : []);
+            const sessData = sessionsRes.data?.data || sessionsRes.data || [];
+            const validSessions = Array.isArray(sessData) ? sessData : [];
+            setSessions(validSessions);
 
             // Auto-detect branch from URL (/br/:slug/...) or localStorage/user
             const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : (typeof window !== "undefined" ? window.location.pathname.match(/^\/br\/([^\/]+)/) : null);
@@ -486,8 +492,11 @@ export default function StudentEditPage() {
                 ? subBranchObj.id.toString() 
                 : (student.branch_id ? student.branch_id.toString() : (mainB?.id ? mainB.id.toString() : "1"));
 
+            const rawSessionId = (student.academic_session_id ?? student.academicSession?.id ?? student.academic_session?.id ?? "")?.toString();
+
             setFormData({
                 branch_id: defaultBranchId,
+                academic_session_id: rawSessionId,
                 admission_no: rawAdm,
                 roll_no: rawRoll,
                 username: rawUser,
@@ -861,6 +870,16 @@ export default function StudentEditPage() {
                         </div>
 
                         <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <SelectField
+                                label={t("session")}
+                                required
+                                value={formData.academic_session_id || ""}
+                                onChange={(val) => handleChange("academic_session_id", val)}
+                                options={sessions.map(s => ({
+                                    label: `${toLocaleNumber(s.session, language?.short_code)}${s.is_active ? ` (${t("active")})` : ""}`,
+                                    value: s.id.toString()
+                                }))}
+                            />
                             <InputField label={t("admission_no")} required value={formData.admission_no} onChange={(val) => handleChange("admission_no", val)} />
                             <InputField label={t("roll_number")} value={formData.roll_no} onChange={(val) => handleChange("roll_no", val)} />
                             <div className="relative">

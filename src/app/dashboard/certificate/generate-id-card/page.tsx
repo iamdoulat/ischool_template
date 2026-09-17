@@ -204,7 +204,7 @@ function toPerson(
         dob: s.dob ? toLocaleNumber(formatDate(s.dob), langCode) : "",
         blood_group: s.blood_group || "",
         house: s.house || "",
-        session: toLocaleNumber((s as any).session?.session || (s as any).academic_session?.session || (s as any).academicSession?.session || (s as any).session_name || (s as any).session || "2024-25", langCode),
+        session: toLocaleNumber((s as any).session?.session || (s as any).academic_session?.session || (s as any).academicSession?.session || (s as any).session_name || (s as any).session || "2026-27", langCode),
         phone: s.phone ? toLocaleNumber(s.phone, langCode) : "",
         address: s.current_address || "",
         photo: avatarRaw ? getImageUrl(avatarRaw) : null,

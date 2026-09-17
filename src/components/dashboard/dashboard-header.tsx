@@ -83,7 +83,7 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated, branch }: 
             <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                     <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                    <h2 className="text-lg md:text-2xl font-extrabold tracking-tight text-foreground truncate">
+                    <h2 className="text-lg md:text-2xl font-bold tracking-tight text-foreground truncate">
                         {getGreeting(t)}{user?.name ? `, ${user.name.split(" ")[0]}` : ""}!
                     </h2>
                     {user?.role && (
@@ -97,7 +97,7 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated, branch }: 
                     {branch && !branch.is_main && (
                         <Badge
                             variant="outline"
-                            className="text-[10px] font-extrabold uppercase tracking-wider border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs"
+                            className="text-[10px] font-bold uppercase tracking-wider border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 dark:text-amber-300 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs"
                         >
                             <Building2 className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                             <span>{branch.branch_name}</span>
@@ -121,7 +121,7 @@ export function DashboardHeader({ onRefresh, refreshing, lastUpdated, branch }: 
                 {session && (
                     <Badge
                         variant="outline"
-                        className="text-[11px] font-bold uppercase tracking-widest border-indigo-200 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-400 px-3 py-1 rounded-lg"
+                        className="text-[11px] font-bold uppercase tracking-normal border-indigo-200 text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-400 px-3 py-1 rounded-lg"
                     >
                         {t("session_x", { session: localizedSession })}
                     </Badge>

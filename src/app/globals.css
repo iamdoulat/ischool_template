@@ -611,24 +611,20 @@ a[class*="from-"],
   --font-hindi-fallback: "Noto Sans Devanagari", "Hind", system-ui, sans-serif;
 }
 
-/* Bengali locale font priority and line-height safety */
-html[lang="bn"],
-[lang="bn"] {
-  font-family: var(--font-hind-siliguri), var(--font-geist-sans), var(--font-bengali-fallback);
+body {
+  font-family: var(--font-sans);
 }
 
-html[lang="bn"] h1,
-html[lang="bn"] h2,
-html[lang="bn"] h3,
-html[lang="bn"] h4,
-html[lang="bn"] h5,
-html[lang="bn"] h6,
-[lang="bn"] h1,
-[lang="bn"] h2,
-[lang="bn"] h3,
-[lang="bn"] h4,
-[lang="bn"] h5,
-[lang="bn"] h6 {
+/* Bengali locale font priority and line-height safety */
+html[lang="bn"],
+[lang="bn"],
+html[lang="bn"] body,
+[lang="bn"] body {
+  font-family: var(--font-hind-siliguri), "Hind Siliguri", "Noto Sans Bengali", var(--font-sans), sans-serif;
+}
+
+html[lang="bn"] *,
+[lang="bn"] * {
   letter-spacing: normal !important;
 }
 

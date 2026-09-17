@@ -47,8 +47,8 @@ export function StatCard({ title, current, total, percentage, icon: Icon, color 
             <CardContent className="px-6 py-4 md:px-8 md:py-6 relative z-10 h-full flex flex-col justify-between">
                 <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h3 className="text-xs md:text-sm font-extrabold text-white/90 uppercase tracking-widest mb-1">{title}</h3>
-                        <p className="text-3xl md:text-[2.6rem] font-black tracking-tight leading-none">
+                        <h3 className="text-xs md:text-sm font-bold text-white/90 uppercase tracking-normal mb-1">{title}</h3>
+                        <p className="text-3xl md:text-[2.6rem] font-bold tracking-normal leading-none">
                             {toLocaleNumber(current, shortCode)}
                             <span className="text-sm md:text-base text-white/70 font-semibold ml-1">/{toLocaleNumber(total, shortCode)}</span>
                         </p>

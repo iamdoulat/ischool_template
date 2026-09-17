@@ -819,6 +819,24 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
         }
     };
 
+    const getLanguageDisplayName = (lang: Language) => {
+        const code = (lang.short_code || "").toLowerCase();
+        const name = (lang.name || "").toLowerCase();
+        if (code === "ar" || name === "arabic" || name === "عربي" || name === "العربية") {
+            return "عربي";
+        }
+        if (code === "bn" || name === "bengali" || name === "bangla" || name === "বাংলা") {
+            return "বাংলা";
+        }
+        if (code === "hi" || name === "hindi" || name === "हिन्दी") {
+            return "हिन्दी";
+        }
+        if (code === "en" || name === "english") {
+            return "English";
+        }
+        return lang.name;
+    };
+
     const LanguageSelector = () => {
         if (!mounted) return (
             <div className="h-10 w-10 flex items-center justify-center">
@@ -860,7 +878,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                                     )}>
                                         {lang.short_code.substring(0, 2)}
                                     </div>
-                                    <span className="font-semibold">{lang.name}</span>
+                                    <span className="font-semibold">{getLanguageDisplayName(lang)}</span>
                                 </div>
                                 {selectedLanguage?.id === lang.id && (
                                     <div className="h-1.5 w-1.5 rounded-full bg-primary" />

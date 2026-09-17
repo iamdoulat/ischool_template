@@ -172,12 +172,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable}`}
+      suppressHydrationWarning
+    >
       <head suppressHydrationWarning>
         <JsonLd />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider

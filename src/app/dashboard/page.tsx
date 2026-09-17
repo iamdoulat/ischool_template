@@ -57,7 +57,7 @@ const DEFAULT_WIDGETS = [
 /** Small section label used to break the page into scannable bands. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
     return (
-        <h3 className="text-xs font-black uppercase tracking-widest text-foreground/80 mb-4 flex items-center gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-normal text-foreground/80 mb-4 flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             {children}
         </h3>
@@ -256,7 +256,7 @@ export default function DashboardPage() {
     const isSummaryVisible = visibleSummaryCards.length > 0;
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-8 font-sans animate-in fade-in duration-500">
             {/* Page Header: greeting, date, session, refresh, branch */}
             <DashboardHeader
                 onRefresh={handleRefresh}

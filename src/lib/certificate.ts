@@ -2103,7 +2103,24 @@ export function renderIdCardHtml(
     const headerColor = card.header_color || "#4F46E5";
     const vertical = (card.design_type || "").toLowerCase() === "vertical";
     const titleLower = (card.title || "").toLowerCase();
-    const sessionVal = person.session || "2024-25";
+    const sessionVal = person.session || "2026-27";
+
+    const computeValidUpto = (session: string): string => {
+        const match = session.match(/(\d{4})\s*[-/]\s*(\d{2,4})/);
+        if (match) {
+            let endYear = match[2];
+            if (endYear.length === 2) {
+                endYear = match[1].slice(0, 2) + endYear;
+            }
+            return `MARCH ${endYear}`;
+        }
+        const singleYear = session.match(/\d{4}/);
+        if (singleYear) {
+            return `MARCH ${parseInt(singleYear[0], 10) + 1}`;
+        }
+        return "MARCH 2027";
+    };
+    const validUptoText = computeValidUpto(sessionVal);
 
     const formatRoleBadge = () => {
         if (type === "staff") {
@@ -2271,7 +2288,7 @@ export function renderIdCardHtml(
       </div>
       <div class="right-badges">
         <div style="font-size:18px;line-height:1;">&#127979;</div>
-        <div class="valid-tag">VALID UPTO<br><b>MARCH 2026</b></div>
+        <div class="valid-tag">VALID UPTO<br><b>${validUptoText}</b></div>
         <div class="session-pill">${type === "staff" ? (person.department ? `DEPT<br>${person.department}` : `STAFF<br>ID`) : `SESSION<br>${sessionVal}`}</div>
       </div>
     </div>

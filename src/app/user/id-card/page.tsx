@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
-import { sanitizeHtml } from "@/lib/sanitize";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { cn, translateClassName, translateSectionName } from "@/lib/utils";
+import { cn, translateClassName, translateSectionName, toLocaleNumber } from "@/lib/utils";
 import { CreditCard, User, Printer, Download, Loader2 } from "lucide-react";
 import {
     type IdCardTemplate,
@@ -31,6 +30,10 @@ interface PortalStudent {
     phone?: string;
     present_address?: string;
     image?: string | null;
+    session?: string;
+    school_name?: string;
+    school_logo?: string;
+    school_address?: string;
 }
 
 interface ApiResponse {
@@ -53,6 +56,7 @@ function toPerson(s: PortalStudent): IdCardPerson {
         phone: s.phone || "",
         address: s.present_address || "",
         photo: s.image || null,
+        session: s.session || "",
     };
 }
 
@@ -78,12 +82,18 @@ export default function UserIdCardPage() {
     const [data, setData] = useState<ApiResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [downloadingId, setDownloadingId] = useState<number | null>(null);
+    const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
+    const [iframeHeight, setIframeHeight] = useState<number>(340);
 
     useEffect(() => {
         (async () => {
             try {
                 const res = await api.get("/user/id-card");
-                setData(res.data?.data ?? res.data);
+                const resData: ApiResponse = res.data?.data ?? res.data;
+                setData(resData);
+                if (resData?.cards?.length) {
+                    setSelectedCardId(resData.cards[0].id);
+                }
             } catch {
                 toast({ title: t("error"), description: t("failed_to_load_id_cards"), variant: "destructive" });
             } finally {
@@ -94,18 +104,24 @@ export default function UserIdCardPage() {
     }, []);
 
     const person = data?.student ? toPerson(data.student) : null;
+    const card = (data?.cards?.find((c) => c.id === selectedCardId) || data?.cards?.[0]) ?? null;
+    const isVertical = card ? (card.design_type || "").toLowerCase() === "vertical" : false;
 
-    const handlePrint = (card: IdCardTemplate) => {
+    useEffect(() => {
+        setIframeHeight(isVertical ? 540 : 340);
+    }, [isVertical, card?.id]);
+
+    const handlePrint = (c: IdCardTemplate) => {
         if (!person) return;
-        printIdCards(renderIdCardHtml(card, person, "student"));
+        printIdCards(renderIdCardHtml(c, person, "student"));
     };
 
-    const handleDownload = async (card: IdCardTemplate) => {
+    const handleDownload = async (c: IdCardTemplate) => {
         if (!person) return;
-        setDownloadingId(card.id);
+        setDownloadingId(c.id);
         try {
-            const html = `<div style="padding:20px;background:#fff;display:inline-block;">${renderIdCardHtml(card, person, "student")}</div>`;
-            await downloadCertificatePdf(html, `${card.title.replace(/\s+/g, "-")}.pdf`);
+            const html = renderIdCardHtml(c, person, "student");
+            await downloadCertificatePdf(html, `${c.title.replace(/\s+/g, "-")}.pdf`);
         } catch {
             toast({ title: t("error"), description: t("failed_to_generate_pdf"), variant: "destructive" });
         } finally {
@@ -153,12 +169,13 @@ export default function UserIdCardPage() {
                                     ? <img src={data.student.image} alt={data.student.name} className="h-full w-full object-cover" />
                                     : <User className="h-8 w-8 opacity-40" />}
                             </div>
-                            <div className="flex-1 grid grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+                            <div className="flex-1 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-3.5 text-sm">
                                 {([
                                     [t("name"), data.student.name],
                                     [t("admission_no"), data.student.admission_no],
                                     [t("class"), `${data.student.class ? translateClassName(data.student.class, language?.short_code) : ""}${data.student.section ? ` (${translateSectionName(data.student.section, language?.short_code)})` : ""}`],
                                     [t("roll_no"), data.student.roll_no],
+                                    [t("session"), data.student.session ? toLocaleNumber(data.student.session, language?.short_code) : undefined],
                                     [t("father_name"), data.student.father_name],
                                     [t("blood_group"), data.student.blood_group],
                                 ] as [string, string | undefined][]).map(([label, value]) => (
@@ -180,7 +197,7 @@ export default function UserIdCardPage() {
                         <SkeletonCard />
                     </div>
                 </div>
-            ) : !data?.cards?.length ? (
+            ) : !card ? (
                 <Card className="shadow-sm border-0">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-gray-400">
                         <CreditCard className="h-12 w-12 opacity-25 mb-3" />
@@ -189,57 +206,101 @@ export default function UserIdCardPage() {
                     </CardContent>
                 </Card>
             ) : (
-                (() => {
-                    const card = data.cards[0];
-                    return (
-                        <div className="flex flex-col items-center justify-center">
-                            <div className="w-full max-w-xl rounded-2xl border border-gray-200/80 bg-white shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                                <div className="px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] flex items-center justify-between border-b border-gray-100">
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
-                                            <CreditCard className="h-4 w-4" />
-                                        </span>
-                                        <div className="min-w-0">
-                                            <h3 className="text-sm font-bold text-slate-800 truncate">{card.title}</h3>
-                                            <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">{t("official_student_id") || "Official Student ID"}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <Button
-                                            onClick={() => handlePrint(card)}
-                                            size="sm"
-                                            className={cn(
-                                                "h-8 px-3.5 text-xs font-bold rounded-lg gap-1.5 transition-all active:scale-95",
-                                                "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-xs"
-                                            )}
-                                        >
-                                            <Printer className="h-3.5 w-3.5" /> {t("print")}
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleDownload(card)}
-                                            disabled={downloadingId === card.id}
-                                            size="sm"
-                                            className="h-8 px-4 text-xs font-bold rounded-lg gap-1.5 transition-all active:scale-95 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs"
-                                        >
-                                            {downloadingId === card.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                                            {t("download_pdf") || "Download PDF"}
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                {/* Live ID card preview */}
-                                <div className="p-6 bg-slate-50/70 flex justify-center items-center overflow-x-auto min-h-[480px]">
-                                    {person && (
-                                        <div
-                                            className="origin-top"
-                                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderIdCardHtml(card, person, "student")) }}
-                                        />
-                                    )}
+                <div className="flex flex-col items-center justify-center">
+                    <div className="w-full max-w-xl rounded-2xl border border-gray-200/80 bg-white shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                        <div className="px-5 py-3.5 bg-gradient-to-r from-[#FFF5E7] to-[#EFF0FD] flex flex-wrap items-center justify-between gap-3 border-b border-gray-100">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#FF9800] to-[#6366F1] text-white shadow-sm">
+                                    <CreditCard className="h-4 w-4" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="text-sm font-bold text-slate-800 truncate">{card.title}</h3>
+                                    <span className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider">{t("official_student_id") || "Official Student ID"}</span>
                                 </div>
                             </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <Button
+                                    onClick={() => handlePrint(card)}
+                                    size="sm"
+                                    className={cn(
+                                        "h-8 px-3.5 text-xs font-bold rounded-lg gap-1.5 transition-all active:scale-95",
+                                        "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-xs"
+                                    )}
+                                >
+                                    <Printer className="h-3.5 w-3.5" /> {t("print")}
+                                </Button>
+                                <Button
+                                    onClick={() => handleDownload(card)}
+                                    disabled={downloadingId === card.id}
+                                    size="sm"
+                                    className="h-8 px-4 text-xs font-bold rounded-lg gap-1.5 transition-all active:scale-95 bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white shadow-xs"
+                                >
+                                    {downloadingId === card.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                                    {t("download_pdf") || "Download PDF"}
+                                </Button>
+                            </div>
                         </div>
-                    );
-                })()
+
+                        {/* If multiple templates available, allow switching */}
+                        {data?.cards && data.cards.length > 1 && (
+                            <div className="px-5 py-2 bg-slate-50 border-b border-gray-100 flex items-center gap-2 overflow-x-auto">
+                                <span className="text-xs font-medium text-gray-500 whitespace-nowrap">{t("template") || "Template"}:</span>
+                                {data.cards.map((c) => (
+                                    <button
+                                        key={c.id}
+                                        onClick={() => setSelectedCardId(c.id)}
+                                        className={cn(
+                                            "text-xs px-3 py-1 rounded-md font-medium transition-colors whitespace-nowrap",
+                                            selectedCardId === c.id
+                                                ? "bg-indigo-600 text-white shadow-xs"
+                                                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
+                                        )}
+                                    >
+                                        {c.title}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Live ID card preview via isolated iframe */}
+                        <div className="p-6 bg-slate-100/70 flex justify-center items-center overflow-x-auto min-h-[380px]">
+                            {person && (
+                                <iframe
+                                    key={`${card.id}-${card.design_type}-${person.session}`}
+                                    srcDoc={renderIdCardHtml(card, person, "student")}
+                                    title={card.title || t("my_id_card")}
+                                    className="border-0 rounded-2xl shadow-md transition-all"
+                                    style={{
+                                        width: isVertical ? "340px" : "480px",
+                                        height: `${iframeHeight}px`,
+                                        maxWidth: "100%",
+                                    }}
+                                    scrolling="no"
+                                    onLoad={(e) => {
+                                        try {
+                                            const doc = e.currentTarget.contentDocument || e.currentTarget.contentWindow?.document;
+                                            if (doc) {
+                                                const cardEl = doc.querySelector(".card");
+                                                if (cardEl) {
+                                                    const h = cardEl.getBoundingClientRect().height;
+                                                    if (h > 100) {
+                                                        setIframeHeight(Math.ceil(h + 40));
+                                                        return;
+                                                    }
+                                                }
+                                                if (doc.body && doc.body.scrollHeight > 100) {
+                                                    setIframeHeight(doc.body.scrollHeight);
+                                                }
+                                            }
+                                        } catch {
+                                            // fallback
+                                        }
+                                    }}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

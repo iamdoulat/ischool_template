@@ -41,7 +41,7 @@ export function OverviewCard({ title, items, color }: OverviewCardProps) {
             colorMaps[color]
         )}>
             <CardHeader className="pb-0 flex-none border-b border-white/10 mb-0 px-4 md:px-5 pt-3">
-                <CardTitle className="text-xs md:text-base font-bold text-white/80 uppercase tracking-widest leading-tight">{title}</CardTitle>
+                <CardTitle className="text-xs md:text-base font-bold text-white/80 uppercase tracking-normal leading-tight">{title}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 pt-2 px-4 md:px-5 pb-3">
                 {items.map((item, index) => {
@@ -55,7 +55,7 @@ export function OverviewCard({ title, items, color }: OverviewCardProps) {
 
                     return (
                         <div key={index} className="space-y-2">
-                            <div className="flex justify-between items-center text-[0.65rem] md:text-xs font-bold text-white/70 uppercase tracking-tighter">
+                            <div className="flex justify-between items-center text-[0.65rem] md:text-xs font-bold text-white/70 uppercase tracking-normal">
                                 <span>{displayVal} {displayLabel}</span>
                                 <span>{toLocaleNumber(item.percentage, shortCode)}%</span>
                             </div>
