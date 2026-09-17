@@ -40,8 +40,8 @@ export async function generateMetadata(): Promise<Metadata> {
   let appTitle = "iSchool";
   let schoolDescription = "iSchool is an advanced, all-in-one School Management System and Educational Portal providing online admissions, examination results, student tracking, attendance, fees collection, and digital notices.";
   let rawFavicon = "/logo-admin-small.png";
-  let rawPwaIcon192 = "/logo-app.png";
-  let rawPwaIcon512 = "/logo-app.png";
+  let rawPwaIcon192 = "/icons/icon-192x192.png";
+  let rawPwaIcon512 = "/icons/icon-512x512.png";
 
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
@@ -61,6 +61,10 @@ export async function generateMetadata(): Promise<Metadata> {
         appTitle = settings.pwa_app_short_name;
       }
 
+      const pwaAppName = (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "")
+        ? settings.pwa_app_short_name.trim()
+        : appTitle;
+
       if (settings.school_description && settings.school_description.trim() !== "") {
         schoolDescription = settings.school_description.trim();
       }
@@ -69,20 +73,20 @@ export async function generateMetadata(): Promise<Metadata> {
         rawFavicon = settings.favicon;
       }
 
-      if (settings.pwa_icon_192) {
-        rawPwaIcon192 = settings.pwa_icon_192;
-      } else if (settings.pwa_icon_512) {
-        rawPwaIcon192 = settings.pwa_icon_512;
-      } else if (settings.pwa_icon_maskable) {
-        rawPwaIcon192 = settings.pwa_icon_maskable;
-      }
-
       if (settings.pwa_icon_512) {
         rawPwaIcon512 = settings.pwa_icon_512;
       } else if (settings.pwa_icon_192) {
         rawPwaIcon512 = settings.pwa_icon_192;
       } else if (settings.pwa_icon_maskable) {
         rawPwaIcon512 = settings.pwa_icon_maskable;
+      }
+
+      if (settings.pwa_icon_192) {
+        rawPwaIcon192 = settings.pwa_icon_192;
+      } else if (settings.pwa_icon_512) {
+        rawPwaIcon192 = settings.pwa_icon_512;
+      } else if (settings.pwa_icon_maskable) {
+        rawPwaIcon192 = settings.pwa_icon_maskable;
       }
     }
   } catch {
@@ -141,20 +145,20 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [
         { url: resolvedFaviconUrl },
-        { url: resolvedPwa192, sizes: "192x192", type: "image/png" },
-        { url: resolvedPwa512, sizes: "512x512", type: "image/png" },
+        { url: resolvedPwa192, sizes: "192x192" },
+        { url: resolvedPwa512, sizes: "512x512" },
       ],
       apple: [
-        { url: resolvedPwa192, sizes: "180x180", type: "image/png" },
-        { url: resolvedPwa192, sizes: "192x192", type: "image/png" },
-        { url: resolvedPwa512, sizes: "512x512", type: "image/png" },
+        { url: resolvedPwa192, sizes: "180x180" },
+        { url: resolvedPwa192, sizes: "192x192" },
+        { url: resolvedPwa512, sizes: "512x512" },
       ],
       shortcut: [resolvedFaviconUrl],
     },
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: appTitle,
+      title: (typeof settings !== "undefined" && settings?.pwa_app_short_name) || "iSchool",
     },
     formatDetection: {
       telephone: false,

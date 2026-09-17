@@ -34,8 +34,8 @@ export function PWAInstallButton({ className, variant = "ghost", showLabel = fal
   const [mounted, setMounted] = useState(false);
 
   const appName = settings?.pwa_app_short_name || settings?.school_name || "iSchool";
-  const rawLogo = settings?.pwa_icon_192 || settings?.pwa_icon_512 || "/logo-app.png";
-  const appLogo = getImageUrl(rawLogo) || "/logo-app.png";
+  const rawLogo = settings?.pwa_icon_192 || settings?.pwa_icon_512 || "/icons/icon-192x192.png";
+  const appLogo = getImageUrl(rawLogo) || "/icons/icon-192x192.png";
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -57,7 +57,7 @@ export function PWAInstallButton({ className, variant = "ghost", showLabel = fal
     }, 0);
 
     const handleBeforeInstall = (e: Event) => {
-      e.preventDefault();
+      // Do not preventDefault() so the native browser address bar install icon remains visible
       const promptEvent = e as BeforeInstallPromptEvent;
       window.deferredPWAInstallPrompt = promptEvent;
       setDeferredPrompt(promptEvent);
@@ -183,7 +183,7 @@ export function PWAInstallButton({ className, variant = "ghost", showLabel = fal
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-primary/20 border border-primary/30 text-primary flex items-center justify-center mx-auto shadow-inner overflow-hidden">
               {isStandalone ? (
                 <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-              ) : appLogo && appLogo !== "/logo-app.png" ? (
+              ) : appLogo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={appLogo} alt={appName} className="w-12 h-12 object-contain rounded-xl" />
               ) : (

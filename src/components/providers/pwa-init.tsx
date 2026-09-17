@@ -57,6 +57,9 @@ export function PWAInit() {
     // Dynamic Head Tag Sync for iOS Safari, Browser Favicon & Android mobile app installation
     const localFavicon = localStorage.getItem("ischool_favicon");
     const localShortName = localStorage.getItem("ischool_pwa_app_short_name");
+    const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
+    const localIcon192 = localStorage.getItem("ischool_pwa_icon_192");
+    const localIconMaskable = localStorage.getItem("ischool_pwa_icon_maskable");
     const storedRole = (localStorage.getItem("user_role") || "").toLowerCase().trim();
     const storedStartUrl = localStorage.getItem("pwa_start_url")?.trim();
     const currentPath = pathname || (typeof window !== "undefined" ? window.location.pathname : "");
@@ -89,8 +92,7 @@ export function PWAInit() {
     }
 
     const targetStartUrl = isUserPortal ? "/user/dashboard" : "/dashboard";
-    const manifestPortalParam = isUserPortal ? "user" : "admin";
-    const manifestHref = `/manifest.json?portal=${manifestPortalParam}`;
+    const manifestHref = "/manifest.json";
 
     localStorage.setItem("pwa_start_url", targetStartUrl);
     document.cookie = `pwa_start_url=${targetStartUrl}; path=/; max-age=31536000; SameSite=Lax`;
@@ -99,12 +101,22 @@ export function PWAInit() {
     }
 
     const appShortName = settings?.pwa_app_short_name || localShortName || "iSchool";
+    document.cookie = `pwa_app_short_name=${encodeURIComponent(appShortName)}; path=/; max-age=31536000; SameSite=Lax`;
+
     const rawFavicon = settings?.favicon || localFavicon || "/icons/icon-192x192.png";
-    
     const resolvedFaviconUrl = getImageUrl(rawFavicon) || "/icons/icon-192x192.png";
     const faviconHref = `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
-    const appIcon = "/icons/icon-192x192.png";
-    const appIcon512 = "/icons/icon-512x512.png";
+
+    // User requirement: PWA icon must prioritize 'PWA Icon (512x512)'
+    const rawPwaIcon512 = settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_192 || localIcon192 || "/icons/icon-512x512.png";
+    const rawPwaIcon192 = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || "/icons/icon-192x192.png";
+    
+    if (rawPwaIcon512 && !rawPwaIcon512.includes("icon-512x512.png")) {
+      document.cookie = `pwa_icon_512=${encodeURIComponent(rawPwaIcon512)}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+
+    const appIcon = getImageUrl(rawPwaIcon192) || "/icons/icon-192x192.png";
+    const appIcon512 = getImageUrl(rawPwaIcon512) || "/icons/icon-512x512.png";
 
     // 1. Safely sync Browser Main Favicon, Apple Touch Icon and Dynamic Manifest link tags
     const syncLinkTag = (rel: string, href: string) => {
@@ -122,7 +134,7 @@ export function PWAInit() {
     syncLinkTag("manifest", manifestHref);
     syncLinkTag("icon", faviconHref);
     syncLinkTag("shortcut icon", faviconHref);
-    syncLinkTag("apple-touch-icon", appIcon);
+    syncLinkTag("apple-touch-icon", appIcon512);
 
     // 2. Sync Mobile App meta & touch icon tags (iOS & Modern Chromium browsers)
     let mobileCapableTag = document.querySelector<HTMLMetaElement>("meta[name='mobile-web-app-capable']");

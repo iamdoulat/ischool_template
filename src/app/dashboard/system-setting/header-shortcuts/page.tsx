@@ -274,9 +274,15 @@ export default function HeaderShortcutsPage() {
             const byId = t(item.id);
             if (byId && byId !== item.id) return byId;
         }
-        const key = item.title.toLowerCase().replace(/[\s\/\-]+/g, "_");
-        const byTitle = t(key);
-        if (byTitle && byTitle !== key) return byTitle;
+        const cleanKey = item.title
+            ?.toLowerCase()
+            .replace(/&/g, " ")
+            .replace(/[\s\/\-]+/g, "_")
+            .replace(/^_+|_+$/g, "");
+        if (cleanKey) {
+            const byTitle = t(cleanKey);
+            if (byTitle && byTitle !== cleanKey) return byTitle;
+        }
         return item.title;
     };
 

@@ -44,6 +44,7 @@ import {
     translateStatusBadge,
 } from "@/lib/utils";
 import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
 import { InternalChatDialog } from "@/components/chat/internal-chat-dialog";
 
 // ─── Data Types ───────────────────────────────────────────────────────────────
@@ -254,6 +255,7 @@ function EmptyState({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
 
 export default function UserDashboardPage() {
     const { t, language } = useTranslation();
+    const { settings } = useSettings();
     const langCode = language?.short_code || "en";
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -264,6 +266,29 @@ export default function UserDashboardPage() {
     const [chatOpen, setChatOpen] = useState(false);
     const [chatTargetContact, setChatTargetContact] = useState<ChatContact | null>(null);
     const [chatTargetUserId, setChatTargetUserId] = useState<number | null>(null);
+
+    const [localChatEnabled, setLocalChatEnabled] = useState<boolean>(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("ischool_enable_chat");
+            if (saved !== null) return saved !== "false";
+        }
+        return true;
+    });
+
+    useEffect(() => {
+        const updateChatState = () => {
+            if (typeof window !== "undefined") {
+                const saved = localStorage.getItem("ischool_enable_chat");
+                if (saved !== null) {
+                    setLocalChatEnabled(saved !== "false");
+                }
+            }
+        };
+        window.addEventListener("storage", updateChatState);
+        return () => window.removeEventListener("storage", updateChatState);
+    }, []);
+
+    const isChatEnabled = settings?.enable_chat !== false && localChatEnabled;
 
     const handleStartTeacherChat = (teacher: TeacherItem) => {
         setChatTargetUserId(teacher.id);
@@ -805,14 +830,16 @@ export default function UserDashboardPage() {
                                             </div>
                                         </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleStartTeacherChat(item)}
-                                        className="h-8 w-8 rounded-lg bg-indigo-50 hover:bg-gradient-to-r hover:from-[#FF9800] hover:to-[#6366F1] text-indigo-600 hover:text-white flex items-center justify-center transition-all shadow-2xs hover:scale-105 shrink-0 cursor-pointer"
-                                        title={t("chat_with_teacher") || "Chat with Teacher"}
-                                    >
-                                        <MessageSquare className="h-4 w-4" />
-                                    </button>
+                                    {isChatEnabled && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleStartTeacherChat(item)}
+                                            className="h-8 w-8 rounded-lg bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white flex items-center justify-center transition-all shadow-xs hover:opacity-95 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+                                            title={t("chat_with_teacher") || "Chat with Teacher"}
+                                        >
+                                            <MessageSquare className="h-4 w-4" />
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -1148,12 +1175,14 @@ export default function UserDashboardPage() {
             </Dialog>
 
             {/* Internal Chat Dialog for Direct Teacher Messaging */}
-            <InternalChatDialog
-                open={chatOpen}
-                onOpenChange={setChatOpen}
-                initialContact={chatTargetContact}
-                initialContactId={chatTargetUserId}
-            />
+            {isChatEnabled && (
+                <InternalChatDialog
+                    open={chatOpen}
+                    onOpenChange={setChatOpen}
+                    initialContact={chatTargetContact}
+                    initialContactId={chatTargetUserId}
+                />
+            )}
         </div>
     );
 }

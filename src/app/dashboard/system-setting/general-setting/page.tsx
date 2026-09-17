@@ -147,9 +147,9 @@ function LogoCard({ title, field, dimensions, value, onUpload, onSaveSuccess, t 
         app_logo: "/logo-app.png",
         favicon: "/logo-admin-small.png",
         app_favicon: "/logo-admin-small.png",
-        pwa_icon_512: "/logo-app.png",
-        pwa_icon_192: "/logo-app.png",
-        pwa_icon_maskable: "/logo-app.png",
+        pwa_icon_512: "/icons/icon-512x512.png",
+        pwa_icon_192: "/icons/icon-192x192.png",
+        pwa_icon_maskable: "/icons/icon-maskable-512x512.png",
         login_page_background_admin: "/bg-admin.jpg",
         login_page_background_user: "/bg-user.jpg",
     };
@@ -630,11 +630,21 @@ export default function GeneralSettingPage() {
             pwaTextAndLogoFields.forEach(lf => {
                 if (payload[lf] !== undefined && payload[lf] !== null && typeof window !== 'undefined') {
                     localStorage.setItem(`ischool_${lf}`, String(payload[lf]));
+                    if (lf === 'pwa_app_short_name') {
+                        document.cookie = `pwa_app_short_name=${encodeURIComponent(String(payload[lf]))}; path=/; max-age=31536000; SameSite=Lax`;
+                    }
+                    if (lf === 'pwa_icon_512') {
+                        document.cookie = `pwa_icon_512=${encodeURIComponent(String(payload[lf]))}; path=/; max-age=31536000; SameSite=Lax`;
+                    }
                 }
             });
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new Event("storage"));
+            }
 
             if (payload.enable_chat !== undefined && payload.enable_chat !== null && typeof window !== 'undefined') {
                 localStorage.setItem("ischool_enable_chat", String(payload.enable_chat));
+                window.dispatchEvent(new Event("storage"));
             }
             if (payload.base_url !== undefined && payload.base_url !== null && typeof window !== 'undefined') {
                 localStorage.setItem("ischool_base_url", String(payload.base_url));

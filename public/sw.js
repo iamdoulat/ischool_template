@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ischool-pwa-v6';
+const CACHE_NAME = 'ischool-pwa-v11';
 
 const urlsToCache = [
   '/',

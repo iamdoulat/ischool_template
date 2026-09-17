@@ -72,7 +72,7 @@ import {
 } from "lucide-react";
 import api from "@/lib/api";
 import { useLanguage } from "@/components/providers/language-provider";
-import { cn } from "@/lib/utils";
+import { cn, toLocaleNumber } from "@/lib/utils";
 import { getShortcutGradientStyle } from "@/lib/shortcut-colors";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -162,12 +162,30 @@ const DEFAULT_SHORTCUTS: HeaderShortcutItem[] = [
 export function HeaderShortcutsPopover() {
     const router = useRouter();
     const pathname = usePathname();
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const [mounted, setMounted] = useState(false);
     const [shortcuts, setShortcuts] = useState<HeaderShortcutItem[]>(DEFAULT_SHORTCUTS);
     const [loading, setLoading] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const panelRef = useRef<HTMLDivElement>(null);
+
+    const getShortcutTitle = (item: HeaderShortcutItem) => {
+        if (!item) return "";
+        if (item.id) {
+            const byId = t(item.id);
+            if (byId && byId !== item.id) return byId;
+        }
+        const cleanKey = item.title
+            ?.toLowerCase()
+            .replace(/&/g, " ")
+            .replace(/[\s\/\-]+/g, "_")
+            .replace(/^_+|_+$/g, "");
+        if (cleanKey) {
+            const byKey = t(cleanKey);
+            if (byKey && byKey !== cleanKey) return byKey;
+        }
+        return item.title;
+    };
 
     const branchPrefixMatch = pathname ? pathname.match(/^\/br\/([^\/]+)/) : null;
     const branchSlug = branchPrefixMatch ? branchPrefixMatch[1] : null;
@@ -280,7 +298,8 @@ export function HeaderShortcutsPopover() {
                                         {t("header_shortcuts") || "HEADER SHORTCUTS"}
                                     </h3>
                                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                                        Quick access navigation — {shortcuts.length} active shortcuts
+                                        {t("quick_access_navigation_desc", { count: toLocaleNumber(shortcuts.length, language?.short_code) }) ||
+                                            `${t("quick_access_navigation") || "Quick access navigation"} — ${toLocaleNumber(shortcuts.length, language?.short_code)} ${t("active_shortcuts") || "active shortcuts"}`}
                                     </p>
                                 </div>
                                 {loading && <Loader2 className="h-4 w-4 animate-spin text-primary ml-2" />}
@@ -296,7 +315,7 @@ export function HeaderShortcutsPopover() {
                                     className="text-xs font-bold text-primary hover:underline flex items-center gap-1.5 cursor-pointer bg-primary/10 px-3 py-1.5 rounded-full transition-colors"
                                 >
                                     <SlidersHorizontal className="h-3.5 w-3.5" />
-                                    Manage Shortcuts
+                                    {t("manage_shortcuts") || "Manage Shortcuts"}
                                 </button>
                                 <Button
                                     variant="ghost"
@@ -328,7 +347,7 @@ export function HeaderShortcutsPopover() {
                                                 <IconComponent className="h-5.5 w-5.5" />
                                             </div>
                                             <span className="text-xs font-bold text-foreground mt-2.5 leading-tight truncate w-full group-hover:text-primary transition-colors">
-                                                {item.title}
+                                                {getShortcutTitle(item)}
                                             </span>
                                         </button>
                                     );
@@ -336,7 +355,7 @@ export function HeaderShortcutsPopover() {
                             </div>
                         ) : (
                             <div className="py-8 text-center text-xs text-muted-foreground italic">
-                                No shortcuts selected. Configure them in Header Shortcuts settings.
+                                {t("no_shortcuts_selected") || "No shortcuts selected. Configure them in Header Shortcuts settings."}
                             </div>
                         )}
                     </div>

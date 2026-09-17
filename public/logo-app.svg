@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 290 51" width="290" height="51">
+  <rect width="100%" height="100%" rx="6" fill="#FFFFFF"/>
+  <g transform="translate(10, 10)">
+    <path d="M15 5 L2 14 L15 23 L28 14 Z" fill="#6366F1"/>
+    <path d="M6 17 V24 C6 24 11 27 15 27 C19 27 24 24 24 24 V17" fill="none" stroke="#FF9800" stroke-width="2"/>
+    <text x="38" y="22" font-family="Arial, sans-serif" font-size="18" font-weight="extrabold" fill="#1E293B" letter-spacing="0.5">SMART SCHOOL</text>
+  </g>
+</svg>

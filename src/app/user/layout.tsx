@@ -36,7 +36,9 @@ function UserLayoutContent({
                 manifestLink.rel = "manifest";
                 document.head.appendChild(manifestLink);
             }
-            manifestLink.href = "/manifest.json?portal=user";
+            if (manifestLink && manifestLink.getAttribute("href") !== "/manifest.json") {
+                manifestLink.href = "/manifest.json";
+            }
         }
     }, []);
 

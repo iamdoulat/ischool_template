@@ -40,8 +40,9 @@ export function PWAInstallPrompt() {
 
   const appName = settings?.pwa_app_short_name || localShortName || "iSchool";
   
-  const rawLogo = settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_maskable || localIconMaskable || "/logo-app.png";
-  const appLogo = getImageUrl(rawLogo) || "/logo-app.png";
+  const rawLogo = settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_192 || localIcon192 || settings?.pwa_icon_maskable || localIconMaskable || "/icons/icon-512x512.png";
+  const baseAppLogo = getImageUrl(rawLogo) || "/icons/icon-512x512.png";
+  const appLogo = `${baseAppLogo}${baseAppLogo.includes('?') ? '&' : '?'}v=ischool2`;
 
   // Target exclusively user portal (/user/*) and admin portal (/dashboard/*)
   const isTargetPortal = Boolean(pathname?.startsWith("/user") || pathname?.startsWith("/dashboard"));
@@ -165,10 +166,12 @@ export function PWAInstallPrompt() {
             <div className="w-12 h-12 rounded-xl bg-muted/60 border border-muted/80 flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
               {!imgError && appLogo ? (
                 <img
+                  key={appLogo}
                   src={appLogo}
                   alt={appName}
                   className="w-10 h-10 object-contain rounded-lg"
                   onError={() => setImgError(true)}
+                  onLoad={() => setImgError(false)}
                 />
               ) : (
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-primary text-white flex items-center justify-center font-black text-base shadow-inner">
