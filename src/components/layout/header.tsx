@@ -154,19 +154,11 @@ const STUDENT_PORTAL_SEARCH_ITEMS = [
         category: "Documents"
     },
     {
-        id: "id_card",
-        title: "My Digital ID Card",
-        subtitle: "Student identity card view & digital badge",
-        keywords: ["id", "id card", "identity", "card", "badge"],
-        path: "/user/id-card",
-        category: "My Account"
-    },
-    {
-        id: "qr_code",
-        title: "My Attendance QR Code",
-        subtitle: "Personal QR code for attendance scanner check-in",
-        keywords: ["qr", "qr code", "scan", "barcode", "checkin"],
-        path: "/user/my-qr-code",
+        id: "id_qr_pass",
+        title: "My ID Card and QR",
+        subtitle: "Student identity card, digital pass & QR code attendance",
+        keywords: ["id", "id card", "identity", "card", "badge", "qr", "qr code", "scan", "pass"],
+        path: "/user/id-qr-pass",
         category: "My Account"
     },
     {

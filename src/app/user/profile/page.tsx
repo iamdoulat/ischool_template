@@ -1719,6 +1719,10 @@ export default function UserProfilePage() {
               <span className="text-sm text-sky-500 font-medium">{translateSectionName(basic.section, langCode)}</span>
             </div>
             <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+              <span className="text-sm font-semibold text-gray-700">{t("session")}</span>
+              <span className="text-sm text-sky-500 font-medium">{toLocaleNumber(basic.session || "", langCode)}</span>
+            </div>
+            <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100">
               <span className="text-sm font-semibold text-gray-700">{t("gender")}</span>
               <span className="text-sm text-sky-500 font-medium">{translateGender(basic.gender, langCode)}</span>
             </div>

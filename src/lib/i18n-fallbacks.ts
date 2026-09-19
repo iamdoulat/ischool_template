@@ -8675,4 +8675,11 @@ export const i18nFallbacks: Record<string, string> = {
   category_live_classes: "Live Classes",
   category_qr_attendance: "QR Attendance",
   library_issue_return: "Library Issue & Return",
+  id_qr_pass: "My ID Card and QR",
+  my_id_card_and_qr: "My ID Card and QR",
+  id_card_and_qr_pass: "ID Card & QR Pass",
+  preview_print_and_download_your_identity_card_and_qr_pass: "Preview, print and download your identity card and smart attendance QR pass",
+  qr_and_nfc_pass: "QR & NFC Attendance Pass",
+  digital_id_card: "Digital ID Card",
+  all_in_one_view: "All-in-One View",
 };

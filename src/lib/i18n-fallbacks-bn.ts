@@ -9160,4 +9160,11 @@ failed_to_save_question: "প্রশ্ন সংরক্ষণ করতে 
   category_live_classes: "লাইভ ক্লাস",
   category_qr_attendance: "কিউআর উপস্থিতি",
   library_issue_return: "বই ইস্যু ও ফেরত",
+  id_qr_pass: "আমার আইডি কার্ড এবং কিউআর",
+  my_id_card_and_qr: "আমার আইডি কার্ড এবং কিউআর",
+  id_card_and_qr_pass: "আইডি কার্ড এবং কিউআর পাস",
+  preview_print_and_download_your_identity_card_and_qr_pass: "আপনার পরিচয়পত্র এবং স্মার্ট উপস্থিতি কিউআর পাস প্রিভিউ, প্রিন্ট এবং ডাউনলোড করুন",
+  qr_and_nfc_pass: "কিউআর এবং এনএফসি উপস্থিতি পাস",
+  digital_id_card: "ডিজিটাল আইডি কার্ড",
+  all_in_one_view: "এক নজরে সব",
 };

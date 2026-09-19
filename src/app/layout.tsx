@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Hind_Siliguri } from "next/font/google";
+import { Geist, Geist_Mono, Hind_Siliguri, Noto_Sans_Bengali } from "next/font/google";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
 import { SettingsProvider } from "@/components/providers/settings-provider";
@@ -21,6 +21,12 @@ const hindSiliguri = Hind_Siliguri({
   variable: "--font-hind-siliguri",
   subsets: ["bengali"],
   weight: ["300", "400", "500", "600", "700"],
+});
+
+const notoSansBengali = Noto_Sans_Bengali({
+  variable: "--font-noto-sans-bengali",
+  subsets: ["bengali"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const viewport: Viewport = {
@@ -174,14 +180,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${notoSansBengali.variable} ${hindSiliguri.variable}`}
       suppressHydrationWarning
     >
       <head suppressHydrationWarning>
         <JsonLd />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${hindSiliguri.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${notoSansBengali.variable} ${hindSiliguri.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
         <ThemeProvider

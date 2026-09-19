@@ -39,7 +39,6 @@ import {
     MessageSquare,
     Download,
     X,
-    QrCode,
     Newspaper,
     Images,
     CalendarRange
@@ -152,8 +151,7 @@ const menuItems: { group: string; items: MenuItem[] }[] = [
             { name: "transport_routes", label: "Transport Routes", icon: Bus, href: "/user/transport-routes", submenus: [], color: "amber" },
             { name: "hostel_rooms", label: "Hostel Rooms", icon: Hotel, href: "/user/hostel-rooms", submenus: [], color: "indigo" },
             { name: "certificates", label: "Certificates", icon: Award, href: "/user/certificates", submenus: [], color: "violet" },
-            { name: "id_card", label: "My ID Card", icon: CreditCard, href: "/user/id-card", submenus: [], color: "blue" },
-            { name: "my_qr_pass", label: "My QR Pass", icon: QrCode, href: "/user/my-qr-pass", submenus: [], color: "orange" },
+            { name: "id_qr_pass", label: "My ID Card and QR", icon: CreditCard, href: "/user/id-qr-pass", submenus: [], color: "blue" },
             { name: "branches", label: "Our Branches", icon: Globe, href: "/user/branches", submenus: [], color: "emerald" },
             { name: "events", label: "Events", icon: CalendarDays, href: "/user/events", submenus: [], color: "amber" },
             { name: "news", label: "News", icon: Newspaper, href: "/user/news", submenus: [], color: "blue" },
@@ -393,9 +391,10 @@ interface SessionItem {
                                     {group.items.map((item) => {
                                         const colors = sidebarColorMap[item.color as keyof typeof sidebarColorMap] || sidebarColorMap.blue;
                                         const itemTargetHref = toBranchHref(item.href);
-                                        const isItemActive = pathname === itemTargetHref || pathname === item.href || (item.submenus && item.submenus.some(s => pathname === toBranchHref(s.href) || pathname === s.href));
+                                        const isItemActive = pathname === itemTargetHref || pathname === item.href || (item.name === "id_qr_pass" && (pathname === "/user/id-card" || pathname === "/user/my-qr-pass" || pathname === "/user/id-qr-pass")) || (item.submenus && item.submenus.some(s => pathname === toBranchHref(s.href) || pathname === s.href));
 
                                         const getItemLabel = () => {
+                                            if (item.name === "id_qr_pass" || item.name === "my_id_card_and_qr") return t("my_id_card_and_qr") || t("id_qr_pass") || "My ID Card and QR";
                                             if (item.name === "id_card" || item.name === "my_id_card") return t("my_id_card") || "My ID Card";
                                             if (item.name === "my_qr_pass") return t("my_qr_pass") || "My QR Pass";
                                             const translated = t(item.name);

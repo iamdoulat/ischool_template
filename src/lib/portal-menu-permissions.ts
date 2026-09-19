@@ -87,8 +87,7 @@ export const portalMenuPermissions: PortalMenuPermission[] = [
   { name: "transport_routes", label: "Transport Routes", permission: perm("transport_routes") },
   { name: "hostel_rooms", label: "Hostel Rooms", permission: perm("hostel_rooms") },
   { name: "certificates", label: "Certificates", permission: perm("certificates") },
-  { name: "id_card", label: "My ID Card", permission: perm("id_card") },
-  { name: "my_qr_pass", label: "My QR Pass", permission: perm("my_qr_pass") },
+  { name: "id_qr_pass", label: "My ID Card and QR", permission: perm("id_qr_pass") },
   { name: "branches", label: "Our Branches", permission: perm("branches") },
   { name: "events", label: "Events", permission: perm("events") },
   { name: "news", label: "News", permission: perm("news") },
@@ -114,6 +113,13 @@ export function isPortalMenuVisible(menuName: string, userPermissions: string[] 
   if (menuName === "dashboard") return true;
   const set = userPermissions instanceof Set ? userPermissions : new Set(userPermissions);
   if (set.has("all")) return true;
+
+  // Backward compatibility check for merged ID Card and QR Pass
+  if (menuName === "id_qr_pass") {
+    if (set.has("portal.id_qr_pass.view") || set.has("portal.id_card.view") || set.has("portal.my_qr_pass.view")) {
+      return true;
+    }
+  }
 
   const node = portalMenuPermissions.find((m) => m.name === menuName);
   if (!node) return true; // unknown items default visible (e.g. static links)

@@ -8448,4 +8448,11 @@ export const i18nFallbacksHi: Record<string, string> = {
   library_issue_return: "पुस्तक जारी व वापसी",
   issue_inventory_item: "इन्वेंटरी सामग्री जारी करें",
   transport_vehicles: "परिवहन वाहन",
+  id_qr_pass: "मेरा आईडी कार्ड और क्यूआर",
+  my_id_card_and_qr: "मेरा आईडी कार्ड और क्यूआर",
+  id_card_and_qr_pass: "आईडी कार्ड और क्यूआर पास",
+  preview_print_and_download_your_identity_card_and_qr_pass: "अपना पहचान पत्र और स्मार्ट उपस्थिति क्यूआर पास देखें, प्रिंट करें और डाउनलोड करें",
+  qr_and_nfc_pass: "क्यूआर और एनएफसी उपस्थिति पास",
+  digital_id_card: "डिजिटल आईडी कार्ड",
+  all_in_one_view: "सभी एक साथ देखें",
 };

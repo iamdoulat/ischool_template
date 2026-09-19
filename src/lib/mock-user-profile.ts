@@ -6,6 +6,7 @@ export const mockUserProfileData = {
         image: null,
         class: "Class 1 (2026-27)",
         section: "A",
+        session: "2026-27",
         gender: "Male",
         rte: "No",
         barcode: "1800011",

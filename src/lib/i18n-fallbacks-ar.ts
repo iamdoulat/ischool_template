@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Arabic (العربية) fallback translations for the entire iSchool management system.
  */
 
@@ -8387,4 +8387,11 @@ failed_to_save_question: "فشل في حفظ السؤال",
   library_issue_return: "إعارة وإرجاع الكتب",
   issue_inventory_item: "صرف أصناف المخزون",
   transport_vehicles: "مركبات النقل",
+  id_qr_pass: "بطاقة الهوية ورمز الاستجابة السريعة الخاصة بي",
+  my_id_card_and_qr: "بطاقة الهوية ورمز الاستجابة السريعة الخاصة بي",
+  id_card_and_qr_pass: "بطاقة الهوية وتصريح الاستجابة السريعة",
+  preview_print_and_download_your_identity_card_and_qr_pass: "معاينة وطباعة وتنزيل بطاقة الهوية وتصريح الحضور الذكي برمز الاستجابة السريعة",
+  qr_and_nfc_pass: "تصريح الحضور برمز الاستجابة السريعة وNFC",
+  digital_id_card: "بطاقة الهوية الرقمية",
+  all_in_one_view: "عرض الكل في واحد",
 };
