@@ -550,11 +550,17 @@ export default function QrCodeSettingPage() {
         }
     };
 
-    const getAdmsUrl = () => {
+    const getAdmsHost = () => {
         if (typeof window !== "undefined") {
-            return `${window.location.protocol}//${window.location.host}/api/v1/zkteco/iclock`;
+            const h = window.location.hostname;
+            return (h === "localhost" || h === "127.0.0.1") ? "192.168.1.48" : h;
         }
-        return "http://your-server-ip/api/v1/zkteco/iclock";
+        return "192.168.1.48";
+    };
+
+    const getAdmsUrl = () => {
+        const host = getAdmsHost();
+        return `http://${host}:8000/iclock/cdata.php`;
     };
 
     const copyAdmsUrl = () => {
@@ -1480,16 +1486,24 @@ export default function QrCodeSettingPage() {
                                 <CardContent className="p-5 space-y-4">
                                     {/* ADMS Instructions Banner */}
                                     <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                                        <div className="space-y-1">
+                                        <div className="space-y-1.5">
                                             <p className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                                                 <Activity className="h-4 w-4 text-indigo-600" /> {t("zkteco_adms_endpoint_label") || "ZKTeco ADMS Cloud Server Push Endpoint:"}
                                             </p>
-                                            <code className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600 select-all block sm:inline">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-[11px] font-medium text-slate-600">
+                                                    Server Address (IP): <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600">{getAdmsHost()}</strong>
+                                                </span>
+                                                <span className="text-[11px] font-medium text-slate-600">
+                                                    Server Port: <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600">8000</strong>
+                                                </span>
+                                            </div>
+                                            <code className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-500 select-all block sm:inline">
                                                 {getAdmsUrl()}
                                             </code>
                                         </div>
-                                        <span className="text-[10px] text-slate-400 italic">
-                                            {t("zkteco_adms_menu_hint") || "Enter this URL under Comm. → Cloud Server / ADMS settings in device menu."}
+                                        <span className="text-[10px] text-slate-400 italic max-w-xs text-right">
+                                            {t("zkteco_adms_menu_hint") || "In device menu: Comm. → Cloud Server (ADMS) → enter Server Address & Port."}
                                         </span>
                                     </div>
 

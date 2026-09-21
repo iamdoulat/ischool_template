@@ -153,6 +153,10 @@ const nextConfig: NextConfig = {
         destination: `${backendUrl}/api/v1/:path*`,
       },
       {
+        source: "/iclock/:path*",
+        destination: `${backendUrl}/iclock/:path*`,
+      },
+      {
         source: "/storage/:path*",
         destination: `${backendUrl}/storage/:path*`,
       },
