@@ -558,9 +558,22 @@ export default function QrCodeSettingPage() {
         return "192.168.1.48";
     };
 
+    const getAdmsPort = () => {
+        if (typeof window !== "undefined") {
+            const h = window.location.hostname;
+            if (h === "localhost" || h === "127.0.0.1") return "8000";
+            return window.location.protocol === "https:" ? "443" : (window.location.port || "80");
+        }
+        return "443";
+    };
+
     const getAdmsUrl = () => {
         const host = getAdmsHost();
-        return `http://${host}:8000/iclock/cdata.php`;
+        const port = getAdmsPort();
+        if (typeof window !== "undefined" && window.location.protocol === "https:") {
+            return `https://${host}/iclock/cdata.php`;
+        }
+        return `http://${host}:${port}/iclock/cdata.php`;
     };
 
     const copyAdmsUrl = () => {
@@ -1495,7 +1508,7 @@ export default function QrCodeSettingPage() {
                                                     Server Address (IP): <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600">{getAdmsHost()}</strong>
                                                 </span>
                                                 <span className="text-[11px] font-medium text-slate-600">
-                                                    Server Port: <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600">8000</strong>
+                                                    Server Port: <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600">{getAdmsPort()}</strong>
                                                 </span>
                                             </div>
                                             <code className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-500 select-all block sm:inline">
