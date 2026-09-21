@@ -66,7 +66,7 @@ import {
   Sparkles, CheckCircle, Zap, Globe, Lock, Shield, Clock, AlertTriangle, AlertCircle,
   Volume2, VolumeX, FileSpreadsheet, Printer, User, UserCircle, Filter
 } from "lucide-react";
-import { cn, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
+import { cn, formatDate, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 
 /* ── Defensive Array Extractor ───────────────────────────────── */
 const extractArray = (res: any): any[] => {
@@ -1572,13 +1572,24 @@ export default function QrCodeSettingPage() {
                                                                     {dev.school_class ? `${translateClassName(dev.school_class.name, language?.short_code)} (${dev.section ? translateSectionName(dev.section.name, language?.short_code) : (t("all_sections_filter") || 'All')})` : (t("all_classes_filter") || "All Classes")}
                                                                 </TableCell>
                                                                 <TableCell className="py-3 px-4">
-                                                                    <span className={cn(
-                                                                        "px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1",
-                                                                        dev.status === 'online' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-slate-100 text-slate-500"
-                                                                    )}>
-                                                                        <span className={cn("w-1.5 h-1.5 rounded-full", dev.status === 'online' ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
-                                                                        {dev.status === 'online' ? (t("online_status") || 'Online') : (t("standby_status") || 'Standby')}
-                                                                    </span>
+                                                                    {(() => {
+                                                                        const isRecentPush = dev.last_push_at && (new Date().getTime() - new Date(dev.last_push_at).getTime() < 3 * 60 * 1000);
+                                                                        const isDevOnline = dev.is_online !== undefined ? Boolean(dev.is_online && isRecentPush) : Boolean(dev.status === 'online' && isRecentPush);
+                                                                        return (
+                                                                            <div className="flex flex-col gap-1">
+                                                                                <span className={cn(
+                                                                                    "px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 w-fit",
+                                                                                    isDevOnline ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-600 border border-rose-200"
+                                                                                )}>
+                                                                                    <span className={cn("w-1.5 h-1.5 rounded-full", isDevOnline ? "bg-emerald-500 animate-pulse" : "bg-rose-400")} />
+                                                                                    {isDevOnline ? (t("online_status") || 'Online') : (t("offline_status") || 'Offline')}
+                                                                                </span>
+                                                                                <span className="text-[10px] text-slate-400 font-mono">
+                                                                                    {dev.last_push_at ? formatDate(dev.last_push_at, "dd/MM/yyyy hh:mm a") : (t("never_connected") || "Never")}
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    })()}
                                                                 </TableCell>
                                                                 <TableCell className="py-3 px-4 text-right">
                                                                     <div className="flex items-center justify-end gap-1">

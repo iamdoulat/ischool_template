@@ -6788,6 +6788,8 @@ export const i18nFallbacks: Record<string, string> = {
   all_sections_filter: "All Sections",
   online_status: "Online",
   standby_status: "Standby",
+  offline_status: "Offline",
+  never_connected: "Never",
   sync_punches_btn: "Sync",
   sync_punches_tooltip: "Synchronize punches from device",
   camera_lens_configuration: "Camera & Lens Configuration",
