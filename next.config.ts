@@ -153,8 +153,16 @@ const nextConfig: NextConfig = {
         destination: `${backendUrl}/api/v1/:path*`,
       },
       {
-        source: "/iclock/:path*",
-        destination: `${backendUrl}/iclock/:path*`,
+        source: "/cdata.php",
+        destination: "/iclock/cdata.php",
+      },
+      {
+        source: "/getrequest.php",
+        destination: "/iclock/getrequest.php",
+      },
+      {
+        source: "/devicecmd.php",
+        destination: "/iclock/devicecmd.php",
       },
       {
         source: "/storage/:path*",
