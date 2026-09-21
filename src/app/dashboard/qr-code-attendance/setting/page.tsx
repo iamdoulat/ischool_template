@@ -64,7 +64,7 @@ import {
   Plus, Edit, Trash2, Copy, Check, Radio, HardDrive,
   Activity, ArrowDownToLine, Server, ScanFace, Smartphone, Settings,
   Sparkles, CheckCircle, Zap, Globe, Lock, Shield, Clock, AlertTriangle, AlertCircle,
-  Volume2, VolumeX, FileSpreadsheet, Printer, User, UserCircle, Filter
+  Volume2, VolumeX, FileSpreadsheet, Printer, User, UserCircle, Filter, Upload
 } from "lucide-react";
 import { cn, formatDate, toLocaleNumber, translateClassName, translateSectionName } from "@/lib/utils";
 
@@ -188,6 +188,8 @@ export default function QrCodeSettingPage() {
     const [searchTerm, setSearchTerm] = useState<string>("");
     const [fetchingZkLogs, setFetchingZkLogs] = useState(false);
     const [pullingZkData, setPullingZkData] = useState(false);
+    const [importingLogs, setImportingLogs] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // ── Live Scanner & Testing Tab State ──────────────────────────
     const [testingMode, setTestingMode] = useState<"camera" | "sensor">("camera");
@@ -561,6 +563,27 @@ export default function QrCodeSettingPage() {
             toast.error(t("device_sync_failed") || "Device sync failed");
         } finally {
             setPullingZkData(false);
+        }
+    };
+
+    const handleImportLogs = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setImportingLogs(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await api.post('/zkteco/import-logs', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            toast.success(res.data?.message || "Attendance logs imported successfully!");
+            await fetchZkLogs();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || "Failed to import attendance log file.");
+        } finally {
+            setImportingLogs(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
         }
     };
 
@@ -1797,6 +1820,26 @@ export default function QrCodeSettingPage() {
                                             <Printer className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
+
+                                    {/* Hidden file input for USB / offline log import */}
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleImportLogs}
+                                        accept=".dat,.txt,.csv"
+                                        className="hidden"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={importingLogs}
+                                        className="h-8 px-3 text-xs border-slate-200 hover:bg-slate-50 text-slate-700 font-bold gap-1.5 shadow-2xs shrink-0"
+                                        title={t("import_usb_log_tooltip") || "Upload .dat / .txt log file exported from ZKTeco USB drive"}
+                                    >
+                                        {importingLogs ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5 text-indigo-600" />}
+                                        {importingLogs ? (t("importing") || "Importing...") : (t("import_usb_log") || "Import USB Log")}
+                                    </Button>
 
                                     <Button
                                         type="button"
