@@ -343,8 +343,22 @@ export default function QrCodeSettingPage() {
     useEffect(() => {
         if (activeTab === "logs") {
             fetchZkLogs();
+            const interval = setInterval(() => {
+                fetchZkLogs();
+            }, 5000);
+            return () => clearInterval(interval);
         }
     }, [activeTab, fetchZkLogs]);
+
+    useEffect(() => {
+        if (activeTab === "terminals") {
+            fetchZkDevices();
+            const interval = setInterval(() => {
+                fetchZkDevices();
+            }, 10000);
+            return () => clearInterval(interval);
+        }
+    }, [activeTab, fetchZkDevices]);
 
     // Live Camera Test Helper
     const enumerateCameras = async () => {
