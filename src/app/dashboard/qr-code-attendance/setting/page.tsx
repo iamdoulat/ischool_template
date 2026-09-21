@@ -1493,6 +1493,19 @@ export default function QrCodeSettingPage() {
                                         </span>
                                     </div>
 
+                                    {/* Numeric User ID / PIN Mapping Hint Banner */}
+                                    <div className="p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/40 flex items-start gap-2.5">
+                                        <ShieldCheck className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+                                        <div className="text-[11px] space-y-1">
+                                            <p className="font-bold text-indigo-950">
+                                                {t("zkteco_pin_mapping_title") || "ZKTeco User ID (Numeric PIN) Mapping Guide:"}
+                                            </p>
+                                            <p className="text-slate-600 leading-relaxed">
+                                                {t("zkteco_pin_mapping_desc") || "ZKTeco hardware terminals only support numbers for User ID. iSchool automatically matches numeric punches to alphanumeric roll numbers like RL-2A0101 by: (1) Student Database ID, (2) Digits only (e.g. 20101 for RL-2A0101), (3) Ending suffix (e.g. 0101 or 101), or (4) Numeric Admission No."}
+                                            </p>
+                                        </div>
+                                    </div>
+
                                     {/* Devices Table */}
                                     <div className="rounded-xl border border-slate-200 overflow-hidden">
                                         {zkDevices.length === 0 ? (

@@ -8682,4 +8682,6 @@ export const i18nFallbacks: Record<string, string> = {
   qr_and_nfc_pass: "QR & NFC Attendance Pass",
   digital_id_card: "Digital ID Card",
   all_in_one_view: "All-in-One View",
+  zkteco_pin_mapping_title: "ZKTeco User ID (Numeric PIN) Mapping Guide:",
+  zkteco_pin_mapping_desc: "ZKTeco hardware terminals only support numbers for User ID. iSchool automatically matches numeric punches to alphanumeric roll numbers like RL-2A0101 by: (1) Student Database ID, (2) Digits only (e.g. 20101 for RL-2A0101), (3) Ending suffix (e.g. 0101 or 101), or (4) Numeric Admission No.",
 };
