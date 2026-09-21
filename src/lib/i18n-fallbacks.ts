@@ -8689,4 +8689,14 @@ export const i18nFallbacks: Record<string, string> = {
   all_in_one_view: "All-in-One View",
   zkteco_pin_mapping_title: "ZKTeco User ID (Numeric PIN) Mapping Guide:",
   zkteco_pin_mapping_desc: "ZKTeco hardware terminals only support numbers for User ID. iSchool automatically matches numeric punches to alphanumeric roll numbers like RL-2A0101 by: (1) Student Database ID, (2) Digits only (e.g. 20101 for RL-2A0101), (3) Ending suffix (e.g. 0101 or 101), or (4) Numeric Admission No.",
+  zkteco_triangle_fix_title: "ZKTeco Status Bar Warning Triangle (⚠️) Fix Guide:",
+  zkteco_triangle_fix_desc: "The yellow warning triangle ⚠️ means the device is timing out or getting an error connecting to the Cloud/ADMS server. Configure these 4 settings in device Menu → Comm. → Cloud Server:",
+  zkteco_triangle_step1_label: "Enable Domain Name",
+  zkteco_triangle_step2_label: "Server Address",
+  zkteco_triangle_step3_label: "Server Port",
+  zkteco_triangle_step4_label: "Enable HTTPS / SSL",
+  zkteco_triangle_no_http: "Pure domain name only; do NOT type http:// or / at end",
+  zkteco_triangle_port80_hint: "Must be 80; port 443/SSL causes 2-second timeout on device",
+  zkteco_triangle_step5_hint: "💡 After saving, Restart/Reboot the device (System → Restart). Once rebooted, the triangle will disappear and turn solid/green!",
 };
+

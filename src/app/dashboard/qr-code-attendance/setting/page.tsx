@@ -590,25 +590,31 @@ export default function QrCodeSettingPage() {
     const getAdmsHost = () => {
         if (typeof window !== "undefined") {
             const h = window.location.hostname;
-            return (h === "localhost" || h === "127.0.0.1") ? "192.168.1.48" : h;
+            if (h === "localhost" || h === "127.0.0.1") return "192.168.1.48";
+            // If viewing on Coolify or custom frontend domain, point to the real Laravel backend API host!
+            if (h.includes("coolify") || h.includes("mddoulat.com") || h.includes("school")) {
+                return "api.ischool.mddoulat.com";
+            }
+            return h;
         }
-        return "192.168.1.48";
+        return "api.ischool.mddoulat.com";
     };
 
     const getAdmsPort = () => {
         if (typeof window !== "undefined") {
             const h = window.location.hostname;
             if (h === "localhost" || h === "127.0.0.1") return "8000";
-            return window.location.protocol === "https:" ? "443" : (window.location.port || "80");
+            // ZKTeco hardware firmware requires port 80 (HTTP) to avoid 2.0s TLS handshake timeout and 302 redirects
+            return "80";
         }
-        return "443";
+        return "80";
     };
 
     const getAdmsUrl = () => {
         const host = getAdmsHost();
         const port = getAdmsPort();
-        if (typeof window !== "undefined" && window.location.protocol === "https:") {
-            return `https://${host}/iclock/cdata.php`;
+        if (port === "80") {
+            return `http://${host}/iclock/cdata.php`;
         }
         return `http://${host}:${port}/iclock/cdata.php`;
     };
@@ -1542,10 +1548,10 @@ export default function QrCodeSettingPage() {
                                             </p>
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className="text-[11px] font-medium text-slate-600">
-                                                    Server Address (IP): <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600">{getAdmsHost()}</strong>
+                                                    Server Address (IP): <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600 font-bold">{getAdmsHost()}</strong>
                                                 </span>
                                                 <span className="text-[11px] font-medium text-slate-600">
-                                                    Server Port: <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600">{getAdmsPort()}</strong>
+                                                    Server Port: <strong className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-600 font-bold">{getAdmsPort()}</strong>
                                                 </span>
                                             </div>
                                             <code className="text-[10px] font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-500 select-all block sm:inline">
@@ -1555,6 +1561,41 @@ export default function QrCodeSettingPage() {
                                         <span className="text-[10px] text-slate-400 italic max-w-xs text-right">
                                             {t("zkteco_adms_menu_hint") || "In device menu: Comm. → Cloud Server (ADMS) → enter Server Address & Port."}
                                         </span>
+                                    </div>
+
+                                    {/* ZKTeco Warning Triangle (⚠️) Fix Checklist */}
+                                    <div className="p-4 rounded-xl border border-amber-200 bg-amber-50/70 flex items-start gap-3 shadow-2xs">
+                                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                                        <div className="text-xs space-y-2 w-full">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <p className="font-bold text-amber-950 text-[13px]">{t("zkteco_triangle_fix_title") || "ZKTeco Status Bar Warning Triangle (⚠️) Fix Guide:"}</p>
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 border border-amber-300">SenseFace 2A / SpeedFace</span>
+                                            </div>
+                                            <p className="text-slate-700 leading-relaxed text-[11px]">
+                                                {t("zkteco_triangle_fix_desc") || "The yellow warning triangle ⚠️ means the device is timing out or getting an error connecting to the Cloud/ADMS server. Configure these 4 settings in device Menu → Comm. → Cloud Server:"}
+                                            </p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                                                <div className="bg-white/90 p-2 rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
+                                                    <span className="font-semibold text-slate-700">1. {t("zkteco_triangle_step1_label") || "Enable Domain Name"}:</span>
+                                                    <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">[ON]</span>
+                                                </div>
+                                                <div className="bg-white/90 p-2 rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
+                                                    <span className="font-semibold text-slate-700">2. {t("zkteco_triangle_step2_label") || "Server Address"}:</span>
+                                                    <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 select-all">api.ischool.mddoulat.com</span>
+                                                </div>
+                                                <div className="bg-white/90 p-2 rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
+                                                    <span className="font-semibold text-slate-700">3. {t("zkteco_triangle_step3_label") || "Server Port"}:</span>
+                                                    <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">80</span>
+                                                </div>
+                                                <div className="bg-white/90 p-2 rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
+                                                    <span className="font-semibold text-slate-700">4. {t("zkteco_triangle_step4_label") || "Enable HTTPS / SSL"}:</span>
+                                                    <span className="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">[OFF]</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-[11px] text-amber-900 font-medium flex items-center gap-1.5 pt-0.5">
+                                                <span>{t("zkteco_triangle_step5_hint") || "💡 After saving, Restart/Reboot the device (System → Restart). Once rebooted, the triangle will disappear and turn solid/green!"}</span>
+                                            </p>
+                                        </div>
                                     </div>
 
                                     {/* Numeric User ID / PIN Mapping Hint Banner */}

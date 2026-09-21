@@ -8462,4 +8462,14 @@ export const i18nFallbacksHi: Record<string, string> = {
   zkteco_pin_mapping_desc: "ZKTeco हार्डवेयर टर्मिनल केवल उपयोगकर्ता आईडी के लिए संख्याओं का समर्थन करते हैं। iSchool स्वचालित रूप से RL-2A0101 जैसे अल्फ़ान्यूमेरिक रोल नंबरों से संख्यात्मक पंचों का मिलान करता है: (1) छात्र डेटाबेस आईडी, (2) केवल संख्याएँ (जैसे RL-2A0101 के लिए 20101), (3) अंतिम प्रत्यय (जैसे 0101 या 101), या (4) संख्यात्मक प्रवेश संख्या।",
   offline_status: "ऑफ़लाइन",
   never_connected: "कभी नहीं",
+  zkteco_triangle_fix_title: "ZKTeco स्टेटस बार चेतावनी त्रिभुज (⚠️) समाधान गाइड:",
+  zkteco_triangle_fix_desc: "पीला चेतावनी त्रिभुज ⚠️ इंगित करता है कि डिवाइस क्लाउड/ADMS सर्वर से कनेक्ट करने में टाइमआउट या त्रुटि का सामना कर रहा है। डिवाइस मेनू → Comm. → Cloud Server में ये 4 सेटिंग्स करें:",
+  zkteco_triangle_step1_label: "डोमेन नाम सक्षम करें (Enable Domain Name)",
+  zkteco_triangle_step2_label: "सर्वर पता (Server Address)",
+  zkteco_triangle_step3_label: "सर्वर पोर्ट (Server Port)",
+  zkteco_triangle_step4_label: "HTTPS / SSL सक्षम करें (Enable HTTPS / SSL)",
+  zkteco_triangle_no_http: "केवल शुद्ध डोमेन नाम; शुरुआत में http:// या अंत में / न जोड़ें",
+  zkteco_triangle_port80_hint: "80 होना चाहिए; पोर्ट 443/SSL डिवाइस पर 2-सेकंड का टाइमआउट देता है",
+  zkteco_triangle_step5_hint: "💡 सहेजने के बाद डिवाइस को पुनरारंभ/रीबूट करें (System → Restart)। रीबूट होने पर त्रिभुज गायब हो जाएगा और स्थिर/हरा हो जाएगा!",
 };
+
