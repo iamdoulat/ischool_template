@@ -6,21 +6,24 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
-        userAgent: "*",
-        allow: [
-          "/",
-          "/online_admission",
-          "/admission",
-          "/online-admission",
-          "/admissions",
-          "/academics",
-          "/exam-results",
-          "/notices",
-          "/contact-us",
-          "/about-us",
-          "/privacy-policy",
-          "/terms-and-conditions",
+        userAgent: "Googlebot-Image",
+        allow: "/",
+      },
+      {
+        userAgent: "Googlebot",
+        allow: ["/", "/_next/image", "/_next/static/"],
+        disallow: [
+          "/dashboard/",
+          "/user/",
+          "/api/",
+          "/login",
+          "/forgot-password",
+          "/reset-password",
         ],
+      },
+      {
+        userAgent: "*",
+        allow: ["/", "/_next/image", "/_next/static/"],
         disallow: [
           "/dashboard/",
           "/user/",
@@ -32,5 +35,7 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
   };
 }
+

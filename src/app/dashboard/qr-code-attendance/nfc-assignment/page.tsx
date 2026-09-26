@@ -123,7 +123,7 @@ export default function NfcAssignmentPage() {
           if (serialNumber) {
             const formatted = serialNumber.toUpperCase();
             setNfcUid(formatted);
-            toast.success(t("nfc_tag_detected_toast", { uid: formatted }) || `NFC Tag Detected: ${formatted}`);
+            toast.success(t("nfc_tag_detected_toast", { uid: formatted }) || `RFID Card Detected: ${formatted}`);
             try {
               const audio = new Audio('/sounds/success.mp3');
               audio.play().catch(() => {});
@@ -131,7 +131,7 @@ export default function NfcAssignmentPage() {
           }
         };
       }).catch((err: any) => {
-        console.warn("NFC Reader scan canceled or not allowed", err);
+        console.warn("RFID/NFC Reader scan canceled or not allowed", err);
         setIsNfcReading(false);
       });
     } catch {
@@ -151,7 +151,7 @@ export default function NfcAssignmentPage() {
 
   const handleAssign = async () => {
     if (!selectedUser || !nfcUid.trim()) {
-      toast.error(t("please_enter_nfc_tag_uid") || "Please enter or scan an NFC Tag UID");
+      toast.error(t("please_enter_nfc_tag_uid") || "Please enter or scan an RFID Card UID");
       return;
     }
     setAssigningId(selectedUser.id);
@@ -161,12 +161,12 @@ export default function NfcAssignmentPage() {
         nfc_uid: nfcUid.trim(),
       });
       if (res.data?.success) {
-        toast.success(res.data.message || t("nfc_tag_assigned_success", { name: selectedUser.name }) || `NFC Tag assigned to ${selectedUser.name}`);
+        toast.success(res.data.message || t("nfc_tag_assigned_success", { name: selectedUser.name }) || `RFID Card assigned to ${selectedUser.name}`);
         setDialogOpen(false);
         fetchUsers();
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || t("failed_to_assign_nfc_tag") || "Failed to assign NFC tag";
+      const msg = err.response?.data?.message || t("failed_to_assign_nfc_tag") || "Failed to assign RFID card";
       toast.error(msg);
     } finally {
       setAssigningId(null);
@@ -184,25 +184,25 @@ export default function NfcAssignmentPage() {
     try {
       const res = await api.post("/smart-attendance/remove-nfc", { user_id: userToDelete.id });
       if (res.data?.success) {
-        toast.success(res.data.message || t("nfc_tag_removed_success", { name: userToDelete.name }) || `NFC Tag removed for ${userToDelete.name}`);
+        toast.success(res.data.message || t("nfc_tag_removed_success", { name: userToDelete.name }) || `RFID Card removed for ${userToDelete.name}`);
         setDeleteDialogOpen(false);
         setUserToDelete(null);
         fetchUsers();
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || t("failed_to_remove_nfc_tag") || "Failed to remove NFC tag");
+      toast.error(err.response?.data?.message || t("failed_to_remove_nfc_tag") || "Failed to remove RFID card");
     } finally {
       setRemovingId(null);
     }
   };
 
-  // Generate simulated RFID / NFC UID for testing
+  // Generate simulated RFID UID for testing
   const simulateNfcScan = () => {
     const uid = Array.from({ length: 4 }, () =>
       Math.floor(Math.random() * 256).toString(16).padStart(2, '0').toUpperCase()
     ).join(":");
     setNfcUid(uid);
-    toast.info(t("simulated_rfid_tag_toast", { uid }) || `Simulated RFID Tag: ${uid}`);
+    toast.info(t("simulated_rfid_tag_toast", { uid }) || `Simulated RFID Card: ${uid}`);
   };
 
   // Filtered users by status
@@ -225,7 +225,7 @@ export default function NfcAssignmentPage() {
 
   // Export handlers
   const handleCopy = () => {
-    const header = `${t("student_staff_col") || "Name"}\t${t("role_col") || "Role"}\t${t("admission_staff_id_col") || "ID/Admission"}\t${t("nfc_rfid_tag_uid_col") || "NFC UID"}\t${t("assignment_status_col") || "Status"}\n`;
+    const header = `${t("student_staff_col") || "Name"}\t${t("role_col") || "Role"}\t${t("admission_staff_id_col") || "ID/Admission"}\t${t("rfid_card_uid_col") || "RFID Card UID"}\t${t("assignment_status_col") || "Status"}\n`;
     const rows = filteredUsers.map(u =>
       `${u.name}\t${u.role}\t${u.admission_no || u.staff_id || '-'}\t${u.nfc_uid || '-'}\t${u.has_nfc ? (t("active_card_linked") || 'Assigned') : (t("card_pending") || 'Unassigned')}`
     ).join("\n");
@@ -234,7 +234,7 @@ export default function NfcAssignmentPage() {
   };
 
   const handleExportCsv = () => {
-    const header = `${t("student_staff_col") || "Name"},${t("role_col") || "Role"},${t("admission_staff_id_col") || "ID/Admission"},${t("nfc_rfid_tag_uid_col") || "NFC UID"},${t("assignment_status_col") || "Status"}\n`;
+    const header = `${t("student_staff_col") || "Name"},${t("role_col") || "Role"},${t("admission_staff_id_col") || "ID/Admission"},${t("rfid_card_uid_col") || "RFID Card UID"},${t("assignment_status_col") || "Status"}\n`;
     const rows = filteredUsers.map(u =>
       `"${u.name}","${u.role}","${u.admission_no || u.staff_id || '-'}","${u.nfc_uid || '-'}","${u.has_nfc ? (t("active_card_linked") || 'Assigned') : (t("card_pending") || 'Unassigned')}"`
     ).join("\n");
@@ -242,7 +242,7 @@ export default function NfcAssignmentPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `nfc_assignment_registry_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `rfid_assignment_registry_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     toast.success(t("csv_export_downloaded_toast") || "CSV export downloaded!");
   };
@@ -262,13 +262,13 @@ export default function NfcAssignmentPage() {
             </span>
             <div>
               <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-800 leading-none flex items-center gap-2">
-                {t("nfc_smart_rfid_card_assignment") || "NFC & Smart RFID Card Assignment"}
+                {t("nfc_smart_rfid_card_assignment") || "RFID Card Assignment"}
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
                   {t("hardware_access_badge") || "Hardware Access"}
                 </span>
               </h1>
               <p className="text-[11px] text-gray-500 mt-1">
-                {t("nfc_assignment_header_desc") || "Link MIFARE Classic, NTAG213/215, 125kHz EM4100 RFID & NFC cards to students and staff for contactless tap attendance."}
+                {t("nfc_assignment_header_desc") || "Link MIFARE Classic, NTAG213/215, 125kHz EM4100 RFID & smart cards to students and staff for contactless tap attendance."}
               </p>
             </div>
           </div>
@@ -327,9 +327,9 @@ export default function NfcAssignmentPage() {
 
         <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("nfc_frequency_stat") || "NFC Frequency"}</p>
-            <h3 className="text-xl font-black text-purple-600 mt-0.5">13.56 MHz</h3>
-            <span className="text-[10px] text-purple-600 font-medium">{t("iso_iec_standard") || "ISO/IEC 14443 Type A"}</span>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t("rfid_frequency_stat") || "RFID Frequency"}</p>
+            <h3 className="text-xl font-black text-purple-600 mt-0.5">13.56 MHz / 125 kHz</h3>
+            <span className="text-[10px] text-purple-600 font-medium">{t("iso_iec_standard") || "ISO/IEC 14443 & 125kHz EM4100"}</span>
           </div>
           <span className="p-2.5 rounded-xl bg-purple-50 text-purple-600">
             <Radio className="w-5 h-5" />
@@ -423,7 +423,7 @@ export default function NfcAssignmentPage() {
                   <TableHead className="text-xs font-bold text-slate-700 py-3 px-4">{t("student_staff_col") || "Student / Staff"}</TableHead>
                   <TableHead className="text-xs font-bold text-slate-700 px-4">{t("role_col") || "Role"}</TableHead>
                   <TableHead className="text-xs font-bold text-slate-700 px-4">{t("admission_staff_id_col") || "Admission / Staff ID"}</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-700 px-4">{t("nfc_rfid_tag_uid_col") || "NFC / RFID Tag UID"}</TableHead>
+                  <TableHead className="text-xs font-bold text-slate-700 px-4">{t("rfid_card_uid_col") || "RFID Card UID"}</TableHead>
                   <TableHead className="text-xs font-bold text-slate-700 px-4">{t("assignment_status_col") || "Assignment Status"}</TableHead>
                   <TableHead className="text-xs font-bold text-slate-700 text-right pr-6">{t("action_col") || "Action"}</TableHead>
                 </TableRow>
@@ -485,7 +485,7 @@ export default function NfcAssignmentPage() {
                         {user.role === "Student" ? toLocaleNumber(user.admission_no || user.roll_no || "—", language?.short_code) : toLocaleNumber(user.staff_id || "—", language?.short_code)}
                       </TableCell>
 
-                      {/* NFC UID */}
+                      {/* RFID UID */}
                       <TableCell className="px-4">
                         {user.nfc_uid ? (
                           <span className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-md">
@@ -527,7 +527,7 @@ export default function NfcAssignmentPage() {
                                 type="button"
                                 onClick={() => confirmRemove(user)}
                                 className="h-7 w-7 p-0 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-xs active:scale-95 transition-all border-0"
-                                title={t("unlink_nfc_card_tooltip") || "Unlink NFC Card"}
+                                title={t("unlink_nfc_card_tooltip") || "Unlink RFID Card"}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
@@ -552,7 +552,7 @@ export default function NfcAssignmentPage() {
         </CardContent>
       </Card>
 
-      {/* NFC Card Assignment Modal Dialog */}
+      {/* RFID Card Assignment Modal Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md rounded-2xl p-6">
           <DialogHeader>
@@ -560,10 +560,10 @@ export default function NfcAssignmentPage() {
               <span className="p-1.5 rounded-lg bg-purple-100 text-purple-700">
                 <SmartphoneNfc className="h-5 w-5" />
               </span>
-              {t("assign_nfc_rfid_smart_card_title") || "Assign NFC / RFID Smart Card"}
+              {t("assign_nfc_rfid_smart_card_title") || "Assign RFID Smart Card"}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              {t("link_institutional_card_desc", { name: selectedUser?.name, role: selectedUser?.role }) || `Link an institutional RFID card or NFC tag to ${selectedUser?.name} (${selectedUser?.role}).`}
+              {t("link_institutional_card_desc", { name: selectedUser?.name, role: selectedUser?.role }) || `Link an institutional RFID card or smart card to ${selectedUser?.name} (${selectedUser?.role}).`}
             </DialogDescription>
           </DialogHeader>
 
@@ -592,7 +592,7 @@ export default function NfcAssignmentPage() {
                 <label className="text-xs font-bold text-slate-700">{t("card_uid_serial_label") || "Card UID / Serial Number"} <span className="text-rose-500">*</span></label>
                 {isNfcReading && (
                   <span className="text-[10px] font-bold text-purple-600 animate-pulse flex items-center gap-1">
-                    <Radio className="w-3 h-3" /> {t("web_nfc_reader_ready") || "Web NFC Reader Ready"}
+                    <Radio className="w-3 h-3" /> {t("rfid_reader_ready") || t("web_nfc_reader_ready") || "RFID Reader Ready"}
                   </span>
                 )}
               </div>
@@ -622,7 +622,7 @@ export default function NfcAssignmentPage() {
               </div>
 
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                {t("swipe_nfc_hardware_hint") || "Swipe your USB RFID reader or hold an NFC card against your NFC-enabled device to automatically capture the UID."}
+                {t("swipe_nfc_hardware_hint") || "Swipe your USB RFID reader or tap an RFID card against your reader to automatically capture the UID."}
               </p>
             </div>
           </div>
@@ -644,7 +644,7 @@ export default function NfcAssignmentPage() {
               {assigningId !== null ? (
                 <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> {t("saving_card_btn") || "Saving Card..."}</>
               ) : (
-                <><Check className="mr-1.5 h-3.5 w-3.5" /> {t("link_nfc_card_btn") || "Link NFC Card"}</>
+                <><Check className="mr-1.5 h-3.5 w-3.5" /> {t("link_nfc_card_btn") || "Link RFID Card"}</>
               )}
             </Button>
           </DialogFooter>
@@ -656,10 +656,10 @@ export default function NfcAssignmentPage() {
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-base font-bold text-slate-800">
-              {t("unlink_nfc_card_title") || "Unlink NFC Card?"}
+              {t("unlink_nfc_card_title") || "Unlink RFID Card?"}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-slate-500">
-              {t("unlink_nfc_card_desc", { uid: userToDelete?.nfc_uid, name: userToDelete?.name }) || `Are you sure you want to remove the assigned NFC tag (${userToDelete?.nfc_uid}) for ${userToDelete?.name}? They will no longer be able to tap in with this card.`}
+              {t("unlink_nfc_card_desc", { uid: userToDelete?.nfc_uid, name: userToDelete?.name }) || `Are you sure you want to remove the assigned RFID card (${userToDelete?.nfc_uid}) for ${userToDelete?.name}? They will no longer be able to tap in with this card.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

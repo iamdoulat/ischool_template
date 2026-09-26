@@ -34,6 +34,9 @@ interface User {
   face_descriptor?: string | number[] | null;
   qr_code?: string | null;
   nfc_uid?: string | null;
+  today_status?: 'In' | 'Out' | null;
+  entry_time?: string | null;
+  exit_time?: string | null;
 }
 
 interface Record {
@@ -412,14 +415,16 @@ export default function SmartAttendanceTerminalPage() {
     audio.play().catch(() => {});
   };
 
-  const markAttendance = async (userId: number, method: 'face' | 'qr' | 'nfc' | 'manual') => {
+  const markAttendance = async (userId: number, method: 'face' | 'qr' | 'nfc' | 'manual', action?: 'in' | 'out') => {
     if (processingRef.current) return;
     setIsProcessing(true);
     try {
-      const res = await api.post('/smart-attendance/mark', { user_id: userId, method });
+      const payload: { user_id: number; method: string; action?: 'in' | 'out' } = { user_id: userId, method };
+      if (action) payload.action = action;
+      const res = await api.post('/smart-attendance/mark', payload);
       const data = res.data?.data?.data || res.data?.data;
       const alreadyMarked = data?.already_marked;
-      const status = data?.status || "In";
+      const status = data?.status || (action === 'out' ? "Out" : "In");
       const userData = data?.user;
       const time = data?.time;
       const user = users.find(u => u.id === userId);
@@ -435,6 +440,7 @@ export default function SmartAttendanceTerminalPage() {
         toast.success(message);
         playAudio('success');
         fetchRecords();
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, today_status: (status === 'Out' ? 'Out' : 'In') } : u));
         setTimeout(() => {
           setMatchedUser(null);
           setIsProcessing(false);
@@ -603,7 +609,7 @@ export default function SmartAttendanceTerminalPage() {
           const serialNumber: string = event.serialNumber;
           const matched = nfcLookup.current.get(serialNumber);
           if (matched) markAttendance(matched.id, 'nfc');
-          else toast.error(t("no_user_found_for_nfc_tag"));
+          else toast.error(t("no_user_found_for_nfc_tag") || "No user found for this RFID card");
         };
       }).catch(() => {});
     } catch {}
@@ -637,6 +643,24 @@ export default function SmartAttendanceTerminalPage() {
       u.staff_id?.toLowerCase().includes(q)
     ).slice(0, 10);
   }, [users, manualSearch]);
+
+  // User attendance status map based on today's live feed and user attributes
+  const userStatusMap = useMemo(() => {
+    const map = new Map<number, 'In' | 'Out'>();
+    // Records are ordered newest first (desc) - live punches take top priority
+    for (const r of records) {
+      if (r.user_id && !map.has(r.user_id)) {
+        map.set(r.user_id, r.status === 'Out' ? 'Out' : 'In');
+      }
+    }
+    // Fallback to initial today_status from user query
+    for (const u of users) {
+      if (u.today_status && !map.has(u.id)) {
+        map.set(u.id, u.today_status);
+      }
+    }
+    return map;
+  }, [users, records]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -679,7 +703,7 @@ export default function SmartAttendanceTerminalPage() {
                 </span>
               </h1>
               <p className="text-[11px] text-gray-500 mt-1">
-                {t("smart_terminal_description") || "Integrated Face Vision, Fast QR Scanner, NFC Radar, and Device Attendance Terminal"}
+                {t("smart_terminal_description") || "Integrated Face Vision, Fast QR Scanner, RFID Radar, and Device Attendance Terminal"}
               </p>
             </div>
           </div>
@@ -808,7 +832,7 @@ export default function SmartAttendanceTerminalPage() {
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
                 )}
               >
-                <SmartphoneNfc className="h-4 w-4 shrink-0" /> <span className="truncate">{t("nfc_rfid_tap") || "NFC / RFID Tap"}</span>
+                <SmartphoneNfc className="h-4 w-4 shrink-0" /> <span className="truncate">{t("nfc_rfid_tap") || "RFID Card Tap"}</span>
               </button>
             )}
 
@@ -821,7 +845,7 @@ export default function SmartAttendanceTerminalPage() {
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
               )}
             >
-              <Search className="h-4 w-4 shrink-0" /> <span className="truncate">{t("manual_check_in") || "Manual Check-In"}</span>
+              <Search className="h-4 w-4 shrink-0" /> <span className="truncate">{t("manual_in_out") || "Manual In/Out"}</span>
             </button>
           </div>
 
@@ -1005,9 +1029,9 @@ export default function SmartAttendanceTerminalPage() {
                       <div className="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin" style={{ animationDuration: '3s' }} />
                       <SmartphoneNfc className="h-16 w-16 text-purple-400 animate-pulse" />
                     </div>
-                    <h3 className="text-xl font-black mb-1">{t("nfc_smart_radar_active") || "NFC / Smart RFID Radar Active"}</h3>
+                    <h3 className="text-xl font-black mb-1">{t("nfc_smart_radar_active") || "RFID Radar Active"}</h3>
                     <p className="text-slate-400 text-center max-w-sm text-xs">
-                      {t("hold_nfc_card_near_reader") || "Hold institutional student or staff NFC ID card near reader"}
+                      {t("hold_nfc_card_near_reader") || "Hold institutional student or staff RFID ID card near reader"}
                     </p>
                   </div>
                 )}
@@ -1017,7 +1041,7 @@ export default function SmartAttendanceTerminalPage() {
                   <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white p-6 overflow-y-auto">
                     <div className="max-w-md w-full space-y-4">
                       <div className="text-center space-y-1">
-                        <h3 className="text-base font-bold">{t("manual_fast_check_in") || "Manual Fast Check-In"}</h3>
+                        <h3 className="text-base font-bold">{t("manual_in_out") || "Manual In/Out"}</h3>
                         <p className="text-xs text-slate-400">{t("search_student_staff_roll_id") || "Search by student or staff name, roll number, or ID"}</p>
                       </div>
 
@@ -1032,31 +1056,51 @@ export default function SmartAttendanceTerminalPage() {
                       </div>
 
                       <div className="space-y-2 max-h-56 overflow-y-auto">
-                        {filteredManualUsers.map(user => (
-                          <div
-                            key={user.id}
-                            className="p-2.5 bg-slate-800/80 hover:bg-slate-800 rounded-xl border border-slate-700/60 flex items-center justify-between transition-all"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage src={getImageUrl(user.avatar)} />
-                                <AvatarFallback className="text-xs font-bold text-slate-700">{user.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="text-xs font-bold text-white">{user.name}</p>
-                                <p className="text-[10px] text-slate-400">{user.role} • {user.role === 'Student' ? (t("roll_admission_short", { no: toLocaleNumber(user.admission_no || 'N/A', language?.short_code) }) || `Roll: ${user.admission_no || 'N/A'}`) : (t("id_label_short", { no: toLocaleNumber(user.staff_id || 'N/A', language?.short_code) }) || `ID: ${user.staff_id || 'N/A'}`)}</p>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              onClick={() => markAttendance(user.id, 'manual')}
-                              disabled={isProcessing}
-                              className="h-7 text-[10px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white px-2.5"
+                        {filteredManualUsers.map(user => {
+                          const todayStatus = userStatusMap.get(user.id);
+                          return (
+                            <div
+                              key={user.id}
+                              className="p-2.5 bg-slate-800/80 hover:bg-slate-800 rounded-xl border border-slate-700/60 flex items-center justify-between transition-all"
                             >
-                              {t("check_in_btn") || "Check-In"}
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-2.5">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={getImageUrl(user.avatar)} />
+                                  <AvatarFallback className="text-xs font-bold text-slate-700">{user.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="text-xs font-bold text-white">{user.name}</p>
+                                  <p className="text-[10px] text-slate-400">{user.role} • {user.role === 'Student' ? (t("roll_admission_short", { no: toLocaleNumber(user.admission_no || 'N/A', language?.short_code) }) || `Roll: ${user.admission_no || 'N/A'}`) : (t("id_label_short", { no: toLocaleNumber(user.staff_id || 'N/A', language?.short_code) }) || `ID: ${user.staff_id || 'N/A'}`)}</p>
+                                </div>
+                              </div>
+                              {todayStatus === 'In' ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => markAttendance(user.id, 'manual', 'out')}
+                                  disabled={isProcessing}
+                                  className="h-7 text-[10px] font-bold bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 text-white px-2.5 shadow-xs active:scale-95 transition-all gap-1 cursor-pointer"
+                                >
+                                  <CheckCircle className="w-3 h-3" />
+                                  {t("check_out_btn") || "Check-Out"}
+                                </Button>
+                              ) : todayStatus === 'Out' ? (
+                                <span className="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shadow-xs">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                                  {t("checked_out_badge") || "Checked Out"}
+                                </span>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => markAttendance(user.id, 'manual', 'in')}
+                                  disabled={isProcessing}
+                                  className="h-7 text-[10px] font-bold bg-gradient-to-r from-[#FF9800] to-[#6366F1] hover:from-[#f59e0b] hover:to-[#818cf8] text-white px-2.5 shadow-xs active:scale-95 transition-all cursor-pointer"
+                                >
+                                  {t("check_in_btn") || "Check-In"}
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1070,7 +1114,7 @@ export default function SmartAttendanceTerminalPage() {
                   <span>
                     {activeMode === 'face' && (t("face_recognition_active_status") || "Face Recognition Active (0.55 match threshold)")}
                     {activeMode === 'qr' && (t("qr_code_detection_running") || "High-speed QR Code Detection Running")}
-                    {activeMode === 'nfc' && (t("nfc_bridge_connected") || "Web NFC / USB RFID Bridge Connected")}
+                    {activeMode === 'nfc' && (t("nfc_bridge_connected") || "RFID Card Reader Connected")}
                     {activeMode === 'manual' && (t("manual_search_directory_active") || "Manual Search Directory Active")}
                   </span>
                 </div>
@@ -1142,7 +1186,7 @@ export default function SmartAttendanceTerminalPage() {
                             {r.status === 'Out' ? (t("exit_out_badge") || 'Exit (Out)') : (t("entry_in_badge") || 'Entry (In)')}
                           </span>
                           <span className="text-[9px] text-slate-400">
-                            • {r.method === 'face' ? '👤 Face' : r.method === 'qr' ? '📱 QR' : r.method === 'nfc' ? '💳 NFC' : '⚡ Auto'}
+                            • {r.method === 'face' ? '👤 Face' : r.method === 'qr' ? '📱 QR' : r.method === 'nfc' ? '💳 RFID Card' : r.method === 'manual' ? '✍️ Manual' : '⚡ Auto'}
                           </span>
                         </div>
                       </div>

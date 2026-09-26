@@ -152,6 +152,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     ],
     human_resource: [
         { name: "staff_directory", label: "Staff Directory" },
+        { name: "requisition_list", label: "Requisition List" },
         { name: "staff_attendance", label: "Staff Attendance" },
         { name: "payroll", label: "Payroll" },
         { name: "approve_leave_request", label: "Approve Leave Request" },
@@ -300,13 +301,11 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "banner_images", label: "Banner Images" },
     ],
     qr_code_attendance: [
-        { name: "attendance", label: "Attendance" },
         { name: "terminal", label: "Terminal" },
         { name: "face_registration", label: "Face Registration" },
         { name: "qr_code_generation", label: "QR Code Generation" },
-        { name: "nfc_assignment", label: "NFC Assignment" },
+        { name: "nfc_assignment", label: "RFID Card Assignment" },
         { name: "setting", label: "Setting" },
-        { name: "smart_attendance_settings", label: "Smart Attendance Settings" },
     ],
     system_setting: [
         { name: "general_setting", label: "General Setting" },

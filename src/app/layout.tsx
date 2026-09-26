@@ -40,131 +40,97 @@ import { LanguageProvider } from "@/components/providers/language-provider";
 import { CurrencyProvider } from "@/components/providers/currency-provider";
 import { PWAInit } from "@/components/providers/pwa-init";
 import { JsonLd } from "@/components/seo/json-ld";
-import { getImageUrl } from "@/lib/image-url";
+import { ServerHeadCode } from "@/components/seo/server-head-code";
+import { ClientCodeInjector } from "@/components/seo/custom-code-injector";
+import { getSchoolSeoData } from "@/lib/seo-utils";
 
 export async function generateMetadata(): Promise<Metadata> {
-  let appTitle = "iSchool";
-  let schoolDescription = "iSchool is an advanced, all-in-one School Management System and Educational Portal providing online admissions, examination results, student tracking, attendance, fees collection, and digital notices.";
-  let rawFavicon = "/logo-admin-small.png";
-  let rawPwaIcon192 = "/icons/icon-192x192.png";
-  let rawPwaIcon512 = "/icons/icon-512x512.png";
-
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
-    const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
-      next: { revalidate: 30 },
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(1500),
-    }).catch(() => null);
-
-    if (res && res.ok) {
-      const json = await res.json();
-      const settings = json.data || json;
-
-      if (settings.school_name && settings.school_name.trim() !== "") {
-        appTitle = settings.school_name.trim();
-      } else if (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "") {
-        appTitle = settings.pwa_app_short_name;
-      }
-
-      const pwaAppName = (settings.pwa_app_short_name && settings.pwa_app_short_name.trim() !== "")
-        ? settings.pwa_app_short_name.trim()
-        : appTitle;
-
-      if (settings.school_description && settings.school_description.trim() !== "") {
-        schoolDescription = settings.school_description.trim();
-      }
-
-      if (settings.favicon) {
-        rawFavicon = settings.favicon;
-      }
-
-      if (settings.pwa_icon_512) {
-        rawPwaIcon512 = settings.pwa_icon_512;
-      } else if (settings.pwa_icon_192) {
-        rawPwaIcon512 = settings.pwa_icon_192;
-      } else if (settings.pwa_icon_maskable) {
-        rawPwaIcon512 = settings.pwa_icon_maskable;
-      }
-
-      if (settings.pwa_icon_192) {
-        rawPwaIcon192 = settings.pwa_icon_192;
-      } else if (settings.pwa_icon_512) {
-        rawPwaIcon192 = settings.pwa_icon_512;
-      } else if (settings.pwa_icon_maskable) {
-        rawPwaIcon192 = settings.pwa_icon_maskable;
-      }
-    }
-  } catch {
-    // Graceful fallback to default metadata when backend is offline
-  }
-
-  const resolvedFaviconUrl = getImageUrl(rawFavicon) || rawFavicon;
-  const resolvedPwa192 = getImageUrl(rawPwaIcon192) || rawPwaIcon192;
-  const resolvedPwa512 = getImageUrl(rawPwaIcon512) || rawPwaIcon512;
-  const baseUrl = (process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ischool.coolify.mddoulat.com").replace(/\/+$/, "");
+  const info = await getSchoolSeoData();
+  const baseUrl = info.baseUrl;
 
   return {
     metadataBase: new URL(baseUrl),
     title: {
-      default: `${appTitle} — Comprehensive School Management System & Portal`,
-      template: `%s — ${appTitle}`,
+      default: `${info.schoolName} — School Management System & Portal`,
+      template: `%s — ${info.schoolName}`,
     },
-    description: schoolDescription,
+    description: info.schoolDescription,
     keywords: [
+      info.schoolName,
       "School Management System",
-      "SMS",
-      "LMS",
+      "Educational Portal",
       "Online Admission",
-      "Exam Results",
-      "Student Information System",
-      "School Portal",
+      "Examination Results",
+      "Academic Notices",
+      "Student Marksheet",
+      "Digital School",
+      "বিদ্যালয়",
+      "মাদরাসা",
+      "পরীক্ষার ফলাফল",
+      "অনলাইন ভর্তি",
+      "নোটিশ বোর্ড",
       "iSchool",
     ],
-    authors: [{ name: appTitle }],
+    authors: [{ name: info.schoolName }],
+    creator: info.schoolName,
+    publisher: info.schoolName,
+    robots: {
+      index: true,
+      follow: true,
+      nocache: false,
+      googleBot: {
+        index: true,
+        follow: true,
+        noimageindex: false,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
     alternates: {
       canonical: "./",
     },
     openGraph: {
       type: "website",
       locale: "en_US",
+      alternateLocale: ["bn_BD", "ar_SA"],
       url: baseUrl,
-      siteName: appTitle,
-      title: `${appTitle} — Comprehensive School Management System`,
-      description: schoolDescription,
+      siteName: info.schoolName,
+      title: `${info.schoolName} — Educational Portal & Management System`,
+      description: info.schoolDescription,
       images: [
         {
-          url: resolvedPwa512,
+          url: info.logoUrl,
           width: 512,
           height: 512,
-          alt: `${appTitle} Logo`,
+          alt: `${info.schoolName} Official Logo`,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${appTitle} — Modern School Management System`,
-      description: schoolDescription,
-      images: [resolvedPwa512],
+      title: `${info.schoolName} — Educational Portal`,
+      description: info.schoolDescription,
+      images: [info.logoUrl],
     },
     manifest: "/manifest.json",
     icons: {
       icon: [
-        { url: resolvedFaviconUrl },
-        { url: resolvedPwa192, sizes: "192x192" },
-        { url: resolvedPwa512, sizes: "512x512" },
+        { url: info.faviconUrl },
+        { url: info.logoUrl, sizes: "192x192" },
+        { url: info.logoUrl, sizes: "512x512" },
       ],
       apple: [
-        { url: resolvedPwa192, sizes: "180x180" },
-        { url: resolvedPwa192, sizes: "192x192" },
-        { url: resolvedPwa512, sizes: "512x512" },
+        { url: info.logoUrl, sizes: "180x180" },
+        { url: info.logoUrl, sizes: "192x192" },
+        { url: info.logoUrl, sizes: "512x512" },
       ],
-      shortcut: [resolvedFaviconUrl],
+      shortcut: [info.faviconUrl],
     },
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: (typeof settings !== "undefined" && settings?.pwa_app_short_name) || "iSchool",
+      title: info.schoolName,
     },
     formatDetection: {
       telephone: false,
@@ -172,11 +138,13 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const schoolInfo = await getSchoolSeoData();
+
   return (
     <html
       lang="en"
@@ -184,12 +152,27 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head suppressHydrationWarning>
-        <JsonLd />
+        <ServerHeadCode code={schoolInfo.headerCode} />
+        <JsonLd
+          schoolName={schoolInfo.schoolName}
+          description={schoolInfo.schoolDescription}
+          url={schoolInfo.baseUrl}
+          logoUrl={schoolInfo.logoUrl}
+          telephone={schoolInfo.phone}
+          email={schoolInfo.email}
+          address={schoolInfo.address}
+          sameAs={schoolInfo.socialLinks}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${notoSansBengali.variable} ${hindSiliguri.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
+        <ClientCodeInjector
+          headCode={schoolInfo.headerCode}
+          bodyCode={schoolInfo.bodyCode}
+          footerCode={schoolInfo.footerCode}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

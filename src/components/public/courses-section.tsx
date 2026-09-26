@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 
 import { useTranslation } from "@/hooks/use-translation";
 import { useImageUrl } from "@/lib/image-url";
+import { CardBorderBeam } from "@/components/public/card-border-beam";
 
 interface CourseItem {
     title: string;
@@ -70,7 +71,14 @@ export function CoursesSection({ courses: propCourses, sectionTitle, sectionSubt
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {courses.map((course, i) => (
-                            <div key={i} className="group bg-white rounded-xl shadow-lg overflow-hidden border border-slate-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col">
+                            <div key={i} className="group bg-white rounded-xl shadow-lg overflow-hidden border border-slate-100 hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 flex flex-col relative">
+                                <CardBorderBeam
+                                    rx={12}
+                                    ry={12}
+                                    strokeWidth={2.5}
+                                    gradientId={`ischool-course-beam-${i}`}
+                                    colors={["#6366F1", "#3B82F6", "#10B981", "#F59E0B"]}
+                                />
                                 {/* Image Container */}
                                 <div className="relative h-64">
                                     <div className="w-full h-full overflow-hidden rounded-t-xl">

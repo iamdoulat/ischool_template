@@ -1,92 +1,182 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
-import { BookOpen, GraduationCap, Award, Compass, CheckCircle2, Search } from "lucide-react";
+import { PublicPageBanner } from "@/components/public/public-page-banner";
+import { BookOpen, GraduationCap, Compass, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { getSchoolSeoData } from "@/lib/seo-utils";
+import { getImageUrl } from "@/lib/image-url";
 
-export const metadata: Metadata = {
-  title: "Academic Programs & Curriculum",
-  description:
-    "Explore academic programs, grade curricula, distinguished faculty, and learning resources at iSchool. Comprehensive education from primary to higher secondary.",
-  alternates: {
-    canonical: "/academics",
-  },
-  openGraph: {
-    title: "Academic Programs & Curriculum — iSchool",
-    description:
-      "Explore comprehensive academic curricula, grade-wise subjects, faculty excellence, and student learning opportunities at iSchool.",
-    url: "/academics",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const school = await getSchoolSeoData();
+  const title = `Academic Programs & Curriculum — ${school.schoolName}`;
+  const description = `Explore academic programs, grade curricula, distinguished faculty, and learning resources at ${school.schoolName}. Comprehensive education from primary to higher secondary.`;
 
-const ACADEMIC_PROGRAMS = [
-  {
-    title: "Primary Education (Grade 1 - 5)",
-    description: "Foundational learning focusing on literacy, numeracy, creative expression, and social-emotional development in an engaging environment.",
-    icon: BookOpen,
-    features: ["Interactive Activity-based Learning", "Core Literacy & Numeracy", "Art, Music & Physical Education", "Moral & Value Education"],
-    badge: "Foundation",
-  },
-  {
-    title: "Middle School (Grade 6 - 8)",
-    description: "Comprehensive curriculum designed to bridge fundamental concepts with analytical thinking, sciences, and digital literacy.",
-    icon: Compass,
-    features: ["Integrated Science & Mathematics", "Language & Literature", "Computer Science & Coding", "Extracurricular Clubs & Sports"],
-    badge: "Intermediate",
-  },
-  {
-    title: "Secondary & Higher Secondary (Grade 9 - 12)",
-    description: "Rigorous academic pathways preparing students for board examinations, competitive university admissions, and future careers.",
-    icon: GraduationCap,
-    features: ["Science, Commerce & Humanities Streams", "Advanced Lab Facilities", "Board Exam Preparation & Mock Tests", "Career Counseling & Mentorship"],
-    badge: "Advanced",
-  },
-];
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: "/academics",
+    },
+    openGraph: {
+      title,
+      description,
+      url: `${school.baseUrl}/academics`,
+      siteName: school.schoolName,
+      images: [
+        {
+          url: school.logoUrl,
+          width: 512,
+          height: 512,
+          alt: `${school.schoolName} Logo`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [school.logoUrl],
+    },
+  };
+}
 
-export default function AcademicsPage() {
+export default async function AcademicsPage() {
+  const school = await getSchoolSeoData();
+  const baseUrl = school.baseUrl;
+
+  // Dynamically resolve courses from Front CMS or generate dynamic academic programs
+  const dynamicCourses =
+    school.cmsCourses && school.cmsCourses.length > 0
+      ? school.cmsCourses.map((c, idx) => ({
+          title: c.title,
+          description: c.description,
+          badge: c.category || (idx === 0 ? "Foundation" : idx === 1 ? "Intermediate" : "Advanced"),
+          image: c.image ? getImageUrl(c.image) : undefined,
+          icon: idx === 0 ? BookOpen : idx === 1 ? Compass : GraduationCap,
+          features: [
+            "Activity-based Interactive Learning",
+            "Core Literacy & Analytical Thinking",
+            "Modern Classrooms & Equipment",
+            "Continuous Progress Mentorship",
+          ],
+        }))
+      : [
+          {
+            title: `Primary Education (Grade 1 - 5) — ${school.schoolName}`,
+            description:
+              "Foundational learning focusing on literacy, numeracy, creative expression, and social-emotional development in an engaging environment.",
+            icon: BookOpen,
+            badge: "Primary Level",
+            features: [
+              "Interactive Activity-based Learning",
+              "Core Literacy & Numeracy",
+              "Art, Music & Physical Education",
+              "Moral & Value Education",
+            ],
+          },
+          {
+            title: `Middle School (Grade 6 - 8) — ${school.schoolName}`,
+            description:
+              "Comprehensive curriculum designed to bridge fundamental concepts with analytical thinking, sciences, and digital literacy.",
+            icon: Compass,
+            badge: "Middle Level",
+            features: [
+              "Integrated Science & Mathematics",
+              "Language & Literature",
+              "Computer Science & ICT",
+              "Extracurricular Clubs & Sports",
+            ],
+          },
+          {
+            title: `Secondary & Board Level (Grade 9 - 10) — ${school.schoolName}`,
+            description:
+              "Rigorous academic pathways preparing students for board examinations, competitive admissions, and future careers.",
+            icon: GraduationCap,
+            badge: "Secondary Level",
+            features: [
+              "Science, Humanities & Core Streams",
+              "Advanced Lab Facilities",
+              "Board Exam Preparation & Mock Tests",
+              "Career Counseling & Mentorship",
+            ],
+          },
+        ];
+
+  const academicsSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: `Academic Programs & Curriculum — ${school.schoolName}`,
+    description: `Explore academic programs, grade curricula, distinguished faculty, and learning resources at ${school.schoolName}.`,
+    url: `${baseUrl}/academics`,
+    primaryImageOfPage: {
+      "@type": "ImageObject",
+      url: school.logoUrl,
+    },
+    mainEntity: {
+      "@type": "EducationalOrganization",
+      name: school.schoolName,
+      url: baseUrl,
+      logo: school.logoUrl,
+      image: school.logoUrl,
+      telephone: school.phone,
+      email: school.email,
+      address: school.address,
+    },
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 font-sans">
+      {/* Schema.org WebPage structured data */}
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(academicsSchema) }}
+      />
       <PublicHeader />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="bg-slate-900 text-white py-16 sm:py-20 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-25 bg-[url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center" />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-900/80 to-transparent" />
-          <div className="container mx-auto px-6 sm:px-8 md:px-12 relative z-10 text-center max-w-4xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold uppercase tracking-wider mb-4 border border-emerald-500/30">
-              <Award className="h-3.5 w-3.5" />
-              Academic Excellence
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight uppercase">
-              Academics & Curriculum
-            </h1>
-            <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Empowering students through innovative pedagogy, comprehensive curriculum standards, and holistic character development.
-            </p>
-          </div>
-        </section>
+        {/* Modern Theme-Aware Hero Banner */}
+        <PublicPageBanner
+          title="Academics & Curriculum"
+          subtitle={`Empowering students at ${school.schoolName} through innovative pedagogy, comprehensive curriculum standards, and holistic character development.`}
+          badgeText="Academic Excellence"
+          breadcrumbTitle="Academics"
+        />
 
         {/* Academic Overview Grid */}
-        <section className="container mx-auto px-4 sm:px-6 md:px-12 py-12 sm:py-16">
+        <section className="container mx-auto px-4 sm:px-6 md:px-12 pt-6 pb-12 sm:pt-8 sm:pb-16">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-              Our Academic Framework
+              Academic Framework & Programs
             </h2>
             <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-              Structured progressive learning stages tailored to inspire curiosity and academic excellence at every grade level.
+              Structured progressive learning stages tailored to inspire curiosity and academic excellence at {school.schoolName}.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {ACADEMIC_PROGRAMS.map((prog, idx) => {
+            {dynamicCourses.map((prog, idx) => {
               const Icon = prog.icon;
               return (
                 <div
                   key={idx}
-                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group"
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between group overflow-hidden"
                 >
                   <div>
+                    {prog.image && (
+                      <div className="relative mb-4 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 h-44 overflow-hidden bg-slate-100">
+                        <Image
+                          src={prog.image}
+                          alt={`${prog.title} at ${school.schoolName}`}
+                          fill
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between mb-4">
                       <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Icon className="h-6 w-6" />
@@ -132,7 +222,7 @@ export default function AcademicsPage() {
           <div className="container mx-auto px-4 sm:px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-1 text-center md:text-left">
               <h3 className="text-xl font-bold">Have Questions About Admissions or Syllabus?</h3>
-              <p className="text-xs text-indigo-200">Our academic counseling team is ready to guide you through course selection and admissions.</p>
+              <p className="text-xs text-indigo-200">Our academic counseling team at {school.schoolName} is ready to guide you.</p>
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <Link

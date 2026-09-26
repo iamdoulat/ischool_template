@@ -7,13 +7,15 @@ interface JsonLdProps {
   logoUrl?: string;
   telephone?: string;
   email?: string;
-  address?: {
-    streetAddress?: string;
-    addressLocality?: string;
-    addressRegion?: string;
-    postalCode?: string;
-    addressCountry?: string;
-  };
+  address?:
+    | {
+        streetAddress?: string;
+        addressLocality?: string;
+        addressRegion?: string;
+        postalCode?: string;
+        addressCountry?: string;
+      }
+    | string;
   sameAs?: string[];
 }
 
@@ -24,13 +26,7 @@ export function JsonLd({
   logoUrl = `${(process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ischool.coolify.mddoulat.com").replace(/\/+$/, "")}/logo-admin.png`,
   telephone = "+880 1800-123456",
   email = "info@ischool.edu.bd",
-  address = {
-    streetAddress: "House 42, Road 11, Block E, Banani",
-    addressLocality: "Dhaka",
-    addressRegion: "Dhaka Division",
-    postalCode: "1213",
-    addressCountry: "BD",
-  },
+  address = "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230",
   sameAs = [
     "https://facebook.com/ischool",
     "https://twitter.com/ischool",
@@ -40,6 +36,22 @@ export function JsonLd({
   ],
 }: JsonLdProps) {
   const cleanUrl = url.replace(/\/+$/, "");
+
+  const postalAddress =
+    typeof address === "string"
+      ? {
+          "@type": "PostalAddress",
+          streetAddress: address,
+          addressCountry: "BD",
+        }
+      : {
+          "@type": "PostalAddress",
+          streetAddress: address?.streetAddress || "Dhaka",
+          addressLocality: address?.addressLocality || "Dhaka",
+          addressRegion: address?.addressRegion || "Dhaka Division",
+          postalCode: address?.postalCode || "1230",
+          addressCountry: address?.addressCountry || "BD",
+        };
 
   const schemaGraph = {
     "@context": "https://schema.org",
@@ -58,20 +70,21 @@ export function JsonLd({
         description: description,
         telephone: telephone,
         email: email,
-        address: {
-          "@type": "PostalAddress",
-          streetAddress: address.streetAddress,
-          addressLocality: address.addressLocality,
-          addressRegion: address.addressRegion,
-          postalCode: address.postalCode,
-          addressCountry: address.addressCountry,
-        },
-        sameAs: sameAs.filter(Boolean),
+        address: postalAddress,
+        sameAs: (Array.isArray(sameAs) ? sameAs : []).filter(Boolean),
+        knowsAbout: [
+          "Primary Education",
+          "Secondary Education",
+          "Higher Secondary Education",
+          "STEM Education",
+          "Academic Examinations",
+          "Digital Student Records",
+        ],
         contactPoint: [
           {
             "@type": "ContactPoint",
             telephone: telephone,
-            contactType: "Admissions & Inquiries",
+            contactType: "Admissions & General Enquiries",
             email: email,
             availableLanguage: ["English", "Bengali"],
           },
@@ -86,7 +99,7 @@ export function JsonLd({
         publisher: {
           "@id": `${cleanUrl}/#organization`,
         },
-        inLanguage: ["en-US", "bn-BD"],
+        inLanguage: ["en", "bn"],
         potentialAction: {
           "@type": "SearchAction",
           target: {
@@ -108,3 +121,4 @@ export function JsonLd({
     />
   );
 }
+

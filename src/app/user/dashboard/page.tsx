@@ -28,6 +28,7 @@ import {
     Award,
     ArrowRight,
     ChevronRight,
+    Fingerprint,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import QRCode from "qrcode";
@@ -143,6 +144,15 @@ interface ChatContact {
     chat_presence: string;
 }
 
+interface TodayAttendanceInfo {
+    status?: string;
+    is_present?: boolean;
+    entry_time?: string | null;
+    exit_time?: string | null;
+    source?: string | null;
+    date?: string;
+}
+
 interface DashboardData {
     profile?: {
         name?: string;
@@ -151,7 +161,9 @@ interface DashboardData {
         barcode?: string;
         image?: string | null;
         branch_id?: number | string;
+        today_attendance?: TodayAttendanceInfo | null;
     };
+    today_attendance?: TodayAttendanceInfo | null;
     notices?: NoticeItem[];
     subjectProgress?: SubjectProgressItem[];
     upcomingClasses?: UpcomingClassItem[];
@@ -266,6 +278,14 @@ export default function UserDashboardPage() {
     const [chatOpen, setChatOpen] = useState(false);
     const [chatTargetContact, setChatTargetContact] = useState<ChatContact | null>(null);
     const [chatTargetUserId, setChatTargetUserId] = useState<number | null>(null);
+    const [testState, setTestState] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const p = new URLSearchParams(window.location.search).get("test_attendance");
+            if (p) setTestState(p);
+        }
+    }, []);
 
     const [localChatEnabled, setLocalChatEnabled] = useState<boolean>(() => {
         if (typeof window !== "undefined") {
@@ -365,6 +385,64 @@ export default function UserDashboardPage() {
     const isAboveMin = attendance >= minAttendance;
     const pendingHomework = (homework || []).filter((h: HomeworkItem) => h.status === "Pending").length;
 
+    // Today's attendance info
+    const rawTodayAttendance = profile?.today_attendance || data?.today_attendance || { status: "pending", is_present: false };
+    const todayAttendance = testState === "leave"
+        ? { status: "on_leave", is_present: false, leave_title: "Medical Leave (Approved)" }
+        : testState === "holiday"
+        ? { status: "holiday", is_present: false, holiday_title: "Eid-ul-Fitr Public Holiday" }
+        : testState === "absent"
+        ? { status: "absent", is_present: false, is_in_time_over: true, in_time_start: "08:45 AM", in_time_end: "09:30 AM" }
+        : rawTodayAttendance;
+    const todayStatus = (todayAttendance.status || "pending").toLowerCase();
+    const isPresent = todayStatus === "present";
+    const isLate = todayStatus === "late";
+    const isHalfDay = todayStatus === "half_day" || todayStatus === "half day";
+    const isHoliday = todayStatus === "holiday" || todayStatus === "weekly_holiday" || todayStatus === "weekly holiday";
+    const isLeave = todayStatus === "on_leave" || todayStatus === "on leave";
+    const isEntryPunched = Boolean(todayAttendance.entry_time || isPresent || isLate || isHalfDay);
+    const isOutPunched = Boolean(todayAttendance.exit_time);
+
+    // Check if in-time window has expired (client or backend)
+    const isClientInTimeOver = (() => {
+        if (todayAttendance.is_in_time_over) return true;
+        if (todayAttendance.in_time_end && !isEntryPunched && !isHoliday && !isLeave) {
+            try {
+                const parts = String(todayAttendance.in_time_end).match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
+                if (parts) {
+                    let h = parseInt(parts[1], 10);
+                    const m = parseInt(parts[2], 10);
+                    const ampm = parts[4]?.toUpperCase();
+                    if (ampm === "PM" && h < 12) h += 12;
+                    if (ampm === "AM" && h === 12) h = 0;
+                    const now = new Date();
+                    const end = new Date();
+                    end.setHours(h, m, 0, 0);
+                    return now > end;
+                }
+            } catch {
+                return false;
+            }
+        }
+        return false;
+    })();
+    const isInTimeOver = Boolean(todayAttendance.is_in_time_over || isClientInTimeOver);
+    const isAbsent = todayStatus === "absent" || (todayStatus === "pending" && isInTimeOver);
+
+    const getTodayStatusLabel = (status?: string | null) => {
+        const s = status?.toLowerCase().trim();
+        if (s === "present") return t("status_present") || "Present";
+        if (s === "absent" || (s === "pending" && isInTimeOver)) return t("status_absent") || "Absent";
+        if (s === "late") return t("status_late") || "Late";
+        if (s === "half_day" || s === "half day") return t("half_day") || "Half Day";
+        if (s === "holiday" || s === "weekly_holiday" || s === "weekly holiday") return t("holiday") || "Holiday";
+        if (s === "on_leave" || s === "on leave") return t("on_leave") || "On Leave";
+        if (s === "pending") return t("status_pending") || "Pending";
+        return t("status_pending") || "Pending";
+    };
+
+    const entryStatusLabel = getTodayStatusLabel(todayStatus);
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* ── KPI Summary Row ── */}
@@ -411,27 +489,301 @@ export default function UserDashboardPage() {
                 {showWidget("welcome_student") && (
                 <Card className="shadow-sm rounded-xl overflow-hidden border-0 w-full p-0 gap-0">
                     <CardContent className="p-0 h-full">
-                        <div className="flex flex-col sm:flex-row h-full">
+                        <div className="flex flex-col h-full">
                             {/* Gradient identity side */}
-                            <div className="relative bg-gradient-to-br from-[#FF9800] to-[#6366F1] p-5 flex items-center gap-4 sm:w-[52%] overflow-hidden">
-                                <div className="absolute -top-10 -right-8 h-28 w-28 rounded-full bg-white/10" />
-                                <div className="absolute -bottom-12 -left-6 h-28 w-28 rounded-full bg-white/10" />
-                                <div className="relative h-[84px] w-[84px] rounded-full ring-4 ring-white/40 bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 overflow-hidden">
+                            <div className="relative bg-gradient-to-br from-[#FF9800] to-[#6366F1] p-4 sm:p-5 flex items-center gap-4 w-full overflow-hidden">
+                                <div className="absolute -top-10 -right-8 h-28 w-28 rounded-full bg-white/10 pointer-events-none" />
+                                <div className="absolute -bottom-12 -left-6 h-28 w-28 rounded-full bg-white/10 pointer-events-none" />
+
+                                {/* Avatar */}
+                                <div className="relative h-[72px] w-[72px] sm:h-[82px] sm:w-[82px] rounded-full ring-4 ring-white/40 bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 overflow-hidden shadow-md">
                                     {profile.image ? (
                                         <img src={profile.image} alt={profile.name} className="h-full w-full object-cover" />
                                     ) : (
-                                        <User className="h-12 w-12 text-white/90" />
+                                        <User className="h-10 w-10 sm:h-12 sm:w-12 text-white/90" />
                                     )}
                                 </div>
-                                <div className="relative text-white min-w-0">
-                                    <p className="text-[12px] font-medium text-white/80">{t("welcome_back")}</p>
-                                    <h2 className="text-xl font-bold leading-tight truncate">{profile.name}</h2>
-                                    <p className="text-[12px] text-white/90 mt-1">{t("keep_going_message")} 🎯</p>
+
+                                {/* Identity Text */}
+                                <div className="relative text-white min-w-0 flex-1">
+                                    <p className="text-[11px] sm:text-[12px] font-medium text-white/80">{t("welcome_back")}</p>
+                                    <h2 className="text-lg sm:text-xl font-bold leading-tight truncate">{profile.name}</h2>
+                                    <p className="text-[11px] sm:text-[12px] text-white/90 mt-1 line-clamp-1">{t("keep_going_message")} 🎯</p>
                                 </div>
                             </div>
 
                             {/* Attendance + codes side */}
-                            <div className="flex-1 p-4 sm:p-5 bg-white flex flex-col justify-center gap-3">
+                            <div className="flex-1 p-4 sm:p-5 bg-white flex flex-col justify-between gap-3 sm:gap-4">
+                                {/* ── Separate Entry & Out Attendance Buttons ── */}
+                                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+                                    {/* Entry (Check-In) Button */}
+                                    <Link
+                                        href="/user/attendance"
+                                        className={cn(
+                                            "group relative flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl border-2 transition-all duration-200 active:scale-[0.98] shadow-2xs hover:shadow-md cursor-pointer overflow-hidden",
+                                            isEntryPunched
+                                                ? "bg-gradient-to-br from-emerald-50 via-teal-50/50 to-emerald-100/40 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-emerald-900/30 border-emerald-400/90 dark:border-emerald-600 hover:border-emerald-500"
+                                                : isLeave
+                                                ? "bg-gradient-to-br from-sky-50 via-blue-50/50 to-sky-100/40 dark:from-sky-950/40 dark:via-blue-950/20 dark:to-sky-900/30 border-sky-400 dark:border-sky-600 hover:border-sky-500"
+                                                : isHoliday
+                                                ? "bg-gradient-to-br from-purple-50 via-indigo-50/40 to-purple-100/40 dark:from-purple-950/40 dark:via-indigo-950/20 dark:to-purple-900/30 border-purple-300 dark:border-purple-700 hover:border-purple-400"
+                                                : isAbsent
+                                                ? "bg-gradient-to-br from-rose-50 via-rose-50/40 to-red-100/40 dark:from-rose-950/40 dark:via-rose-950/20 dark:to-red-900/30 border-rose-300 dark:border-rose-700 hover:border-rose-400"
+                                                : "bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-amber-100/30 dark:from-amber-950/30 dark:to-orange-950/20 border-dashed border-amber-300 dark:border-amber-700 hover:border-amber-400"
+                                        )}
+                                        title={
+                                            isEntryPunched
+                                                ? `${t("entry_punch") || "Entry (In)"}: ${entryStatusLabel} (${todayAttendance.entry_time})`
+                                                : isLeave
+                                                ? `${t("entry_punch") || "Entry (In)"}: ${t("on_leave") || "On Leave"}`
+                                                : isHoliday
+                                                ? `${t("entry_punch") || "Entry (In)"}: ${t("holiday") || "Holiday"}`
+                                                : isAbsent
+                                                ? `${t("entry_punch") || "Entry (In)"}: ${t("status_absent") || "Absent"}`
+                                                : `${t("entry_punch") || "Entry (In)"}: ${t("status_pending") || "Pending"}`
+                                        }
+                                    >
+                                        <div className={cn(
+                                            "absolute -right-3 -top-3 h-12 w-12 rounded-full blur-lg opacity-40 pointer-events-none transition-opacity group-hover:opacity-75",
+                                            isEntryPunched ? "bg-emerald-400" : isLeave ? "bg-sky-400" : isHoliday ? "bg-purple-400" : isAbsent ? "bg-rose-400" : "bg-amber-400"
+                                        )} />
+
+                                        <div className={cn(
+                                            "h-10 w-10 sm:h-11 sm:w-11 rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-200 group-hover:scale-105",
+                                            isEntryPunched
+                                                ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-emerald-500/25"
+                                                : isLeave
+                                                ? "bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-sky-500/25"
+                                                : isHoliday
+                                                ? "bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-purple-500/25"
+                                                : isAbsent
+                                                ? "bg-gradient-to-br from-rose-500 to-red-600 text-white shadow-rose-500/25"
+                                                : "bg-gradient-to-br from-amber-400 to-orange-400 text-white shadow-amber-500/20"
+                                        )}>
+                                            {isLeave ? (
+                                                <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                                            ) : isHoliday ? (
+                                                <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                                            ) : isAbsent ? (
+                                                <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                                            ) : (
+                                                <Fingerprint className={cn("h-5 w-5 sm:h-6 sm:w-6 text-white", isEntryPunched && "animate-pulse")} />
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-col min-w-0 flex-1 leading-tight">
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className={cn(
+                                                    "text-[10px] sm:text-[11px] font-black uppercase tracking-wider",
+                                                    isEntryPunched
+                                                        ? "text-emerald-800 dark:text-emerald-300"
+                                                        : isLeave
+                                                        ? "text-sky-800 dark:text-sky-300"
+                                                        : isHoliday
+                                                        ? "text-purple-800 dark:text-purple-300"
+                                                        : isAbsent
+                                                        ? "text-rose-800 dark:text-rose-300"
+                                                        : "text-amber-800 dark:text-amber-300"
+                                                )}>
+                                                    {t("entry_punch") || "Entry (In)"}
+                                                </span>
+                                                {isEntryPunched ? (
+                                                    <span className="relative flex h-2 w-2 shrink-0">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                                    </span>
+                                                ) : isAbsent ? (
+                                                    <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500" />
+                                                ) : null}
+                                            </div>
+
+                                            {isEntryPunched ? (
+                                                <div className="flex flex-wrap items-baseline gap-1 mt-1 truncate">
+                                                    <span className="text-xs sm:text-sm font-black text-emerald-950 dark:text-emerald-100 truncate">
+                                                        {entryStatusLabel}
+                                                    </span>
+                                                    {todayAttendance.entry_time && (
+                                                        <span className="text-[11px] font-bold font-mono text-emerald-700 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-md">
+                                                            {todayAttendance.entry_time}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : isLeave ? (
+                                                <div className="flex flex-col gap-0.5 mt-0.5 truncate">
+                                                    <span className="text-xs sm:text-sm font-black text-sky-950 dark:text-sky-100 truncate">
+                                                        {t("on_leave") || "On Leave"}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-sky-700 dark:text-sky-300 truncate">
+                                                        {todayAttendance.leave_title || t("leave_approved") || "Approved Leave"}
+                                                    </span>
+                                                </div>
+                                            ) : isHoliday ? (
+                                                <div className="flex flex-col gap-0.5 mt-0.5 truncate">
+                                                    <span className="text-xs sm:text-sm font-black text-purple-950 dark:text-purple-100 truncate">
+                                                        {t("holiday") || "Holiday"}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-purple-700 dark:text-purple-300 truncate">
+                                                        {todayAttendance.holiday_title || t("campus_closed") || "Campus Closed"}
+                                                    </span>
+                                                </div>
+                                            ) : isAbsent ? (
+                                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="text-xs sm:text-sm font-black text-rose-950 dark:text-rose-100 truncate">
+                                                            {t("status_absent") || "Absent"}
+                                                        </span>
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300/80 dark:bg-rose-950/60 dark:text-rose-200">
+                                                            <Clock className="h-2.5 w-2.5 text-rose-600 shrink-0" /> {t("time_over") || "Time Over"}
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-[10px] font-medium text-rose-700/90 dark:text-rose-300 truncate">
+                                                        {todayAttendance.in_time_end ? `${t("in_time_range") || "In-time"}: ${todayAttendance.in_time_start ? todayAttendance.in_time_start + " - " : ""}${todayAttendance.in_time_end}` : (t("in_time_over_desc") || "In-time range exceeded")}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300/70 dark:bg-amber-900/60 dark:text-amber-200 self-start">
+                                                        <Clock className="h-3 w-3 text-amber-700 dark:text-amber-300" /> {t("status_pending") || "Pending"}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-amber-700/80 dark:text-amber-400 truncate">
+                                                        {todayAttendance.in_time_end ? `${t("in_time_range") || "In-time"}: ${todayAttendance.in_time_start ? todayAttendance.in_time_start + " - " : ""}${todayAttendance.in_time_end}` : (t("not_punched_yet") || "Not punched yet")}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Link>
+
+                                    {/* Out (Check-Out) Button */}
+                                    <Link
+                                        href="/user/attendance"
+                                        className={cn(
+                                            "group relative flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl border-2 transition-all duration-200 active:scale-[0.98] shadow-2xs hover:shadow-md cursor-pointer overflow-hidden",
+                                            isOutPunched
+                                                ? "bg-gradient-to-br from-indigo-50 via-blue-50/50 to-indigo-100/40 dark:from-indigo-950/40 dark:via-blue-950/20 dark:to-indigo-900/30 border-indigo-400/90 dark:border-indigo-600 hover:border-indigo-500"
+                                                : isLeave
+                                                ? "bg-gradient-to-br from-slate-50/90 via-sky-50/30 to-zinc-100/40 dark:from-zinc-900/50 dark:to-zinc-800/30 border-dashed border-sky-300 dark:border-sky-800 hover:border-sky-400"
+                                                : isHoliday
+                                                ? "bg-gradient-to-br from-slate-50/90 via-purple-50/30 to-zinc-100/40 dark:from-zinc-900/50 dark:to-zinc-800/30 border-dashed border-purple-300 dark:border-purple-800 hover:border-purple-400"
+                                                : isAbsent
+                                                ? "bg-gradient-to-br from-slate-50/90 via-rose-50/30 to-zinc-100/40 dark:from-zinc-900/50 dark:to-zinc-800/30 border-dashed border-rose-300/80 dark:border-rose-800 hover:border-rose-400"
+                                                : "bg-gradient-to-br from-slate-50/90 via-gray-50/60 to-zinc-100/40 dark:from-zinc-900/50 dark:to-zinc-800/30 border-dashed border-slate-300 dark:border-zinc-700 hover:border-slate-400"
+                                        )}
+                                        title={
+                                            isOutPunched
+                                                ? `${t("out_punch") || "Out (Exit)"}: ${t("status_out") || "Out"} (${todayAttendance.exit_time})`
+                                                : isLeave
+                                                ? `${t("out_punch") || "Out (Exit)"}: ${t("on_leave") || "On Leave"}`
+                                                : isHoliday
+                                                ? `${t("out_punch") || "Out (Exit)"}: ${t("holiday") || "Holiday"}`
+                                                : isAbsent
+                                                ? `${t("out_punch") || "Out (Exit)"}: ${t("not_applicable") || "N/A"}`
+                                                : `${t("out_punch") || "Out (Exit)"}: ${t("status_pending") || "Pending"}`
+                                        }
+                                    >
+                                        <div className={cn(
+                                            "absolute -right-3 -top-3 h-12 w-12 rounded-full blur-lg opacity-40 pointer-events-none transition-opacity group-hover:opacity-75",
+                                            isOutPunched
+                                                ? "bg-indigo-400"
+                                                : isLeave
+                                                ? "bg-sky-300 dark:bg-sky-800"
+                                                : isHoliday
+                                                ? "bg-purple-300 dark:bg-purple-800"
+                                                : isAbsent
+                                                ? "bg-rose-300 dark:bg-rose-800"
+                                                : "bg-slate-300 dark:bg-zinc-700"
+                                        )} />
+
+                                        <div className={cn(
+                                            "h-10 w-10 sm:h-11 sm:w-11 rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-200 group-hover:scale-105",
+                                            isOutPunched
+                                                ? "bg-gradient-to-br from-indigo-500 to-[#6366F1] text-white shadow-indigo-500/25"
+                                                : isLeave
+                                                ? "bg-gradient-to-br from-sky-400 to-blue-500 text-white shadow-sky-500/20"
+                                                : isHoliday
+                                                ? "bg-gradient-to-br from-purple-400 to-indigo-500 text-white shadow-purple-500/20"
+                                                : isAbsent
+                                                ? "bg-gradient-to-br from-slate-400 to-rose-400 text-white shadow-rose-500/15"
+                                                : "bg-gradient-to-br from-slate-400 to-gray-500 dark:from-zinc-700 dark:to-zinc-600 text-white shadow-slate-500/15"
+                                        )}>
+                                            <Fingerprint className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                                        </div>
+
+                                        <div className="flex flex-col min-w-0 flex-1 leading-tight">
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className={cn(
+                                                    "text-[10px] sm:text-[11px] font-black uppercase tracking-wider",
+                                                    isOutPunched
+                                                        ? "text-indigo-800 dark:text-indigo-300"
+                                                        : isLeave
+                                                        ? "text-sky-800 dark:text-sky-300"
+                                                        : isHoliday
+                                                        ? "text-purple-800 dark:text-purple-300"
+                                                        : isAbsent
+                                                        ? "text-rose-800 dark:text-rose-300"
+                                                        : "text-slate-600 dark:text-zinc-400"
+                                                )}>
+                                                    {t("out_punch") || "Out (Exit)"}
+                                                </span>
+                                                {isOutPunched && (
+                                                    <span className="relative flex h-2 w-2 shrink-0">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {isOutPunched ? (
+                                                <div className="flex flex-wrap items-baseline gap-1 mt-1 truncate">
+                                                    <span className="text-xs sm:text-sm font-black text-indigo-950 dark:text-indigo-100 truncate">
+                                                        {t("status_out") || "Out"}
+                                                    </span>
+                                                    {todayAttendance.exit_time && (
+                                                        <span className="text-[11px] font-bold font-mono text-indigo-700 dark:text-indigo-300 bg-indigo-100/90 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded-md">
+                                                            {todayAttendance.exit_time}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ) : isLeave ? (
+                                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-300/80 dark:bg-sky-950/60 dark:text-sky-200 self-start">
+                                                        {t("on_leave") || "On Leave"}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-sky-700/80 dark:text-sky-400 truncate">
+                                                        {t("no_punch_required") || "No punch required"}
+                                                    </span>
+                                                </div>
+                                            ) : isHoliday ? (
+                                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-purple-100 text-purple-800 border border-purple-300/80 dark:bg-purple-950/60 dark:text-purple-200 self-start">
+                                                        {t("holiday") || "Holiday"}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-purple-700/80 dark:text-purple-400 truncate">
+                                                        {t("campus_closed") || "Campus Closed"}
+                                                    </span>
+                                                </div>
+                                            ) : isAbsent ? (
+                                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300/80 dark:bg-rose-950/60 dark:text-rose-200 self-start">
+                                                        {t("not_applicable") || "N/A"}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-rose-700/80 dark:text-rose-400 truncate">
+                                                        {t("missed_check_in") || "Missed check-in"}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-0.5 mt-0.5">
+                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-bold bg-slate-200/90 text-slate-800 border border-slate-300/80 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 self-start">
+                                                        <Clock className="h-3 w-3 text-slate-500 dark:text-zinc-400" /> {t("status_pending") || "Pending"}
+                                                    </span>
+                                                    <span className="text-[10px] font-medium text-slate-500 dark:text-zinc-400 truncate">
+                                                        {t("not_punched_yet") || "Not punched yet"}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Link>
+                                </div>
+
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <span className="text-[12px] font-semibold text-gray-600">{t("current_attendance")}</span>

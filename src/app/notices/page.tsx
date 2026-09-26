@@ -1,60 +1,105 @@
 import type { Metadata } from "next";
 import { PublicHeader } from "@/components/public/header";
 import { PublicFooter } from "@/components/public/footer";
+import { PublicPageBanner } from "@/components/public/public-page-banner";
 import { NoticeBoardSection, type Notice } from "@/components/public/notice-board-section";
-import { Bell } from "lucide-react";
 import { serverFetch } from "@/lib/server-api";
+import { getSchoolSeoData } from "@/lib/seo-utils";
 
-export const metadata: Metadata = {
-    title: "Official Notices & Circulars — iSchool",
-    description: "Stay up to date with official school news, circulars, academic schedules, exam timetables, and administrative announcements.",
+export async function generateMetadata(): Promise<Metadata> {
+  const school = await getSchoolSeoData();
+  const title = `Official Notices & Circulars — ${school.schoolName}`;
+  const description = `Stay up to date with official school news, circulars, academic schedules, exam timetables, and administrative announcements from ${school.schoolName}.`;
+
+  return {
+    title,
+    description,
     alternates: {
-        canonical: "/notices",
+      canonical: "/notices",
     },
     openGraph: {
-        title: "Official Notices & Circulars — iSchool",
-        description: "Official school bulletins, announcements, exam schedules, and circulars.",
-        url: "/notices",
+      title,
+      description,
+      url: `${school.baseUrl}/notices`,
+      siteName: school.schoolName,
+      images: [
+        {
+          url: school.logoUrl,
+          width: 512,
+          height: 512,
+          alt: `${school.schoolName} Official Notices`,
+        },
+      ],
     },
-};
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [school.logoUrl],
+    },
+  };
+}
 
 export default async function NoticesPage() {
-    // Flow 1: Server Component fetches data server-to-server from Laravel
-    // Keeps backend API hidden from the browser console & pre-renders for SEO
-    const { data } = await serverFetch<Notice[]>("/communicate/notices", {
-        revalidate: 60, // Next.js ISR revalidation cache
-    });
+  const school = await getSchoolSeoData();
+  const { data } = await serverFetch<Notice[]>("/communicate/notices", {
+    revalidate: 60,
+  });
 
-    const initialNotices: Notice[] = Array.isArray(data) ? data : [];
+  const initialNotices: Notice[] = Array.isArray(data) ? data : [];
 
-    return (
-        <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 font-sans">
-            <PublicHeader />
-            
-            <main className="flex-1">
-                {/* Hero Header Section */}
-                <div className="bg-slate-900 text-white py-16 sm:py-20 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1577896851231-70ef18881754?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center" />
-                    <div className="container mx-auto px-6 sm:px-8 md:px-12 relative z-10 text-center">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-4 border border-indigo-400/30">
-                            <Bell className="h-3.5 w-3.5" /> Bulletins & Announcements
-                        </span>
-                        <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight uppercase">
-                            School Notices & Circulars
-                        </h1>
-                        <p className="text-slate-300 text-sm sm:text-base mt-2 max-w-xl mx-auto">
-                            Stay up to date with official school news, upcoming academic schedules, exam timetables, and administrative updates.
-                        </p>
-                    </div>
-                </div>
+  const noticesSchema = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `Official Notices & Circulars — ${school.schoolName}`,
+    itemListElement: initialNotices.slice(0, 15).map((notice, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      item: {
+        "@type": "NewsArticle",
+        headline: notice.title,
+        datePublished: notice.publish_date || notice.notice_date,
+        description: notice.message
+          ? notice.message.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)
+          : notice.title,
+        publisher: {
+          "@type": "EducationalOrganization",
+          name: school.schoolName,
+          logo: {
+            "@type": "ImageObject",
+            url: school.logoUrl,
+          },
+        },
+      },
+    })),
+  };
 
-                {/* Main Notices Section: receives pre-fetched initialNotices as props */}
-                <div className="container mx-auto px-4 sm:px-6 md:px-12 py-12 sm:py-16 max-w-6xl">
-                    <NoticeBoardSection initialNotices={initialNotices} />
-                </div>
-            </main>
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 font-sans">
+      {/* Schema.org NewsArticle ItemList for Search Engine Indexing */}
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(noticesSchema) }}
+      />
+      <PublicHeader />
 
-            <PublicFooter />
+      <main className="flex-1">
+        {/* Modern Theme-Aware Hero Banner */}
+        <PublicPageBanner
+          title="School Notices & Circulars"
+          subtitle={`Stay up to date with official school news, upcoming academic schedules, exam timetables, and administrative updates from ${school.schoolName}.`}
+          badgeText="Bulletins & Announcements"
+          breadcrumbTitle="Notices"
+        />
+
+        {/* Main Notices Section: receives pre-fetched initialNotices as props */}
+        <div className="container mx-auto px-4 sm:px-6 md:px-12 pt-6 pb-12 sm:pt-8 sm:pb-16 max-w-6xl">
+          <NoticeBoardSection initialNotices={initialNotices} />
         </div>
-    );
+      </main>
+
+      <PublicFooter />
+    </div>
+  );
 }

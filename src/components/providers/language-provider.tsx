@@ -229,6 +229,24 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
             }
         }
 
+        // Hardcoded overrides — special English display names
+        const overrides: Record<string, string> = {
+            send_wa: "Send WA",
+            wa_template: "WA Template",
+            whatsapp_messaging: "WhatsApp Messaging",
+            sms_setting: "SMS Gateway",
+            email_setting: "Email Gateway",
+            email_sms_log: "Email / SMS / WA Logs",
+            schedule_email_sms_log: "Schedule Email / SMS / WA Logs",
+            issue_return: "Issue Books",
+            nfc_assignment: "RFID Card Assignment",
+            nfc_tag_assignment: "RFID Card Assignment",
+        };
+
+        if ((!langCode || langCode === "en") && (overrides[key] || (normKey && overrides[normKey]))) {
+            result = overrides[key] || (normKey ? overrides[normKey] : undefined);
+        }
+
         // 2. API-loaded translations take priority if not resolved by locale fallbacks
         if (result === undefined) {
             const apiVal = getFromDict(translations);
@@ -243,18 +261,6 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
                 if (!looksEnglish) result = apiVal;
             }
         }
-
-        // Hardcoded overrides — special English display names
-        const overrides: Record<string, string> = {
-            send_wa: "Send WA",
-            wa_template: "WA Template",
-            whatsapp_messaging: "WhatsApp Messaging",
-            sms_setting: "SMS Gateway",
-            email_setting: "Email Gateway",
-            email_sms_log: "Email / SMS / WA Logs",
-            schedule_email_sms_log: "Schedule Email / SMS / WA Logs",
-            issue_return: "Issue Books",
-        };
 
         if (result === undefined && overrides[key]) {
             result = overrides[key];

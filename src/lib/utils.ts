@@ -81,6 +81,7 @@ export function toLocaleNumber(
  * Special-cases known acronyms: SMS, WA, CV, QR, CMS.
  */
 export function formatLabel(name: string): string {
+    if (name === 'nfc_assignment') return 'RFID Card Assignment';
     return name
         .split('_')
         .map(word => {
@@ -91,6 +92,7 @@ export function formatLabel(name: string): string {
             if (lowerWord === 'qr') return 'QR';
             if (lowerWord === 'cms') return 'CMS';
             if (lowerWord === 'id') return 'ID';
+            if (lowerWord === 'rfid' || lowerWord === 'nfc') return 'RFID';
             return word.charAt(0).toUpperCase() + word.slice(1);
         })
         .join(' ')
@@ -500,6 +502,37 @@ export function translateClassSection(classSection?: string | null, langCode: st
   }
 
   return translateClassName(trimmed, langCode);
+}
+
+/**
+ * Translates and formats academic session names (e.g. "Session 2026-27" -> "শিক্ষাবর্ষ ২০২৬-২৭", "2026-27" -> "২০২৬-২৭").
+ */
+export function translateSessionName(session?: string | null, langCode: string = "en"): string {
+  if (!session) return "";
+  const trimmed = session.trim();
+
+  if (langCode === "bn") {
+    if (/^session\s+/i.test(trimmed)) {
+      return `শিক্ষাবর্ষ ${toLocaleNumber(trimmed.replace(/^session\s+/i, ""), "bn")}`;
+    }
+    return toLocaleNumber(trimmed, "bn");
+  }
+
+  if (langCode === "ar") {
+    if (/^session\s+/i.test(trimmed)) {
+      return `العام الدراسي ${toLocaleNumber(trimmed.replace(/^session\s+/i, ""), "ar")}`;
+    }
+    return toLocaleNumber(trimmed, "ar");
+  }
+
+  if (langCode === "hi") {
+    if (/^session\s+/i.test(trimmed)) {
+      return `सत्र ${toLocaleNumber(trimmed.replace(/^session\s+/i, ""), "hi")}`;
+    }
+    return toLocaleNumber(trimmed, "hi");
+  }
+
+  return trimmed;
 }
 
 /**
@@ -1058,6 +1091,8 @@ export function translateFeeItemName(name?: string | null, langCode: string = "e
       "annual fee": "বার্ষিক ফি",
       "registration fees": "নিবন্ধন ফি",
       "registration fee": "নিবন্ধন ফি",
+      "session fee": "শিক্ষাবর্ষ ফি",
+      "session fees": "শিক্ষাবর্ষ ফি",
       "general payment": "সাধারণ ফি",
     };
     if (bnFeeMap[lower]) return bnFeeMap[lower];
@@ -1091,6 +1126,8 @@ export function translateFeeItemName(name?: string | null, langCode: string = "e
       "annual fee": "الرسوم السنوية",
       "registration fees": "رسوم التسجيل",
       "registration fee": "رسوم التسجيل",
+      "session fee": "رسوم الفصل الدراسي",
+      "session fees": "رسوم الفصل الدراسي",
       "general payment": "دفع عام",
     };
     if (arFeeMap[lower]) return arFeeMap[lower];
@@ -1124,6 +1161,8 @@ export function translateFeeItemName(name?: string | null, langCode: string = "e
       "annual fee": "वार्षिक शुल्क",
       "registration fees": "पंजीकरण शुल्क",
       "registration fee": "पंजीकरण शुल्क",
+      "session fee": "सत्र शुल्क",
+      "session fees": "सत्र शुल्क",
       "general payment": "सामान्य भुगतान",
     };
     if (hiFeeMap[lower]) return hiFeeMap[lower];
@@ -3251,8 +3290,8 @@ export function translateFeeName(name?: string | null, langCode: string = "en"):
       "annual fees": "বার্ষিক ফি",
       "registration fee": "নিবন্ধন ফি",
       "registration fees": "নিবন্ধন ফি",
-      "session fee": "সেশন ফি",
-      "session fees": "সেশন ফি",
+      "session fee": "শিক্ষাবর্ষ ফি",
+      "session fees": "শিক্ষাবর্ষ ফি",
       "computer fee": "কম্পিউটার ফি",
       "computer fees": "কম্পিউটার ফি",
     };

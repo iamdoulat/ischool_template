@@ -402,11 +402,11 @@ export default function StudentProfilePage() {
                             </div>
                         </SectionCard>
 
-                        <SectionCard title="Contactless Smart Cards & Biometrics" icon={Smartphone}>
+                        <SectionCard title={t("contactless_smart_cards_biometrics") || "Contactless Smart Cards & Biometrics"} icon={Smartphone}>
                             <InfoRow
                                 icon={CreditCard}
-                                label="NFC / RFID Card UID"
-                                value={student.nfc_uid ? student.nfc_uid : "No RFID Tag Linked"}
+                                label={t("rfid_card_uid") || "RFID Card UID"}
+                                value={student.nfc_uid ? student.nfc_uid : (t("no_rfid_card_linked") || "No RFID Card Linked")}
                             />
                             <InfoRow
                                 icon={User}

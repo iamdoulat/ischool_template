@@ -24,6 +24,7 @@ import {
     GraduationCap,
     Lightbulb
 } from "lucide-react";
+import { CardBorderBeam } from "@/components/public/card-border-beam";
 
 const defaultAccordions = [
     {
@@ -43,22 +44,20 @@ const defaultAccordions = [
     }
 ];
 
-export function AboutUsSection({ about }: { about?: any }) {
+export function AboutUsSection({ about }: { about?: Record<string, unknown> }) {
     const { settings } = useSettings();
     const getImageUrl = useImageUrl();
-    const [cmsAbout, setCmsAbout] = useState<any>(about || null);
+    const [cmsAbout, setCmsAbout] = useState<Record<string, unknown> | null>(about || null);
 
     useEffect(() => {
-        if (about) {
-            setCmsAbout(about);
-            return;
-        }
+        if (about) return;
 
+        let isMounted = true;
         // Fetch from Front CMS settings if not supplied via props
         const fetchCmsAbout = async () => {
             try {
                 const res = await api.get("/front-cms/settings");
-                if (res.data?.data?.about_us) {
+                if (isMounted && res.data?.data?.about_us) {
                     setCmsAbout(res.data.data.about_us);
                 }
             } catch {
@@ -66,6 +65,9 @@ export function AboutUsSection({ about }: { about?: any }) {
             }
         };
         fetchCmsAbout();
+        return () => {
+            isMounted = false;
+        };
     }, [about]);
 
     const activeAbout = cmsAbout || about || {};
@@ -138,14 +140,14 @@ export function AboutUsSection({ about }: { about?: any }) {
 
                     {/* Right: Narrative */}
                     <div className="lg:col-span-6 space-y-5 pt-0">
-                        <div>
+                        <div className="flex flex-col items-center md:items-start text-center md:text-left">
                             <div className="inline-flex items-center gap-2.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800 shadow-xs hover:bg-indigo-100/70 transition-all">
                                 <Sparkles className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                                 <span>{sectionTitle}</span>
                             </div>
                         </div>
 
-                        <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight">
+                        <h2 className="text-2xl sm:text-4xl font-extrabold text-slate-900 dark:text-white leading-tight tracking-tight text-center md:text-left">
                             {title}
                         </h2>
 
@@ -185,7 +187,14 @@ export function AboutUsSection({ about }: { about?: any }) {
                 {/* 2. Mission, Vision & Core Values (3 Cards) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Mission */}
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow space-y-4">
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow space-y-4 relative group overflow-hidden">
+                        <CardBorderBeam
+                            rx={16}
+                            ry={16}
+                            strokeWidth={2.5}
+                            gradientId="mission-beam"
+                            colors={["#F97316", "#FB923C", "#FBBF24", "#6366F1"]}
+                        />
                         <div className="h-12 w-12 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-600 flex items-center justify-center">
                             <Target className="h-6 w-6" />
                         </div>
@@ -196,7 +205,14 @@ export function AboutUsSection({ about }: { about?: any }) {
                     </div>
 
                     {/* Vision */}
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow space-y-4">
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow space-y-4 relative group overflow-hidden">
+                        <CardBorderBeam
+                            rx={16}
+                            ry={16}
+                            strokeWidth={2.5}
+                            gradientId="vision-beam"
+                            colors={["#6366F1", "#818CF8", "#38BDF8", "#10B981"]}
+                        />
                         <div className="h-12 w-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 flex items-center justify-center">
                             <Eye className="h-6 w-6" />
                         </div>
@@ -207,7 +223,14 @@ export function AboutUsSection({ about }: { about?: any }) {
                     </div>
 
                     {/* Core Values */}
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow space-y-4">
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow space-y-4 relative group overflow-hidden">
+                        <CardBorderBeam
+                            rx={16}
+                            ry={16}
+                            strokeWidth={2.5}
+                            gradientId="values-beam"
+                            colors={["#10B981", "#34D399", "#06B6D4", "#6366F1"]}
+                        />
                         <div className="h-12 w-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center">
                             <Heart className="h-6 w-6" />
                         </div>
@@ -281,8 +304,15 @@ export function AboutUsSection({ about }: { about?: any }) {
                             return (
                                 <div
                                     key={i}
-                                    className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3"
+                                    className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 relative group overflow-hidden"
                                 >
+                                    <CardBorderBeam
+                                        rx={16}
+                                        ry={16}
+                                        strokeWidth={2.5}
+                                        gradientId={`why-choose-beam-${i}`}
+                                        colors={["#6366F1", "#3B82F6", "#10B981", "#F59E0B"]}
+                                    />
                                     <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                                         <Icon className="h-5 w-5" />
                                     </div>
@@ -306,7 +336,7 @@ export function AboutUsSection({ about }: { about?: any }) {
                     </div>
 
                     <Accordion type="single" collapsible className="w-full space-y-3" defaultValue={`item-${accordions[0]?.id || 1}`}>
-                        {accordions.map((acc: any) => (
+                        {accordions.map((acc: { id: number | string; title: string; content: string }) => (
                             <AccordionItem key={acc.id} value={`item-${acc.id}`} className="border border-slate-200 dark:border-slate-800 rounded-xl px-4">
                                 <AccordionTrigger className="hover:no-underline font-bold text-sm sm:text-base text-slate-800 dark:text-slate-200">
                                     {acc.title}
@@ -324,6 +354,6 @@ export function AboutUsSection({ about }: { about?: any }) {
 }
 
 // Backwards-compatible export
-export function AboutSection({ about }: { about?: any }) {
+export function AboutSection({ about }: { about?: Record<string, unknown> }) {
     return <AboutUsSection about={about} />;
 }

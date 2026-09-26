@@ -239,9 +239,9 @@ const urlModuleMap: Record<string, { moduleKey: string; submenuName: string }> =
   "/dashboard/front-cms/gallery": { moduleKey: "front_cms", submenuName: "gallery" },
   "/dashboard/front-cms/news": { moduleKey: "front_cms", submenuName: "news" },
   "/dashboard/front-cms/media-manager": { moduleKey: "front_cms", submenuName: "media_manager" },
-  "/dashboard/front-cms/pages": { moduleKey: "front_cms", submenuName: "pages" },
-  "/dashboard/front-cms/menus": { moduleKey: "front_cms", submenuName: "menus" },
-  "/dashboard/front-cms/banner-images": { moduleKey: "front_cms", submenuName: "banner_images" },
+  "/dashboard/front-cms/pages": { moduleKey: "system_setting", submenuName: "front_cms_setting" },
+  "/dashboard/front-cms/menus": { moduleKey: "system_setting", submenuName: "front_cms_setting" },
+  "/dashboard/front-cms/banner-images": { moduleKey: "system_setting", submenuName: "front_cms_setting" },
 
   // QR Code Attendance
   "/dashboard/smart-attendance-terminal": { moduleKey: "qr_code_attendance", submenuName: "terminal" },

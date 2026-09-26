@@ -1248,7 +1248,7 @@ export default function FaceRegistrationPage() {
                                 : String(log.verify_type) === '1'
                                   ? (t("method_fingerprint") || 'Fingerprint 👆')
                                   : String(log.verify_type) === '4'
-                                    ? (t("method_rfid_card") || 'RFID/NFC Card 💳')
+                                    ? (t("method_rfid_card") || 'RFID Card 💳')
                                     : (t("method_biometric") || 'Biometric 🔐')}
                             </span>
                           </TableCell>

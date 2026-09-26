@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Users, GraduationCap, Trophy, BookOpen } from "lucide-react";
+import { CardBorderBeam } from "@/components/public/card-border-beam";
 
 interface CounterProps {
     end: number;
@@ -70,8 +71,15 @@ export function StatsSection({ students = 2500, teachers = 150, awards = 50, cou
                     {stats.map((stat) => (
                         <div
                             key={stat.label}
-                            className="text-center space-y-4 p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/50 transition-all duration-300 group"
+                            className="text-center space-y-4 p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-primary/50 transition-all duration-300 group relative overflow-hidden"
                         >
+                            <CardBorderBeam
+                                rx={16}
+                                ry={16}
+                                strokeWidth={2.5}
+                                gradientId={`ischool-stat-beam-${stat.label.toLowerCase()}`}
+                                colors={["#6366F1", "#3B82F6", "#10B981", "#F59E0B"]}
+                            />
                             <div className="mx-auto w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                                 <stat.icon className="h-8 w-8 text-primary group-hover:text-white transition-colors" />
                             </div>

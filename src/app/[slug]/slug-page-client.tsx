@@ -8,6 +8,7 @@ import { ContactFormSection } from "@/components/public/contact-form";
 import { NoticeBoardSection } from "@/components/public/notice-board-section";
 import { ExamResultSection } from "@/components/public/exam-result-section";
 import { AboutUsSection } from "@/components/public/about-section";
+import { PublicPageBanner } from "@/components/public/public-page-banner";
 import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -92,18 +93,15 @@ export function SlugPageClient({ slug, initialData }: { slug: string; initialDat
     <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 font-sans">
       <PublicHeader />
       <main className="flex-1">
-        {/* Hero Banner Section */}
-        <div className="bg-slate-900 text-white py-16 sm:py-20 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center" />
-          <div className="container mx-auto px-6 sm:px-8 md:px-12 relative z-10 text-center">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight uppercase">
-              {page.title}
-            </h1>
-          </div>
-        </div>
+        {/* Modern Theme-Aware Hero Banner */}
+        <PublicPageBanner
+          title={page.title}
+          subtitle={(page as { subtitle?: string; description?: string })?.subtitle || (page as { subtitle?: string; description?: string })?.description}
+          breadcrumbTitle={page.title}
+        />
 
         {/* Content Section */}
-        <div className="container mx-auto px-4 sm:px-6 md:px-12 py-12 sm:py-16">
+        <div className="container mx-auto px-4 sm:px-6 md:px-12 pt-6 pb-12 sm:pt-8 sm:pb-16">
           {(() => {
             const rawContent = page.content ? page.content.trim() : "";
             if (!rawContent) {

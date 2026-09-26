@@ -149,6 +149,10 @@ export default function QrCodeSettingPage() {
         notify_sms: false,
         notify_whatsapp: false,
         min_checkout_minutes: 30,
+        check_in_start_time: "",
+        check_in_end_time: "",
+        check_out_start_time: "",
+        check_out_end_time: "",
     });
 
     // Device Form State
@@ -266,6 +270,10 @@ export default function QrCodeSettingPage() {
                     notify_sms: Boolean(d.notify_sms),
                     notify_whatsapp: Boolean(d.notify_whatsapp),
                     min_checkout_minutes: d.min_checkout_minutes || 30,
+                    check_in_start_time: d.check_in_start_time ? String(d.check_in_start_time).slice(0, 5) : "",
+                    check_in_end_time: d.check_in_end_time ? String(d.check_in_end_time).slice(0, 5) : "",
+                    check_out_start_time: d.check_out_start_time ? String(d.check_out_start_time).slice(0, 5) : "",
+                    check_out_end_time: d.check_out_end_time ? String(d.check_out_end_time).slice(0, 5) : "",
                 });
                 if (d.camera_type === 'secondary') {
                     setFacingMode('user');
@@ -671,7 +679,7 @@ export default function QrCodeSettingPage() {
             [t("verification_mode") || "Verification Mode"]: String(l.verify_type) === '15' || String(l.verify_type) === '111' || l.verify_type === 'face'
                 ? (t("face_recognition_mode") || "Face Recognition 👤")
                 : String(l.verify_type) === '4'
-                    ? (t("rfid_nfc_card_mode") || "RFID/NFC Card 💳")
+                    ? (t("rfid_nfc_card_mode") || "RFID Card 💳")
                     : (t("fingerprint_biometric_mode") || "Fingerprint Biometric 👆"),
             [t("device_sn") || "Device SN"]: l.device_serial,
             [t("punch_time") || "Punch Time"]: l.punch_time ? formatPunchTime(l.punch_time) : "—",
@@ -991,7 +999,7 @@ export default function QrCodeSettingPage() {
         },
         {
             key: "is_nfc_enabled" as const,
-            label: t("nfc_smart_rfid_label") || "NFC & Smart RFID",
+            label: t("nfc_smart_rfid_label") || "RFID Card",
             desc: t("nfc_smart_rfid_desc") || "13.56MHz MIFARE & 125kHz EM4100 contactless tap cards",
             Icon: Smartphone,
             color: "text-purple-600 bg-purple-50 border-purple-100"
@@ -1415,6 +1423,94 @@ export default function QrCodeSettingPage() {
                                                 onCheckedChange={(val) => setSettings({ ...settings, auto_attendance: val })}
                                                 className="data-[state=checked]:bg-indigo-600"
                                             />
+                                        </div>
+
+                                        {/* Attendance Time Ranges (Check-In & Check-Out Windows) */}
+                                        <div className="space-y-3 pt-3 border-t border-slate-100">
+                                            <div className="flex flex-col">
+                                                <Label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                                                    <Clock className="h-3.5 w-3.5 text-indigo-500" /> {t("attendance_time_ranges") || "Attendance Time Windows"}
+                                                </Label>
+                                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                                    {t("attendance_time_ranges_desc") || "Define strict time ranges for Check-In and Check-Out. Punches outside these ranges cannot be recorded."}
+                                                </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                                {/* Check-In Time Range */}
+                                                <div className="p-3.5 rounded-xl border border-emerald-100 bg-emerald-50/30 space-y-2.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                            {t("check_in_time_range") || "Check-In Time Range"}
+                                                        </span>
+                                                        <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                                            {t("entry_in_badge") || "Entry (In)"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <Label className="text-[10px] font-semibold text-slate-500 block mb-1">
+                                                                {t("from_time") || "From"}
+                                                            </Label>
+                                                            <Input
+                                                                type="time"
+                                                                value={settings.check_in_start_time}
+                                                                onChange={(e) => setSettings({ ...settings, check_in_start_time: e.target.value })}
+                                                                className="h-8 text-xs bg-white border-slate-200 focus-visible:ring-emerald-500"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="text-[10px] font-semibold text-slate-500 block mb-1">
+                                                                {t("to_time") || "To"}
+                                                            </Label>
+                                                            <Input
+                                                                type="time"
+                                                                value={settings.check_in_end_time}
+                                                                onChange={(e) => setSettings({ ...settings, check_in_end_time: e.target.value })}
+                                                                className="h-8 text-xs bg-white border-slate-200 focus-visible:ring-emerald-500"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Check-Out Time Range */}
+                                                <div className="p-3.5 rounded-xl border border-amber-100 bg-amber-50/30 space-y-2.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                                                            <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                                                            {t("check_out_time_range") || "Check-Out Time Range"}
+                                                        </span>
+                                                        <span className="text-[9px] font-bold text-amber-700 bg-amber-100/70 border border-amber-200 px-2 py-0.5 rounded-full">
+                                                            {t("exit_out_badge") || "Exit (Out)"}
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <div>
+                                                            <Label className="text-[10px] font-semibold text-slate-500 block mb-1">
+                                                                {t("from_time") || "From"}
+                                                            </Label>
+                                                            <Input
+                                                                type="time"
+                                                                value={settings.check_out_start_time}
+                                                                onChange={(e) => setSettings({ ...settings, check_out_start_time: e.target.value })}
+                                                                className="h-8 text-xs bg-white border-slate-200 focus-visible:ring-amber-500"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label className="text-[10px] font-semibold text-slate-500 block mb-1">
+                                                                {t("to_time") || "To"}
+                                                            </Label>
+                                                            <Input
+                                                                type="time"
+                                                                value={settings.check_out_end_time}
+                                                                onChange={(e) => setSettings({ ...settings, check_out_end_time: e.target.value })}
+                                                                className="h-8 text-xs bg-white border-slate-200 focus-visible:ring-amber-500"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="space-y-2">
@@ -1993,7 +2089,7 @@ export default function QrCodeSettingPage() {
                                                                 {String(log.verify_type) === '15' || String(log.verify_type) === '111' || log.verify_type === 'face'
                                                                     ? (t("face_recognition_mode") || 'Face Recognition 👤')
                                                                     : String(log.verify_type) === '4'
-                                                                        ? (t("rfid_nfc_card_mode") || 'RFID/NFC Card 💳')
+                                                                        ? (t("rfid_nfc_card_mode") || 'RFID Card 💳')
                                                                         : (t("fingerprint_biometric_mode") || 'Fingerprint Biometric 👆')}
                                                             </span>
                                                         </TableCell>

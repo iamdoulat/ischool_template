@@ -28,7 +28,7 @@ import {
 import api from "@/lib/api";
 import { useToast } from "@/components/ui/toast";
 import { useTranslation } from "@/hooks/use-translation";
-import { cn, toLocaleNumber } from "@/lib/utils";
+import { cn, toLocaleNumber, formatLabel } from "@/lib/utils";
 
 const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     dashboard: [],
@@ -117,6 +117,7 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
     ],
     human_resource: [
         { name: "staff_directory", label: "Staff Directory" },
+        { name: "requisition_list", label: "Requisition List" },
         { name: "staff_attendance", label: "Staff Attendance" },
         { name: "payroll", label: "Payroll" },
         { name: "approve_leave_request", label: "Approve Leave Request" },
@@ -260,18 +261,13 @@ const moduleSubmenus: Record<string, { name: string; label: string }[]> = {
         { name: "gallery", label: "Gallery" },
         { name: "news", label: "News" },
         { name: "media_manager", label: "Media Manager" },
-        { name: "pages", label: "Pages" },
-        { name: "menus", label: "Menus" },
-        { name: "banner_images", label: "Banner Images" },
     ],
     qr_code_attendance: [
-        { name: "attendance", label: "Attendance" },
         { name: "terminal", label: "Terminal" },
         { name: "face_registration", label: "Face Registration" },
         { name: "qr_code_generation", label: "QR Code Generation" },
-        { name: "nfc_assignment", label: "NFC Assignment" },
+        { name: "nfc_assignment", label: "RFID Card Assignment" },
         { name: "setting", label: "Setting" },
-        { name: "smart_attendance_settings", label: "Smart Attendance Settings" },
     ],
     system_setting: [
         { name: "general_setting", label: "General Setting" },
@@ -331,6 +327,17 @@ export default function SidebarMenuPage() {
     const [expandedAvailable, setExpandedAvailable] = useState<Set<string>>(new Set());
     const [expandedSelected, setExpandedSelected] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState<TabMode>("all");
+
+    const isNonEnglish = language?.short_code !== "en";
+    const getModuleLabel = (item: { name: string; label: string }) => {
+        return isNonEnglish ? t(item.name) : (item.label || (t(item.name) !== item.name ? t(item.name) : formatLabel(item.name)));
+    };
+    const getSubmenuLabel = (sub: SubmenuItem) => {
+        if (isNonEnglish) {
+            return t(sub.name) || sub.label;
+        }
+        return sub.label || (t(sub.name) !== sub.name ? t(sub.name) : formatLabel(sub.name));
+    };
 
     const toggleExpand = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, name: string) => {
         setter(prev => {
@@ -501,7 +508,7 @@ export default function SidebarMenuPage() {
                 <div className="flex items-center gap-2">
                     <GripVertical className={`h-3 w-3 ${dotText} opacity-40 cursor-grab active:cursor-grabbing`} />
                     <div className={`w-1.5 h-1.5 rounded-full ${palette.dot} shrink-0`} />
-                    <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{t(sub.name) || sub.label}</span>
+                    <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{getSubmenuLabel(sub)}</span>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all duration-200">
                     <button
@@ -544,7 +551,7 @@ export default function SidebarMenuPage() {
                             </span>
                         )}
                         {!hasSubmenus && <span className="w-4 shrink-0" />}
-                        <span className="text-[13px] font-semibold text-gray-700 truncate">{t(item.name) || item.label}</span>
+                        <span className="text-[13px] font-semibold text-gray-700 truncate">{getModuleLabel(item)}</span>
                         {hasSubmenus && (
                             <span className="text-[10px] text-gray-400 font-normal">
                                 ({toLocaleNumber(item.submenus.length, language?.short_code)})
@@ -658,7 +665,7 @@ export default function SidebarMenuPage() {
                                                             <span className="text-[10px] font-bold text-gray-400 w-4 text-center">
                                                                 {toLocaleNumber(index + 1, language?.short_code)}
                                                             </span>
-                                                            <span className="text-[13px] font-semibold text-emerald-800 truncate">{t(item.name) || item.label}</span>
+                                                            <span className="text-[13px] font-semibold text-emerald-800 truncate">{getModuleLabel(item)}</span>
                                                             {item.submenus.length > 0 && (
                                                                 <span className="text-[10px] text-emerald-600/80 font-normal">
                                                                     ({toLocaleNumber(item.submenus.length, language?.short_code)})
@@ -702,7 +709,7 @@ export default function SidebarMenuPage() {
                                                                                                     <GripVertical className="h-3 w-3 text-emerald-400 opacity-40" />
                                                                                                 </div>
                                                                                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                                                                                                <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{t(sub.name) || sub.label}</span>
+                                                                                                <span className="group-hover/sub:translate-x-0.5 transition-transform duration-200">{getSubmenuLabel(sub)}</span>
                                                                                             </div>
                                                                                             <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition-all duration-200">
                                                                                                 <button

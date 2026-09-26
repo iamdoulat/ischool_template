@@ -478,9 +478,6 @@ const menuItems = [
                     { name: "gallery", href: "/dashboard/front-cms/gallery" },
                     { name: "news", href: "/dashboard/front-cms/news" },
                     { name: "media_manager", href: "/dashboard/front-cms/media-manager" },
-                    { name: "pages", href: "/dashboard/front-cms/pages" },
-                    { name: "menus", href: "/dashboard/front-cms/menus" },
-                    { name: "banner_images", href: "/dashboard/front-cms/banner-images" },
                 ]
             },
             {
@@ -492,7 +489,7 @@ const menuItems = [
                     { name: "terminal", href: "/dashboard/smart-attendance-terminal" },
                     { name: "face_registration", href: "/dashboard/qr-code-attendance/face-registration" },
                     { name: "qr_code_generation", href: "/dashboard/qr-code-attendance/qr-code-generation" },
-                    { name: "nfc_assignment", href: "/dashboard/qr-code-attendance/nfc-assignment" },
+                    { name: "nfc_assignment", href: "/dashboard/qr-code-attendance/nfc-assignment", label: "RFID Card Assignment" },
                     { name: "setting", href: "/dashboard/qr-code-attendance/setting" },
                 ]
             },
