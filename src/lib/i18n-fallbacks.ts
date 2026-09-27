@@ -7330,5 +7330,16 @@ export const i18nFallbacks: Record<string, string> = {
   sample_template_datalayer_init: "DataLayer Init (GTM/GA4)",
   sample_template_datalayer_event: "DataLayer Custom Event",
   sample_template_tiktok_pixel: "TikTok Ads Pixel",
+  both_templates: "Both Templates (Shared)",
+  share_pages_desc: "Pages can be shared across both iSchool and iMadrasha templates or customized per template.",
+  pages_preset_applied: "Pages preset applied successfully!",
+  template_ischool_pages: "iSchool Pages",
+  template_imadrasha_pages: "iMadrasha Pages",
+  template_shared_pages: "Shared Pages (Both)",
+  all_pages: "All Pages",
+  shared_for_both_templates: "Shared for Both Templates",
+  sync_shared_pages: "Share for Both Templates",
+  active_template_selected: "Active template in System tab",
+  disabled_in_other_template: "Disabled (not active in System tab)",
 };
 

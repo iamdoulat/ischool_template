@@ -13,6 +13,8 @@ import api from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { sanitizeHtml } from "@/lib/sanitize";
 
+import { useSettings } from "@/components/providers/settings-provider";
+
 interface PageData {
   id: number;
   title: string;
@@ -31,6 +33,7 @@ function RawHtmlRenderer({ html }: { html: string }) {
 }
 
 export function SlugPageClient({ slug, initialData }: { slug: string; initialData?: PageData | null }) {
+  const { settings } = useSettings();
   const [page, setPage] = useState<PageData | null>(initialData || null);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export function SlugPageClient({ slug, initialData }: { slug: string; initialDat
           const loadedPage = res.data.data || res.data;
           setPage(loadedPage);
           if (loadedPage?.title) {
-            document.title = `${loadedPage.title} — iSchool`;
+            document.title = `${loadedPage.title} — ${settings?.school_name || "iSchool"}`;
           }
         } else {
           setError("Page not found");

@@ -704,11 +704,25 @@ export function MadrashaTemplate({ cms, notices, banners }: MadrashaTemplateProp
             {(dynamicMenus.length > 0 
               ? dynamicMenus
                   .filter((m) => m.title !== "অনলাইন ভর্তি" && m.page !== "/online_admission")
-                  .map((m) => ({
-                    title: m.title,
-                    href: m.is_external ? (m.url || "#") : (m.page || m.url || "#"),
-                    newTab: !!m.open_new_tab,
-                  }))
+                  .map((m) => {
+                    let href = "#";
+                    if (m.is_external) {
+                      href = m.url || "#";
+                    } else {
+                      const raw = m.page || m.url || "";
+                      if (raw.startsWith("#")) {
+                        href = `/${raw}`;
+                      } else {
+                        const pageSlug = raw === "home" ? "" : (raw === "admission" ? "online_admission" : raw);
+                        href = pageSlug.startsWith("/") ? pageSlug : `/${pageSlug}`;
+                      }
+                    }
+                    return {
+                      title: m.title,
+                      href,
+                      newTab: !!m.open_new_tab,
+                    };
+                  })
               : [
                   { title: "প্রচ্ছদ", href: "#hero", newTab: false },
                   { title: "মাদ্রাসা পরিচিতি", href: "#about-madrasa", newTab: false },
@@ -810,11 +824,25 @@ export function MadrashaTemplate({ cms, notices, banners }: MadrashaTemplateProp
             {(dynamicMenus.length > 0 
               ? dynamicMenus
                   .filter((m) => m.title !== "অনলাইন ভর্তি" && m.page !== "/online_admission")
-                  .map((m) => ({
-                    title: m.title,
-                    href: m.is_external ? (m.url || "#") : (m.page || m.url || "#"),
-                    newTab: !!m.open_new_tab,
-                  }))
+                  .map((m) => {
+                    let href = "#";
+                    if (m.is_external) {
+                      href = m.url || "#";
+                    } else {
+                      const raw = m.page || m.url || "";
+                      if (raw.startsWith("#")) {
+                        href = `/${raw}`;
+                      } else {
+                        const pageSlug = raw === "home" ? "" : (raw === "admission" ? "online_admission" : raw);
+                        href = pageSlug.startsWith("/") ? pageSlug : `/${pageSlug}`;
+                      }
+                    }
+                    return {
+                      title: m.title,
+                      href,
+                      newTab: !!m.open_new_tab,
+                    };
+                  })
               : [
                   { title: "প্রচ্ছদ", href: "#hero", newTab: false },
                   { title: "মাদ্রাসা পরিচিতি", href: "#about-madrasa", newTab: false },

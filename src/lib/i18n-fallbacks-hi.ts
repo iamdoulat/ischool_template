@@ -7306,5 +7306,16 @@ export const i18nFallbacksHi: Record<string, string> = {
   sample_template_datalayer_init: "डेटालेयर इनिट (GTM/GA4)",
   sample_template_datalayer_event: "डेटालेयर कस्टम इवेंट",
   sample_template_tiktok_pixel: "टिकटॉक विज्ञापन पिक्सेल",
+  both_templates: "दोनों टेम्पलेट (साझा)",
+  share_pages_desc: "पेजों को iSchool और iMadrasha दोनों टेम्पलेट्स में साझा किया जा सकता है।",
+  pages_preset_applied: "पेज प्रीसेट सफलतापूर्वक लागू किया गया!",
+  template_ischool_pages: "आई-स्कूल पेज",
+  template_imadrasha_pages: "आई-मदरसा पेज",
+  template_shared_pages: "साझा पेज (दोनों)",
+  all_pages: "सभी पेज",
+  shared_for_both_templates: "दोनों टेम्पलेट्स के लिए साझा",
+  sync_shared_pages: "दोनों टेम्पलेट्स में साझा करें",
+  active_template_selected: "सिस्टम टैब में सक्रिय टेम्पलेट",
+  disabled_in_other_template: "अक्षम (सिस्टम टैब में सक्रिय नहीं)",
 };
 

@@ -474,6 +474,16 @@ function FrontCmsSettingContent() {
     const searchParams = useSearchParams();
     const tabParam = searchParams.get("tab");
     const [activeTab, setActiveTab] = useState<string>("system");
+    const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => {
+        const initial = tabParam === "banner_images" || tabParam === "banner-images" 
+            ? "banners" 
+            : tabParam === "hero" 
+                ? "sections" 
+                : tabParam === "header_footer" || tabParam === "header-footer" || tabParam === "header" || tabParam === "footer"
+                    ? "header_footer"
+                    : (tabParam || "system");
+        return { [initial]: true };
+    });
     const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_MADRASHA_ORDER);
 
     useEffect(() => {
@@ -487,19 +497,21 @@ function FrontCmsSettingContent() {
                         : tabParam;
             if (["system", "social", "sections", "pages", "menus", "banners", "header_footer"].includes(normalized)) {
                 setActiveTab(normalized);
+                setVisitedTabs((prev) => ({ ...prev, [normalized]: true }));
             }
         }
     }, [tabParam]);
 
     const handleTabChange = (val: string) => {
         setActiveTab(val);
+        setVisitedTabs((prev) => ({ ...prev, [val]: true }));
         const url = new URL(window.location.href);
         url.searchParams.set("tab", val);
         window.history.replaceState({}, "", url.toString());
     };
 
     const logoInputRef = useRef<HTMLInputElement>(null);
-    const ischoolLogoRatioRef = useRef<number>(220 / 48);
+    const ischoolLogoRatioRef = useRef<number>(200 / 50);
     const madrashaLogoInputRef = useRef<HTMLInputElement>(null);
     const madrashaLogoRatioRef = useRef<number>(580 / 105);
     const heroBgInputRef = useRef<HTMLInputElement>(null);
@@ -726,8 +738,8 @@ function FrontCmsSettingContent() {
                     madrasa_email: "anwarabegumgirlsmadrasa@gmail.com",
                     madrasa_address: "১২ নং গিয়াসনগর ইউনিয়ন, মোহাম্মদপুর, মৌলভীবাজার সদর, মৌলভীবাজার",
                     ...parsedHfs,
-                    ischool_logo_width: (parsedHfs.ischool_logo_width as number) || 220,
-                    ischool_logo_height: (parsedHfs.ischool_logo_height as number) || 48,
+                    ischool_logo_width: (parsedHfs.ischool_logo_width as number) || 200,
+                    ischool_logo_height: (parsedHfs.ischool_logo_height as number) || 50,
                     ischool_logo_auto_ratio: parsedHfs.ischool_logo_auto_ratio !== false,
                     ischool_header_bg: (parsedHfs.ischool_header_bg as string) || "#044E43",
                     ischool_custom_color_presets: resolvedIschoolCustomPresets,
@@ -838,6 +850,10 @@ function FrontCmsSettingContent() {
                     }
                 });
                 setSectionOrder(activeOrder);
+                const tplMode = isMadrasha ? "imadrasha" : "ischool";
+                setLogoTab(tplMode);
+                setHeaderTab(tplMode);
+                setFooterTab(tplMode);
             }
         } catch (error) {
             console.error("Failed to fetch settings:", error);
@@ -898,6 +914,7 @@ function FrontCmsSettingContent() {
             };
 
             setSectionOrder(targetOrder);
+            setLogoTab(tpl === "imadrasha" ? "imadrasha" : "ischool");
             setHeaderTab(tpl === "imadrasha" ? "imadrasha" : "ischool");
             setFooterTab(tpl === "imadrasha" ? "imadrasha" : "ischool");
 
@@ -2238,9 +2255,10 @@ function FrontCmsSettingContent() {
                                             value={settings.website_template || "ischool"} 
                                             onValueChange={async (val) => {
                                                 await applyPreset(val);
-                                                if (val === "ischool" || val === "imadrasha") {
-                                                    setLogoTab(val);
-                                                }
+                                                const tpl = (val === "imadrasha" ? "imadrasha" : "ischool") as "ischool" | "imadrasha";
+                                                setLogoTab(tpl);
+                                                setHeaderTab(tpl);
+                                                setFooterTab(tpl);
                                             }}
                                         >
                                             <SelectTrigger className="h-9 text-[11px] font-semibold border-gray-200 shadow-none rounded-lg bg-gray-50/50">
@@ -2288,26 +2306,32 @@ function FrontCmsSettingContent() {
                                             <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 text-[11px]">
                                                 <button
                                                     type="button"
+                                                    disabled={(settings.website_template || "ischool") === "imadrasha"}
                                                     onClick={() => setLogoTab("ischool")}
                                                     className={cn(
-                                                        "px-3 py-1 font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5",
+                                                        "px-3 py-1 font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer",
                                                         logoTab === "ischool" 
                                                             ? "bg-white text-[#6366F1] shadow-xs font-bold" 
-                                                            : "text-gray-500 hover:text-gray-900"
+                                                            : "text-gray-500 hover:text-gray-900",
+                                                        (settings.website_template || "ischool") === "imadrasha" && "opacity-40 cursor-not-allowed pointer-events-none hover:text-gray-500"
                                                     )}
+                                                    title={(settings.website_template || "ischool") === "imadrasha" ? "Disabled in iMadrasha template" : ""}
                                                 >
                                                     <span>🏫</span>
                                                     <span>{t("ischool_website_logo")}</span>
                                                 </button>
                                                 <button
                                                     type="button"
+                                                    disabled={(settings.website_template || "ischool") === "ischool"}
                                                     onClick={() => setLogoTab("imadrasha")}
                                                     className={cn(
-                                                        "px-3 py-1 font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5",
+                                                        "px-3 py-1 font-semibold rounded-md transition-all flex items-center gap-1.5 cursor-pointer",
                                                         logoTab === "imadrasha" 
                                                             ? "bg-white text-emerald-700 shadow-xs font-bold" 
-                                                            : "text-gray-500 hover:text-gray-900"
+                                                            : "text-gray-500 hover:text-gray-900",
+                                                        (settings.website_template || "ischool") === "ischool" && "opacity-40 cursor-not-allowed pointer-events-none hover:text-gray-500"
                                                     )}
+                                                    title={(settings.website_template || "ischool") === "ischool" ? "Disabled in iSchool template" : ""}
                                                 >
                                                     <span>🕌</span>
                                                     <span>{t("madrasha_header_banner_logo")}</span>
@@ -2356,19 +2380,19 @@ function FrontCmsSettingContent() {
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 onClick={() => {
-                                                                    ischoolLogoRatioRef.current = 220 / 48;
+                                                                    ischoolLogoRatioRef.current = 200 / 50;
                                                                     setSettings((prev) => ({
                                                                         ...prev,
                                                                         header_footer_sections: {
                                                                             ...prev.header_footer_sections,
-                                                                            ischool_logo_width: 220,
-                                                                            ischool_logo_height: 48,
+                                                                            ischool_logo_width: 200,
+                                                                            ischool_logo_height: 50,
                                                                             ischool_logo_auto_ratio: true,
                                                                         }
                                                                     }));
                                                                 }}
                                                                 className="h-6 text-[9.5px] font-bold text-gray-500 hover:text-indigo-600 hover:bg-white rounded px-2 flex items-center gap-1 cursor-pointer border border-transparent hover:border-gray-200 transition-all"
-                                                                title="Reset to default dimensions (220×48 px)"
+                                                                title="Reset to default dimensions (200×50 px)"
                                                             >
                                                                 <RotateCcw size={11} /> {t("reset")}
                                                             </Button>
@@ -2389,8 +2413,8 @@ function FrontCmsSettingContent() {
                                                                 className="w-auto object-contain transition-all"
                                                                 onError={() => setLogoImgError(true)}
                                                                 style={{
-                                                                    maxHeight: `${Math.min(160, Number(settings.header_footer_sections?.ischool_logo_height) || 48)}px`,
-                                                                    maxWidth: `${settings.header_footer_sections?.ischool_logo_width || 220}px`,
+                                                                    maxHeight: `${Math.min(160, Number(settings.header_footer_sections?.ischool_logo_height) || 50)}px`,
+                                                                    maxWidth: `${settings.header_footer_sections?.ischool_logo_width || 200}px`,
                                                                 }}
                                                             />
                                                         ) : (
@@ -2414,7 +2438,7 @@ function FrontCmsSettingContent() {
                                                                 {settings.header_footer_sections?.ischool_logo_auto_ratio !== false ? "Auto Ratio" : "Manual"}
                                                             </span>
                                                             <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-black/55 text-white font-medium backdrop-blur-xs shadow-2xs">
-                                                                {(settings.header_footer_sections?.ischool_logo_width || 220)} × {(settings.header_footer_sections?.ischool_logo_height || 48)} px
+                                                                {(settings.header_footer_sections?.ischool_logo_width || 200)} × {(settings.header_footer_sections?.ischool_logo_height || 50)} px
                                                             </span>
                                                         </div>
                                                     </div>
@@ -2443,8 +2467,8 @@ function FrontCmsSettingContent() {
                                                                     onChange={(e) => {
                                                                         const isChecked = e.target.checked;
                                                                         if (isChecked) {
-                                                                            const curW = Number(settings.header_footer_sections?.ischool_logo_width) || 220;
-                                                                            const curH = Number(settings.header_footer_sections?.ischool_logo_height) || 48;
+                                                                            const curW = Number(settings.header_footer_sections?.ischool_logo_width) || 200;
+                                                                            const curH = Number(settings.header_footer_sections?.ischool_logo_height) || 50;
                                                                             if (curW > 0 && curH > 0) {
                                                                                 ischoolLogoRatioRef.current = curW / curH;
                                                                             }
@@ -2486,7 +2510,7 @@ function FrontCmsSettingContent() {
                                                                     min={30}
                                                                     max={2000}
                                                                     step={5}
-                                                                    value={settings.header_footer_sections?.ischool_logo_width ?? 220}
+                                                                    value={settings.header_footer_sections?.ischool_logo_width ?? 200}
                                                                     onChange={(e) => {
                                                                         const rawVal = e.target.value;
                                                                         if (rawVal === "") {
@@ -2501,7 +2525,7 @@ function FrontCmsSettingContent() {
 
                                                                         const isAuto = settings.header_footer_sections?.ischool_logo_auto_ratio !== false;
                                                                         if (isAuto && val > 0) {
-                                                                            const ratio = ischoolLogoRatioRef.current > 0 ? ischoolLogoRatioRef.current : (220 / 48);
+                                                                            const ratio = ischoolLogoRatioRef.current > 0 ? ischoolLogoRatioRef.current : (200 / 50);
                                                                             const computedHeight = Math.max(15, Math.round(val / ratio));
                                                                             setSettings((prev) => ({
                                                                                 ...prev,
@@ -2519,7 +2543,7 @@ function FrontCmsSettingContent() {
                                                                         }
                                                                     }}
                                                                     className="h-8.5 text-xs font-mono font-semibold bg-white border-gray-200 rounded-md focus-visible:ring-indigo-500"
-                                                                    placeholder="220"
+                                                                    placeholder="200"
                                                                 />
                                                             </div>
 
@@ -2540,7 +2564,7 @@ function FrontCmsSettingContent() {
                                                                     min={15}
                                                                     max={600}
                                                                     step={2}
-                                                                    value={settings.header_footer_sections?.ischool_logo_height ?? 48}
+                                                                    value={settings.header_footer_sections?.ischool_logo_height ?? 50}
                                                                     onChange={(e) => {
                                                                         const rawVal = e.target.value;
                                                                         if (rawVal === "") {
@@ -2555,7 +2579,7 @@ function FrontCmsSettingContent() {
 
                                                                         const isAuto = settings.header_footer_sections?.ischool_logo_auto_ratio !== false;
                                                                         if (isAuto && val > 0) {
-                                                                            const ratio = ischoolLogoRatioRef.current > 0 ? ischoolLogoRatioRef.current : (220 / 48);
+                                                                            const ratio = ischoolLogoRatioRef.current > 0 ? ischoolLogoRatioRef.current : (200 / 50);
                                                                             const computedWidth = Math.max(30, Math.round(val * ratio));
                                                                             setSettings((prev) => ({
                                                                                 ...prev,
@@ -2573,7 +2597,7 @@ function FrontCmsSettingContent() {
                                                                         }
                                                                     }}
                                                                     className="h-8.5 text-xs font-mono font-semibold bg-white border-gray-200 rounded-md focus-visible:ring-indigo-500"
-                                                                    placeholder="48"
+                                                                    placeholder="50"
                                                                 />
                                                             </div>
                                                         </div>
@@ -3082,26 +3106,32 @@ function FrontCmsSettingContent() {
                                             <div className="inline-flex rounded-md border border-gray-200 bg-gray-50/80 p-0.5 text-[9.5px]">
                                                 <button
                                                     type="button"
+                                                    disabled={(settings.website_template || "ischool") === "imadrasha"}
                                                     onClick={() => setHeaderTab("ischool")}
                                                     className={cn(
-                                                        "px-2 py-0.5 font-semibold rounded transition-all cursor-pointer flex items-center gap-1",
+                                                        "px-2 py-0.5 font-semibold rounded transition-all flex items-center gap-1 cursor-pointer",
                                                         headerTab === "ischool"
                                                             ? "bg-white text-indigo-700 shadow-2xs font-bold"
-                                                            : "text-gray-500 hover:text-gray-900"
+                                                            : "text-gray-500 hover:text-gray-900",
+                                                        (settings.website_template || "ischool") === "imadrasha" && "opacity-40 cursor-not-allowed pointer-events-none hover:text-gray-500"
                                                     )}
+                                                    title={(settings.website_template || "ischool") === "imadrasha" ? "Disabled in iMadrasha template" : ""}
                                                 >
                                                     <span>🏫</span>
                                                     <span>{t("template_ischool")}</span>
                                                 </button>
                                                 <button
                                                     type="button"
+                                                    disabled={(settings.website_template || "ischool") === "ischool"}
                                                     onClick={() => setHeaderTab("imadrasha")}
                                                     className={cn(
-                                                        "px-2 py-0.5 font-semibold rounded transition-all cursor-pointer flex items-center gap-1",
+                                                        "px-2 py-0.5 font-semibold rounded transition-all flex items-center gap-1 cursor-pointer",
                                                         headerTab === "imadrasha"
                                                             ? "bg-white text-emerald-700 shadow-2xs font-bold"
-                                                            : "text-gray-500 hover:text-gray-900"
+                                                            : "text-gray-500 hover:text-gray-900",
+                                                        (settings.website_template || "ischool") === "ischool" && "opacity-40 cursor-not-allowed pointer-events-none hover:text-gray-500"
                                                     )}
+                                                    title={(settings.website_template || "ischool") === "ischool" ? "Disabled in iSchool template" : ""}
                                                 >
                                                     <span>🕌</span>
                                                     <span>{t("template_imadrasha")}</span>
@@ -7174,15 +7204,15 @@ function FrontCmsSettingContent() {
                 </TabsContent>
 
                 <TabsContent value="pages" className="space-y-6">
-                    <PagesTab />
+                    {visitedTabs.pages && <PagesTab activeWebsiteTemplate={settings.website_template || "ischool"} />}
                 </TabsContent>
 
                 <TabsContent value="menus" className="space-y-6">
-                    <MenusTab />
+                    {visitedTabs.menus && <MenusTab key={settings.website_template || "ischool"} activeWebsiteTemplate={settings.website_template || "ischool"} />}
                 </TabsContent>
 
                 <TabsContent value="banners" className="space-y-6">
-                    <BannersTab />
+                    {visitedTabs.banners && <BannersTab />}
                 </TabsContent>
 
                 {/* HEADER / FOOTER CUSTOM CODE TAB */}

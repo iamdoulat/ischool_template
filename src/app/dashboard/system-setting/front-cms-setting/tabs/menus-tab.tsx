@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +33,7 @@ import {
     GripVertical,
 } from "lucide-react";
 import { cn, toLocaleNumber } from "@/lib/utils";
-import api from "@/lib/api";
+import api, { clearApiCache } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -70,7 +70,7 @@ function MenuSkeleton() {
     );
 }
 
-export function MenusTab() {
+export function MenusTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteTemplate?: "ischool" | "imadrasha" } = {}) {
     const { toast } = useToast();
     const { t, language } = useLanguage();
     const langCode = language?.short_code || "en";
@@ -98,18 +98,8 @@ export function MenusTab() {
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [deleting, setDeleting] = useState(false);
 
-    const fetchPages = useCallback(async () => {
-        try {
-            const res = await api.get("front-cms/pages");
-            const data = res.data?.data?.data || res.data?.data || res.data || [];
-            if (Array.isArray(data)) setPages(data);
-        } catch {
-            console.error("Failed to load pages");
-        }
-    }, []);
-
-    const fetchMenus = useCallback(async () => {
-        setLoading(true);
+    const fetchMenus = useCallback(async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const res = await api.get("front-cms/menus");
             const data = res.data?.data?.data || res.data?.data || res.data || [];
@@ -117,14 +107,41 @@ export function MenusTab() {
         } catch {
             tt.error("failed_to_load_menus");
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     }, [tt]);
 
     useEffect(() => {
-        fetchMenus();
-        fetchPages();
-    }, [fetchMenus, fetchPages]);
+        let active = true;
+        setLoading(true);
+        Promise.all([
+            api.get("front-cms/menus"),
+            api.get("front-cms/pages")
+        ]).then(([menusRes, pagesRes]) => {
+            if (!active) return;
+            const mData = menusRes.data?.data?.data || menusRes.data?.data || menusRes.data || [];
+            if (Array.isArray(mData)) setMenus(mData);
+            const pData = pagesRes.data?.data?.data || pagesRes.data?.data || pagesRes.data || [];
+            if (Array.isArray(pData)) setPages(pData);
+        }).catch(() => {
+            if (active) tt.error("failed_to_load_menus");
+        }).finally(() => {
+            if (active) setLoading(false);
+        });
+        return () => { active = false; };
+    }, [tt]);
+
+    const isMadrasha = activeWebsiteTemplate === "imadrasha";
+    const isSchool = !isMadrasha;
+
+    const isInitialMount = useRef(true);
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+        fetchMenus(false);
+    }, [activeWebsiteTemplate, fetchMenus]);
 
     const handleSave = async () => {
         if (!form.title) {
@@ -139,9 +156,10 @@ export function MenusTab() {
             } else {
                 await api.post("front-cms/menus", payload);
             }
+            clearApiCache('/front-cms/');
             tt.success(editingId ? "menu_item_updated" : "menu_item_added");
             handleCancel();
-            fetchMenus();
+            fetchMenus(false);
         } catch {
             tt.error("failed_to_save_menu");
         } finally {
@@ -179,9 +197,10 @@ export function MenusTab() {
         setDeleting(true);
         try {
             await api.delete(`front-cms/menus/${deleteId}`);
+            clearApiCache('/front-cms/');
             tt.success("menu_item_deleted");
             setDeleteId(null);
-            fetchMenus();
+            fetchMenus(false);
         } catch (err) {
             const msg = (err as { response?: { data?: { message?: string } } })?.response?.data
                 ?.message;
@@ -434,25 +453,53 @@ export function MenusTab() {
                                         type="button"
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => applyMenusPreset("imadrasha")}
-                                        disabled={saving}
-                                        className="h-7 text-[10px] font-bold rounded-full border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1 cursor-pointer shadow-none"
-                                        title="Load iMadrasha Navigation Menus"
+                                        onClick={() => isMadrasha && applyMenusPreset("imadrasha")}
+                                        disabled={saving || !isMadrasha}
+                                        className={cn(
+                                            "h-7 text-[10px] font-bold rounded-full transition-all flex items-center gap-1 select-none",
+                                            isMadrasha
+                                                ? "border-emerald-600 bg-emerald-600 text-white shadow-xs hover:bg-emerald-700 cursor-pointer"
+                                                : "border-gray-200 bg-gray-100/70 text-gray-400 opacity-40 cursor-not-allowed pointer-events-none shadow-none"
+                                        )}
+                                        title={
+                                            isMadrasha
+                                                ? `${t("template_imadrasha")} (${t("active_template_selected") || "Active template in System tab"}). Click to re-apply default menus.`
+                                                : `${t("template_imadrasha")} - ${t("disabled_in_other_template") || "Disabled (not active in System tab)"}`
+                                        }
                                     >
                                         <span>🕌</span>
                                         <span>{t("template_imadrasha")}</span>
+                                        {isMadrasha && (
+                                            <span className="ml-0.5 inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] bg-white/25 text-white font-bold">
+                                                ✓
+                                            </span>
+                                        )}
                                     </Button>
                                     <Button
                                         type="button"
                                         size="sm"
                                         variant="outline"
-                                        onClick={() => applyMenusPreset("ischool")}
-                                        disabled={saving}
-                                        className="h-7 text-[10px] font-bold rounded-full border-indigo-200 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 flex items-center gap-1 cursor-pointer shadow-none"
-                                        title="Load iSchool Navigation Menus"
+                                        onClick={() => isSchool && applyMenusPreset("ischool")}
+                                        disabled={saving || !isSchool}
+                                        className={cn(
+                                            "h-7 text-[10px] font-bold rounded-full transition-all flex items-center gap-1 select-none",
+                                            isSchool
+                                                ? "border-indigo-600 bg-gradient-to-r from-[#FF9800] to-[#6366F1] text-white shadow-xs hover:opacity-95 cursor-pointer"
+                                                : "border-gray-200 bg-gray-100/70 text-gray-400 opacity-40 cursor-not-allowed pointer-events-none shadow-none"
+                                        )}
+                                        title={
+                                            isSchool
+                                                ? `${t("template_ischool")} (${t("active_template_selected") || "Active template in System tab"}). Click to re-apply default menus.`
+                                                : `${t("template_ischool")} - ${t("disabled_in_other_template") || "Disabled (not active in System tab)"}`
+                                        }
                                     >
                                         <span>🏫</span>
                                         <span>{t("template_ischool")}</span>
+                                        {isSchool && (
+                                            <span className="ml-0.5 inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] bg-white/25 text-white font-bold">
+                                                ✓
+                                            </span>
+                                        )}
                                     </Button>
                                 </div>
                             </div>

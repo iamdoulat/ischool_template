@@ -7331,5 +7331,16 @@ failed_to_save_question: "প্রশ্ন সংরক্ষণ করতে 
   sample_template_datalayer_init: "ডাটালেয়ার ইনিট (GTM/GA4)",
   sample_template_datalayer_event: "ডাটালেয়ার কাস্টম ইভেন্ট",
   sample_template_tiktok_pixel: "টিকটক অ্যাডস পিক্সেল",
+  both_templates: "উভয় টেমপ্লেট (শেয়ার্ড)",
+  share_pages_desc: "পেজসমূহ আই-স্কুল এবং আই-মাদরাসা উভয় টেমপ্লেটেই ব্যবহার ও শেয়ার করা যায়।",
+  pages_preset_applied: "পেজ প্রিসেট সফলভাবে প্রয়োগ করা হয়েছে!",
+  template_ischool_pages: "আই-স্কুল পেজসমূহ",
+  template_imadrasha_pages: "আই-মাদরাসা পেজসমূহ",
+  template_shared_pages: "শেয়ার্ড পেজসমূহ (উভয়)",
+  all_pages: "সব পেজ",
+  shared_for_both_templates: "উভয় টেমপ্লেটে শেয়ার্ড",
+  sync_shared_pages: "উভয় টেমপ্লেটে শেয়ার করুন",
+  active_template_selected: "সিস্টেম ট্যাবে সক্রিয় টেমপ্লেট",
+  disabled_in_other_template: "নিষ্ক্রিয় (সিস্টেম ট্যাবে সক্রিয় নয়)",
 };
 

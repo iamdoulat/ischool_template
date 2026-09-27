@@ -55,9 +55,11 @@ import {
     FileText,
     Printer,
     ExternalLink,
+    Share2,
+    Sparkles,
 } from "lucide-react";
 import { cn, toLocaleNumber } from "@/lib/utils";
-import api from "@/lib/api";
+import api, { clearApiCache } from "@/lib/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useTranslateToast } from "@/hooks/use-translate-toast";
@@ -92,7 +94,7 @@ function TableSkeleton({ cols }: { cols: number }) {
     );
 }
 
-export function PagesTab() {
+export function PagesTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteTemplate?: "ischool" | "imadrasha" } = {}) {
     const { toast } = useToast();
     const { t, language } = useLanguage();
     const langCode = language?.short_code || "en";
@@ -174,6 +176,23 @@ export function PagesTab() {
         setOpen(true);
     };
 
+    const [templateFilter, setTemplateFilter] = useState<"all" | "both" | "ischool" | "imadrasha">("all");
+    const [presetLoading, setPresetLoading] = useState(false);
+
+    const applyPagesPreset = async (targetTemplate: "ischool" | "imadrasha" | "both") => {
+        setPresetLoading(true);
+        try {
+            await api.post("front-cms/pages/preset", { template: targetTemplate });
+            clearApiCache('/front-cms/');
+            tt.success("pages_preset_applied");
+            fetchPages();
+        } catch {
+            tt.error("failed_to_save_page");
+        } finally {
+            setPresetLoading(false);
+        }
+    };
+
     const handleSave = async () => {
         if (!form.title) {
             tt.error("title_is_required");
@@ -181,11 +200,24 @@ export function PagesTab() {
         }
         setSaving(true);
         try {
-            if (editingId) {
-                await api.put(`front-cms/pages/${editingId}`, form);
-            } else {
-                await api.post("front-cms/pages", form);
+            let normalizedUrl = form.url.trim();
+            if (normalizedUrl.toLowerCase() === "home") {
+                normalizedUrl = "/";
+            } else if (normalizedUrl && !normalizedUrl.startsWith("/") && !normalizedUrl.startsWith("#")) {
+                normalizedUrl = `/${normalizedUrl}`;
             }
+
+            const payload = {
+                ...form,
+                url: normalizedUrl,
+            };
+
+            if (editingId) {
+                await api.put(`front-cms/pages/${editingId}`, payload);
+            } else {
+                await api.post("front-cms/pages", payload);
+            }
+            clearApiCache('/front-cms/');
             tt.success(editingId ? "page_updated" : "page_created");
             setOpen(false);
             fetchPages();
@@ -201,6 +233,7 @@ export function PagesTab() {
         setDeleting(true);
         try {
             await api.delete(`front-cms/pages/${deleteId}`);
+            clearApiCache('/front-cms/');
             tt.success("page_deleted");
             fetchPages();
         } catch {
@@ -212,9 +245,52 @@ export function PagesTab() {
     };
 
     const handleViewPage = (url: string | null) => {
-        const fullUrl = `${appUrl.replace(/\/$/, "")}/${(url || "").replace(/^\//, "")}`;
+        const clean = (url || "").trim();
+        let target = clean.replace(/^\//, "");
+        if (clean === "" || clean === "/" || clean === "home" || clean === "/home") {
+            target = "";
+        } else if (clean.startsWith("#")) {
+            target = clean;
+        }
+        const fullUrl = `${appUrl.replace(/\/$/, "")}/${target}`;
         window.open(fullUrl, "_blank");
     };
+
+    const getPageTemplateBadge = useCallback((page: PageItem) => {
+        const titleLower = (page.title || "").toLowerCase();
+        const urlLower = (page.url || "").toLowerCase();
+        const hasBangla = /[\u0980-\u09FF]/.test(page.title);
+        const isAnchor = urlLower.startsWith("#");
+
+        if (
+            titleLower.includes("shared") ||
+            titleLower.includes("উভয়") ||
+            (page.is_system && !isAnchor && ["/", "/about-us", "/academics", "/notices", "/exam-results", "/contact-us", "/online_admission"].includes(urlLower))
+        ) {
+            return {
+                label: t("both_templates") || "Both Templates",
+                className: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+                icon: "🔗",
+                type: "both" as const,
+            };
+        }
+
+        if (hasBangla || isAnchor || titleLower.includes("মাদ্রাসা") || titleLower.includes("মুহতামিম")) {
+            return {
+                label: t("template_imadrasha") || "iMadrasha",
+                className: "bg-teal-50 text-teal-800 border border-teal-200",
+                icon: "🕌",
+                type: "imadrasha" as const,
+            };
+        }
+
+        return {
+            label: t("template_ischool") || "iSchool",
+            className: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+            icon: "🏫",
+            type: "ischool" as const,
+        };
+    }, [t]);
 
     const getBadgeStyle = (type: string) => {
         switch (type?.toLowerCase()) {
@@ -229,12 +305,20 @@ export function PagesTab() {
 
     const filtered = useMemo(
         () =>
-            pages.filter(
-                (p) =>
+            pages.filter((p) => {
+                const matchesSearch =
                     p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    (p.url && p.url.toLowerCase().includes(searchTerm.toLowerCase()))
-            ),
-        [pages, searchTerm]
+                    (p.url && p.url.toLowerCase().includes(searchTerm.toLowerCase()));
+                if (!matchesSearch) return false;
+
+                if (templateFilter === "all") return true;
+                const badge = getPageTemplateBadge(p);
+                if (templateFilter === "both") return badge.type === "both";
+                if (templateFilter === "ischool") return badge.type === "ischool" || badge.type === "both";
+                if (templateFilter === "imadrasha") return badge.type === "imadrasha" || badge.type === "both";
+                return true;
+            }),
+        [pages, searchTerm, templateFilter, getPageTemplateBadge]
     );
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -282,6 +366,97 @@ export function PagesTab() {
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Table Container Card */}
             <div className="rounded-xl border border-gray-100 bg-white shadow-xs overflow-hidden p-5 space-y-4">
+                {/* Template Preset & Share Action Bar */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3.5 rounded-xl bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-teal-50/60 border border-indigo-100/70">
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-[#6366F1] to-teal-600 flex items-center justify-center text-white shadow-sm shrink-0">
+                            <Share2 className="h-4 w-4" />
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                                <span>{t("shared_for_both_templates") || "Shared for Both Templates (iSchool & iMadrasha)"}</span>
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    {activeWebsiteTemplate === "imadrasha" ? "🕌 " + (t("template_imadrasha") || "iMadrasha") : "🏫 " + (t("template_ischool") || "iSchool")}
+                                </span>
+                            </h4>
+                            <p className="text-[11px] text-gray-500 mt-0.5">
+                                {t("share_pages_desc") || "Pages linked here can be seamlessly displayed and used in both iSchool and iMadrasha website templates."}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={presetLoading}
+                            onClick={() => applyPagesPreset("both")}
+                            className="h-8 px-3 rounded-lg border-indigo-200 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold gap-1.5 shadow-2xs active:scale-95 transition-all bg-white cursor-pointer"
+                        >
+                            {presetLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-indigo-600" />}
+                            {t("sync_shared_pages") || "Sync Shared Pages"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={presetLoading}
+                            onClick={() => applyPagesPreset("imadrasha")}
+                            className="h-8 px-3 rounded-lg border-teal-200 hover:bg-teal-50 text-teal-700 text-xs font-semibold gap-1.5 shadow-2xs active:scale-95 transition-all bg-white cursor-pointer"
+                        >
+                            <span>🕌</span> {t("template_imadrasha_pages") || "iMadrasha Pages"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={presetLoading}
+                            onClick={() => applyPagesPreset("ischool")}
+                            className="h-8 px-3 rounded-lg border-orange-200 hover:bg-orange-50 text-orange-700 text-xs font-semibold gap-1.5 shadow-2xs active:scale-95 transition-all bg-white cursor-pointer"
+                        >
+                            <span>🏫</span> {t("template_ischool_pages") || "iSchool Pages"}
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                    {(
+                        [
+                            { key: "all", label: t("all_pages") || "All Pages", count: pages.length },
+                            { key: "both", label: t("both_templates") || "Both Templates (Shared)", count: pages.filter(p => getPageTemplateBadge(p).type === "both").length },
+                            { key: "ischool", label: t("template_ischool") || "iSchool", count: pages.filter(p => getPageTemplateBadge(p).type === "ischool" || getPageTemplateBadge(p).type === "both").length },
+                            { key: "imadrasha", label: t("template_imadrasha") || "iMadrasha", count: pages.filter(p => getPageTemplateBadge(p).type === "imadrasha" || getPageTemplateBadge(p).type === "both").length },
+                        ] as const
+                    ).map((tab) => {
+                        const active = templateFilter === tab.key;
+                        return (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => {
+                                    setTemplateFilter(tab.key);
+                                    setCurrentPage(1);
+                                }}
+                                className={cn(
+                                    "px-3 py-1.5 rounded-lg font-medium text-xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer",
+                                    active
+                                        ? "bg-indigo-600 text-white shadow-xs font-semibold"
+                                        : "bg-gray-100/80 text-gray-600 hover:bg-gray-200/80"
+                                )}
+                            >
+                                <span>{tab.label}</span>
+                                <span
+                                    className={cn(
+                                        "px-1.5 py-0.2 rounded-full text-[10px]",
+                                        active ? "bg-white/25 text-white" : "bg-gray-200 text-gray-600"
+                                    )}
+                                >
+                                    {toLocaleNumber(tab.count, langCode)}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+
                 {/* Search & Export Toolbar + Add Button */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="relative w-full sm:w-72">
@@ -359,6 +534,9 @@ export function PagesTab() {
                                 <TableHead className="font-bold text-gray-700 py-3 text-center">
                                     {t("type") || "Type"}
                                 </TableHead>
+                                <TableHead className="font-bold text-gray-700 py-3 text-center">
+                                    {t("template") || "Template"}
+                                </TableHead>
                                 <TableHead className="font-bold text-gray-700 py-3 pr-4 text-right w-[110px]">
                                     {t("action")}
                                 </TableHead>
@@ -366,10 +544,10 @@ export function PagesTab() {
                         </TableHeader>
                         <TableBody>
                             {loading ? (
-                                <TableSkeleton cols={4} />
+                                <TableSkeleton cols={5} />
                             ) : paginated.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="py-14 text-center">
+                                    <TableCell colSpan={5} className="py-14 text-center">
                                         <div className="flex flex-col items-center gap-2 text-gray-400">
                                             <FolderOpen className="h-8 w-8 opacity-40" />
                                             <span className="text-xs font-semibold">
@@ -379,45 +557,58 @@ export function PagesTab() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                paginated.map((page) => (
-                                    <TableRow
-                                        key={page.id}
-                                        className="text-xs border-b border-gray-50 hover:bg-indigo-50/30 transition-colors whitespace-nowrap cursor-pointer"
-                                        onClick={() => openEdit(page)}
-                                    >
-                                        <TableCell className="py-3 pl-4 font-semibold text-gray-800">
-                                            <div className="flex items-center gap-2">
-                                                <span>{page.title}</span>
-                                                {page.is_system && (
-                                                    <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                                                        System
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="py-3 font-mono text-xs">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleViewPage(page.url);
-                                                }}
-                                                className="text-[#6366f1] font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
-                                            >
-                                                <span>/{page.url?.replace(/^\//, "") || ""}</span>
-                                                <ExternalLink className="h-3 w-3" />
-                                            </button>
-                                        </TableCell>
-                                        <TableCell className="py-3 text-center">
-                                            <span
-                                                className={cn(
-                                                    "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shadow-2xs",
-                                                    getBadgeStyle(page.page_type)
-                                                )}
-                                            >
-                                                {page.page_type}
-                                            </span>
-                                        </TableCell>
+                                paginated.map((page) => {
+                                    const templateBadge = getPageTemplateBadge(page);
+                                    return (
+                                        <TableRow
+                                            key={page.id}
+                                            className="text-xs border-b border-gray-50 hover:bg-indigo-50/30 transition-colors whitespace-nowrap cursor-pointer"
+                                            onClick={() => openEdit(page)}
+                                        >
+                                            <TableCell className="py-3 pl-4 font-semibold text-gray-800">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{page.title}</span>
+                                                    {page.is_system && (
+                                                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                                            System
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-3 font-mono text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleViewPage(page.url);
+                                                    }}
+                                                    className="text-[#6366f1] font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <span>/{page.url?.replace(/^\//, "") || ""}</span>
+                                                    <ExternalLink className="h-3 w-3" />
+                                                </button>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-center">
+                                                <span
+                                                    className={cn(
+                                                        "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shadow-2xs",
+                                                        getBadgeStyle(page.page_type)
+                                                    )}
+                                                >
+                                                    {page.page_type}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-3 text-center">
+                                                <span
+                                                    className={cn(
+                                                        "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold shadow-2xs",
+                                                        templateBadge.className
+                                                    )}
+                                                >
+                                                    <span>{templateBadge.icon}</span>
+                                                    <span>{templateBadge.label}</span>
+                                                </span>
+                                            </TableCell>
                                         <TableCell
                                             className="py-3 pr-4 text-right"
                                             onClick={(e) => e.stopPropagation()}
@@ -452,9 +643,10 @@ export function PagesTab() {
                                             </div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
+                                );
+                            })
+                        )}
+                    </TableBody>
                     </Table>
                 </div>
 

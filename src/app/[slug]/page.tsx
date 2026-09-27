@@ -57,8 +57,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: [
         {
           url: school.logoUrl,
-          width: 512,
-          height: 512,
+          width: 200,
+          height: 50,
           alt: `${school.schoolName} Logo`,
         },
       ],

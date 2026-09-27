@@ -75,24 +75,32 @@ interface CacheEntry {
 const responseCache = new Map<string, CacheEntry>();
 const pendingRequests = new Map<string, Promise<AxiosResponse>>();
 
-// Endpoints that are safe and highly beneficial to cache across route transitions
 const CACHEABLE_URL_PREFIXES = [
     '/system-setting/general-setting',
     '/system-setting/languages',
     '/system-setting/currencies',
     '/system-setting/sessions',
     '/system-setting/sidebar-menus',
+    '/system-setting/front-cms-settings',
+    '/front-cms/',
     '/profile',
 ];
 
-function isCacheableGet(url?: string): boolean {
-    if (!url) return false;
-    return CACHEABLE_URL_PREFIXES.some(prefix => url.startsWith(prefix));
+function normalizeUrl(url?: string): string {
+    if (!url) return '';
+    return url.startsWith('/') ? url : `/${url}`;
 }
 
-function getCacheKey(config: InternalAxiosRequestConfig): string {
-    const paramsStr = config.params ? JSON.stringify(config.params) : '';
-    return `${config.method}:${config.url}:${paramsStr}`;
+function isCacheableGet(url?: string): boolean {
+    if (!url) return false;
+    const clean = normalizeUrl(url);
+    return CACHEABLE_URL_PREFIXES.some(prefix => clean.startsWith(prefix));
+}
+
+function getCacheKey(url?: string, params?: unknown): string {
+    const cleanUrl = normalizeUrl(url);
+    const paramsStr = params ? JSON.stringify(params) : '';
+    return `get:${cleanUrl}:${paramsStr}`;
 }
 
 export function clearApiCache(prefix?: string) {
@@ -190,7 +198,7 @@ api.interceptors.response.use(
 
         // Cache successful cacheable GET responses
         if (method === 'get' && !config.skipCache && isCacheableGet(config.url)) {
-            const cacheKey = getCacheKey(config);
+            const cacheKey = getCacheKey(config.url, config.params);
             const ttl = config.cacheTTL || 45000; // 45 seconds default TTL
             responseCache.set(cacheKey, {
                 data: response.data,
@@ -265,7 +273,7 @@ api.get = function <T = unknown, R = AxiosResponse<T>, D = unknown>(
     const isCacheable = !config?.skipCache && isCacheableGet(url);
 
     if (isCacheable) {
-        const cacheKey = `get:${url}:${config?.params ? JSON.stringify(config.params) : ''}`;
+        const cacheKey = getCacheKey(url, config?.params);
         const cached = responseCache.get(cacheKey);
 
         if (cached && cached.expiresAt > Date.now()) {
@@ -289,10 +297,10 @@ api.get = function <T = unknown, R = AxiosResponse<T>, D = unknown>(
         });
 
         pendingRequests.set(cacheKey, promise as unknown as Promise<AxiosResponse>);
-        return promise;
+        return promise as unknown as Promise<R>;
     }
 
-    return originalGet<T, R, D>(url, config);
+    return originalGet<T, R, D>(url, config) as unknown as Promise<R>;
 };
 
 export default api;

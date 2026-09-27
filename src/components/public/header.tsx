@@ -152,15 +152,15 @@ function MobileRotatingContact({ settings, cmsSettings }: { settings?: Record<st
     const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
     const isHostMadrasha = typeof window !== 'undefined' && (window.location.hostname.includes('madrasha') || window.location.hostname.includes('madrasa'));
     const isMadrasha = envTemplate === "imadrasha" || isHostMadrasha || cmsSettings?.website_template === "imadrasha";
-    const phone = isMadrasha
+    const phone: string = String(isMadrasha
         ? (hfsRecord?.madrasa_phone as string) || "+8801719606713"
-        : (hfsRecord?.school_phone as string) || settings?.phone || "+8801851046320";
-    const email = isMadrasha
+        : (hfsRecord?.school_phone as string) || settings?.phone || "+8801851046320");
+    const email: string = String(isMadrasha
         ? (hfsRecord?.madrasa_email as string) || "anwarabegumgirlsmadrasa@gmail.com"
-        : (hfsRecord?.school_email as string) || settings?.email || "smartideasbd24@gmail.com";
-    const address = isMadrasha
+        : (hfsRecord?.school_email as string) || settings?.email || "smartideasbd24@gmail.com");
+    const address: string = String(isMadrasha
         ? (hfsRecord?.madrasa_address as string) || "১২ নং গিয়াসনগর ইউনিয়ন, মোহাম্মদপুর, মৌলভীবাজার সদর, মৌলভীবাজার"
-        : (hfsRecord?.school_address as string) || settings?.address || "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230";
+        : (hfsRecord?.school_address as string) || settings?.address || "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230");
 
     useEffect(() => {
         if (activeIndex === 2) {
@@ -431,15 +431,21 @@ export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | 
         });
     })();
 
-    const frontCmsLogo = (cmsSettings?.logo_url as string | undefined) 
-        || ((cmsSettings?.header_footer_sections as Record<string, unknown> | undefined)?.ischool_logo as string | undefined) 
-        || (cmsSettings?.logo as string | undefined);
-    const logoSrc = frontCmsLogo || settings?.app_logo || settings?.admin_logo || settings?.admin_small_logo;
     const hfsRecord = (cmsSettings?.header_footer_sections as Record<string, unknown> | undefined);
-    const ischoolHeaderBgEnabled = hfsRecord?.ischool_header_bg_enabled !== false && hfsRecord?.header_bg_enabled !== false;
+    const frontCmsLogo = isMadrasha
+        ? (((hfsRecord?.imadrasha_header_logo as string | undefined) && !String(hfsRecord?.imadrasha_header_logo).toLowerCase().includes("ischool"))
+            ? (hfsRecord?.imadrasha_header_logo as string)
+            : ((hfsRecord?.madrasha_logo as string | undefined) || (cmsSettings?.logo_url as string | undefined) || "/anwara-web-banner.png"))
+        : ((cmsSettings?.logo_url as string | undefined) 
+            || (hfsRecord?.ischool_logo as string | undefined) 
+            || (cmsSettings?.logo as string | undefined));
+    const logoSrc = frontCmsLogo || settings?.app_logo || settings?.admin_logo || settings?.admin_small_logo;
+    const ischoolHeaderBgEnabled = isMadrasha
+        ? (hfsRecord?.madrasha_header_bg_enabled !== false && hfsRecord?.header_bg_enabled !== false)
+        : (hfsRecord?.ischool_header_bg_enabled !== false && hfsRecord?.header_bg_enabled !== false);
     const ischoolHeaderBg = ischoolHeaderBgEnabled 
-        ? ((hfsRecord?.ischool_header_bg as string | undefined) || "#044E43")
-        : "#044E43";
+        ? (isMadrasha ? ((hfsRecord?.madrasha_header_bg as string | undefined) || "#014739") : ((hfsRecord?.ischool_header_bg as string | undefined) || "#044E43"))
+        : (isMadrasha ? "#014739" : "#044E43");
 
     const isLightColor = (hex?: string) => {
         if (!hex) return false;
@@ -640,20 +646,14 @@ export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | 
                                     <img
                                         src={getImageUrl(logoSrc)}
                                         alt={settings?.school_name || "School Logo"}
-                                        className="h-auto w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm"
+                                        className="h-[50px] max-h-[50px] max-w-[200px] w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm"
                                         style={{
-                                            height: (hfsRecord?.ischool_logo_height as number | undefined) 
-                                                ? `${hfsRecord?.ischool_logo_height}px` 
-                                                : undefined,
-                                            maxHeight: (hfsRecord?.ischool_logo_height as number | undefined) 
-                                                ? `${hfsRecord?.ischool_logo_height}px` 
-                                                : undefined,
+                                            height: `${Number(hfsRecord?.ischool_logo_height) || 50}px`,
+                                            maxHeight: `${Number(hfsRecord?.ischool_logo_height) || 50}px`,
                                             width: (hfsRecord?.ischool_logo_auto_ratio === false && hfsRecord?.ischool_logo_width)
                                                 ? `${hfsRecord?.ischool_logo_width}px`
                                                 : 'auto',
-                                            maxWidth: (hfsRecord?.ischool_logo_width as number | undefined) 
-                                                ? `${hfsRecord?.ischool_logo_width}px` 
-                                                : undefined,
+                                            maxWidth: `${Number(hfsRecord?.ischool_logo_width) || 200}px`,
                                         }}
                                     />
                                 ) : (
@@ -663,10 +663,10 @@ export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | 
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="font-black text-xs sm:text-base md:text-xl tracking-tight leading-none text-white font-sans whitespace-nowrap">
-                                                {settings?.school_name || "EduEx LMS"}
+                                                {isMadrasha ? ((hfsRecord?.madrasa_name_bn as string) || (hfsRecord?.footer_madrasa_name as string) || settings?.school_name || "iMadrasha") : (settings?.school_name || "EduEx LMS")}
                                             </span>
                                             <span className="text-[6.5px] sm:text-[8.5px] font-semibold tracking-widest text-emerald-200 uppercase mt-0.5 whitespace-nowrap">
-                                                {settings?.school_slogan || "Education & LMS"}
+                                                {isMadrasha ? ((hfsRecord?.arabic_title as string) || "মাদ্রাসা শিক্ষা ও পোর্টাল") : (settings?.school_slogan || "Education & LMS")}
                                             </span>
                                         </div>
                                     </>

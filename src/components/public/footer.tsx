@@ -88,31 +88,28 @@ export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
         ...getColumnMenus(1),
     ];
 
+    const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+    const isHostMadrasha = typeof window !== 'undefined' && (window.location.hostname.includes('madrasha') || window.location.hostname.includes('madrasa'));
+    const isMadrasha = envTemplate === "imadrasha" || isHostMadrasha || (cmsSettings?.website_template || (hfs?.website_template as string | undefined)) === "imadrasha";
+
     // Brand / Column 1 Data
-    const logoSrc = (hfs.footer_logo as string) ||
-        (cmsSettings?.logo_url as string) ||
-        (hfs.ischool_header_logo as string) ||
-        (hfs.ischool_logo as string) ||
-        (cmsSettings?.logo as string) ||
-        settings?.app_logo ||
-        settings?.admin_logo;
+    const logoSrc = isMadrasha
+        ? ((hfs.footer_logo as string) || (hfs.imadrasha_header_logo as string) || (hfs.madrasha_logo as string) || (cmsSettings?.logo_url as string) || settings?.app_logo)
+        : ((hfs.footer_logo as string) || (cmsSettings?.logo_url as string) || (hfs.ischool_header_logo as string) || (hfs.ischool_logo as string) || (cmsSettings?.logo as string) || settings?.app_logo || settings?.admin_logo);
 
-    const schoolName = (hfs.footer_madrasa_name as string) ||
-        (hfs.footer_school_name as string) ||
-        (hfs.institute_name as string) ||
-        (cmsSettings?.institute_name as string) ||
-        settings?.school_name ||
-        "iSchool";
+    const schoolName = isMadrasha
+        ? ((hfs.footer_madrasa_name as string) || (hfs.madrasa_name_bn as string) || (hfs.institute_name as string) || (cmsSettings?.institute_name as string) || settings?.school_name || "iMadrasha")
+        : ((hfs.footer_school_name as string) || (hfs.footer_madrasa_name as string) || (hfs.institute_name as string) || (cmsSettings?.institute_name as string) || settings?.school_name || "iSchool");
 
-    const establishedYear = (hfs.footer_established_year as string) || "";
+    const arabicTitle = (hfs.footer_arabic_title as string) || (hfs.arabic_title as string) || (isMadrasha ? "مدرسة البنات دار الحديث انواره بيغم محمدفور" : "");
+    const establishedYear = (hfs.footer_established_year as string) || (isMadrasha ? "স্থাপিত: ২০০৩ খ্রিষ্টাব্দ" : "");
 
     const showLogo = hfs.footer_show_logo !== false;
     const showSchoolName = hfs.footer_show_school_name !== false && hfs.footer_show_institute_name !== false;
     const showEstablishedYear = hfs.footer_show_established_year !== false;
 
     const aboutText = (hfs.footer_about_text as string) ||
-        settings?.school_description ||
-        "Providing quality education for over two decades. Committed to fostering academic excellence, critical thinking, and character development.";
+        (isMadrasha ? "মা খাদিজা (রা.) ও আয়েশা (রা.)-এর আদর্শে অনুকরণীয় নারীসমাজ গঠনের লক্ষ্যে প্রতিষ্ঠিত এক ঐতিহ্যবাহী দ্বীনি শিক্ষাপ্রতিষ্ঠান।" : (settings?.school_description || "Providing quality education for over two decades. Committed to fostering academic excellence, critical thinking, and character development."));
 
     const showSocial = hfs.footer_show_social !== false;
     const footerSoc = (hfs.footer_social_links as Record<string, string>) || {};
@@ -126,47 +123,52 @@ export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
     const li = footerSoc.linkedin || cmsSoc.linkedin || (settings?.linkedin_url && settings.linkedin_url !== '#' ? settings.linkedin_url : "");
 
     // Column 2 Data (Academic Programs / Departments)
-    const col2Title = (hfs.footer_info_label as string) || t("academic_programs");
+    const col2Title = (hfs.footer_info_label as string) || (isMadrasha ? "জামিয়ার শিক্ষাবিভাগ" : t("academic_programs"));
     const deptLinks = (Array.isArray(hfs.footer_department_links) && hfs.footer_department_links.length > 0)
         ? (hfs.footer_department_links as Array<{ title: string; url?: string }>)
         : null;
 
     // Column 3 Data (Quick Links)
-    const col3Title = (hfs.footer_menu_label as string) || t("quick_links");
+    const col3Title = (hfs.footer_menu_label as string) || (isMadrasha ? "জরুরি লিংকসমূহ" : t("quick_links"));
     const quickLinks = (Array.isArray(hfs.footer_quick_links) && hfs.footer_quick_links.length > 0)
         ? (hfs.footer_quick_links as Array<{ title: string; url?: string }>)
         : null;
 
     // Column 4 Data (Contact Info)
-    const col4Title = (hfs.footer_contact_info_label as string) || settings?.footer_contact_info_label || t("contact_us");
+    const col4Title = (hfs.footer_contact_info_label as string) || (isMadrasha ? "যোগাযোগের ঠিকানা" : (settings?.footer_contact_info_label || t("contact_us")));
     const contactAddress = (hfs.footer_address as string) ||
-        (hfs.school_address as string) ||
+        (isMadrasha ? (hfs.madrasa_address as string) : (hfs.school_address as string)) ||
         (hfs.madrasa_address as string) ||
+        (hfs.school_address as string) ||
         settings?.address ||
         "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230";
     const contactPhone = (hfs.footer_phone as string) ||
-        (hfs.school_phone as string) ||
+        (isMadrasha ? (hfs.madrasa_phone as string) : (hfs.school_phone as string)) ||
         (hfs.madrasa_phone as string) ||
+        (hfs.school_phone as string) ||
         settings?.phone ||
         "+8801851046320";
     const contactEmail = (hfs.footer_email as string) ||
-        (hfs.school_email as string) ||
+        (isMadrasha ? (hfs.madrasa_email as string) : (hfs.school_email as string)) ||
         (hfs.madrasa_email as string) ||
+        (hfs.school_email as string) ||
         settings?.email ||
         "smartideasbd24@gmail.com";
 
     // Bottom Bar Data
     const copyrightText = (hfs.copyright_text as string) ||
         (cmsSettings?.footer_text as string) ||
-        `© ${new Date().getFullYear()} ${schoolName}. ${t("all_rights_reserved")}.`;
+        (isMadrasha ? "© All Rights reserved by Anwara Begum Girls Titel Madrasha Muhammadpur" : `© ${new Date().getFullYear()} ${schoolName}. ${t("all_rights_reserved")}.`);
 
-    const poweredByText = (hfs.footer_powered_by_text as string) || "Powered by: iSchool Management System";
+    const poweredByText = (hfs.footer_powered_by_text as string) || (isMadrasha ? "চালিত হচ্ছে: iSchool Management System" : "Powered by: iSchool Management System");
 
     // Footer Background Color
-    const isBgEnabled = hfs.ischool_footer_bg_enabled !== false && hfs.footer_bg_enabled !== false;
+    const isBgEnabled = isMadrasha
+        ? (hfs.madrasha_footer_bg_enabled !== false && hfs.footer_bg_enabled !== false)
+        : (hfs.ischool_footer_bg_enabled !== false && hfs.footer_bg_enabled !== false);
     const footerBg = isBgEnabled
-        ? ((hfs.ischool_footer_bg as string) || (hfs.footer_bg as string) || "#0f172a")
-        : "#0f172a";
+        ? (isMadrasha ? ((hfs.madrasha_footer_bg as string) || (hfs.footer_bg as string) || "#01352A") : ((hfs.ischool_footer_bg as string) || (hfs.footer_bg as string) || "#0f172a"))
+        : (isMadrasha ? "#01352A" : "#0f172a");
 
     return (
         <footer 
@@ -186,7 +188,7 @@ export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
                                         <img
                                             src={getImageUrl(logoSrc)}
                                             alt={schoolName}
-                                            className="h-10 sm:h-12 w-auto max-w-[150px] sm:max-w-[180px] object-contain transition-transform group-hover:scale-105 shrink-0"
+                                            className="h-10 sm:h-[50px] max-h-[50px] w-auto max-w-[200px] object-contain transition-transform group-hover:scale-105 shrink-0"
                                             onError={(e) => {
                                                 (e.target as HTMLImageElement).style.display = 'none';
                                             }}
@@ -199,6 +201,11 @@ export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
                                 )}
                                 {(showSchoolName || (showEstablishedYear && establishedYear)) && (
                                     <div className="flex flex-col text-left">
+                                        {isMadrasha && arabicTitle && (
+                                            <span className="text-amber-300 font-serif text-xs" dir="rtl">
+                                                {arabicTitle}
+                                            </span>
+                                        )}
                                         {showSchoolName && (
                                             <span className="font-extrabold text-base sm:text-lg tracking-tight uppercase leading-tight group-hover:text-primary transition-colors">
                                                 {schoolName}
