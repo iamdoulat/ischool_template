@@ -137,6 +137,7 @@ export async function getSchoolSeoData(): Promise<SchoolSeoData> {
     }
 
     const cms = cmsRes.data;
+    if (cms) {
       if (envTemplate || isMadrasha) {
         data.websiteTemplate = "imadrasha";
       } else if (cms.website_template) {

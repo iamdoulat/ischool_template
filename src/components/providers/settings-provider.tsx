@@ -233,6 +233,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     normalizedData.school_name = process.env.NEXT_PUBLIC_APP_NAME;
                 }
 
+                // Check localStorage fallbacks for custom PWA app short name, favicon, and icons if backend has defaults
+                if (typeof window !== "undefined") {
+                    const localFavicon = localStorage.getItem("ischool_favicon");
+                    if (localFavicon && (!normalizedData.favicon || normalizedData.favicon === '/logo-admin-small.png')) {
+                        normalizedData.favicon = localFavicon;
+                    }
+                    const localShortName = localStorage.getItem("ischool_pwa_app_short_name");
+                    if (localShortName && (!normalizedData.pwa_app_short_name || normalizedData.pwa_app_short_name === 'iSchool')) {
+                        normalizedData.pwa_app_short_name = localShortName;
+                    }
+                    const localIcon512 = localStorage.getItem("ischool_pwa_icon_512");
+                    if (localIcon512 && (!normalizedData.pwa_icon_512 || normalizedData.pwa_icon_512 === '/logo-app.png' || normalizedData.pwa_icon_512 === '/icons/icon-512x512.png')) {
+                        normalizedData.pwa_icon_512 = localIcon512;
+                    }
+                    const localIcon192 = localStorage.getItem("ischool_pwa_icon_192");
+                    if (localIcon192 && (!normalizedData.pwa_icon_192 || normalizedData.pwa_icon_192 === '/logo-app.png' || normalizedData.pwa_icon_192 === '/icons/icon-192x192.png')) {
+                        normalizedData.pwa_icon_192 = localIcon192;
+                    }
+                    const localIconMaskable = localStorage.getItem("ischool_pwa_icon_maskable");
+                    if (localIconMaskable && (!normalizedData.pwa_icon_maskable || normalizedData.pwa_icon_maskable === '/logo-app.png' || normalizedData.pwa_icon_maskable === '/icons/icon-maskable-512x512.png')) {
+                        normalizedData.pwa_icon_maskable = localIconMaskable;
+                    }
+                }
+
                 // Resolve logo & background image paths to absolute URLs if uploaded
                 const imageFields = [
                     'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo', 'favicon',

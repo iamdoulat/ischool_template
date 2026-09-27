@@ -119,22 +119,58 @@ export function PWAInit() {
     const appIcon512 = getImageUrl(rawPwaIcon512) || "/icons/icon-512x512.png";
 
     // 1. Safely sync Browser Main Favicon, Apple Touch Icon and Dynamic Manifest link tags
-    const syncLinkTag = (rel: string, href: string) => {
-      let link = document.querySelector<HTMLLinkElement>(`link[rel='${rel}']`);
-      if (link) {
-        link.href = href;
-      } else {
-        link = document.createElement("link");
-        link.rel = rel;
-        link.href = href;
-        document.head.appendChild(link);
-      }
+    const updateFavicon = (href: string) => {
+      const existingIcons = document.querySelectorAll<HTMLLinkElement>(
+        "link[rel='icon'], link[rel='shortcut icon']"
+      );
+      existingIcons.forEach((el) => {
+        const sizes = el.getAttribute("sizes");
+        if (sizes !== "192x192" && sizes !== "512x512") {
+          el.remove();
+        }
+      });
+
+      const icon = document.createElement("link");
+      icon.rel = "icon";
+      icon.type = "image/png";
+      icon.href = href;
+      document.head.appendChild(icon);
+
+      const shortcut = document.createElement("link");
+      shortcut.rel = "shortcut icon";
+      shortcut.type = "image/png";
+      shortcut.href = href;
+      document.head.appendChild(shortcut);
+
+      const icon32 = document.createElement("link");
+      icon32.rel = "icon";
+      icon32.setAttribute("sizes", "32x32");
+      icon32.type = "image/png";
+      icon32.href = href;
+      document.head.appendChild(icon32);
     };
 
-    syncLinkTag("manifest", manifestHref);
-    syncLinkTag("icon", faviconHref);
-    syncLinkTag("shortcut icon", faviconHref);
-    syncLinkTag("apple-touch-icon", appIcon512);
+    updateFavicon(faviconHref);
+
+    let appleTouchLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+    if (appleTouchLink) {
+      appleTouchLink.href = appIcon512;
+    } else {
+      appleTouchLink = document.createElement("link");
+      appleTouchLink.rel = "apple-touch-icon";
+      appleTouchLink.href = appIcon512;
+      document.head.appendChild(appleTouchLink);
+    }
+
+    let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
+    if (manifestLink) {
+      manifestLink.href = manifestHref;
+    } else {
+      manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      manifestLink.href = manifestHref;
+      document.head.appendChild(manifestLink);
+    }
 
     // 2. Sync Mobile App meta & touch icon tags (iOS & Modern Chromium browsers)
     let mobileCapableTag = document.querySelector<HTMLMetaElement>("meta[name='mobile-web-app-capable']");

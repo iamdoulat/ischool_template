@@ -179,12 +179,12 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <PWAInit />
           <MSWInit>
             <ToastProvider duration={3000}>
               <LanguageProvider>
                 <CurrencyProvider>
                   <SettingsProvider>
+                    <PWAInit />
                     {children}
                     <Toaster />
                     <SonnerToaster position="top-center" richColors />

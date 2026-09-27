@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getImageUrl } from "@/lib/image-url";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -61,11 +62,11 @@ export async function GET(request: NextRequest) {
     if (!path || typeof path !== "string") return null;
     let clean = path.trim().replace(/\\/g, "/");
     if (!clean) return null;
-    // Strip localhost:8000 or 127.0.0.1:8000 so asset is served same-origin by Next.js proxy
-    clean = clean.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1):8000/i, "");
-    if (clean.startsWith("http://") || clean.startsWith("https://")) return clean;
-    if (clean.startsWith("/")) return clean;
-    return `/${clean}`;
+    if (clean.startsWith("/icons/") || clean.startsWith("/images/") || clean.startsWith("/logo-")) {
+      return clean;
+    }
+    const resolved = getImageUrl(clean);
+    return resolved || (clean.startsWith("/") ? clean : `/${clean}`);
   };
 
   if (cookiePwaIcon512) {
@@ -80,11 +81,12 @@ export async function GET(request: NextRequest) {
   let hasCustomIcon = false;
 
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+    const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+    const apiUrl = rawApiUrl.replace(/\/+$/, "");
     const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
-      next: { revalidate: 10 },
+      next: { revalidate: 15 },
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(1500),
+      signal: AbortSignal.timeout(4000),
     }).catch(() => null);
 
     if (res && res.ok) {

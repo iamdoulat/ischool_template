@@ -517,10 +517,14 @@ export default function GeneralSettingPage() {
                         'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable',
                         'pwa_app_short_name', 'pwa_app_description'
                     ];
+                    const defaultPlaceholders = ['/logo-admin-small.png', '/logo-app.png', 'iSchool', 'Comprehensive School Management System & Portal'];
                     pwaTextAndLogoFields.forEach(lf => {
-                        if (!normalizedData[lf] && typeof window !== 'undefined') {
+                        const currentVal = String(normalizedData[lf] || '');
+                        if ((!currentVal || defaultPlaceholders.includes(currentVal)) && typeof window !== 'undefined') {
                             const savedVal = localStorage.getItem(`ischool_${lf}`);
-                            if (savedVal) normalizedData[lf] = savedVal;
+                            if (savedVal && !defaultPlaceholders.includes(savedVal)) {
+                                normalizedData[lf] = savedVal;
+                            }
                         }
                     });
 
@@ -706,40 +710,74 @@ export default function GeneralSettingPage() {
             const fullUrl = getImageUrl(newUrl) || newUrl;
             const cacheBusted = `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
 
-            const syncLink = (rel: string, href: string, extraAttr?: { name: string; value: string }) => {
-                let selector = `link[rel='${rel}']`;
-                if (extraAttr) {
-                    selector = `link[rel='${rel}'][${extraAttr.name}='${extraAttr.value}']`;
-                }
-                let link = document.querySelector<HTMLLinkElement>(selector);
-                if (link) {
-                    link.href = href;
-                } else {
-                    link = document.createElement("link");
-                    link.rel = rel;
-                    if (extraAttr) link.setAttribute(extraAttr.name, extraAttr.value);
-                    link.href = href;
-                    document.head.appendChild(link);
-                }
-            };
-
             if (field === "favicon") {
-                syncLink("icon", cacheBusted);
-                syncLink("shortcut icon", cacheBusted);
+                const existingIcons = document.querySelectorAll<HTMLLinkElement>(
+                    "link[rel='icon'], link[rel='shortcut icon']"
+                );
+                existingIcons.forEach(el => {
+                    const sizes = el.getAttribute("sizes");
+                    if (sizes !== "192x192" && sizes !== "512x512") {
+                        el.remove();
+                    }
+                });
+
+                const linkIcon = document.createElement("link");
+                linkIcon.rel = "icon";
+                linkIcon.type = "image/png";
+                linkIcon.href = cacheBusted;
+                document.head.appendChild(linkIcon);
+
+                const linkShortcut = document.createElement("link");
+                linkShortcut.rel = "shortcut icon";
+                linkShortcut.type = "image/png";
+                linkShortcut.href = cacheBusted;
+                document.head.appendChild(linkShortcut);
+
+                const link32 = document.createElement("link");
+                link32.rel = "icon";
+                link32.setAttribute("sizes", "32x32");
+                link32.type = "image/png";
+                link32.href = cacheBusted;
+                document.head.appendChild(link32);
+
+                document.cookie = `ischool_favicon=${encodeURIComponent(newUrl)}; path=/; max-age=31536000; SameSite=Lax`;
             } else if (field === "pwa_icon_192" || field === "pwa_icon_512" || field === "pwa_icon_maskable") {
-                syncLink("apple-touch-icon", cacheBusted);
-                if (field === "pwa_icon_192") {
-                    syncLink("icon", cacheBusted, { name: "sizes", value: "192x192" });
-                } else if (field === "pwa_icon_512") {
-                    syncLink("icon", cacheBusted, { name: "sizes", value: "512x512" });
+                let linkApple = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+                if (linkApple) {
+                    linkApple.href = cacheBusted;
+                } else {
+                    linkApple = document.createElement("link");
+                    linkApple.rel = "apple-touch-icon";
+                    linkApple.href = cacheBusted;
+                    document.head.appendChild(linkApple);
+                }
+
+                if (field === "pwa_icon_512") {
+                    document.cookie = `pwa_icon_512=${encodeURIComponent(newUrl)}; path=/; max-age=31536000; SameSite=Lax`;
+                    let link512 = document.querySelector<HTMLLinkElement>("link[rel='icon'][sizes='512x512']");
+                    if (!link512) {
+                        link512 = document.createElement("link");
+                        link512.rel = "icon";
+                        link512.setAttribute("sizes", "512x512");
+                        document.head.appendChild(link512);
+                    }
+                    link512.href = cacheBusted;
+                } else if (field === "pwa_icon_192") {
+                    let link192 = document.querySelector<HTMLLinkElement>("link[rel='icon'][sizes='192x192']");
+                    if (!link192) {
+                        link192 = document.createElement("link");
+                        link192.rel = "icon";
+                        link192.setAttribute("sizes", "192x192");
+                        document.head.appendChild(link192);
+                    }
+                    link192.href = cacheBusted;
                 }
             }
         }
-        setFormData(prev => {
-            const updated = { ...prev, [field]: newUrl };
-            handleSave(updated);
-            return updated;
-        });
+        const updatedData = { ...formData, [field]: newUrl };
+        setFormData(updatedData);
+        updateSettingsLocal({ [field]: newUrl });
+        handleSave(updatedData);
     };
 
     const [clearingCache, setClearingCache] = useState(false);

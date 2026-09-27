@@ -13,11 +13,12 @@ export default async function Icon() {
     let faviconUrl = "";
 
     try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+        const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+        const apiUrl = rawApiUrl.replace(/\/+$/, "");
         const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
-            next: { revalidate: 30 },
+            next: { revalidate: 15 },
             headers: { Accept: "application/json" },
-            signal: AbortSignal.timeout(1500),
+            signal: AbortSignal.timeout(5000),
         }).catch(() => null);
 
         if (res && res.ok) {

@@ -3,7 +3,7 @@ export function getImageUrl(
   baseUrl?: string
 ): string {
   if (!path || typeof path !== 'string') return "";
-  if (path.startsWith("data:")) return path;
+  if (path.startsWith("data:") || path.startsWith("blob:")) return path;
 
   let cleanPath = path.replace(/\\/g, '/').trim();
   if (!cleanPath) return "";

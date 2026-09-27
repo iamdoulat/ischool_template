@@ -514,6 +514,12 @@ function FrontCmsSettingContent() {
     const [uploadingMuhtamimImg, setUploadingMuhtamimImg] = useState(false);
     const [uploadingProjectIdx, setUploadingProjectIdx] = useState<number | null>(null);
     const [activeUploadProjectIdx, setActiveUploadProjectIdx] = useState<number | null>(null);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+    const [uploadingMadrashaLogo, setUploadingMadrashaLogo] = useState(false);
+    const [isDraggingLogo, setIsDraggingLogo] = useState(false);
+    const [isDraggingMadrashaLogo, setIsDraggingMadrashaLogo] = useState(false);
+    const [logoImgError, setLogoImgError] = useState(false);
+    const [madrashaLogoImgError, setMadrashaLogoImgError] = useState(false);
     const [logoTab, setLogoTab] = useState<"ischool" | "imadrasha">("ischool");
     const [headerTab, setHeaderTab] = useState<"ischool" | "imadrasha">("ischool");
     const [footerTab, setFooterTab] = useState<"ischool" | "imadrasha">("ischool");
@@ -817,6 +823,8 @@ function FrontCmsSettingContent() {
                     experienced_staffs: (parseJsonIfString(fetched.experienced_staffs) || prev.experienced_staffs) as StaffMemberItem[],
                     latest_notices: (parseJsonIfString(fetched.latest_notices) || prev.latest_notices) as NoticeItem[],
                 }));
+                setLogoImgError(false);
+                setMadrashaLogoImgError(false);
 
                 const savedOrder = resolvedHfs.section_order || fetched.section_order;
                 const availableDefs = ALL_SECTION_DEFS.filter((d) => !d.templateOnly || d.templateOnly === (isMadrasha ? "imadrasha" : "ischool"));
@@ -915,15 +923,168 @@ function FrontCmsSettingContent() {
         toast("success", t(tpl === "imadrasha" ? "template_switched_to_madrasha" : "template_switched_to_ischool"));
     };
 
+    const handleLogoUpload = async (rawFile: File) => {
+        if (!rawFile) return;
+        if (!rawFile.type.startsWith('image/')) {
+            toast("error", t("please_upload_valid_image") || "Please upload a valid image file");
+            return;
+        }
+
+        const localPreview = URL.createObjectURL(rawFile);
+        setLogoImgError(false);
+        setSettings((prev) => ({
+            ...prev,
+            logo_preview: localPreview,
+            header_footer_sections: {
+                ...prev.header_footer_sections,
+                ischool_logo: localPreview,
+            }
+        }));
+
+        try {
+            setUploadingLogo(true);
+            const formData = new FormData();
+            formData.append("file", rawFile);
+            formData.append("template", "ischool");
+            formData.append("section", "logo");
+
+            let response;
+            try {
+                response = await api.post("system-setting/front-cms-settings/upload-image", formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+            } catch (formErr: unknown) {
+                console.warn("Logo upload fallback to base64:", formErr);
+                const base64Data = await new Promise<string>((res, rej) => {
+                    const r = new FileReader();
+                    r.onload = () => res(r.result as string);
+                    r.onerror = rej;
+                    r.readAsDataURL(rawFile);
+                });
+                response = await api.post("system-setting/front-cms-settings/upload-image", {
+                    image_base64: base64Data,
+                    template: "ischool",
+                    section: "logo",
+                });
+            }
+
+            const uploadedUrl = response?.data?.data?.url || response?.data?.url;
+            const targetFolder = response?.data?.data?.folder || "front_cms/ischool/logos";
+
+            if (uploadedUrl) {
+                setSettings((prev) => ({
+                    ...prev,
+                    logo: uploadedUrl,
+                    logo_preview: uploadedUrl,
+                    logo_file: undefined,
+                    header_footer_sections: {
+                        ...prev.header_footer_sections,
+                        ischool_logo: uploadedUrl,
+                    }
+                }));
+                toast("success", `${t("logo_uploaded_successfully") || "Logo uploaded successfully"} (${targetFolder})`);
+            } else {
+                toast("error", response?.data?.message || t("failed_to_save"));
+            }
+        } catch (error: unknown) {
+            console.error("Logo upload failed:", error);
+            const err = error as { response?: { data?: { message?: string } }; message?: string };
+            const apiMsg = err?.response?.data?.message || err?.message || "Failed to upload logo";
+            toast("error", apiMsg);
+        } finally {
+            setUploadingLogo(false);
+            if (logoInputRef.current) logoInputRef.current.value = "";
+        }
+    };
+
+    const handleMadrashaLogoUpload = async (rawFile: File) => {
+        if (!rawFile) return;
+        if (!rawFile.type.startsWith('image/')) {
+            toast("error", t("please_upload_valid_image") || "Please upload a valid image file");
+            return;
+        }
+
+        const localPreview = URL.createObjectURL(rawFile);
+        setMadrashaLogoImgError(false);
+        setSettings((prev) => ({
+            ...prev,
+            madrasha_logo_preview: localPreview,
+            header_footer_sections: {
+                ...prev.header_footer_sections,
+                imadrasha_header_logo: localPreview,
+            }
+        }));
+
+        try {
+            setUploadingMadrashaLogo(true);
+            const formData = new FormData();
+            formData.append("file", rawFile);
+            formData.append("template", "imadrasha");
+            formData.append("section", "logo");
+
+            let response;
+            try {
+                response = await api.post("system-setting/front-cms-settings/upload-image", formData, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+            } catch (formErr: unknown) {
+                console.warn("Madrasha logo upload fallback to base64:", formErr);
+                const base64Data = await new Promise<string>((res, rej) => {
+                    const r = new FileReader();
+                    r.onload = () => res(r.result as string);
+                    r.onerror = rej;
+                    r.readAsDataURL(rawFile);
+                });
+                response = await api.post("system-setting/front-cms-settings/upload-image", {
+                    image_base64: base64Data,
+                    template: "imadrasha",
+                    section: "logo",
+                });
+            }
+
+            const uploadedUrl = response?.data?.data?.url || response?.data?.url;
+            const targetFolder = response?.data?.data?.folder || "front_cms/imadrasha/logos";
+
+            if (uploadedUrl) {
+                setSettings((prev) => ({
+                    ...prev,
+                    madrasha_logo_preview: uploadedUrl,
+                    madrasha_logo_file: undefined,
+                    header_footer_sections: {
+                        ...prev.header_footer_sections,
+                        imadrasha_header_logo: uploadedUrl,
+                    }
+                }));
+                toast("success", `${t("logo_uploaded_successfully") || "Logo uploaded successfully"} (${targetFolder})`);
+            } else {
+                toast("error", response?.data?.message || t("failed_to_save"));
+            }
+        } catch (error: unknown) {
+            console.error("Madrasha logo upload failed:", error);
+            const err = error as { response?: { data?: { message?: string } }; message?: string };
+            const apiMsg = err?.response?.data?.message || err?.message || "Failed to upload logo";
+            toast("error", apiMsg);
+        } finally {
+            setUploadingMadrashaLogo(false);
+            if (madrashaLogoInputRef.current) madrashaLogoInputRef.current.value = "";
+        }
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "logo" | "favicon" | "madrasha_logo") => {
         const file = e.target.files?.[0];
-        if (file) {
+        if (!file) return;
+        if (type === "logo") {
+            handleLogoUpload(file);
+        } else if (type === "madrasha_logo") {
+            handleMadrashaLogoUpload(file);
+        } else {
             const previewUrl = URL.createObjectURL(file);
-            setSettings({
-                ...settings,
+            setSettings((prev) => ({
+                ...prev,
                 [`${type}_preview`]: previewUrl,
                 [`${type}_file`]: file
-            });
+            }));
+            e.target.value = "";
         }
     };
 
@@ -1248,7 +1409,11 @@ function FrontCmsSettingContent() {
                 }
             });
 
-            if (settings.logo_file) formData.append('logo', settings.logo_file);
+            if (settings.logo_file) {
+                formData.append('logo', settings.logo_file);
+            } else if (typeof settings.logo === 'string' && settings.logo) {
+                formData.append('logo', settings.logo);
+            }
             if (settings.favicon_file) formData.append('favicon', settings.favicon_file);
             if (settings.madrasha_logo_file) formData.append('madrasha_logo', settings.madrasha_logo_file);
 
@@ -1373,16 +1538,14 @@ function FrontCmsSettingContent() {
     };
 
     const resolveCmsImgUrl = (url?: string) => {
-        if (!url) return "";
+        if (!url || typeof url !== "string") return "";
+        if (url.startsWith("blob:") || url.startsWith("data:")) return url;
         if (url.includes("anwar-web-banner.png") || url.includes("anwara-web-banner.png")) return "/anwara-web-banner.png";
         if (url.includes("anwarabegumgirlsmadrasa.com/wp-content/uploads/")) {
             const filename = url.split("/").pop();
             if (filename) return `/madrasha/${filename}`;
         }
-        if (url.startsWith("/storage/") || url.startsWith("storage/") || url.includes("/storage/")) {
-            return getImageUrl(url);
-        }
-        return url;
+        return getImageUrl(url);
     };
 
     const addCourseItem = () => {
@@ -2163,27 +2326,53 @@ function FrontCmsSettingContent() {
                                                             <Eye size={13} className="text-indigo-600" />
                                                             <span>{t("live_preview")} ({t("header")})</span>
                                                         </span>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                ischoolLogoRatioRef.current = 220 / 48;
-                                                                setSettings((prev) => ({
-                                                                    ...prev,
-                                                                    header_footer_sections: {
-                                                                        ...prev.header_footer_sections,
-                                                                        ischool_logo_width: 220,
-                                                                        ischool_logo_height: 48,
-                                                                        ischool_logo_auto_ratio: true,
-                                                                    }
-                                                                }));
-                                                            }}
-                                                            className="h-6 text-[9.5px] font-bold text-gray-500 hover:text-indigo-600 hover:bg-white rounded px-2 flex items-center gap-1 cursor-pointer border border-transparent hover:border-gray-200 transition-all"
-                                                            title="Reset to default dimensions (220×48 px)"
-                                                        >
-                                                            <RotateCcw size={11} /> {t("reset")}
-                                                        </Button>
+                                                        <div className="flex items-center gap-1">
+                                                            {settings.logo_preview && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        setSettings((prev) => ({
+                                                                            ...prev,
+                                                                            logo: "",
+                                                                            logo_preview: "",
+                                                                            logo_file: undefined,
+                                                                            header_footer_sections: {
+                                                                                ...prev.header_footer_sections,
+                                                                                ischool_logo: "",
+                                                                            }
+                                                                        }));
+                                                                        setLogoImgError(false);
+                                                                    }}
+                                                                    className="h-6 text-[9.5px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded px-1.5 flex items-center gap-1 cursor-pointer transition-all"
+                                                                    title="Clear custom logo"
+                                                                >
+                                                                    <Trash2 size={11} /> {t("delete")}
+                                                                </Button>
+                                                            )}
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    ischoolLogoRatioRef.current = 220 / 48;
+                                                                    setSettings((prev) => ({
+                                                                        ...prev,
+                                                                        header_footer_sections: {
+                                                                            ...prev.header_footer_sections,
+                                                                            ischool_logo_width: 220,
+                                                                            ischool_logo_height: 48,
+                                                                            ischool_logo_auto_ratio: true,
+                                                                        }
+                                                                    }));
+                                                                }}
+                                                                className="h-6 text-[9.5px] font-bold text-gray-500 hover:text-indigo-600 hover:bg-white rounded px-2 flex items-center gap-1 cursor-pointer border border-transparent hover:border-gray-200 transition-all"
+                                                                title="Reset to default dimensions (220×48 px)"
+                                                            >
+                                                                <RotateCcw size={11} /> {t("reset")}
+                                                            </Button>
+                                                        </div>
                                                     </div>
 
                                                     {/* Live Preview Container with dynamic header background */}
@@ -2193,11 +2382,12 @@ function FrontCmsSettingContent() {
                                                             backgroundColor: (settings.header_footer_sections?.ischool_header_bg as string) || "#044E43",
                                                         }}
                                                     >
-                                                        {settings.logo_preview ? (
+                                                        {settings.logo_preview && !logoImgError ? (
                                                             <img 
-                                                                src={settings.logo_preview} 
+                                                                src={resolveCmsImgUrl(settings.logo_preview)} 
                                                                 alt="iSchool Brand Logo" 
                                                                 className="w-auto object-contain transition-all"
+                                                                onError={() => setLogoImgError(true)}
                                                                 style={{
                                                                     maxHeight: `${Math.min(160, Number(settings.header_footer_sections?.ischool_logo_height) || 48)}px`,
                                                                     maxWidth: `${settings.header_footer_sections?.ischool_logo_width || 220}px`,
@@ -2413,27 +2603,55 @@ function FrontCmsSettingContent() {
                                                             <Upload size={13} className="text-[#FF9800]" />
                                                             <span>{t("upload_logo")}</span>
                                                         </span>
-                                                        <span className="text-[9.5px] text-gray-400 font-semibold px-2 py-0.5 rounded-full bg-gray-100">PNG / JPG</span>
+                                                        <span className="text-[9.5px] text-gray-400 font-semibold px-2 py-0.5 rounded-full bg-gray-100">PNG / JPG / WEBP</span>
                                                     </div>
 
                                                     {/* Upload Dropzone */}
                                                     <div
-                                                        onClick={() => logoInputRef.current?.click()}
-                                                        className="h-[90px] w-full border-2 border-dashed border-gray-200 hover:border-indigo-500 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-indigo-50/25 transition-all bg-gray-50/50 group px-3 text-center"
+                                                        onClick={() => !uploadingLogo && logoInputRef.current?.click()}
+                                                        onDragOver={(e) => { e.preventDefault(); setIsDraggingLogo(true); }}
+                                                        onDragLeave={(e) => { e.preventDefault(); setIsDraggingLogo(false); }}
+                                                        onDrop={(e) => {
+                                                            e.preventDefault();
+                                                            setIsDraggingLogo(false);
+                                                            const droppedFile = e.dataTransfer.files?.[0];
+                                                            if (droppedFile) handleLogoUpload(droppedFile);
+                                                        }}
+                                                        className={cn(
+                                                            "h-[90px] w-full border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all px-3 text-center select-none group",
+                                                            isDraggingLogo
+                                                                ? "border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-200"
+                                                                : "border-gray-200 hover:border-indigo-500 hover:bg-indigo-50/25 bg-gray-50/50",
+                                                            uploadingLogo && "opacity-75 cursor-wait"
+                                                        )}
                                                     >
-                                                        <div className="flex items-center gap-2.5 text-gray-500 group-hover:text-indigo-600 transition-colors">
-                                                            <div className="h-8 w-8 rounded-full bg-white shadow-2xs border border-gray-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                                <Upload className="h-4 w-4 text-indigo-600" />
+                                                        {uploadingLogo ? (
+                                                            <div className="flex items-center gap-2 text-indigo-600">
+                                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                                <span className="text-xs font-semibold">{t("uploading_image") || "Uploading logo..."}</span>
                                                             </div>
-                                                            <div className="text-left">
-                                                                <span className="text-[11px] font-bold uppercase tracking-tight block text-gray-700 group-hover:text-indigo-700">
-                                                                    {t("upload_logo")}
-                                                                </span>
-                                                                <span className="text-[9.5px] text-gray-400 font-normal">Click or drop image file</span>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2.5 text-gray-500 group-hover:text-indigo-600 transition-colors">
+                                                                <div className="h-8 w-8 rounded-full bg-white shadow-2xs border border-gray-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                                    <Upload className="h-4 w-4 text-indigo-600" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <span className="text-[11px] font-bold uppercase tracking-tight block text-gray-700 group-hover:text-indigo-700">
+                                                                        {t("upload_logo")}
+                                                                    </span>
+                                                                    <span className="text-[9.5px] text-gray-400 font-normal">Click or drop image file</span>
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        )}
                                                     </div>
-                                                    <input type="file" ref={logoInputRef} hidden onChange={(e) => handleFileChange(e, "logo")} accept="image/*" />
+                                                    <input 
+                                                        type="file" 
+                                                        ref={logoInputRef} 
+                                                        hidden 
+                                                        disabled={uploadingLogo}
+                                                        onChange={(e) => handleFileChange(e, "logo")} 
+                                                        accept="image/*" 
+                                                    />
 
                                                     {/* Specifications & Instructions */}
                                                     <div className="space-y-2 pt-1 border-t border-gray-100">
@@ -2464,27 +2682,53 @@ function FrontCmsSettingContent() {
                                                             <Eye size={13} className="text-emerald-700" />
                                                             <span>{t("live_preview")} ({t("madrasha_header_banner_logo")})</span>
                                                         </span>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                madrashaLogoRatioRef.current = 580 / 105;
-                                                                setSettings((prev) => ({
-                                                                    ...prev,
-                                                                    header_footer_sections: {
-                                                                        ...prev.header_footer_sections,
-                                                                        madrasha_logo_width: 580,
-                                                                        madrasha_logo_height: 105,
-                                                                        madrasha_logo_auto_ratio: true,
-                                                                    }
-                                                                }));
-                                                            }}
-                                                            className="h-6 text-[9.5px] font-bold text-gray-500 hover:text-emerald-700 hover:bg-white rounded px-2 flex items-center gap-1 cursor-pointer border border-transparent hover:border-emerald-200 transition-all"
-                                                            title="Reset to default dimensions (580×105 px)"
-                                                        >
-                                                            <RotateCcw size={11} /> {t("reset")}
-                                                        </Button>
+                                                        <div className="flex items-center gap-1">
+                                                            {settings.madrasha_logo_preview && (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        setSettings((prev) => ({
+                                                                            ...prev,
+                                                                            madrasha_logo_preview: "",
+                                                                            madrasha_logo_file: undefined,
+                                                                            header_footer_sections: {
+                                                                                ...prev.header_footer_sections,
+                                                                                imadrasha_header_logo: "",
+                                                                                madrasha_logo_file: null,
+                                                                            }
+                                                                        }));
+                                                                        setMadrashaLogoImgError(false);
+                                                                    }}
+                                                                    className="h-6 text-[9.5px] font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded px-1.5 flex items-center gap-1 cursor-pointer transition-all"
+                                                                    title="Clear custom banner logo"
+                                                                >
+                                                                    <Trash2 size={11} /> {t("delete")}
+                                                                </Button>
+                                                            )}
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    madrashaLogoRatioRef.current = 580 / 105;
+                                                                    setSettings((prev) => ({
+                                                                        ...prev,
+                                                                        header_footer_sections: {
+                                                                            ...prev.header_footer_sections,
+                                                                            madrasha_logo_width: 580,
+                                                                            madrasha_logo_height: 105,
+                                                                            madrasha_logo_auto_ratio: true,
+                                                                        }
+                                                                    }));
+                                                                }}
+                                                                className="h-6 text-[9.5px] font-bold text-gray-500 hover:text-emerald-700 hover:bg-white rounded px-2 flex items-center gap-1 cursor-pointer border border-transparent hover:border-emerald-200 transition-all"
+                                                                title="Reset to default dimensions (580×105 px)"
+                                                            >
+                                                                <RotateCcw size={11} /> {t("reset")}
+                                                            </Button>
+                                                        </div>
                                                     </div>
 
                                                     {/* Live Preview Container with dynamic header background */}
@@ -2494,11 +2738,12 @@ function FrontCmsSettingContent() {
                                                             backgroundColor: (settings.header_footer_sections?.madrasha_header_bg as string) || "#014739",
                                                         }}
                                                     >
-                                                        {settings.madrasha_logo_preview ? (
+                                                        {settings.madrasha_logo_preview && !madrashaLogoImgError ? (
                                                             <img 
-                                                                src={settings.madrasha_logo_preview} 
+                                                                src={resolveCmsImgUrl(settings.madrasha_logo_preview)} 
                                                                 alt="Madrasa Header Banner" 
                                                                 className="w-auto max-w-full object-contain transition-all"
+                                                                onError={() => setMadrashaLogoImgError(true)}
                                                                 style={{
                                                                     maxHeight: `${Math.min(230, Number(settings.header_footer_sections?.madrasha_logo_height) || 105)}px`,
                                                                     maxWidth: `${settings.header_footer_sections?.madrasha_logo_width || 580}px`,
@@ -2716,27 +2961,55 @@ function FrontCmsSettingContent() {
                                                             <Upload size={13} className="text-emerald-700" />
                                                             <span>{t("upload_logo")}</span>
                                                         </span>
-                                                        <span className="text-[9.5px] text-gray-400 font-semibold px-2 py-0.5 rounded-full bg-gray-100">PNG / JPG</span>
+                                                        <span className="text-[9.5px] text-gray-400 font-semibold px-2 py-0.5 rounded-full bg-gray-100">PNG / JPG / WEBP</span>
                                                     </div>
 
                                                     {/* Upload Dropzone */}
                                                     <div
-                                                        onClick={() => madrashaLogoInputRef.current?.click()}
-                                                        className="h-[90px] w-full border-2 border-dashed border-gray-200 hover:border-emerald-500 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-emerald-50/25 transition-all bg-gray-50/50 group px-3 text-center"
+                                                        onClick={() => !uploadingMadrashaLogo && madrashaLogoInputRef.current?.click()}
+                                                        onDragOver={(e) => { e.preventDefault(); setIsDraggingMadrashaLogo(true); }}
+                                                        onDragLeave={(e) => { e.preventDefault(); setIsDraggingMadrashaLogo(false); }}
+                                                        onDrop={(e) => {
+                                                            e.preventDefault();
+                                                            setIsDraggingMadrashaLogo(false);
+                                                            const droppedFile = e.dataTransfer.files?.[0];
+                                                            if (droppedFile) handleMadrashaLogoUpload(droppedFile);
+                                                        }}
+                                                        className={cn(
+                                                            "h-[90px] w-full border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all px-3 text-center select-none group",
+                                                            isDraggingMadrashaLogo
+                                                                ? "border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-200"
+                                                                : "border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/25 bg-gray-50/50",
+                                                            uploadingMadrashaLogo && "opacity-75 cursor-wait"
+                                                        )}
                                                     >
-                                                        <div className="flex items-center gap-2.5 text-gray-500 group-hover:text-emerald-700 transition-colors">
-                                                            <div className="h-8 w-8 rounded-full bg-white shadow-2xs border border-gray-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                                <Upload className="h-4 w-4 text-emerald-700" />
+                                                        {uploadingMadrashaLogo ? (
+                                                            <div className="flex items-center gap-2 text-emerald-700">
+                                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                                <span className="text-xs font-semibold">{t("uploading_image") || "Uploading banner..."}</span>
                                                             </div>
-                                                            <div className="text-left">
-                                                                <span className="text-[11px] font-bold uppercase tracking-tight block text-gray-700 group-hover:text-emerald-800">
-                                                                    {t("upload_logo")}
-                                                                </span>
-                                                                <span className="text-[9.5px] text-gray-400 font-normal">Click or drop banner file</span>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2.5 text-gray-500 group-hover:text-emerald-700 transition-colors">
+                                                                <div className="h-8 w-8 rounded-full bg-white shadow-2xs border border-gray-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                                    <Upload className="h-4 w-4 text-emerald-700" />
+                                                                </div>
+                                                                <div className="text-left">
+                                                                    <span className="text-[11px] font-bold uppercase tracking-tight block text-gray-700 group-hover:text-emerald-800">
+                                                                        {t("upload_logo")}
+                                                                    </span>
+                                                                    <span className="text-[9.5px] text-gray-400 font-normal">Click or drop banner file</span>
+                                                                </div>
                                                             </div>
-                                                        </div>
+                                                        )}
                                                     </div>
-                                                    <input type="file" ref={madrashaLogoInputRef} hidden onChange={(e) => handleFileChange(e, "madrasha_logo")} accept="image/*" />
+                                                    <input 
+                                                        type="file" 
+                                                        ref={madrashaLogoInputRef} 
+                                                        hidden 
+                                                        disabled={uploadingMadrashaLogo}
+                                                        onChange={(e) => handleFileChange(e, "madrasha_logo")} 
+                                                        accept="image/*" 
+                                                    />
 
                                                     {/* Specifications & Instructions */}
                                                     <div className="space-y-2 pt-1 border-t border-gray-100">
