@@ -4,11 +4,13 @@
  */
 
 function getServerApiBaseUrl(): string {
+    const publicUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (publicUrl) {
+        return publicUrl.replace(/\/+$/, "").replace("://localhost:8000", "://127.0.0.1:8000");
+    }
+
     const internalUrl = process.env.INTERNAL_API_URL;
     if (internalUrl) return internalUrl.replace(/\/+$/, "");
-
-    const publicUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (publicUrl) return publicUrl.replace(/\/+$/, "");
 
     return "http://127.0.0.1:8000/api/v1";
 }

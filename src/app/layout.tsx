@@ -177,7 +177,7 @@ export default async function RootLayout({
           attribute="class"
           defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
+          disableTransitionOnChange={false}
         >
           <MSWInit>
             <ToastProvider duration={3000}>

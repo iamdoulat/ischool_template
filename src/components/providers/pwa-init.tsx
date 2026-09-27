@@ -123,31 +123,20 @@ export function PWAInit() {
       const existingIcons = document.querySelectorAll<HTMLLinkElement>(
         "link[rel='icon'], link[rel='shortcut icon']"
       );
-      existingIcons.forEach((el) => {
-        const sizes = el.getAttribute("sizes");
-        if (sizes !== "192x192" && sizes !== "512x512") {
-          el.remove();
-        }
-      });
-
-      const icon = document.createElement("link");
-      icon.rel = "icon";
-      icon.type = "image/png";
-      icon.href = href;
-      document.head.appendChild(icon);
-
-      const shortcut = document.createElement("link");
-      shortcut.rel = "shortcut icon";
-      shortcut.type = "image/png";
-      shortcut.href = href;
-      document.head.appendChild(shortcut);
-
-      const icon32 = document.createElement("link");
-      icon32.rel = "icon";
-      icon32.setAttribute("sizes", "32x32");
-      icon32.type = "image/png";
-      icon32.href = href;
-      document.head.appendChild(icon32);
+      if (existingIcons.length > 0) {
+        existingIcons.forEach((el) => {
+          const sizes = el.getAttribute("sizes");
+          if (sizes !== "192x192" && sizes !== "512x512") {
+            el.href = href;
+          }
+        });
+      } else {
+        const icon = document.createElement("link");
+        icon.rel = "icon";
+        icon.type = "image/png";
+        icon.href = href;
+        document.head.appendChild(icon);
+      }
     };
 
     updateFavicon(faviconHref);
