@@ -26,6 +26,8 @@ import { MadrashaTemplate } from "@/components/public/madrasha-template";
 import { CardBorderBeam } from "@/components/public/card-border-beam";
 import { getImageUrl } from "@/lib/image-url";
 import { useTranslation } from "@/hooks/use-translation";
+import { useSettings } from "@/components/providers/settings-provider";
+import { isMadrashaTemplate } from "@/lib/template-utils";
 
 export interface NoticeItem {
   id?: number;
@@ -105,17 +107,11 @@ export function HomePageClient({
   const [banners] = useState<BannerItem[]>(initialBanners);
   const [viewNotice, setViewNotice] = useState<NoticeItem | null>(null);
 
-  const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
-  const isHostMadrasha =
-    typeof window !== "undefined" &&
-    (window.location.hostname.includes("madrasha") || window.location.hostname.includes("madrasa"));
-
-  const currentTemplate =
-    envTemplate ||
-    (isHostMadrasha ? "imadrasha" : (cms?.website_template || cms?.header_footer_sections?.website_template || "ischool"));
+  const { settings } = useSettings();
+  const isMadrasha = isMadrashaTemplate(settings, cms as Record<string, unknown>);
 
   // If the admin chose or domain specified the iMadrasha template, render the authentic Madrasa layout
-  if (currentTemplate === "imadrasha") {
+  if (isMadrasha) {
     return <MadrashaTemplate cms={cms} notices={notices} banners={banners} />;
   }
 

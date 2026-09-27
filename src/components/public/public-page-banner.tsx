@@ -7,6 +7,8 @@ import { useSettings } from "@/components/providers/settings-provider";
 import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
 
+import { isMadrashaTemplate } from "@/lib/template-utils";
+
 export interface PublicPageBannerProps {
   title: string;
   subtitle?: string;
@@ -38,17 +40,7 @@ export function PublicPageBanner({
   const { settings } = useSettings();
   const { t } = useTranslation();
 
-  const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
-  const isHostMadrasha =
-    typeof window !== "undefined" &&
-    (window.location.hostname.includes("madrasha") || window.location.hostname.includes("madrasa"));
-
-  const isMadrasha =
-    envTemplate === "imadrasha" ||
-    isHostMadrasha ||
-    settings?.website_template === "imadrasha" ||
-    cmsData?.website_template === "imadrasha" ||
-    (cmsData?.header_footer_sections as Record<string, unknown>)?.website_template === "imadrasha";
+  const isMadrasha = isMadrashaTemplate(settings, cmsData);
 
   // Infer smart badge icon & text based on page title if not explicitly supplied
   const lowerTitle = (title || "").toLowerCase();

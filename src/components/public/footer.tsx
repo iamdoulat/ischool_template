@@ -18,12 +18,41 @@ import { useImageUrl } from "@/lib/image-url";
 import { getPublicMenus, type PublicMenuItem as MenuItem } from "@/lib/public-menus";
 import { useTranslation } from "@/hooks/use-translation";
 import api from "@/lib/api";
+import { isMadrashaTemplate } from "@/lib/template-utils";
+import { MadrashaFooter } from "@/components/public/madrasha-footer";
 
 interface PublicFooterProps {
     cmsData?: Record<string, unknown> | null;
 }
 
 export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
+    const { settings } = useSettings();
+    const [fetchedSettings, setFetchedSettings] = useState<Record<string, unknown> | null>(null);
+    const cmsSettings = cmsData || fetchedSettings;
+
+    useEffect(() => {
+        if (cmsData) return;
+        let active = true;
+        api.get("/front-cms/settings")
+            .then((res) => {
+                if (active && res.data?.data) {
+                    setFetchedSettings(res.data.data);
+                }
+            })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [cmsData]);
+
+    const isMadrasha = isMadrashaTemplate(settings, cmsSettings);
+
+    if (isMadrasha) {
+        return <MadrashaFooter cmsData={cmsSettings} />;
+    }
+
+    return <IschoolFooter cmsData={cmsSettings} />;
+}
+
+function IschoolFooter({ cmsData }: PublicFooterProps = {}) {
     const { settings } = useSettings();
     const getImageUrl = useImageUrl();
     const { t } = useTranslation();
@@ -88,9 +117,10 @@ export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
         ...getColumnMenus(1),
     ];
 
-    const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
-    const isHostMadrasha = typeof window !== 'undefined' && (window.location.hostname.includes('madrasha') || window.location.hostname.includes('madrasa'));
-    const isMadrasha = envTemplate === "imadrasha" || isHostMadrasha || (cmsSettings?.website_template || (hfs?.website_template as string | undefined)) === "imadrasha";
+    const isMadrasha = isMadrashaTemplate(settings, cmsSettings);
+    if (isMadrasha) {
+        return <MadrashaFooter cmsData={cmsSettings} />;
+    }
 
     // Brand / Column 1 Data
     const logoSrc = isMadrasha
@@ -123,14 +153,31 @@ export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
     const li = footerSoc.linkedin || cmsSoc.linkedin || (settings?.linkedin_url && settings.linkedin_url !== '#' ? settings.linkedin_url : "");
 
     // Column 2 Data (Academic Programs / Departments)
-    const col2Title = (hfs.footer_info_label as string) || (isMadrasha ? "জামিয়ার শিক্ষাবিভাগ" : t("academic_programs"));
-    const deptLinks = (Array.isArray(hfs.footer_department_links) && hfs.footer_department_links.length > 0)
+    const isMadrashaDepts = Array.isArray(hfs.footer_department_links) &&
+        hfs.footer_department_links.some((d: { title?: string }) =>
+            d.title?.includes("নুরানি") ||
+            d.title?.includes("নাজেরা") ||
+            d.title?.includes("হিফজুল") ||
+            d.title?.includes("দাওরায়ে হাদিস")
+        );
+    const col2Title = (hfs.footer_info_label as string && !String(hfs.footer_info_label).includes("জামিয়ার"))
+        ? (hfs.footer_info_label as string)
+        : t("academic_programs");
+    const deptLinks = (Array.isArray(hfs.footer_department_links) && hfs.footer_department_links.length > 0 && !isMadrashaDepts)
         ? (hfs.footer_department_links as Array<{ title: string; url?: string }>)
         : null;
 
     // Column 3 Data (Quick Links)
-    const col3Title = (hfs.footer_menu_label as string) || (isMadrasha ? "জরুরি লিংকসমূহ" : t("quick_links"));
-    const quickLinks = (Array.isArray(hfs.footer_quick_links) && hfs.footer_quick_links.length > 0)
+    const isMadrashaQuickLinks = Array.isArray(hfs.footer_quick_links) &&
+        hfs.footer_quick_links.some((q: { title?: string }) =>
+            q.title?.includes("মুহতামিম") ||
+            q.title?.includes("মাদ্রাসা") ||
+            q.title?.includes("শিক্ষকমণ্ডলী")
+        );
+    const col3Title = (hfs.footer_menu_label as string && !String(hfs.footer_menu_label).includes("জরুরি লিংক"))
+        ? (hfs.footer_menu_label as string)
+        : t("quick_links");
+    const quickLinks = (Array.isArray(hfs.footer_quick_links) && hfs.footer_quick_links.length > 0 && !isMadrashaQuickLinks)
         ? (hfs.footer_quick_links as Array<{ title: string; url?: string }>)
         : null;
 

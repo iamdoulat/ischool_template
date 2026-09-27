@@ -30,6 +30,8 @@ import api from "@/lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLanguage } from "@/components/providers/language-provider";
 import { useTranslation } from "@/hooks/use-translation";
+import { isMadrashaTemplate } from "@/lib/template-utils";
+import { MadrashaHeader } from "@/components/public/madrasha-header";
 
 interface NavItem {
     name: string;
@@ -277,6 +279,33 @@ function MobileRotatingContact({ settings, cmsSettings }: { settings?: Record<st
 
 export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | null } = {}) {
     const { settings } = useSettings();
+    const [fetchedSettings, setFetchedSettings] = useState<Record<string, unknown> | null>(null);
+    const cmsSettings = cmsData || fetchedSettings;
+
+    useEffect(() => {
+        if (cmsData) return;
+        let active = true;
+        api.get("/front-cms/settings")
+            .then((res) => {
+                if (active && res.data?.data) {
+                    setFetchedSettings(res.data.data);
+                }
+            })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [cmsData]);
+
+    const isMadrasha = isMadrashaTemplate(settings, cmsSettings);
+
+    if (isMadrasha) {
+        return <MadrashaHeader cmsData={cmsSettings} />;
+    }
+
+    return <IschoolHeader cmsData={cmsSettings} />;
+}
+
+function IschoolHeader({ cmsData }: { cmsData?: Record<string, unknown> | null } = {}) {
+    const { settings } = useSettings();
     const pathname = usePathname();
     const router = useRouter();
     const { t } = useTranslation();
@@ -392,12 +421,19 @@ export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | 
         { name: t("contact"), href: "/contact-us" },
     ];
 
+    const isMadrashaMenus = dynamicMenus.some(m =>
+        m.title.includes("মুহতামিম") ||
+        m.title.includes("মাদ্রাসা") ||
+        m.title.includes("শিক্ষাবিভাগ") ||
+        m.title.includes("বৈশিষ্ট্যসমূহ")
+    );
+
     const displayMenus: NavItem[] = (() => {
         const seen = new Set<string>();
         const hasHome = dynamicMenus.some(m => ['home', 'প্রচ্ছদ'].includes(m.title.toLowerCase().trim()));
         
-        const rawItems: NavItem[] = dynamicMenus.length > 0 ? [
-            ...(!hasHome ? [{ name: isMadrasha ? "প্রচ্ছদ" : t("home"), href: "/" }] : []),
+        const rawItems: NavItem[] = (dynamicMenus.length > 0 && !isMadrashaMenus) ? [
+            ...(!hasHome ? [{ name: t("home"), href: "/" }] : []),
             ...dynamicMenus.map(m => {
                 let href = '';
                 if (!!m.is_external) {

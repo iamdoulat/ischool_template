@@ -25,14 +25,45 @@ import { useSettings } from "@/components/providers/settings-provider";
 import { useImageUrl } from "@/lib/image-url";
 import api from "@/lib/api";
 import { submitContactAction } from "@/app/actions/contact";
+import { isMadrashaTemplate } from "@/lib/template-utils";
 
-export function ContactFormSection() {
+export function ContactFormSection({ cmsData }: { cmsData?: Record<string, unknown> | null } = {}) {
     const { settings } = useSettings();
     const getImageUrl = useImageUrl();
+    const [fetchedCms, setFetchedCms] = useState<Record<string, unknown> | null>(null);
+    const cms = cmsData || fetchedCms;
+
+    useEffect(() => {
+        if (cmsData) return;
+        let active = true;
+        api.get("/front-cms/settings")
+            .then((res) => {
+                if (active && res.data?.data) {
+                    setFetchedCms(res.data.data);
+                }
+            })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [cmsData]);
+
+    const isMadrasha = isMadrashaTemplate(settings, cms);
+    const hfs = (cms?.header_footer_sections as Record<string, unknown>) || {};
 
     // Determine School Main Logo & Admin Small Logo
     const mainLogoUrl = settings?.admin_logo || settings?.app_logo || settings?.print_logo;
     const smallLogoUrl = settings?.admin_small_logo || settings?.app_logo || settings?.admin_logo;
+
+    const madrasaName = (hfs?.madrasa_name_bn as string) || "আনোয়ারা বেগম মহিলা টাইটেল মাদ্রাসা";
+    const madrasaSlogan = (hfs?.madrasa_slogan as string) || "আল্লাহ প্রদত্ত ইলম অর্জনের মাধ্যমে আল্লাহ তায়ালার সন্তুষ্টি অর্জন।";
+    const contactAddress = isMadrasha
+        ? ((hfs?.madrasa_address as string) || settings?.address || "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230")
+        : (settings?.address || "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230");
+    const contactEmail = isMadrasha
+        ? ((hfs?.madrasa_email as string) || settings?.email || "smartideasbd24@gmail.com")
+        : (settings?.email || "smartideasbd24@gmail.com");
+    const contactPhone = isMadrasha
+        ? ((hfs?.madrasa_phone as string) || settings?.phone || "+8801851046320")
+        : (settings?.phone || "+8801851046320");
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start max-w-6xl mx-auto">
@@ -51,7 +82,7 @@ export function ContactFormSection() {
             <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-900/60 rounded-xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 space-y-6">
                 <div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                        School Information
+                        {isMadrasha ? "SCHOOL INFORMATION" : "School Information"}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Official contact details and location
@@ -60,43 +91,83 @@ export function ContactFormSection() {
 
                 {/* School Logos & School Title */}
                 <div className="space-y-3 pb-5 border-b border-slate-200 dark:border-slate-800">
-                    {/* Top: School Main Logo */}
-                    {mainLogoUrl ? (
-                        <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700/80 inline-flex items-center justify-center max-w-[240px] shadow-xs">
-                            <img
-                                src={getImageUrl(mainLogoUrl)}
-                                alt={settings?.school_name || "School Main Logo"}
-                                className="h-10 max-h-12 w-auto object-contain"
-                            />
-                        </div>
-                    ) : null}
-
-                    {/* School Name & Admin Small Logo */}
-                    <div className="flex items-center gap-3.5 pt-1">
-                        {/* Admin Small Logo */}
-                        <div className="h-12 w-12 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1.5 shrink-0 shadow-xs">
-                            {smallLogoUrl ? (
+                    {isMadrasha ? (
+                        <>
+                            {/* Top: Madrasha Banner Logo */}
+                            <div className="p-2 bg-[#014739] rounded-lg border border-emerald-700/60 inline-flex items-center justify-center max-w-[280px] shadow-xs">
                                 <img
-                                    src={getImageUrl(smallLogoUrl)}
-                                    alt="Admin Small Logo"
-                                    className="max-h-full max-w-full object-contain"
+                                    src="/anwara-web-banner.png"
+                                    alt={madrasaName}
+                                    className="h-10 max-h-12 w-auto object-contain"
                                 />
-                            ) : (
-                                <GraduationCap className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                            )}
-                        </div>
+                            </div>
 
-                        <div>
-                            <h4 className="font-extrabold text-lg text-slate-900 dark:text-white tracking-tight leading-snug">
-                                {settings?.school_name || "Bhujpur Government Primary School"}
-                            </h4>
-                            {settings?.school_slogan && (
-                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
-                                    {settings.school_slogan}
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                            {/* Madrasa Name & Emblem */}
+                            <div className="flex items-center gap-3.5 pt-1">
+                                <div className="h-12 w-12 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1 shrink-0 shadow-xs overflow-hidden">
+                                    <img
+                                        src="/anwara-logo.png"
+                                        alt={madrasaName}
+                                        className="h-full w-full object-contain"
+                                        onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            if (!target.src.includes('/madrasha/')) {
+                                                target.src = '/madrasha/anwara-logo.png';
+                                            }
+                                        }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <h4 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight leading-snug">
+                                        {madrasaName}
+                                    </h4>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                                        {madrasaSlogan}
+                                    </p>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* Top: School Main Logo */}
+                            {mainLogoUrl ? (
+                                <div className="p-2.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700/80 inline-flex items-center justify-center max-w-[240px] shadow-xs">
+                                    <img
+                                        src={getImageUrl(mainLogoUrl)}
+                                        alt={settings?.school_name || "School Main Logo"}
+                                        className="h-10 max-h-12 w-auto object-contain"
+                                    />
+                                </div>
+                            ) : null}
+
+                            {/* School Name & Admin Small Logo */}
+                            <div className="flex items-center gap-3.5 pt-1">
+                                <div className="h-12 w-12 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center p-1.5 shrink-0 shadow-xs">
+                                    {smallLogoUrl ? (
+                                        <img
+                                            src={getImageUrl(smallLogoUrl)}
+                                            alt="Admin Small Logo"
+                                            className="max-h-full max-w-full object-contain"
+                                        />
+                                    ) : (
+                                        <GraduationCap className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                                    )}
+                                </div>
+
+                                <div>
+                                    <h4 className="font-extrabold text-lg text-slate-900 dark:text-white tracking-tight leading-snug">
+                                        {settings?.school_name || "Bhujpur Government Primary School"}
+                                    </h4>
+                                    {settings?.school_slogan && (
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                                            {settings.school_slogan}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Details List */}
@@ -109,7 +180,7 @@ export function ContactFormSection() {
                         <div className="text-sm">
                             <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Address:</span>
                             <span className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                                {settings?.address || "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230"}
+                                {contactAddress}
                             </span>
                         </div>
                     </div>
@@ -122,10 +193,10 @@ export function ContactFormSection() {
                         <div className="text-sm">
                             <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Email ID:</span>
                             <a
-                                href={`mailto:${settings?.email || "smartideasbd24@gmail.com"}`}
+                                href={`mailto:${contactEmail}`}
                                 className="text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium break-all transition-colors"
                             >
-                                {settings?.email || "smartideasbd24@gmail.com"}
+                                {contactEmail}
                             </a>
                         </div>
                     </div>
@@ -138,10 +209,10 @@ export function ContactFormSection() {
                         <div className="text-sm">
                             <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Cell Number:</span>
                             <a
-                                href={`tel:${settings?.phone || "+8801851046320"}`}
+                                href={`tel:${contactPhone.replace(/\s+/g, '')}`}
                                 className="text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 font-medium transition-colors"
                             >
-                                {settings?.phone || "+8801851046320"}
+                                {contactPhone}
                             </a>
                         </div>
                     </div>

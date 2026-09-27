@@ -5,7 +5,7 @@ import { Quote, ArrowRight, Sparkles } from "lucide-react";
 import { getImageUrl } from "@/lib/image-url";
 
 interface PrincipalSpeechSectionProps {
-    about?: any;
+    about?: Record<string, unknown>;
     schoolName?: string;
     sectionId?: string;
 }
