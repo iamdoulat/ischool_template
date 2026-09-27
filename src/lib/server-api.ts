@@ -6,7 +6,15 @@
 function getServerApiBaseUrl(): string {
     const publicUrl = process.env.NEXT_PUBLIC_API_URL;
     if (publicUrl) {
-        return publicUrl.replace(/\/+$/, "").replace("://localhost:8000", "://127.0.0.1:8000");
+        let url = publicUrl.replace(/\/+$/, "").replace("://localhost:8000", "://127.0.0.1:8000");
+        const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
+        if (process.env.NODE_ENV === "production" && !isLocal) {
+            url = url.replace(/^http:\/\//i, "https://");
+        }
+        if (!url.endsWith("/api/v1") && !url.includes("/api/v")) {
+            url = `${url}/api/v1`;
+        }
+        return url;
     }
 
     const internalUrl = process.env.INTERNAL_API_URL;

@@ -20,9 +20,12 @@ export function DocumentTitleSync() {
             const localFavicon = localStorage.getItem("ischool_favicon");
             const rawFavicon = settings?.favicon || localFavicon;
             if (rawFavicon) {
-                const resolvedFaviconUrl = getImageUrl(rawFavicon);
+                let resolvedFaviconUrl = getImageUrl(rawFavicon);
                 if (resolvedFaviconUrl) {
-                    const cacheBusted = `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                    if (window.location.protocol === "https:" && resolvedFaviconUrl.startsWith("http://")) {
+                        const isLocal = resolvedFaviconUrl.includes("localhost") || resolvedFaviconUrl.includes("127.0.0.1");
+                        if (!isLocal) resolvedFaviconUrl = resolvedFaviconUrl.replace(/^http:\/\//i, "https://");
+                    }
                     const existing = document.querySelectorAll<HTMLLinkElement>(
                         "link[rel='icon'], link[rel='shortcut icon']"
                     );
@@ -30,20 +33,22 @@ export function DocumentTitleSync() {
                         existing.forEach(el => {
                             const sizes = el.getAttribute("sizes");
                             if (sizes !== "192x192" && sizes !== "512x512") {
-                                el.href = cacheBusted;
+                                if (el.href !== resolvedFaviconUrl) {
+                                    el.href = resolvedFaviconUrl;
+                                }
                             }
                         });
                     } else {
                         const linkIcon = document.createElement("link");
                         linkIcon.rel = "icon";
                         linkIcon.type = "image/png";
-                        linkIcon.href = cacheBusted;
+                        linkIcon.href = resolvedFaviconUrl;
                         document.head.appendChild(linkIcon);
                     }
                 }
             }
         }
-    }, [pathname, settings, loading, t]);
+    }, [pathname, settings?.favicon, settings?.school_name, loading, t]);
 
     return null;
 }

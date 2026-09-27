@@ -90,6 +90,8 @@ const nextConfig: NextConfig = {
       apiOrigin,
       "https:",
       "http:",
+      "data:",
+      "blob:",
     ].filter(Boolean).join(" ");
 
     return [
@@ -102,7 +104,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self' data: blob:; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: http: https:; font-src 'self' data: https:; connect-src ${connectOrigins}; media-src 'self' data: blob: http: https:; object-src 'none'; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'self'; base-uri 'self'; form-action 'self' http: https:;`.replace(/\s{2,}/g, " ").trim(),
+            value: `default-src 'self' data: blob: https:; script-src 'self' 'unsafe-eval' 'unsafe-inline' blob: https:; script-src-elem 'self' 'unsafe-eval' 'unsafe-inline' blob: https:; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; img-src 'self' data: blob: http: https:; font-src 'self' data: https:; connect-src ${connectOrigins}; media-src 'self' data: blob: http: https:; object-src 'none'; worker-src 'self' blob:; child-src 'self' blob: https:; frame-src 'self' blob: data: https:; frame-ancestors 'self'; base-uri 'self'; form-action 'self' http: https:;`.replace(/\s{2,}/g, " ").trim(),
           },
           {
             key: "Permissions-Policy",
@@ -150,11 +152,16 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    const rawBackendUrl = (process.env.NEXT_PUBLIC_API_URL
+    let rawBackendUrl = (process.env.NEXT_PUBLIC_API_URL
       ? process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "").replace(/\/api\/v1\/?$/, "")
       : "") || (process.env.INTERNAL_API_URL
       ? process.env.INTERNAL_API_URL.replace(/\/+$/, "").replace(/\/api\/v1\/?$/, "")
       : "") || (process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000");
+
+    const isLocal = rawBackendUrl.includes("localhost") || rawBackendUrl.includes("127.0.0.1");
+    if (process.env.NODE_ENV === "production" && !isLocal) {
+      rawBackendUrl = rawBackendUrl.replace(/^http:\/\//i, "https://");
+    }
     const backendUrl = rawBackendUrl.replace("://localhost:8000", "://127.0.0.1:8000");
     return [
       {

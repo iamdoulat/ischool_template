@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ischool-pwa-v11';
+const CACHE_NAME = 'ischool-pwa-v12';
 
 const urlsToCache = [
   '/',
@@ -53,6 +53,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Only handle same-origin requests in Service Worker (let browser handle external CDNs, analytics, extensions natively)
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   // Skip all Next.js build assets, static chunks, HMR, APIs, and dev files
   if (
     url.pathname.startsWith('/_next') ||
@@ -99,20 +104,24 @@ self.addEventListener('fetch', (event) => {
       if (response) {
         return response;
       }
-      return fetch(event.request).then((networkResponse) => {
-        if (
-          !networkResponse ||
-          networkResponse.status !== 200 ||
-          networkResponse.type !== 'basic'
-        ) {
+      return fetch(event.request)
+        .then((networkResponse) => {
+          if (
+            !networkResponse ||
+            networkResponse.status !== 200 ||
+            networkResponse.type !== 'basic'
+          ) {
+            return networkResponse;
+          }
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache).catch(() => {});
+          }).catch(() => {});
           return networkResponse;
-        }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache).catch(() => {});
-        }).catch(() => {});
-        return networkResponse;
-      });
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        });
     })
   );
 });

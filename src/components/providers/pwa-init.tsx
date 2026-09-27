@@ -104,8 +104,11 @@ export function PWAInit() {
     document.cookie = `pwa_app_short_name=${encodeURIComponent(appShortName)}; path=/; max-age=31536000; SameSite=Lax`;
 
     const rawFavicon = settings?.favicon || localFavicon || "/icons/icon-192x192.png";
-    const resolvedFaviconUrl = getImageUrl(rawFavicon) || "/icons/icon-192x192.png";
-    const faviconHref = `${resolvedFaviconUrl}${resolvedFaviconUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+    let resolvedFaviconUrl = getImageUrl(rawFavicon) || "/icons/icon-192x192.png";
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && resolvedFaviconUrl.startsWith("http://")) {
+      const isLocal = resolvedFaviconUrl.includes("localhost") || resolvedFaviconUrl.includes("127.0.0.1");
+      if (!isLocal) resolvedFaviconUrl = resolvedFaviconUrl.replace(/^http:\/\//i, "https://");
+    }
 
     // User requirement: PWA icon must prioritize 'PWA Icon (512x512)'
     const rawPwaIcon512 = settings?.pwa_icon_512 || localIcon512 || settings?.pwa_icon_192 || localIcon192 || "/icons/icon-512x512.png";
@@ -115,8 +118,16 @@ export function PWAInit() {
       document.cookie = `pwa_icon_512=${encodeURIComponent(rawPwaIcon512)}; path=/; max-age=31536000; SameSite=Lax`;
     }
 
-    const appIcon = getImageUrl(rawPwaIcon192) || "/icons/icon-192x192.png";
-    const appIcon512 = getImageUrl(rawPwaIcon512) || "/icons/icon-512x512.png";
+    let appIcon = getImageUrl(rawPwaIcon192) || "/icons/icon-192x192.png";
+    let appIcon512 = getImageUrl(rawPwaIcon512) || "/icons/icon-512x512.png";
+    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      if (appIcon.startsWith("http://") && !appIcon.includes("localhost") && !appIcon.includes("127.0.0.1")) {
+        appIcon = appIcon.replace(/^http:\/\//i, "https://");
+      }
+      if (appIcon512.startsWith("http://") && !appIcon512.includes("localhost") && !appIcon512.includes("127.0.0.1")) {
+        appIcon512 = appIcon512.replace(/^http:\/\//i, "https://");
+      }
+    }
 
     // 1. Safely sync Browser Main Favicon, Apple Touch Icon and Dynamic Manifest link tags
     const updateFavicon = (href: string) => {
@@ -127,7 +138,9 @@ export function PWAInit() {
         existingIcons.forEach((el) => {
           const sizes = el.getAttribute("sizes");
           if (sizes !== "192x192" && sizes !== "512x512") {
-            el.href = href;
+            if (el.href !== href) {
+              el.href = href;
+            }
           }
         });
       } else {
@@ -139,11 +152,13 @@ export function PWAInit() {
       }
     };
 
-    updateFavicon(faviconHref);
+    updateFavicon(resolvedFaviconUrl);
 
     let appleTouchLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
     if (appleTouchLink) {
-      appleTouchLink.href = appIcon512;
+      if (appleTouchLink.href !== appIcon512) {
+        appleTouchLink.href = appIcon512;
+      }
     } else {
       appleTouchLink = document.createElement("link");
       appleTouchLink.rel = "apple-touch-icon";

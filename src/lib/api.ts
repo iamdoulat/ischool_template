@@ -9,6 +9,7 @@ declare module 'axios' {
         skipGlobalErrorHandler?: boolean;
         skipCache?: boolean;
         cacheTTL?: number; // Milliseconds to cache
+        _retriedWithProxy?: boolean;
     }
 }
 
@@ -16,7 +17,15 @@ const getBaseUrl = () => {
     // On server (SSR, Server Actions, RSC): Call backend directly
     if (typeof window === 'undefined') {
         if (process.env.NEXT_PUBLIC_API_URL) {
-            return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '').replace('://localhost:8000', '://127.0.0.1:8000');
+            let url = process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '').replace('://localhost:8000', '://127.0.0.1:8000');
+            const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
+            if (process.env.NODE_ENV === 'production' && !isLocal) {
+                url = url.replace(/^http:\/\//i, 'https://');
+            }
+            if (!url.endsWith('/api/v1') && !url.includes('/api/v')) {
+                url = `${url}/api/v1`;
+            }
+            return url;
         }
         if (process.env.INTERNAL_API_URL) return process.env.INTERNAL_API_URL.replace(/\/+$/, '');
         return 'http://127.0.0.1:8000/api/v1';
@@ -30,7 +39,18 @@ const getBaseUrl = () => {
 
     // If an explicit absolute API URL is provided, use it directly (eliminating Vercel 4.5MB proxy limits)
     if (process.env.NEXT_PUBLIC_API_URL && /^https?:\/\//i.test(process.env.NEXT_PUBLIC_API_URL)) {
-        return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+        let apiUrl = process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+        // On HTTPS pages, force https: for remote APIs to eliminate browser Mixed Content blockage
+        if (window.location.protocol === 'https:' && apiUrl.startsWith('http://')) {
+            const isLocal = apiUrl.includes('localhost') || apiUrl.includes('127.0.0.1');
+            if (!isLocal) {
+                apiUrl = apiUrl.replace(/^http:\/\//i, 'https://');
+            }
+        }
+        if (!apiUrl.endsWith('/api/v1') && !apiUrl.includes('/api/v')) {
+            apiUrl = `${apiUrl}/api/v1`;
+        }
+        return apiUrl;
     }
 
     // Fallback: Route through Next.js reverse proxy (/api/v1) on current origin
@@ -138,6 +158,22 @@ api.interceptors.request.use(async (config) => {
 
     const method = config.method?.toLowerCase();
 
+    // Ensure HTTPS on HTTPS pages for remote endpoints to prevent browser Mixed Content blockage
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        if (config.baseURL && config.baseURL.startsWith('http://')) {
+            const isLocal = config.baseURL.includes('localhost') || config.baseURL.includes('127.0.0.1');
+            if (!isLocal) {
+                config.baseURL = config.baseURL.replace(/^http:\/\//i, 'https://');
+            }
+        }
+        if (config.url && config.url.startsWith('http://')) {
+            const isLocal = config.url.includes('localhost') || config.url.includes('127.0.0.1');
+            if (!isLocal) {
+                config.url = config.url.replace(/^http:\/\//i, 'https://');
+            }
+        }
+    }
+
     // Invalidate cache on write operations (mutations)
     if (method && ['post', 'put', 'patch', 'delete'].includes(method)) {
         clearApiCache();
@@ -174,6 +210,19 @@ api.interceptors.response.use(
             if (axios.isCancel?.(error) || error.code === 'ERR_CANCELED') {
                 return Promise.reject(error);
             }
+
+            // Retry with Next.js same-origin reverse proxy if direct cross-origin API call failed with Network Error
+            const isBrowser = typeof window !== 'undefined';
+            const isNotRetried = !config?._retriedWithProxy;
+            const currentOrigin = isBrowser ? window.location.origin : '';
+            const isCrossOrigin = isBrowser && config?.baseURL && !config.baseURL.startsWith(currentOrigin);
+
+            if (isBrowser && isNotRetried && isCrossOrigin) {
+                config._retriedWithProxy = true;
+                config.baseURL = `${currentOrigin}/api/v1`;
+                return api(config);
+            }
+
             const method = config?.method?.toLowerCase();
             if (typeof window !== 'undefined' && method && method !== 'get') {
                 toast.error('Cannot reach the server. Please check that the API is running and try again.');

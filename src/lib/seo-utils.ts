@@ -29,12 +29,17 @@ export interface SchoolSeoData {
 }
 
 export async function getSchoolSeoData(): Promise<SchoolSeoData> {
-  const baseUrl = (
+  let baseUrl = (
     process.env.NEXT_PUBLIC_FRONTEND_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
     "http://localhost:3000"
   ).replace(/\/+$/, "");
+
+  const isLocal = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
+  if (process.env.NODE_ENV === "production" && !isLocal) {
+    baseUrl = baseUrl.replace(/^http:\/\//i, "https://");
+  }
 
   const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
   const isMadrasha =

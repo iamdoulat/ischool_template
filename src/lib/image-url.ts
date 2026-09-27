@@ -36,7 +36,10 @@ export function getImageUrl(
     .replace(/\/+$/, "")
     .replace(/\/api\/v1\/?$/, "");
 
-  if (typeof window !== "undefined" && window.location.protocol === "https:" && !isLocalHost) {
+  const isHttpsContext = (typeof window !== "undefined" && window.location.protocol === "https:") ||
+    (process.env.NODE_ENV === "production" && !isLocalHost);
+
+  if (isHttpsContext && domain && !domain.includes("localhost") && !domain.includes("127.0.0.1")) {
     domain = domain.replace(/^http:\/\//i, "https://");
   }
 
@@ -47,15 +50,23 @@ export function getImageUrl(
 
     if (storageIdx !== -1) {
       const rel = cleanPath.substring(storageIdx + 9).replace(/^\/+/, '');
-      return domain ? `${domain}/storage/${rel}` : `/storage/${rel}`;
+      let res = domain ? `${domain}/storage/${rel}` : `/storage/${rel}`;
+      if (isHttpsContext && !res.includes("localhost") && !res.includes("127.0.0.1")) {
+        res = res.replace(/^http:\/\//i, "https://");
+      }
+      return res;
     }
     if (uploadsIdx !== -1) {
       const rel = cleanPath.substring(uploadsIdx + 9).replace(/^\/+/, '');
-      return domain ? `${domain}/uploads/${rel}` : `/uploads/${rel}`;
+      let res = domain ? `${domain}/uploads/${rel}` : `/uploads/${rel}`;
+      if (isHttpsContext && !res.includes("localhost") && !res.includes("127.0.0.1")) {
+        res = res.replace(/^http:\/\//i, "https://");
+      }
+      return res;
     }
 
-    // External absolute URL (S3, CDN, etc.) - upgrade http to https if window is https
-    if (typeof window !== "undefined" && window.location.protocol === "https:") {
+    // External absolute URL (S3, CDN, etc.) - upgrade http to https if context is https
+    if (isHttpsContext && !cleanPath.includes("localhost") && !cleanPath.includes("127.0.0.1")) {
       return cleanPath.replace(/^http:\/\//i, "https://");
     }
     return cleanPath;
@@ -73,11 +84,19 @@ export function getImageUrl(
 
   if (cleanPath.startsWith('uploads/') || cleanPath.startsWith('/uploads/')) {
     const rel = cleanPath.replace(/^\/?uploads\//i, '');
-    return domain ? `${domain}/uploads/${rel}` : `/uploads/${rel}`;
+    let res = domain ? `${domain}/uploads/${rel}` : `/uploads/${rel}`;
+    if (isHttpsContext && !res.includes("localhost") && !res.includes("127.0.0.1")) {
+      res = res.replace(/^http:\/\//i, "https://");
+    }
+    return res;
   }
 
   cleanPath = cleanPath.replace(/^\/+/, '');
-  return domain ? `${domain}/storage/${cleanPath}` : `/storage/${cleanPath}`;
+  let res = domain ? `${domain}/storage/${cleanPath}` : `/storage/${cleanPath}`;
+  if (isHttpsContext && !res.includes("localhost") && !res.includes("127.0.0.1")) {
+    res = res.replace(/^http:\/\//i, "https://");
+  }
+  return res;
 }
 
 import { useSettings } from "@/components/providers/settings-provider";
@@ -93,7 +112,9 @@ export function useBaseUrl() {
   let url = settings.base_url
     ? settings.base_url.replace(/\/+$/, "")
     : (process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000"));
-  if (typeof window !== "undefined" && window.location.protocol === "https:") {
+  const isLocal = url.includes("localhost") || url.includes("127.0.0.1");
+  const isHttps = (typeof window !== "undefined" && window.location.protocol === "https:") || (process.env.NODE_ENV === "production" && !isLocal);
+  if (isHttps) {
     url = url.replace(/^http:\/\//i, "https://");
   }
   return url;

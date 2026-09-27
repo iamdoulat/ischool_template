@@ -14,7 +14,15 @@ export default async function Icon() {
 
     try {
         const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
-        const apiUrl = rawApiUrl.replace(/\/+$/, "");
+        let apiUrl = rawApiUrl.replace(/\/+$/, "");
+        const isLocal = apiUrl.includes("localhost") || apiUrl.includes("127.0.0.1");
+        if (process.env.NODE_ENV === "production" && !isLocal) {
+            apiUrl = apiUrl.replace(/^http:\/\//i, "https://");
+        }
+        if (!apiUrl.endsWith("/api/v1") && !apiUrl.includes("/api/v")) {
+            apiUrl = `${apiUrl}/api/v1`;
+        }
+
         const res = await fetch(`${apiUrl}/system-setting/general-setting`, {
             next: { revalidate: 15 },
             headers: { Accept: "application/json" },
@@ -26,9 +34,12 @@ export default async function Icon() {
             const settings = json.data || json;
             const raw = settings.favicon || settings.app_favicon || settings.admin_small_logo || settings.app_logo;
             if (raw) {
-                const domain = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000")
+                let domain = (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000")
                     .replace(/\/+$/, "")
                     .replace(/\/api\/v1\/?$/, "");
+                if (process.env.NODE_ENV === "production" && !domain.includes("localhost") && !domain.includes("127.0.0.1")) {
+                    domain = domain.replace(/^http:\/\//i, "https://");
+                }
                 faviconUrl = getImageUrl(raw, settings.base_url || domain);
                 if (faviconUrl && !faviconUrl.startsWith("http://") && !faviconUrl.startsWith("https://")) {
                     faviconUrl = `${domain}${faviconUrl.startsWith("/") ? "" : "/"}${faviconUrl}`;
