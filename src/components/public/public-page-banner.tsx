@@ -38,7 +38,14 @@ export function PublicPageBanner({
   const { settings } = useSettings();
   const { t } = useTranslation();
 
+  const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+  const isHostMadrasha =
+    typeof window !== "undefined" &&
+    (window.location.hostname.includes("madrasha") || window.location.hostname.includes("madrasa"));
+
   const isMadrasha =
+    envTemplate === "imadrasha" ||
+    isHostMadrasha ||
     settings?.website_template === "imadrasha" ||
     cmsData?.website_template === "imadrasha" ||
     (cmsData?.header_footer_sections as Record<string, unknown>)?.website_template === "imadrasha";
@@ -69,7 +76,7 @@ export function PublicPageBanner({
   const finalBadgeText = badgeText || defaultBadgeText;
   const finalBadgeIcon = badgeIcon || defaultBadgeIcon;
   const currentBreadcrumb = breadcrumbTitle || title;
-  const baseUrl = (process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || "https://ischool.coolify.mddoulat.com").replace(/\/+$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000")).replace(/\/+$/, "");
 
   // Schema.org BreadcrumbList structured data for search engine rich results
   const breadcrumbSchema = {

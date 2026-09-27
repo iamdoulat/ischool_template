@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import api from "@/lib/api";
 import { getImageUrl } from "@/lib/image-url";
 
-const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://api.ischool.mddoulat.com").replace(/\/api\/v1\/?$/, "");
+const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : "http://127.0.0.1:8000")).replace(/\/api\/v1\/?$/, "");
 const fallbackFrontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : "http://localhost:3000");
 
 interface GeneralSettings {
@@ -82,11 +82,17 @@ interface GeneralSettings {
 }
 
 function createDefaultSettings(): GeneralSettings {
+    const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+    const isMadrasha =
+        envTemplate === "imadrasha" ||
+        (typeof window !== "undefined" && (window.location.hostname.includes("madrasha") || window.location.hostname.includes("madrasa")));
+
     return {
-        school_name: "iSchool Management System",
+        school_name: process.env.NEXT_PUBLIC_APP_NAME || (isMadrasha ? "iMadrasha Management System" : "iSchool Management System"),
         header_desktop_font_size: "22",
         header_mobile_font_size: "14",
-        school_slogan: "Excellence in Education",
+        school_slogan: isMadrasha ? "দ্বীনি ও আধুনিক শিক্ষার সমন্বয়" : "Excellence in Education",
+        website_template: isMadrasha ? "imadrasha" : "ischool",
         school_description: "Comprehensive School Management System & Educational Portal empowering students with modern digital learning and administrative efficiency.",
         school_code: "ISCHOOL-BD",
         address: "House 42, Road 11, Banani, Dhaka-1213, Bangladesh",
@@ -213,6 +219,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 }
                 if (!normalizedData.base_url) {
                     normalizedData.base_url = normalizedData.frontend_url || fallbackFrontendUrl;
+                }
+
+                // If this deployment is explicitly targeted for iMadrasha or running under madrasha domain
+                const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+                const isHostMadrasha =
+                    typeof window !== "undefined" &&
+                    (window.location.hostname.includes("madrasha") || window.location.hostname.includes("madrasa"));
+                if (envTemplate || isHostMadrasha) {
+                    normalizedData.website_template = envTemplate || "imadrasha";
+                }
+                if (process.env.NEXT_PUBLIC_APP_NAME) {
+                    normalizedData.school_name = process.env.NEXT_PUBLIC_APP_NAME;
                 }
 
                 // Resolve logo & background image paths to absolute URLs if uploaded

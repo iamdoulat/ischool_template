@@ -32,13 +32,23 @@ export async function getSchoolSeoData(): Promise<SchoolSeoData> {
   const baseUrl = (
     process.env.NEXT_PUBLIC_FRONTEND_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
-    "https://ischool.coolify.mddoulat.com"
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
+    "http://localhost:3000"
   ).replace(/\/+$/, "");
 
+  const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+  const isMadrasha =
+    envTemplate === "imadrasha" ||
+    Boolean(process.env.VERCEL_URL && (process.env.VERCEL_URL.includes("madrasha") || process.env.VERCEL_URL.includes("madrasa")));
+
+  const schoolName = process.env.NEXT_PUBLIC_APP_NAME || (isMadrasha ? "iMadrasha" : "iSchool");
+  const schoolDescription = isMadrasha
+    ? "ইসলামিক শিক্ষা ও মাদ্রাসা ব্যবস্থাপনা সিস্টেম এবং অনলাইন পোর্টাল।"
+    : "Comprehensive School Management System & Educational Institution Portal providing online admissions, examination results, student tracking, attendance, fees collection, and digital notices.";
+
   const data: SchoolSeoData = {
-    schoolName: "iSchool",
-    schoolDescription:
-      "Comprehensive School Management System & Educational Institution Portal providing online admissions, examination results, student tracking, attendance, fees collection, and digital notices.",
+    schoolName,
+    schoolDescription,
     logoUrl: `${baseUrl}/logo-admin.png`,
     faviconUrl: `${baseUrl}/logo-admin-small.png`,
     phone: "+8801851046320",
@@ -127,8 +137,11 @@ export async function getSchoolSeoData(): Promise<SchoolSeoData> {
     }
 
     const cms = cmsRes.data;
-    if (cms) {
-      if (cms.website_template) data.websiteTemplate = cms.website_template;
+      if (envTemplate || isMadrasha) {
+        data.websiteTemplate = "imadrasha";
+      } else if (cms.website_template) {
+        data.websiteTemplate = cms.website_template;
+      }
       if (cms.header_code || cms.header_footer_sections?.header_code) {
         data.headerCode = cms.header_code || cms.header_footer_sections?.header_code;
       }

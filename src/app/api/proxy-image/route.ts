@@ -10,7 +10,9 @@ export async function GET(req: NextRequest) {
         let targetUrl = rawUrl;
 
         const backendBaseUrl = (
-            process.env.NEXT_PUBLIC_API_URL || "https://api.ischool.mddoulat.com"
+            process.env.INTERNAL_API_URL ||
+            process.env.NEXT_PUBLIC_API_URL ||
+            (process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000")
         )
             .replace(/\/+$/, "")
             .replace(/\/api\/v1\/?$/, "");

@@ -596,16 +596,17 @@ export default function QrCodeSettingPage() {
     };
 
     const getAdmsHost = () => {
+        if (process.env.NEXT_PUBLIC_API_URL) {
+            try {
+                return new URL(process.env.NEXT_PUBLIC_API_URL).hostname;
+            } catch {}
+        }
         if (typeof window !== "undefined") {
             const h = window.location.hostname;
             if (h === "localhost" || h === "127.0.0.1") return "192.168.1.48";
-            // If viewing on Coolify or custom frontend domain, point to the real Laravel backend API host!
-            if (h.includes("coolify") || h.includes("mddoulat.com") || h.includes("school")) {
-                return "api.ischool.mddoulat.com";
-            }
             return h;
         }
-        return "api.ischool.mddoulat.com";
+        return "127.0.0.1";
     };
 
     const getAdmsPort = () => {
@@ -1677,7 +1678,7 @@ export default function QrCodeSettingPage() {
                                                 </div>
                                                 <div className="bg-white/90 p-2 rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
                                                     <span className="font-semibold text-slate-700">2. {t("zkteco_triangle_step2_label") || "Server Address"}:</span>
-                                                    <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 select-all">api.ischool.mddoulat.com</span>
+                                                    <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 select-all">{getAdmsHost()}</span>
                                                 </div>
                                                 <div className="bg-white/90 p-2 rounded-lg border border-amber-200 flex items-center justify-between text-[11px]">
                                                     <span className="font-semibold text-slate-700">3. {t("zkteco_triangle_step3_label") || "Server Port"}:</span>

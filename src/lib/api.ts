@@ -13,15 +13,26 @@ declare module 'axios' {
 }
 
 const getBaseUrl = () => {
-    // In browser: Route through Next.js reverse proxy (/api/v1) on the current origin
-    // This hides backend port/IP from browser devtools and eliminates CORS
-    if (typeof window !== 'undefined') {
+    // On server (SSR, Server Actions, RSC): Call backend directly
+    if (typeof window === 'undefined') {
+        if (process.env.INTERNAL_API_URL) return process.env.INTERNAL_API_URL.replace(/\/+$/, '');
+        if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+        return 'http://127.0.0.1:8000/api/v1';
+    }
+
+    // In browser:
+    // If NEXT_PUBLIC_USE_PROXY="true" is set, explicitly route through Next.js reverse proxy (/api/v1)
+    if (process.env.NEXT_PUBLIC_USE_PROXY === 'true') {
         return `${window.location.origin}/api/v1`;
     }
-    // On server (SSR, Server Actions, RSC): Call backend directly
-    if (process.env.INTERNAL_API_URL) return process.env.INTERNAL_API_URL;
-    if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-    return 'http://127.0.0.1:8000/api/v1';
+
+    // If an explicit absolute API URL is provided, use it directly (eliminating Vercel 4.5MB proxy limits)
+    if (process.env.NEXT_PUBLIC_API_URL && /^https?:\/\//i.test(process.env.NEXT_PUBLIC_API_URL)) {
+        return process.env.NEXT_PUBLIC_API_URL.replace(/\/+$/, '');
+    }
+
+    // Fallback: Route through Next.js reverse proxy (/api/v1) on current origin
+    return `${window.location.origin}/api/v1`;
 };
 
 const api = axios.create({

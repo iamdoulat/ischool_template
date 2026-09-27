@@ -149,7 +149,9 @@ function MobileRotatingContact({ settings, cmsSettings }: { settings?: Record<st
     const addressMountTime = useRef(0);
 
     const hfsRecord = (cmsSettings?.header_footer_sections as Record<string, unknown> | undefined);
-    const isMadrasha = cmsSettings?.website_template === "imadrasha";
+    const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+    const isHostMadrasha = typeof window !== 'undefined' && (window.location.hostname.includes('madrasha') || window.location.hostname.includes('madrasa'));
+    const isMadrasha = envTemplate === "imadrasha" || isHostMadrasha || cmsSettings?.website_template === "imadrasha";
     const phone = isMadrasha
         ? (hfsRecord?.madrasa_phone as string) || "+8801719606713"
         : (hfsRecord?.school_phone as string) || settings?.phone || "+8801851046320";
@@ -365,7 +367,9 @@ export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | 
         return "/dashboard";
     };
 
-    const isMadrasha = (cmsSettings?.website_template || (cmsSettings?.header_footer_sections as Record<string, unknown> | undefined)?.website_template) === "imadrasha";
+    const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+    const isHostMadrasha = typeof window !== 'undefined' && (window.location.hostname.includes('madrasha') || window.location.hostname.includes('madrasa'));
+    const isMadrasha = envTemplate === "imadrasha" || isHostMadrasha || (cmsSettings?.website_template || (cmsSettings?.header_footer_sections as Record<string, unknown> | undefined)?.website_template) === "imadrasha";
 
     const defaultNavItems = isMadrasha ? [
         { name: "প্রচ্ছদ", href: "/#hero" },

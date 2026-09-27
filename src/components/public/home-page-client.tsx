@@ -105,10 +105,16 @@ export function HomePageClient({
   const [banners] = useState<BannerItem[]>(initialBanners);
   const [viewNotice, setViewNotice] = useState<NoticeItem | null>(null);
 
-  const currentTemplate =
-    cms?.website_template || cms?.header_footer_sections?.website_template || "ischool";
+  const envTemplate = process.env.NEXT_PUBLIC_WEBSITE_TEMPLATE;
+  const isHostMadrasha =
+    typeof window !== "undefined" &&
+    (window.location.hostname.includes("madrasha") || window.location.hostname.includes("madrasa"));
 
-  // If the admin chose the iMadrasha template, render the authentic Madrasa layout
+  const currentTemplate =
+    envTemplate ||
+    (isHostMadrasha ? "imadrasha" : (cms?.website_template || cms?.header_footer_sections?.website_template || "ischool"));
+
+  // If the admin chose or domain specified the iMadrasha template, render the authentic Madrasa layout
   if (currentTemplate === "imadrasha") {
     return <MadrashaTemplate cms={cms} notices={notices} banners={banners} />;
   }

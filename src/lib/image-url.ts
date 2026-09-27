@@ -20,9 +20,14 @@ export function getImageUrl(
     ? (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}:8000` : "http://localhost:8000")
     : (typeof window !== "undefined" ? `${window.location.protocol}//${window.location.hostname}` : "");
 
+  const apiHost = process.env.NEXT_PUBLIC_API_URL ? (() => {
+    try { return new URL(process.env.NEXT_PUBLIC_API_URL).hostname; } catch { return ""; }
+  })() : "";
+
   const isRemotePlaceholder = baseUrl && (
+    baseUrl.includes("example.com") ||
     baseUrl.includes("ischool.mddoulat.com") ||
-    baseUrl.includes("example.com")
+    (Boolean(apiHost) && baseUrl.includes(apiHost) && isLocalHost && !apiHost.includes("localhost") && !apiHost.includes("127.0.0.1"))
   );
 
   let domain = (
@@ -87,7 +92,7 @@ export function useBaseUrl() {
   const { settings } = useSettings();
   let url = settings.base_url
     ? settings.base_url.replace(/\/+$/, "")
-    : (process.env.NEXT_PUBLIC_API_URL || "https://api.ischool.mddoulat.com").replace(/\/api\/v1\/?$/, "");
+    : (process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") || (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000"));
   if (typeof window !== "undefined" && window.location.protocol === "https:") {
     url = url.replace(/^http:\/\//i, "https://");
   }
