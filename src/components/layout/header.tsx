@@ -764,7 +764,8 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                         if (
                             key &&
                             (preservedKeys.includes(key) ||
-                                key.startsWith("app_language_") ||
+                                key.startsWith("selected_language") ||
+                                key.startsWith("app_language") ||
                                 key.startsWith("currency_") ||
                                 key.startsWith("ischool_"))
                         ) {
@@ -948,6 +949,16 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                                 variant="ghost"
                                 onClick={() => {
                                     setSelectedLanguage(lang);
+                                    if (typeof window !== "undefined") {
+                                        const raw = JSON.stringify(lang);
+                                        localStorage.setItem("selected_language", raw);
+                                        localStorage.setItem("selected_language_public", raw);
+                                        localStorage.setItem("selected_language_code", lang.short_code);
+                                        if (user?.id) {
+                                            localStorage.setItem(`selected_language_user_${user.id}`, raw);
+                                        }
+                                        document.cookie = `app_language=${lang.short_code}; path=/; max-age=31536000; SameSite=Lax`;
+                                    }
                                     onLanguageChange?.();
                                 }}
                                 className={cn(

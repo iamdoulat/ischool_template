@@ -124,20 +124,41 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
     const loadLanguageForUser = useCallback(async (user: UserRecord) => {
         const key = getStorageKey(user);
         
-        // Clean up legacy global un-scoped key if present
-        if (typeof window !== 'undefined' && localStorage.getItem("selected_language")) {
-            localStorage.removeItem("selected_language");
-        }
+        let savedLanguage = typeof window !== 'undefined' ? (
+            localStorage.getItem(key) ||
+            localStorage.getItem("selected_language") ||
+            localStorage.getItem("selected_language_public")
+        ) : null;
 
-        const savedLanguage = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
         if (savedLanguage) {
             try {
                 const parsed = JSON.parse(savedLanguage);
-                applyLanguage(parsed);
-                setLoading(false);
-                return;
+                if (parsed && parsed.short_code) {
+                    applyLanguage(parsed);
+                    setLoading(false);
+                    return;
+                }
             } catch (e) {
                 console.error("Failed to parse saved language for key " + key, e);
+            }
+        }
+
+        // Check app_language cookie fallback
+        if (typeof document !== 'undefined') {
+            const cookieMatch = document.cookie.match(/(?:^|;\s*)app_language=([^;]+)/);
+            if (cookieMatch && cookieMatch[1]) {
+                const cookieCode = cookieMatch[1].trim();
+                const matched = [
+                    { id: 1, name: "English", short_code: "en", country_code: "us", is_rtl: false, is_active: true, is_enabled: true },
+                    { id: 2, name: "Bengali", short_code: "bn", country_code: "bd", is_rtl: false, is_active: true, is_enabled: true },
+                    { id: 3, name: "Arabic", short_code: "ar", country_code: "sa", is_rtl: true, is_active: true, is_enabled: true },
+                    { id: 4, name: "Hindi", short_code: "hi", country_code: "in", is_rtl: false, is_active: true, is_enabled: true }
+                ].find(l => l.short_code === cookieCode);
+                if (matched) {
+                    applyLanguage(matched);
+                    setLoading(false);
+                    return;
+                }
             }
         }
 
@@ -197,9 +218,12 @@ export const LanguageProvider = ({ children }: { children: React.ReactNode }) =>
         applyLanguage(lang);
         const key = getStorageKey(currentUser);
         if (typeof window !== 'undefined') {
-            localStorage.setItem(key, JSON.stringify(lang));
-            // Ensure old legacy key is removed
-            localStorage.removeItem("selected_language");
+            const raw = JSON.stringify(lang);
+            localStorage.setItem(key, raw);
+            localStorage.setItem("selected_language", raw);
+            localStorage.setItem("selected_language_public", raw);
+            localStorage.setItem("selected_language_code", lang.short_code);
+            document.cookie = `app_language=${lang.short_code}; path=/; max-age=31536000; SameSite=Lax`;
         }
     };
 
