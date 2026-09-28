@@ -766,6 +766,10 @@ export default function GeneralSettingPage() {
         const updatedData = { ...formData, [field]: newUrl };
         setFormData(updatedData);
         updateSettingsLocal({ [field]: newUrl });
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent("ischool_logo_updated", { detail: { field, newUrl } }));
+            window.dispatchEvent(new Event("storage"));
+        }
         handleSave(updatedData);
     };
 

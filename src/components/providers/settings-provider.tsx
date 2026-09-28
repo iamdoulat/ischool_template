@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import api from "@/lib/api";
-import { getImageUrl } from "@/lib/image-url";
 
 const fallbackBaseUrl = (process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000` : "http://127.0.0.1:8000")).replace(/\/api\/v1\/?$/, "");
 const fallbackFrontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || (typeof window !== 'undefined' ? window.location.origin : "http://localhost:3000");
@@ -78,7 +77,7 @@ interface GeneralSettings {
     enable_chat?: boolean;
     website?: string;
     url?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 function createDefaultSettings(): GeneralSettings {
@@ -189,9 +188,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         try {
             const response = await api.get("/system-setting/general-setting", { skipGlobalErrorHandler: true });
             if (response.data.status === "Success" || response.data.data || response.data) {
-                const incomingData = response.data.data || response.data || {};
+                const incomingData = (response.data.data || response.data || {}) as Record<string, unknown>;
                 const defaults = createDefaultSettings();
-                const normalizedData: Record<string, any> = { ...defaults };
+                const normalizedData: Record<string, unknown> = { ...defaults };
 
                 // Dynamically merge all backend setting properties
                 Object.keys(incomingData).forEach(key => {
@@ -214,7 +213,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 });
 
                 // Ensure frontend_url and base_url have valid fallbacks if empty
-                if (!normalizedData.frontend_url || normalizedData.frontend_url.includes('8000')) {
+                if (!normalizedData.frontend_url || (typeof normalizedData.frontend_url === 'string' && normalizedData.frontend_url.includes('8000'))) {
                     normalizedData.frontend_url = fallbackFrontendUrl;
                 }
                 if (!normalizedData.base_url) {
@@ -233,8 +232,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     normalizedData.school_name = process.env.NEXT_PUBLIC_APP_NAME;
                 }
 
-                // Check localStorage fallbacks for custom PWA app short name, favicon, and icons if backend has defaults
+                // Check localStorage fallbacks for custom PWA app short name, favicon, logos, and icons if backend has defaults
                 if (typeof window !== "undefined") {
+                    const localAdminSmallLogo = localStorage.getItem("ischool_admin_small_logo");
+                    if (localAdminSmallLogo && (!normalizedData.admin_small_logo || normalizedData.admin_small_logo === '/logo-admin-small.png')) {
+                        normalizedData.admin_small_logo = localAdminSmallLogo;
+                    }
                     const localFavicon = localStorage.getItem("ischool_favicon");
                     if (localFavicon && (!normalizedData.favicon || normalizedData.favicon === '/logo-admin-small.png')) {
                         normalizedData.favicon = localFavicon;
@@ -256,13 +259,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                         normalizedData.pwa_icon_maskable = localIconMaskable;
                     }
                 }
-
-                // Resolve logo & background image paths to absolute URLs if uploaded
-                const imageFields = [
-                    'print_logo', 'admin_logo', 'admin_small_logo', 'app_logo', 'favicon',
-                    'login_page_background_admin', 'login_page_background_user',
-                    'pwa_icon_512', 'pwa_icon_192', 'pwa_icon_maskable'
-                ];
 
                 // Allow #ffffff for sidebar header background, while ensuring --primary CSS variable remains high contrast
                 const rawPrimary = normalizedData.primary_color;
@@ -319,6 +315,29 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     useEffect(() => {
         fetchSettings();
+
+        if (typeof window === "undefined") return;
+        const handleStorage = (e: StorageEvent | CustomEvent) => {
+            const key = (e as StorageEvent).key;
+            const newValue = (e as StorageEvent).newValue;
+            if (key === "ischool_admin_small_logo" && newValue) {
+                updateSettingsLocal({ admin_small_logo: newValue });
+            }
+        };
+        const handleCustomLogo = (e: Event) => {
+            const detail = (e as CustomEvent)?.detail;
+            if (detail?.field === "admin_small_logo" && detail?.newUrl) {
+                updateSettingsLocal({ admin_small_logo: detail.newUrl });
+            }
+        };
+
+        window.addEventListener("storage", handleStorage as EventListener);
+        window.addEventListener("ischool_logo_updated", handleCustomLogo);
+        return () => {
+            window.removeEventListener("storage", handleStorage as EventListener);
+            window.removeEventListener("ischool_logo_updated", handleCustomLogo);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (

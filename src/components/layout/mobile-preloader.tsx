@@ -24,6 +24,35 @@ export function MobilePreloader() {
   // Active path during navigation transition or current pathname
   const activePath = targetPathname || pathname;
 
+  const [logoVersion, setLogoVersion] = useState<number>(() => Date.now());
+  const [localAdminSmallLogo, setLocalAdminSmallLogo] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ischool_admin_small_logo");
+    }
+    return null;
+  });
+
+  // Listen for logo re-upload and storage events
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleLogoSync = () => {
+      const stored = localStorage.getItem("ischool_admin_small_logo");
+      if (stored) {
+        setLocalAdminSmallLogo(stored);
+      }
+      setLogoVersion(Date.now());
+      setLogoError(false);
+    };
+
+    window.addEventListener("storage", handleLogoSync);
+    window.addEventListener("ischool_logo_updated", handleLogoSync);
+    return () => {
+      window.removeEventListener("storage", handleLogoSync);
+      window.removeEventListener("ischool_logo_updated", handleLogoSync);
+    };
+  }, []);
+
   // Track portal type
   const isStudentPortal = activePath?.startsWith("/user");
   const isAdminPortal = activePath?.startsWith("/dashboard");
@@ -37,6 +66,7 @@ export function MobilePreloader() {
   // Resolve logo source: strictly prioritize 'Admin Small Logo' ('অ্যাডমিন ছোট লোগো')
   const rawLogo =
     settings?.admin_small_logo ||
+    localAdminSmallLogo ||
     (isMadrasha ? "/anwara-logo.png" : "") ||
     settings?.favicon ||
     settings?.app_logo ||
@@ -44,7 +74,18 @@ export function MobilePreloader() {
     settings?.print_logo ||
     "/logo-admin-small.png";
 
-  const logoSrc = getImageUrl(rawLogo, settings?.base_url);
+  // Automatically reset logo error whenever rawLogo updates (e.g. user re-uploaded logo)
+  useEffect(() => {
+    setLogoError(false);
+  }, [rawLogo]);
+
+  // Compute final logo URL with cache buster for uploaded assets so re-uploads reflect immediately
+  const resolvedLogoUrl = getImageUrl(rawLogo, settings?.base_url);
+  const logoSrc = resolvedLogoUrl
+    ? (resolvedLogoUrl.startsWith("data:") || resolvedLogoUrl.startsWith("blob:")
+        ? resolvedLogoUrl
+        : `${resolvedLogoUrl}${resolvedLogoUrl.includes("?") ? "&" : "?"}v=${logoVersion}`)
+    : "";
 
   // Check mobile viewport on mount and resize without synchronous effect state updates
   useEffect(() => {
