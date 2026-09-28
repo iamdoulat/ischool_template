@@ -198,7 +198,7 @@ export function PWAInstallButton({ className, variant = "ghost", showLabel = fal
               <p className="text-xs text-muted-foreground max-w-xs mx-auto">
                 {isStandalone
                   ? "You are already using the installed standalone application."
-                  : "Enjoy instant loading, offline capabilities, and a dedicated desktop window without browser tabs."}
+                  : "Enjoy instant loading, full screen app experience, and a dedicated desktop window without browser tabs."}
               </p>
             </div>
 

@@ -182,10 +182,10 @@ export function PWAInstallPrompt() {
 
             <div className="flex-1 min-w-0">
               <h4 className="text-xs font-bold text-foreground truncate">
-                Install {appName} App
+                Install {appName.toLowerCase().endsWith("app") ? appName : `${appName} App`}
               </h4>
               <p className="text-[11px] text-muted-foreground line-clamp-1">
-                {isIOS ? "Add to your iPhone Home Screen" : "Fast, offline & full screen app experience"}
+                {isIOS ? "Add to your iPhone Home Screen" : "Fast & full screen app experience"}
               </p>
             </div>
 
