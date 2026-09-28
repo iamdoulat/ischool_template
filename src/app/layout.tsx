@@ -44,6 +44,7 @@ import { ServerHeadCode } from "@/components/seo/server-head-code";
 import { ClientCodeInjector } from "@/components/seo/custom-code-injector";
 import { getSchoolSeoData } from "@/lib/seo-utils";
 import { MobilePreloader } from "@/components/layout/mobile-preloader";
+import { ScrollToTop } from "@/components/ui/scroll-to-top";
 
 export async function generateMetadata(): Promise<Metadata> {
   const info = await getSchoolSeoData();
@@ -188,6 +189,7 @@ export default async function RootLayout({
                     <PWAInit />
                     <MobilePreloader />
                     {children}
+                    <ScrollToTop />
                     <Toaster />
                     <SonnerToaster position="top-center" richColors />
                   </SettingsProvider>

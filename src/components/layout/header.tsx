@@ -254,7 +254,7 @@ function HeaderStudentSearch({ user }: { user?: any }) {
                 (ownFather && ownFather.includes(q))
             );
 
-            let finalResults: any[] = matchedPortalItems.map(item => ({
+            const finalResults: any[] = matchedPortalItems.map(item => ({
                 id: item.id,
                 title: item.title,
                 subtitle: item.subtitle,
@@ -740,7 +740,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
             if (typeof window !== "undefined" && window.sessionStorage) {
                 try {
                     window.sessionStorage.clear();
-                } catch (e) {}
+                } catch {}
             }
 
             // 4. Clean localStorage while preserving auth tokens, user roles, language & theme preferences, and system assets
@@ -826,16 +826,76 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
         } catch (error) {
             console.error("Logout failed:", error);
         } finally {
+            // 1. Unregister all active service workers on logout
+            if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of registrations) {
+                        await reg.unregister();
+                    }
+                } catch (e) {
+                    console.warn("ServiceWorker unregister failed:", e);
+                }
+            }
+
+            // 2. Clear browser CacheStorage on logout
+            if (typeof window !== "undefined" && "caches" in window) {
+                try {
+                    const keys = await window.caches.keys();
+                    await Promise.all(keys.map((k) => window.caches.delete(k)));
+                } catch (e) {
+                    console.warn("CacheStorage delete failed:", e);
+                }
+            }
+
+            // 3. Clear sessionStorage on logout
+            if (typeof window !== "undefined" && window.sessionStorage) {
+                try {
+                    window.sessionStorage.clear();
+                } catch {}
+            }
+
+            // 4. Clear auth tokens & user preferences while preserving system branding/assets
             await tokenManager.clearToken();
-            localStorage.removeItem("user_role");
-            localStorage.removeItem("pwa_start_url");
+            if (typeof window !== "undefined" && window.localStorage) {
+                try {
+                    const preservedKeys = [
+                        "theme",
+                        "active_branch_slug",
+                    ];
+                    const savedItems: Record<string, string> = {};
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (
+                            key &&
+                            (preservedKeys.includes(key) ||
+                                key.startsWith("currency_") ||
+                                key.startsWith("ischool_"))
+                        ) {
+                            const val = localStorage.getItem(key);
+                            if (val !== null) savedItems[key] = val;
+                        }
+                    }
+                    localStorage.clear();
+                    for (const [k, v] of Object.entries(savedItems)) {
+                        localStorage.setItem(k, v);
+                    }
+                } catch (e) {
+                    console.warn("LocalStorage clear on logout failed:", e);
+                }
+            }
+
             document.cookie = "pwa_start_url=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             document.cookie = "user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             setUserContext(null);
+
+            const targetUrl = new URL(loginUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+            targetUrl.searchParams.set("_t", Date.now().toString());
+
             if (typeof window !== 'undefined') {
-                window.location.href = loginUrl;
+                window.location.replace(targetUrl.toString());
             } else {
-                router.push(loginUrl);
+                router.push(targetUrl.toString());
             }
         }
     };

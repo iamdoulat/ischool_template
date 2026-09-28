@@ -10,6 +10,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { useTranslation } from "@/hooks/use-translation";
 import { useCurrency } from "@/components/providers/currency-provider";
+import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import {
     Wallet,
@@ -333,16 +334,22 @@ export default function DashboardPage() {
             {isSummaryVisible && visibleSummaryCards.length > 0 && (
             <section>
                 <SectionLabel>{t("headcount_roles")}</SectionLabel>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {visibleSummaryCards.map((c, i) => (
-                        <div
-                            key={c.key}
-                            className="animate-in fade-in slide-in-from-bottom-3 fill-mode-both"
-                            style={{ animationDelay: `${i * 40}ms`, animationDuration: "500ms" }}
-                        >
-                            <SummaryCard title={c.title} value={c.getValue()} icon={c.icon} color={c.color} />
-                        </div>
-                    ))}
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+                    {visibleSummaryCards.map((c, i) => {
+                        const isFullWidthOnMobile = c.key === "summary_monthly_fees" || c.key === "summary_monthly_expenses";
+                        return (
+                            <div
+                                key={c.key}
+                                className={cn(
+                                    "animate-in fade-in slide-in-from-bottom-3 fill-mode-both",
+                                    isFullWidthOnMobile ? "col-span-2 md:col-span-1" : "col-span-1"
+                                )}
+                                style={{ animationDelay: `${i * 40}ms`, animationDuration: "500ms" }}
+                            >
+                                <SummaryCard title={c.title} value={c.getValue()} icon={c.icon} color={c.color} />
+                            </div>
+                        );
+                    })}
                 </div>
             </section>
             )}

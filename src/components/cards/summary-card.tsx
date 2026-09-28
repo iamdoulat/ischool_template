@@ -34,16 +34,15 @@ export function SummaryCard({ title, value, icon: Icon, color }: SummaryCardProp
             "group hover:shadow-2xl transition-all duration-300 ease-in-out border-none text-white cursor-pointer hover:-translate-y-2 hover:scale-[1.02]",
             colorMaps[color]
         )}>
-            <CardContent className="px-4 py-3 md:px-5 md:py-4 flex items-center gap-4">
-                <div className="p-3 md:p-4 rounded-lg bg-white/20 backdrop-blur-md border border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/30">
-                    <Icon className="h-6 w-6 md:h-8 md:w-8 text-white" />
+            <CardContent className="px-3 py-3 sm:px-4 sm:py-3.5 md:px-5 md:py-4 flex items-center gap-2.5 sm:gap-3.5 md:gap-4">
+                <div className="p-2 sm:p-2.5 md:p-4 rounded-lg bg-white/20 backdrop-blur-md border border-white/10 shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:bg-white/30 shrink-0">
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-white" />
                 </div>
-                <div>
-                    <p className="text-[0.65rem] md:text-xs font-bold text-white/90 uppercase tracking-normal leading-none mb-1">{title}</p>
-                    <h4 className="text-xl md:text-2xl font-bold tracking-normal">
+                <div className="min-w-0 flex-1">
+                    <p className="text-[0.62rem] sm:text-[0.65rem] md:text-xs font-bold text-white/90 uppercase tracking-normal leading-tight mb-0.5 sm:mb-1 truncate">{title}</p>
+                    <h4 className="text-base sm:text-xl md:text-2xl font-bold tracking-normal truncate">
                         {toLocaleNumber(value, shortCode)}
                     </h4>
-
                 </div>
             </CardContent>
         </Card>
