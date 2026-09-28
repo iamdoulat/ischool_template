@@ -277,7 +277,12 @@ function MobileRotatingContact({ settings, cmsSettings }: { settings?: Record<st
     );
 }
 
-export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | null } = {}) {
+export interface PublicHeaderProps {
+    cmsData?: Record<string, unknown> | null;
+    template?: string | null;
+}
+
+export function PublicHeader({ cmsData, template }: PublicHeaderProps = {}) {
     const { settings } = useSettings();
     const [fetchedSettings, setFetchedSettings] = useState<Record<string, unknown> | null>(null);
     const cmsSettings = cmsData || fetchedSettings;
@@ -295,7 +300,7 @@ export function PublicHeader({ cmsData }: { cmsData?: Record<string, unknown> | 
         return () => { active = false; };
     }, [cmsData]);
 
-    const isMadrasha = isMadrashaTemplate(settings, cmsSettings);
+    const isMadrasha = isMadrashaTemplate(settings, cmsSettings, template);
 
     if (isMadrasha) {
         return <MadrashaHeader cmsData={cmsSettings} />;

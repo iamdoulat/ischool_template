@@ -19,6 +19,7 @@ export interface PublicPageBannerProps {
   bgImageUrl?: string;
   cmsData?: Record<string, unknown> | null;
   className?: string;
+  template?: string | null;
 }
 
 /**
@@ -36,11 +37,12 @@ export function PublicPageBanner({
   bgImageUrl,
   cmsData,
   className,
+  template,
 }: PublicPageBannerProps) {
   const { settings } = useSettings();
   const { t } = useTranslation();
 
-  const isMadrasha = isMadrashaTemplate(settings, cmsData);
+  const isMadrasha = isMadrashaTemplate(settings, cmsData, template);
 
   // Infer smart badge icon & text based on page title if not explicitly supplied
   const lowerTitle = (title || "").toLowerCase();

@@ -15,10 +15,14 @@ import { sanitizeHtml } from "@/lib/sanitize";
 
 import { useSettings } from "@/components/providers/settings-provider";
 
+import { cn } from "@/lib/utils";
+
 interface PageData {
   id: number;
   title: string;
   content: string;
+  template?: string | null;
+  page_type?: string | null;
 }
 
 function RawHtmlRenderer({ html }: { html: string }) {
@@ -74,7 +78,10 @@ export function SlugPageClient({ slug, initialData }: { slug: string; initialDat
     if (slug) {
       fetchPage();
     }
-  }, [slug, initialData]);
+  }, [slug, initialData, settings?.school_name]);
+
+  const pageTemplate = page?.template || null;
+  const isMadrasha = pageTemplate === "imadrasha";
 
   if (loading) {
     return (
@@ -93,14 +100,22 @@ export function SlugPageClient({ slug, initialData }: { slug: string; initialDat
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50/50 dark:bg-slate-950 font-sans">
-      <PublicHeader />
+    <div
+      className={cn(
+        "min-h-screen flex flex-col font-sans",
+        isMadrasha
+          ? "bg-[#F8FAF8] text-gray-800 selection:bg-[#014739] selection:text-amber-300"
+          : "bg-slate-50/50 dark:bg-slate-950"
+      )}
+    >
+      <PublicHeader template={pageTemplate} />
       <main className="flex-1">
         {/* Modern Theme-Aware Hero Banner */}
         <PublicPageBanner
           title={page.title}
           subtitle={(page as { subtitle?: string; description?: string })?.subtitle || (page as { subtitle?: string; description?: string })?.description}
           breadcrumbTitle={page.title}
+          template={pageTemplate}
         />
 
         {/* Content Section */}
@@ -164,7 +179,7 @@ export function SlugPageClient({ slug, initialData }: { slug: string; initialDat
           })()}
         </div>
       </main>
-      <PublicFooter />
+      <PublicFooter template={pageTemplate} />
     </div>
   );
 }

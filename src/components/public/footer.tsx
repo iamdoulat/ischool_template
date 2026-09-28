@@ -21,11 +21,12 @@ import api from "@/lib/api";
 import { isMadrashaTemplate } from "@/lib/template-utils";
 import { MadrashaFooter } from "@/components/public/madrasha-footer";
 
-interface PublicFooterProps {
+export interface PublicFooterProps {
     cmsData?: Record<string, unknown> | null;
+    template?: string | null;
 }
 
-export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
+export function PublicFooter({ cmsData, template }: PublicFooterProps = {}) {
     const { settings } = useSettings();
     const [fetchedSettings, setFetchedSettings] = useState<Record<string, unknown> | null>(null);
     const cmsSettings = cmsData || fetchedSettings;
@@ -43,7 +44,7 @@ export function PublicFooter({ cmsData }: PublicFooterProps = {}) {
         return () => { active = false; };
     }, [cmsData]);
 
-    const isMadrasha = isMadrashaTemplate(settings, cmsSettings);
+    const isMadrasha = isMadrashaTemplate(settings, cmsSettings, template);
 
     if (isMadrasha) {
         return <MadrashaFooter cmsData={cmsSettings} />;

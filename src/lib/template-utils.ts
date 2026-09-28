@@ -6,12 +6,19 @@ export function isMadrashaTemplate(
   cmsData?: Record<string, unknown> | null,
   searchTemplate?: string | null
 ): boolean {
-  // 1. Search param override (passed explicitly or from window.location.search)
+  // 1. Explicit template override passed directly (from page.template or component prop)
+  if (searchTemplate) {
+    const lower = searchTemplate.toLowerCase().trim();
+    if (lower === "imadrasha" || lower === "madrasha") return true;
+    if (lower === "ischool") return false;
+    // If 'both' or 'shared' or empty, fall through to URL query param / settings
+  }
+
+  // 2. URL search param override (e.g. ?template=imadrasha or ?template=ischool)
   const queryParam =
-    searchTemplate ||
-    (typeof window !== "undefined"
+    typeof window !== "undefined"
       ? new URLSearchParams(window.location.search).get("template")
-      : null);
+      : null;
 
   if (queryParam) {
     const lower = queryParam.toLowerCase().trim();

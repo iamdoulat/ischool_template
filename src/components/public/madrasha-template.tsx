@@ -204,20 +204,6 @@ interface MadrashaTemplateProps {
   banners?: BannerItem[];
 }
 
-function adjustHexBrightness(hex: string, percent: number): string {
-  const cleanHex = hex.replace("#", "");
-  if (cleanHex.length !== 6 && cleanHex.length !== 3) return hex;
-  const fullHex = cleanHex.length === 3 
-    ? cleanHex.split("").map(c => c + c).join("") 
-    : cleanHex;
-  const num = parseInt(fullHex, 16);
-  const amt = Math.round(2.55 * percent);
-  const r = Math.min(255, Math.max(0, (num >> 16) + amt));
-  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + amt));
-  const b = Math.min(255, Math.max(0, (num & 0x0000ff) + amt));
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
-
 function AnimatedCounter({ end, duration = 2000, suffix = "" }: { end: number; duration?: number; suffix?: string }) {
   const [count, setCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -346,7 +332,6 @@ function StatsCounterSection({ hfs }: { hfs: HeaderFooterSections }) {
 }
 
 export function MadrashaTemplate({ cms, notices, banners }: MadrashaTemplateProps) {
-  const { settings } = useSettings();
   const [activeSlide, setActiveSlide] = useState(0);
   const [viewNotice, setViewNotice] = useState<NoticeItem | null>(null);
 

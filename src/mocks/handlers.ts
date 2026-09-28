@@ -178,6 +178,7 @@ export const handlers = [
         id: 1,
         title: String(slug).replace(/-/g, ' ').toUpperCase(),
         url: slug,
+        template: "both",
         content: ""
       }
     });

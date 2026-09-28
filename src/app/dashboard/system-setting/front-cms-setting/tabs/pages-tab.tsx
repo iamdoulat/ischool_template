@@ -69,6 +69,7 @@ interface PageItem {
     title: string;
     url: string | null;
     page_type: string;
+    template?: string | null;
     is_system: boolean;
     content: string | null;
 }
@@ -137,6 +138,7 @@ export function PagesTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteT
         title: "",
         url: "",
         page_type: "Standard",
+        template: "both",
         content: "",
     });
 
@@ -159,17 +161,25 @@ export function PagesTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteT
 
     const openAdd = () => {
         setEditingId(null);
-        setForm({ title: "", url: "", page_type: "Standard", content: "" });
+        setForm({
+            title: "",
+            url: "",
+            page_type: "Standard",
+            template: "both",
+            content: "",
+        });
         setShowHtml(false);
         setOpen(true);
     };
 
     const openEdit = (item: PageItem) => {
         setEditingId(item.id);
+        const resolvedTemplate = item.template || getPageTemplateBadge(item).type || "both";
         setForm({
             title: item.title,
             url: item.url || "",
             page_type: item.page_type,
+            template: resolvedTemplate,
             content: item.content || "",
         });
         setShowHtml(false);
@@ -210,6 +220,7 @@ export function PagesTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteT
             const payload = {
                 ...form,
                 url: normalizedUrl,
+                template: form.template || "both",
             };
 
             if (editingId) {
@@ -244,19 +255,55 @@ export function PagesTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteT
         }
     };
 
-    const handleViewPage = (url: string | null) => {
-        const clean = (url || "").trim();
+    const handleViewPage = (page: PageItem) => {
+        const clean = (page.url || "").trim();
         let target = clean.replace(/^\//, "");
         if (clean === "" || clean === "/" || clean === "home" || clean === "/home") {
             target = "";
         } else if (clean.startsWith("#")) {
             target = clean;
         }
-        const fullUrl = `${appUrl.replace(/\/$/, "")}/${target}`;
+        let fullUrl = `${appUrl.replace(/\/$/, "")}/${target}`;
+        const badge = getPageTemplateBadge(page);
+        const tmpl = page.template || badge.type;
+        if (tmpl === "imadrasha" || tmpl === "ischool") {
+            const sep = fullUrl.includes("?") ? "&" : "?";
+            if (!fullUrl.includes("template=")) {
+                fullUrl = `${fullUrl}${sep}template=${tmpl}`;
+            }
+        }
         window.open(fullUrl, "_blank");
     };
 
     const getPageTemplateBadge = useCallback((page: PageItem) => {
+        if (page.template) {
+            const tmpl = page.template.toLowerCase().trim();
+            if (tmpl === "imadrasha" || tmpl === "madrasha") {
+                return {
+                    label: t("template_imadrasha") || "iMadrasha",
+                    className: "bg-teal-50 text-teal-800 border border-teal-200",
+                    icon: "🕌",
+                    type: "imadrasha" as const,
+                };
+            }
+            if (tmpl === "ischool") {
+                return {
+                    label: t("template_ischool") || "iSchool",
+                    className: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+                    icon: "🏫",
+                    type: "ischool" as const,
+                };
+            }
+            if (tmpl === "both" || tmpl === "shared" || tmpl === "all") {
+                return {
+                    label: t("both_templates") || "Both Templates",
+                    className: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+                    icon: "🔗",
+                    type: "both" as const,
+                };
+            }
+        }
+
         const titleLower = (page.title || "").toLowerCase();
         const urlLower = (page.url || "").toLowerCase();
         const hasBangla = /[\u0980-\u09FF]/.test(page.title);
@@ -616,7 +663,7 @@ export function PagesTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteT
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <Button
                                                     size="icon"
-                                                    onClick={() => handleViewPage(page.url)}
+                                                    onClick={() => handleViewPage(page)}
                                                     className="h-7 w-7 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-xs shadow-emerald-500/20 active:scale-95 transition-all cursor-pointer"
                                                     title={t("view")}
                                                 >
@@ -754,16 +801,51 @@ export function PagesTab({ activeWebsiteTemplate = "ischool" }: { activeWebsiteT
                             </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                            <Label className="text-xs font-bold text-gray-700">
-                                {t("url_optional")}
-                            </Label>
-                            <Input
-                                value={form.url}
-                                onChange={(e) => setForm({ ...form, url: e.target.value })}
-                                className="h-9 text-xs font-mono rounded-lg border-gray-200 focus-visible:ring-indigo-500"
-                                placeholder="/my-custom-page"
-                            />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("url_optional")}
+                                </Label>
+                                <Input
+                                    value={form.url}
+                                    onChange={(e) => setForm({ ...form, url: e.target.value })}
+                                    className="h-9 text-xs font-mono rounded-lg border-gray-200 focus-visible:ring-indigo-500"
+                                    placeholder="/my-custom-page"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-xs font-bold text-gray-700">
+                                    {t("website_template") || "Website Template"}
+                                </Label>
+                                <Select
+                                    value={form.template}
+                                    onValueChange={(v) => setForm({ ...form, template: v })}
+                                >
+                                    <SelectTrigger className="h-9 text-xs border-gray-200 rounded-lg">
+                                        <SelectValue placeholder={t("select_template") || "Select Template"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="both" className="text-xs">
+                                            <span className="flex items-center gap-1.5">
+                                                <span>🔗</span>
+                                                <span className="font-medium">{t("both_templates") || "Both Templates (Shared)"}</span>
+                                            </span>
+                                        </SelectItem>
+                                        <SelectItem value="ischool" className="text-xs">
+                                            <span className="flex items-center gap-1.5">
+                                                <span>🏫</span>
+                                                <span className="font-medium">{t("template_ischool") || "iSchool Template"}</span>
+                                            </span>
+                                        </SelectItem>
+                                        <SelectItem value="imadrasha" className="text-xs">
+                                            <span className="flex items-center gap-1.5">
+                                                <span>🕌</span>
+                                                <span className="font-medium">{t("template_imadrasha") || "iMadrasha Template"}</span>
+                                            </span>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div className="space-y-1.5">
