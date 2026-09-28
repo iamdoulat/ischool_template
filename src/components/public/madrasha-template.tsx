@@ -863,17 +863,17 @@ export function MadrashaTemplate({ cms, notices, banners }: MadrashaTemplateProp
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-4 pt-1">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 pt-1 w-full text-center">
                     <Link
                       href={about.muhtamim_btn1_url || "/online_admission"}
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs sm:text-sm px-8 py-3.5 rounded-full shadow-xl hover:shadow-orange-500/30 hover:scale-[1.02] active:scale-95 transition-all"
+                      className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs sm:text-sm px-7 sm:px-8 py-3.5 rounded-full shadow-xl hover:shadow-orange-500/30 hover:scale-[1.02] active:scale-95 transition-all text-center"
                     >
                       {about.muhtamim_btn1_text || "ভর্তির বিস্তারিত নির্দেশিকা ও আবেদন"}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                     <Link
                       href={about.muhtamim_btn2_url || "#contact"}
-                      className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold px-7 py-3.5 rounded-full border border-white/25 hover:border-white/50 backdrop-blur-xs transition-all"
+                      className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold px-7 py-3.5 rounded-full border border-white/25 hover:border-white/50 backdrop-blur-xs transition-all text-center"
                     >
                       {about.muhtamim_btn2_text || "যোগাযোগ করুন"}
                     </Link>

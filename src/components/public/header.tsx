@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/components/providers/settings-provider";
 import { tokenManager } from "@/lib/token-manager";
@@ -350,6 +351,10 @@ function IschoolHeader({ cmsData }: { cmsData?: Record<string, unknown> | null }
     };
 
     useEffect(() => {
+        setIsMenuOpen(false);
+    }, [pathname]);
+
+    useEffect(() => {
         let active = true;
         getPublicMenus().then((menus) => {
             if (active) setDynamicMenus(menus.filter((m) => m.type === "main"));
@@ -517,9 +522,10 @@ function IschoolHeader({ cmsData }: { cmsData?: Record<string, unknown> | null }
         : (hfsRecord?.school_address as string) || (settings?.address as string) || "House#68, Road#10, Sector#10, Uttara Model Town, Dhaka-1230";
     const topbarEnabled = hfsRecord?.topbar_enabled !== false;
     const topbarBtnBg = (!ischoolHeaderBg || isLightColor(ischoolHeaderBg)) ? "#044E43" : ischoolHeaderBg;
+    const isHeaderLight = isLightColor(ischoolHeaderBg);
 
     return (
-        <header className="w-full flex flex-col z-50 sticky top-0 shadow-sm overflow-x-clip">
+        <header className="w-full flex flex-col z-50 sticky top-0 shadow-sm overflow-visible">
             {/* Top Bar */}
             {topbarEnabled && (
             <div className="bg-white border-b border-gray-200/80 py-2 sm:py-2 md:py-2.5 px-4 sm:px-6 md:px-8 text-xs font-medium text-slate-600">
@@ -673,7 +679,13 @@ function IschoolHeader({ cmsData }: { cmsData?: Record<string, unknown> | null }
             )}
 
             {/* Main Navigation */}
-            <div className="bg-[#F4F6F5] w-full">
+            <div 
+                className="w-full relative transition-colors duration-200"
+                style={{ backgroundColor: ischoolHeaderBg }}
+            >
+                {/* On desktop (lg+), overlay the #F4F6F5 canvas for the nav links with the curved logo flange */}
+                <div className="hidden lg:block absolute inset-0 bg-[#F4F6F5] pointer-events-none" />
+
                 <div className="container mx-auto px-0 sm:px-6 md:px-8 min-h-[44px] sm:min-h-[56px] md:min-h-[72px] flex items-stretch justify-between relative py-0">
 
                     {/* Logo with Curved Badge */}
@@ -714,9 +726,9 @@ function IschoolHeader({ cmsData }: { cmsData?: Record<string, unknown> | null }
                                 )}
                             </Link>
 
-                            {/* SVG Curved Shape Flange - Perfectly flush continuous curve */}
+                            {/* SVG Curved Shape Flange - Perfectly flush continuous curve (desktop only) */}
                             <div 
-                                className="absolute left-[calc(100%-1px)] top-0 bottom-0 h-full w-6 sm:w-16 md:w-28 lg:w-32 xl:w-36 pointer-events-none transition-colors duration-200"
+                                className="absolute left-[calc(100%-1px)] top-0 bottom-0 h-full w-6 sm:w-16 md:w-28 lg:w-32 xl:w-36 pointer-events-none transition-colors duration-200 hidden lg:block"
                                 style={{ color: ischoolHeaderBg }}
                             >
                                 <svg className="h-full w-full block" viewBox="0 0 160 100" fill="currentColor" preserveAspectRatio="none">
@@ -805,109 +817,136 @@ function IschoolHeader({ cmsData }: { cmsData?: Record<string, unknown> | null }
                     </nav>
 
                     {/* Mobile Menu Toggle */}
-                    <div className="lg:hidden flex items-center pr-3 sm:pr-0">
+                    <div className="lg:hidden flex items-center pr-3 sm:pr-4 relative z-20">
                         <button
                             type="button"
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-gray-200 flex items-center justify-center text-slate-700 hover:bg-[#044E43] hover:text-white transition-all duration-300 shadow-sm"
+                            className={cn(
+                                "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 shadow-xs cursor-pointer",
+                                isHeaderLight
+                                    ? "bg-black/10 border border-black/15 text-slate-800 hover:bg-black/20"
+                                    : "bg-white/15 border border-white/25 text-white hover:bg-white/25"
+                            )}
                             aria-label="Toggle Menu"
                         >
-                            {isMenuOpen ? <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Menu className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                            {isMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
                         </button>
                     </div>
                 </div>
 
-                {/* Mobile Menu Dropdown */}
-                {isMenuOpen && (
-                    <div className="lg:hidden border-t bg-white absolute w-full left-0 shadow-xl animate-in slide-in-from-top-2 z-50">
-                        <div className="flex flex-col p-4 space-y-2">
-                            {displayMenus.map((item, idx) => {
-                                const isActive = item.href === '/' ? pathname === '/' : (!!item.href && item.href !== '#' && pathname.startsWith(item.href));
-                                const gradId = `menu-beam-grad-m-${idx}`;
-                                return (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href || '/'}
-                                        target={item.newTab ? "_blank" : "_self"}
-                                        className={cn(
-                                            "header-menu-link group relative flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all",
-                                            isActive
-                                                ? "text-[#044E43] bg-[#044E43]/10 font-bold"
-                                                : "text-gray-700 hover:text-[#044E43] hover:bg-slate-50"
-                                        )}
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        <svg
-                                            className="absolute inset-0 w-full h-full pointer-events-none overflow-visible rounded-lg"
-                                            aria-hidden="true"
+                {/* Mobile Menu Dropdown & Backdrop */}
+                <AnimatePresence>
+                    {isMenuOpen && (
+                        <>
+                            {/* Backdrop overlay */}
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.15 }}
+                                className="fixed inset-0 top-[100%] bg-black/40 backdrop-blur-2xs z-40 lg:hidden"
+                                onClick={() => setIsMenuOpen(false)}
+                            />
+
+                            {/* Dropdown Menu Box */}
+                            <motion.div
+                                initial={{ opacity: 0, y: -6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className="lg:hidden border-t-2 bg-white absolute top-full left-0 w-full shadow-2xl z-50 max-h-[calc(100vh-80px)] overflow-y-auto"
+                                style={{ borderTopColor: ischoolHeaderBg }}
+                            >
+                                <div className="flex flex-col p-4 space-y-2">
+                                    {displayMenus.map((item, idx) => {
+                                        const isActive = item.href === '/' ? pathname === '/' : (!!item.href && item.href !== '#' && pathname.startsWith(item.href));
+                                        const gradId = `menu-beam-grad-m-${idx}`;
+                                        return (
+                                            <Link
+                                                key={item.name}
+                                                href={item.href || '/'}
+                                                target={item.newTab ? "_blank" : "_self"}
+                                                className={cn(
+                                                    "header-menu-link group relative flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all",
+                                                    isActive
+                                                        ? "text-[#044E43] bg-[#044E43]/10 font-bold"
+                                                        : "text-gray-700 hover:text-[#044E43] hover:bg-slate-50"
+                                                )}
+                                                onClick={() => setIsMenuOpen(false)}
+                                            >
+                                                <svg
+                                                    className="absolute inset-0 w-full h-full pointer-events-none overflow-visible rounded-lg"
+                                                    aria-hidden="true"
+                                                >
+                                                    <defs>
+                                                        <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+                                                            <stop offset="0%" stopColor="#FF9800" />
+                                                            <stop offset="45%" stopColor="#10B981" />
+                                                            <stop offset="100%" stopColor="#044E43" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <rect
+                                                        x="0"
+                                                        y="0"
+                                                        width="100%"
+                                                        height="100%"
+                                                        rx="8"
+                                                        ry="8"
+                                                        fill="none"
+                                                        stroke={isActive ? "#044E43" : "#E2E8F0"}
+                                                        strokeWidth="1.5"
+                                                        strokeOpacity={isActive ? "0.3" : "0.5"}
+                                                    />
+                                                    <rect
+                                                        x="0"
+                                                        y="0"
+                                                        width="100%"
+                                                        height="100%"
+                                                        rx="8"
+                                                        ry="8"
+                                                        fill="none"
+                                                        stroke={`url(#${gradId})`}
+                                                        strokeWidth="2.5"
+                                                        pathLength="100"
+                                                        className="header-menu-beam opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                                    />
+                                                </svg>
+                                                <span className="relative z-10 flex items-center">
+                                                    {(item.name === t("home") || item.name === "Home") && <House className="h-4 w-4 mr-2 text-[#044E43]" />}
+                                                    {item.name}
+                                                </span>
+                                            </Link>
+                                        );
+                                    })}
+                                    <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                        <div className="flex items-center justify-between px-1 py-1">
+                                            <span className="text-xs font-bold text-slate-600">Language / ভাষা:</span>
+                                            <select
+                                                value={currentLangCode}
+                                                onChange={(e) => handleLanguageChange(e.target.value)}
+                                                className="bg-slate-50 border border-gray-300 rounded-lg py-1 px-3 text-xs font-bold text-slate-800"
+                                            >
+                                                {LANGUAGES.map((lang) => (
+                                                    <option key={lang.short_code} value={lang.short_code}>
+                                                        {lang.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <Link
+                                            href={!user ? "/login" : getDashboardUrl()}
+                                            className="w-full py-2.5 px-4 bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-sm rounded-lg flex items-center justify-between shadow-sm transition-all"
+                                            onClick={() => setIsMenuOpen(false)}
                                         >
-                                            <defs>
-                                                <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-                                                    <stop offset="0%" stopColor="#FF9800" />
-                                                    <stop offset="45%" stopColor="#10B981" />
-                                                    <stop offset="100%" stopColor="#044E43" />
-                                                </linearGradient>
-                                            </defs>
-                                            <rect
-                                                x="0"
-                                                y="0"
-                                                width="100%"
-                                                height="100%"
-                                                rx="8"
-                                                ry="8"
-                                                fill="none"
-                                                stroke={isActive ? "#044E43" : "#E2E8F0"}
-                                                strokeWidth="1.5"
-                                                strokeOpacity={isActive ? "0.3" : "0.5"}
-                                            />
-                                            <rect
-                                                x="0"
-                                                y="0"
-                                                width="100%"
-                                                height="100%"
-                                                rx="8"
-                                                ry="8"
-                                                fill="none"
-                                                stroke={`url(#${gradId})`}
-                                                strokeWidth="2.5"
-                                                pathLength="100"
-                                                className="header-menu-beam opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                            />
-                                        </svg>
-                                        <span className="relative z-10 flex items-center">
-                                            {(item.name === t("home") || item.name === "Home") && <House className="h-4 w-4 mr-2 text-[#044E43]" />}
-                                            {item.name}
-                                        </span>
-                                    </Link>
-                                );
-                            })}
-                            <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
-                                <div className="flex items-center justify-between px-1 py-1">
-                                    <span className="text-xs font-bold text-slate-600">Language / ভাষা:</span>
-                                    <select
-                                        value={currentLangCode}
-                                        onChange={(e) => handleLanguageChange(e.target.value)}
-                                        className="bg-slate-50 border border-gray-300 rounded-lg py-1 px-3 text-xs font-bold text-slate-800"
-                                    >
-                                        {LANGUAGES.map((lang) => (
-                                            <option key={lang.short_code} value={lang.short_code}>
-                                                {lang.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                            <span>{!user ? t("login") : t("dashboard")}</span>
+                                            <ArrowUpRight className="h-4 w-4 text-[#FF9800]" />
+                                        </Link>
+                                    </div>
                                 </div>
-                                <Link
-                                    href={!user ? "/login" : getDashboardUrl()}
-                                    className="w-full py-2.5 px-4 bg-[#044E43] hover:bg-[#033b33] text-white font-bold text-sm rounded-lg flex items-center justify-between shadow-sm transition-all"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    <span>{!user ? t("login") : t("dashboard")}</span>
-                                    <ArrowUpRight className="h-4 w-4 text-[#FF9800]" />
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Search Modal */}

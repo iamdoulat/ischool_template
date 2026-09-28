@@ -34,7 +34,7 @@ interface NavItemConfig {
 
 export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
   const pathname = usePathname();
-  const { t } = useTranslation();
+  const { t, isRtl } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const isUserPortal = portalType === "user" || pathname?.startsWith("/user");
@@ -124,16 +124,16 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
   // Quick Action links for the center Grid Button popup
   const rawQuickActions = isUserPortal
     ? [
-        { title: "My Profile", href: "/user/profile", icon: User, color: "bg-blue-500/10 text-blue-600" },
-        { title: "Notice Board", href: "/user/notice-board", icon: Bell, color: "bg-amber-500/10 text-amber-600" },
-        { title: "Class Timetable", href: "/user/class-timetable", icon: BookOpen, color: "bg-emerald-500/10 text-emerald-600" },
-        { title: "Fees & Payments", href: "/user/fees", icon: CreditCard, color: "bg-purple-500/10 text-purple-600" },
+        { title: t("my_profile") || "My Profile", href: "/user/profile", icon: User, color: "bg-blue-500/10 text-blue-600" },
+        { title: t("notice_board") || "Notice Board", href: "/user/notice-board", icon: Bell, color: "bg-amber-500/10 text-amber-600" },
+        { title: t("class_timetable") || "Class Timetable", href: "/user/class-timetable", icon: BookOpen, color: "bg-emerald-500/10 text-emerald-600" },
+        { title: t("fees_and_payments") || "Fees & Payments", href: "/user/fees", icon: CreditCard, color: "bg-purple-500/10 text-purple-600" },
       ]
     : [
-        { title: "Student Details", href: "/dashboard/student-information/student-details", icon: User, color: "bg-blue-500/10 text-blue-600" },
-        { title: "Collect Fees", href: "/dashboard/fees-collection/collect-fees", icon: CreditCard, color: "bg-emerald-500/10 text-emerald-600" },
-        { title: "Notice Board", href: "/dashboard/communicate/send-sms", icon: Bell, color: "bg-amber-500/10 text-amber-600" },
-        { title: "System Settings", href: "/dashboard/system-setting/general-setting", icon: Settings, color: "bg-purple-500/10 text-purple-600" },
+        { title: t("student_details") || "Student Details", href: "/dashboard/student-information/student-details", icon: User, color: "bg-blue-500/10 text-blue-600" },
+        { title: t("collect_fees") || "Collect Fees", href: "/dashboard/fees-collection/collect-fees", icon: CreditCard, color: "bg-emerald-500/10 text-emerald-600" },
+        { title: t("notice_board") || "Notice Board", href: "/dashboard/communicate/send-sms", icon: Bell, color: "bg-amber-500/10 text-amber-600" },
+        { title: t("system_setting") || t("system_settings") || "System Settings", href: "/dashboard/system-setting/general-setting", icon: Settings, color: "bg-purple-500/10 text-purple-600" },
       ];
 
   const quickActions = rawQuickActions.map(action => ({
@@ -214,7 +214,7 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
               whileTap={{ scale: 0.92 }}
               onClick={() => setIsMenuOpen(true)}
               className="w-[52px] h-[52px] rounded-full bg-[#1A1926] dark:bg-slate-800 text-white flex items-center justify-center shadow-lg shadow-black/20 hover:bg-[#252436] transition-colors border-2 border-white dark:border-slate-900"
-              aria-label="Quick Navigation"
+              aria-label={t("quick_navigation") || "Quick Navigation"}
             >
               <LayoutGrid className="w-5 h-5 text-white" />
             </motion.button>
@@ -281,7 +281,11 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 rounded-t-3xl p-6 shadow-2xl md:hidden border-t border-slate-200 dark:border-slate-800"
+              className={cn(
+                "fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 rounded-t-3xl p-6 shadow-2xl md:hidden border-t border-slate-200 dark:border-slate-800",
+                isRtl && "text-right"
+              )}
+              dir={isRtl ? "rtl" : "ltr"}
             >
               {/* Handle indicator */}
               <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-6" />
@@ -289,9 +293,9 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                    {isUserPortal ? "Student Menu" : "Admin Dashboard Menu"}
+                    {isUserPortal ? (t("student_menu") || "Student Menu") : (t("admin_dashboard_menu") || "Admin Dashboard Menu")}
                   </h3>
-                  <p className="text-xs text-slate-500">Quick actions & shortcuts</p>
+                  <p className="text-xs text-slate-500">{t("quick_actions_shortcuts") || "Quick actions & shortcuts"}</p>
                 </div>
                 <button
                   onClick={() => setIsMenuOpen(false)}
@@ -331,8 +335,8 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
                 onClick={() => setIsMenuOpen(false)}
                 className="w-full py-3.5 px-4 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors shadow-md"
               >
-                <span>Go to Full Dashboard</span>
-                <ChevronRight className="w-4 h-4" />
+                <span>{t("go_to_full_dashboard") || "Go to Full Dashboard"}</span>
+                <ChevronRight className={cn("w-4 h-4", isRtl && "rotate-180")} />
               </Link>
             </motion.div>
           </>

@@ -43,6 +43,7 @@ import { JsonLd } from "@/components/seo/json-ld";
 import { ServerHeadCode } from "@/components/seo/server-head-code";
 import { ClientCodeInjector } from "@/components/seo/custom-code-injector";
 import { getSchoolSeoData } from "@/lib/seo-utils";
+import { MobilePreloader } from "@/components/layout/mobile-preloader";
 
 export async function generateMetadata(): Promise<Metadata> {
   const info = await getSchoolSeoData();
@@ -185,6 +186,7 @@ export default async function RootLayout({
                 <CurrencyProvider>
                   <SettingsProvider>
                     <PWAInit />
+                    <MobilePreloader />
                     {children}
                     <Toaster />
                     <SonnerToaster position="top-center" richColors />
