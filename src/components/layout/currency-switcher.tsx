@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 
 import {
     Popover,
@@ -11,16 +11,20 @@ import { Button } from "@/components/ui/button";
 import { CircleDollarSign, Loader2 } from "lucide-react";
 import { useCurrency } from "@/components/providers/currency-provider";
 import { cn } from "@/lib/utils";
-import { useLanguage } from "@/components/providers/language-provider";
 
-export function CurrencySwitcher() {
+interface CurrencySwitcherProps {
+    onCurrencyChange?: () => void;
+}
+
+const emptySubscribe = () => () => {};
+
+export function CurrencySwitcher({ onCurrencyChange }: CurrencySwitcherProps = {}) {
     const { selectedCurrency, setSelectedCurrency, availableCurrencies, loading } = useCurrency();
-    const { t } = useLanguage();
-    const [mounted, setMounted] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const mounted = useSyncExternalStore(
+        emptySubscribe,
+        () => true,
+        () => false
+    );
 
     if (!mounted) {
         return (
@@ -63,7 +67,10 @@ export function CurrencySwitcher() {
                             <Button
                                 key={currency.id}
                                 variant="ghost"
-                                onClick={() => setSelectedCurrency(currency)}
+                                onClick={async () => {
+                                    await setSelectedCurrency(currency);
+                                    onCurrencyChange?.();
+                                }}
                                 className={cn(
                                     "w-full justify-between items-center h-10 text-sm font-medium rounded-xl hover:bg-primary/10 transition-all px-3",
                                     selectedCurrency?.id === currency.id ? "bg-primary/15 text-primary" : "text-foreground"

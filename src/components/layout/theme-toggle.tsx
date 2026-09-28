@@ -11,8 +11,19 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export function ThemeToggle({ className, collapsed }: { className?: string, collapsed?: boolean }) {
-    const { setTheme, theme } = useTheme()
+interface ThemeToggleProps {
+    className?: string;
+    collapsed?: boolean;
+    onThemeChange?: (theme: string) => void;
+}
+
+export function ThemeToggle({ className, onThemeChange }: ThemeToggleProps) {
+    const { setTheme } = useTheme()
+
+    const handleSelectTheme = (newTheme: string) => {
+        setTheme(newTheme);
+        onThemeChange?.(newTheme);
+    };
 
     return (
         <DropdownMenu>
@@ -29,15 +40,15 @@ export function ThemeToggle({ className, collapsed }: { className?: string, coll
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2">
+                <DropdownMenuItem onClick={() => handleSelectTheme("light")} className="gap-2">
                     <Sun className="h-4 w-4" />
                     <span>Light</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2">
+                <DropdownMenuItem onClick={() => handleSelectTheme("dark")} className="gap-2">
                     <Moon className="h-4 w-4" />
                     <span>Dark</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2">
+                <DropdownMenuItem onClick={() => handleSelectTheme("system")} className="gap-2">
                     <Laptop className="h-4 w-4" />
                     <span>System</span>
                 </DropdownMenuItem>

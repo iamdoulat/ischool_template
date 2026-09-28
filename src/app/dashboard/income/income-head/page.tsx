@@ -268,7 +268,7 @@ export default function IncomeHeadPage() {
                         </span>
                         <div>
                             <CardTitle className="text-base font-bold tracking-tight text-slate-800 leading-none">{t("income_head_list")}</CardTitle>
-                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(incomeHeads.length, shortCode)} {t("income_head")}{incomeHeads.length === 1 ? "" : "s"}</p>
+                            <p className="text-[11px] text-gray-500 mt-1">{toLocaleNumber(incomeHeads.length, shortCode)} {t("income_head")}</p>
                         </div>
                     </CardHeader>
                     <CardContent className="px-4 pb-4 space-y-4">

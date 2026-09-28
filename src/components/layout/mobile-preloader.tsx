@@ -308,7 +308,9 @@ export function MobilePreloader() {
     };
 
     const handlePopState = () => {
-      startPageTransition();
+      setTimeout(() => {
+        startPageTransition();
+      }, 0);
     };
 
     // Safe monkey-patch of window.history.pushState to catch programmatic router.push
@@ -319,7 +321,10 @@ export function MobilePreloader() {
         if (url && typeof url === "string") {
           const targetUrl = new URL(url, window.location.href);
           if (targetUrl.pathname !== window.location.pathname) {
-            startPageTransition(targetUrl.pathname);
+            // Defer execution out of React's synchronous useInsertionEffect callstack
+            setTimeout(() => {
+              startPageTransition(targetUrl.pathname);
+            }, 0);
           }
         }
       } catch {

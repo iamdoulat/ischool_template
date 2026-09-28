@@ -517,7 +517,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
         return () => clearInterval(interval);
     }, []);
 
-    const NotificationBell = () => {
+    const NotificationBell = ({ onNotificationAction }: { onNotificationAction?: () => void } = {}) => {
         const [notifications, setNotifications] = useState<any[]>([]);
         const [unreadCount, setUnreadCount] = useState(0);
         const [loadingNotifs, setLoadingNotifs] = useState(false);
@@ -560,6 +560,9 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                 await api.post(`/notifications/${id}/read`);
                 setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
                 setUnreadCount(prev => Math.max(0, prev - 1));
+                if (onNotificationAction) {
+                    onNotificationAction();
+                }
             } catch (error) {
                 console.error("Failed to mark as read", error);
             }
@@ -570,6 +573,9 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                 await api.post('/notifications/read-all');
                 setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
                 setUnreadCount(0);
+                if (onNotificationAction) {
+                    onNotificationAction();
+                }
             } catch (error) {
                 console.error("Failed to mark all as read", error);
             }
@@ -596,11 +602,23 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                 <PopoverContent className="w-80 p-0 bg-card/95 backdrop-blur-md border-muted/50 shadow-2xl rounded-2xl overflow-hidden" align="end" sideOffset={12}>
                     <div className="flex items-center justify-between p-3 border-b border-muted/50 bg-muted/20">
                         <h4 className="text-sm font-bold text-foreground">{t("notifications")}</h4>
-                        {unreadCount > 0 && (
-                            <Button variant="ghost" size="sm" onClick={markAllAsRead} className="h-6 text-[10px] uppercase text-primary hover:bg-primary/10 hover:text-primary px-2 rounded-md font-semibold">
-                                {t("mark_all_as_read")}
+                        <div className="flex items-center gap-1">
+                            {unreadCount > 0 && (
+                                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="h-6 text-[10px] uppercase text-primary hover:bg-primary/10 hover:text-primary px-2 rounded-md font-semibold">
+                                    {t("mark_all_as_read")}
+                                </Button>
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleClearCache(true)}
+                                className="h-6 text-[10px] uppercase text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 px-2 rounded-md font-semibold flex items-center gap-1"
+                                title={t("clear_cache") || "Clear Cache"}
+                            >
+                                <RotateCw className="h-3 w-3" />
+                                <span className="hidden sm:inline">{t("clear_cache") || "Clear"}</span>
                             </Button>
-                        )}
+                        </div>
                     </div>
                     <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
                         {notifications.length === 0 ? (
@@ -691,7 +709,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
 
     const [isClearingCache, setIsClearingCache] = useState(false);
 
-    const handleClearCache = async () => {
+    const handleClearCache = async (reload: boolean = true) => {
         try {
             setIsClearingCache(true);
             toast.loading(t("clearing_cache") || "Clearing cache & reloading...", { id: "clear-cache-toast" });
@@ -725,7 +743,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                 } catch (e) {}
             }
 
-            // 4. Clean localStorage while preserving auth tokens, user roles, language & theme preferences
+            // 4. Clean localStorage while preserving auth tokens, user roles, language & theme preferences, and system assets
             if (typeof window !== "undefined" && window.localStorage) {
                 try {
                     const preservedKeys = [
@@ -735,6 +753,9 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                         "is_impersonating",
                         "theme",
                         "selected_language",
+                        "selected_currency",
+                        "active_branch_slug",
+                        "pwa_start_url",
                         "ischool_enable_chat",
                     ];
                     const savedItems: Record<string, string> = {};
@@ -745,7 +766,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                             (preservedKeys.includes(key) ||
                                 key.startsWith("app_language_") ||
                                 key.startsWith("currency_") ||
-                                key.startsWith("ischool_lang_"))
+                                key.startsWith("ischool_"))
                         ) {
                             const val = localStorage.getItem(key);
                             if (val !== null) savedItems[key] = val;
@@ -762,16 +783,24 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
 
             toast.success(t("cache_cleared_success") || "Cache cleared! Reloading freshly...", { id: "clear-cache-toast" });
 
-            // 5. Force fresh reload with timestamp cache-buster parameter
-            setTimeout(() => {
-                const url = new URL(window.location.href);
-                url.searchParams.set("_t", Date.now().toString());
-                window.location.replace(url.toString());
-            }, 400);
+            if (reload) {
+                // 5. Force fresh reload with timestamp cache-buster parameter
+                setTimeout(() => {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set("_t", Date.now().toString());
+                    window.location.replace(url.toString());
+                }, 400);
+            } else {
+                setIsClearingCache(false);
+            }
         } catch (err) {
             console.error("Failed to clear cache:", err);
             toast.error("Failed to clear cache. Reloading...", { id: "clear-cache-toast" });
-            window.location.reload();
+            if (reload) {
+                window.location.reload();
+            } else {
+                setIsClearingCache(false);
+            }
         }
     };
 
@@ -829,7 +858,7 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
         return lang.name;
     };
 
-    const LanguageSelector = () => {
+    const LanguageSelector = ({ onLanguageChange }: { onLanguageChange?: () => void } = {}) => {
         if (!mounted) return (
             <div className="h-10 w-10 flex items-center justify-center">
                 <Languages className="h-5 w-5 text-muted-foreground/20" />
@@ -857,7 +886,10 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                             <Button
                                 key={lang.id}
                                 variant="ghost"
-                                onClick={() => setSelectedLanguage(lang)}
+                                onClick={() => {
+                                    setSelectedLanguage(lang);
+                                    onLanguageChange?.();
+                                }}
                                 className={cn(
                                     "w-full justify-between items-center h-10 text-sm font-medium rounded-xl hover:bg-primary/10 transition-all px-3",
                                     selectedLanguage?.id === lang.id ? "bg-primary/15 text-primary" : "text-foreground"
@@ -999,15 +1031,18 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                     <BranchSwitcher user={user} />
 
                     {user && ['Super Admin', 'Admin'].includes(user.role) && (
-                        <CurrencySwitcher />
+                        <CurrencySwitcher onCurrencyChange={() => handleClearCache(true)} />
                     )}
 
-                    <LanguageSelector />
+                    <LanguageSelector onLanguageChange={() => handleClearCache(true)} />
 
-                    <NotificationBell />
+                    <NotificationBell onNotificationAction={() => handleClearCache(true)} />
 
                     {mounted && (
-                        <ThemeToggle className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl" />
+                        <ThemeToggle
+                            onThemeChange={() => handleClearCache(true)}
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-xl"
+                        />
                     )}
                 </div>
 
@@ -1042,10 +1077,10 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                             <div className="md:hidden p-2 border-b border-muted/50 mb-2 bg-muted/20 rounded-xl flex items-center justify-between gap-1">
                                 <BranchSwitcher user={user} />
                                 {user && ['Super Admin', 'Admin'].includes(user.role) && (
-                                    <CurrencySwitcher />
+                                    <CurrencySwitcher onCurrencyChange={() => handleClearCache(true)} />
                                 )}
-                                <LanguageSelector />
-                                <NotificationBell />
+                                <LanguageSelector onLanguageChange={() => handleClearCache(true)} />
+                                <NotificationBell onNotificationAction={() => handleClearCache(true)} />
                                 {isChatEnabled && (
                                     <Button
                                         variant="ghost"
@@ -1058,7 +1093,10 @@ export function Header({ onToggleSidebar, sidebarCollapsed }: { onToggleSidebar:
                                     </Button>
                                 )}
                                 {mounted && (
-                                    <ThemeToggle className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl" />
+                                    <ThemeToggle
+                                        onThemeChange={() => handleClearCache(true)}
+                                        className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl"
+                                    />
                                 )}
                             </div>
 

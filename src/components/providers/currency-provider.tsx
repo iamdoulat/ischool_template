@@ -73,8 +73,10 @@ export const CurrencyProvider = ({ children }: { children: React.ReactNode }) =>
 
     const setSelectedCurrency = async (currency: Currency) => {
         try {
+            cachedCurrencies = null;
             const response = await api.post(`/system-setting/currencies/${currency.id}/toggle-active`);
             if (response.data.status === "Success") {
+                cachedCurrencies = null;
                 setSelectedCurrencyState({ ...currency, is_active: true });
                 // Update local list to reflect change if needed, or just re-fetch
                 await fetchCurrencies();

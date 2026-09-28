@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   House,
@@ -28,14 +29,24 @@ interface NavItemConfig {
   id: string;
   label: string;
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   isHomeIcon?: boolean;
 }
+
+const emptySubscribe = () => () => {};
 
 export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
   const pathname = usePathname();
   const { t, isRtl } = useTranslation();
+  const { resolvedTheme } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
+  const isDark = mounted && (resolvedTheme === "dark" || (typeof document !== "undefined" && document.documentElement.classList.contains("dark")));
 
   const isUserPortal = portalType === "user" || pathname?.startsWith("/user");
 
@@ -148,12 +159,17 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
         <div className="relative w-full h-[66px] flex items-center justify-between px-3">
           {/* Custom SVG Background Container with Curved Notch */}
           <svg
-            className="absolute inset-0 w-full h-full text-white dark:text-slate-900 drop-shadow-[0_12px_32px_rgba(0,0,0,0.14)] pointer-events-none"
+            className="absolute inset-0 w-full h-full drop-shadow-[0_12px_32px_rgba(0,0,0,0.25)] pointer-events-none"
             viewBox="0 0 380 66"
             preserveAspectRatio="none"
-            fill="currentColor"
           >
-            <path d="M 32 0 L 142 0 C 160 0, 166 26, 190 26 C 214 26, 220 0, 238 0 L 348 0 A 32 32 0 0 1 380 32 A 32 32 0 0 1 348 66 L 32 66 A 32 32 0 0 1 0 32 A 32 32 0 0 1 32 0 Z" />
+            <path
+              d="M 32 0 L 142 0 C 160 0, 166 26, 190 26 C 214 26, 220 0, 238 0 L 348 0 A 32 32 0 0 1 380 32 A 32 32 0 0 1 348 66 L 32 66 A 32 32 0 0 1 0 32 A 32 32 0 0 1 32 0 Z"
+              fill={isDark ? "#0F172A" : "#FFFFFF"}
+              stroke={isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)"}
+              strokeWidth="1.5"
+              className="transition-colors duration-200"
+            />
           </svg>
 
           {/* Left Nav Items (2 items) */}
@@ -172,7 +188,10 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
                     {active && (
                       <motion.div
                         layoutId="mobileNavActivePill"
-                        className="absolute inset-0 -mx-3 -my-1 rounded-full bg-[#FFF0E8] dark:bg-rose-950/40"
+                        className={cn(
+                          "absolute inset-0 -mx-3 -my-1 rounded-full",
+                          isDark ? "bg-rose-500/20" : "bg-[#FFF0E8]"
+                        )}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -182,24 +201,24 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
                           <path
                             d="M12 2L3 9V20C3 20.5523 3.44772 21 4 21H9V14H15V21H20C20.5523 21 21 20.5523 21 20V9L12 2Z"
-                            fill={active ? "#E53935" : "#64748B"}
+                            fill={active ? (isDark ? "#FF5252" : "#E53935") : (isDark ? "#94A3B8" : "#64748B")}
                           />
                         </svg>
                       </div>
                     ) : (
                       <Icon
-                        className={cn(
-                          "w-5 h-5 relative z-10 transition-colors duration-200",
-                          active ? "text-[#E53935]" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700"
-                        )}
+                        className="w-5 h-5 relative z-10 transition-colors duration-200"
+                        style={{
+                          color: active ? (isDark ? "#FF5252" : "#E53935") : (isDark ? "#94A3B8" : "#64748B")
+                        }}
                       />
                     )}
                   </div>
                   <span
-                    className={cn(
-                      "text-[11px] font-semibold tracking-tight mt-0.5 relative z-10 transition-colors duration-200",
-                      active ? "text-[#E53935] font-bold" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700"
-                    )}
+                    className="text-[11px] font-semibold tracking-tight mt-0.5 relative z-10 transition-colors duration-200"
+                    style={{
+                      color: active ? (isDark ? "#FF5252" : "#E53935") : (isDark ? "#CBD5E1" : "#64748B")
+                    }}
                   >
                     {item.label}
                   </span>
@@ -213,7 +232,12 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
             <motion.button
               whileTap={{ scale: 0.92 }}
               onClick={() => setIsMenuOpen(true)}
-              className="w-[52px] h-[52px] rounded-full bg-[#1A1926] dark:bg-slate-800 text-white flex items-center justify-center shadow-lg shadow-black/20 hover:bg-[#252436] transition-colors border-2 border-white dark:border-slate-900"
+              className={cn(
+                "w-[52px] h-[52px] rounded-full flex items-center justify-center shadow-lg transition-colors border-2 text-white",
+                isDark
+                  ? "bg-indigo-600 hover:bg-indigo-700 border-[#0F172A] shadow-indigo-500/20"
+                  : "bg-[#1A1926] hover:bg-[#252436] border-white shadow-black/20"
+              )}
               aria-label={t("quick_navigation") || "Quick Navigation"}
             >
               <LayoutGrid className="w-5 h-5 text-white" />
@@ -236,22 +260,25 @@ export function MobileNavbar({ portalType = "user" }: MobileNavbarProps) {
                     {active && (
                       <motion.div
                         layoutId="mobileNavActivePill"
-                        className="absolute inset-0 -mx-3 -my-1 rounded-full bg-[#FFF0E8] dark:bg-rose-950/40"
+                        className={cn(
+                          "absolute inset-0 -mx-3 -my-1 rounded-full",
+                          isDark ? "bg-rose-500/20" : "bg-[#FFF0E8]"
+                        )}
                         transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
                     )}
                     <Icon
-                      className={cn(
-                        "w-5 h-5 relative z-10 transition-colors duration-200",
-                        active ? "text-[#E53935]" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700"
-                      )}
+                      className="w-5 h-5 relative z-10 transition-colors duration-200"
+                      style={{
+                        color: active ? (isDark ? "#FF5252" : "#E53935") : (isDark ? "#94A3B8" : "#64748B")
+                      }}
                     />
                   </div>
                   <span
-                    className={cn(
-                      "text-[11px] font-semibold tracking-tight mt-0.5 relative z-10 transition-colors duration-200",
-                      active ? "text-[#E53935] font-bold" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700"
-                    )}
+                    className="text-[11px] font-semibold tracking-tight mt-0.5 relative z-10 transition-colors duration-200"
+                    style={{
+                      color: active ? (isDark ? "#FF5252" : "#E53935") : (isDark ? "#CBD5E1" : "#64748B")
+                    }}
                   >
                     {item.label}
                   </span>
